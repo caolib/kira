@@ -15,11 +15,12 @@ class BookshelfPage extends StatefulWidget {
 class _BookshelfPageState extends State<BookshelfPage> {
   final _api = ApiClient();
   final _user = UserManager();
-  List<Comic> _comics = [];
+  List<BookshelfItem> _items = [];
   bool _loading = true;
   int _offset = 0;
   int _total = 0;
   bool _loadingMore = false;
+  late String _ordering = _user.bookshelfOrdering;
 
   @override
   void initState() {
@@ -44,7 +45,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
       _load();
     } else {
       setState(() {
-        _comics = [];
+        _items = [];
         _total = 0;
         _loading = false;
       });
@@ -52,22 +53,21 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _comics = [];
-      _offset = 0;
-    });
+    final isInitial = _items.isEmpty;
+    if (isInitial) setState(() => _loading = true);
+    _offset = 0;
     try {
-      final data = await _api.getBookshelf();
+      final data = await _api.getBookshelf(ordering: _ordering);
+      if (!mounted) return;
       setState(() {
-        _comics = data.list;
+        _items = data.list;
         _total = data.total;
         _offset = data.list.length;
         _loading = false;
       });
     } catch (e) {
       debugPrint('BookshelfPage load error: $e');
-      setState(() => _loading = false);
+      if (isInitial && mounted) setState(() => _loading = false);
     }
   }
 
@@ -75,15 +75,35 @@ class _BookshelfPageState extends State<BookshelfPage> {
     if (_loadingMore || _offset >= _total) return;
     _loadingMore = true;
     try {
-      final data = await _api.getBookshelf(offset: _offset);
+      final data = await _api.getBookshelf(offset: _offset, ordering: _ordering);
       setState(() {
-        _comics.addAll(data.list);
-        _offset = _comics.length;
+        _items.addAll(data.list);
+        _offset = _items.length;
       });
     } catch (e) {
       debugPrint('BookshelfPage loadMore error: $e');
     }
     _loadingMore = false;
+  }
+
+  static String _orderingLabel(String ordering) {
+    switch (ordering) {
+      case '-datetime_updated':
+        return '按更新';
+      case '-datetime_modifier':
+        return '按收藏';
+      case '-datetime_browse':
+        return '按阅读';
+      default:
+        return '排序';
+    }
+  }
+
+  void _setOrdering(BuildContext context, String ordering) {
+    Navigator.pop(context);
+    setState(() => _ordering = ordering);
+    _user.setBookshelfOrdering(ordering);
+    _load();
   }
 
   @override
@@ -97,10 +117,10 @@ class _BookshelfPageState extends State<BookshelfPage> {
     return Scaffold(
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _comics.isEmpty
+          : _items.isEmpty
               ? CustomScrollView(
                   slivers: [
-                    const SliverAppBar(title: Text('书架'), pinned: true),
+                    SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
                     SliverFillRemaining(
                       child: Center(
                         child: Column(
@@ -116,6 +136,12 @@ class _BookshelfPageState extends State<BookshelfPage> {
                             Text('去发现页找点好看的漫画吧',
                                 style: tt.bodySmall?.copyWith(
                                     color: cs.onSurfaceVariant)),
+                            const SizedBox(height: 16),
+                            FilledButton.tonalIcon(
+                              onPressed: _load,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('刷新'),
+                            ),
                           ],
                         ),
                       ),
@@ -134,14 +160,74 @@ class _BookshelfPageState extends State<BookshelfPage> {
                     },
                     child: CustomScrollView(
                       slivers: [
-                        const SliverAppBar(title: Text('书架'), pinned: true),
+                        SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(hp, 0, hp, 12),
-                            child: Text(
-                              '共 $_total 部收藏',
-                              style: tt.bodySmall?.copyWith(
-                                  color: cs.onSurfaceVariant),
+                            padding: EdgeInsets.fromLTRB(hp, 4, hp, 8),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '共 $_total 部收藏',
+                                  style: tt.bodySmall?.copyWith(
+                                      color: cs.onSurfaceVariant),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  icon: const Icon(Icons.refresh, size: 20),
+                                  onPressed: _load,
+                                  tooltip: '刷新',
+                                ),
+                                ActionChip(
+                                  avatar: const Icon(Icons.sort, size: 18),
+                                  label: Text(_orderingLabel(_ordering)),
+                                  onPressed: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      builder: (_) => SafeArea(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Padding(
+                                              padding: const EdgeInsets.fromLTRB(
+                                                  16, 16, 16, 8),
+                                              child: Text('排序方式',
+                                                  style: tt.titleMedium),
+                                            ),
+                                            _OrderingTile(
+                                              icon: Icons.update,
+                                              title: '作品更新时间',
+                                              subtitle: '按漫画最新章节的更新时间排序',
+                                              selected: _ordering ==
+                                                  '-datetime_updated',
+                                              onTap: () => _setOrdering(
+                                                  context, '-datetime_updated'),
+                                            ),
+                                            _OrderingTile(
+                                              icon: Icons.bookmark_added,
+                                              title: '收藏时间',
+                                              subtitle: '按加入书架的时间排序',
+                                              selected: _ordering ==
+                                                  '-datetime_modifier',
+                                              onTap: () => _setOrdering(
+                                                  context, '-datetime_modifier'),
+                                            ),
+                                            _OrderingTile(
+                                              icon: Icons.menu_book,
+                                              title: '阅读时间',
+                                              subtitle: '按最近阅读/浏览的时间排序',
+                                              selected: _ordering ==
+                                                  '-datetime_browse',
+                                              onTap: () => _setOrdering(
+                                                  context, '-datetime_browse'),
+                                            ),
+                                            const SizedBox(height: 8),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -149,17 +235,66 @@ class _BookshelfPageState extends State<BookshelfPage> {
                           padding: EdgeInsets.symmetric(horizontal: hp),
                           sliver: SliverGrid(
                             delegate: SliverChildBuilderDelegate(
-                              (_, i) => ComicCard(
-                                comic: _comics[i],
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ComicDetailPage(
-                                        pathWord: _comics[i].pathWord),
-                                  ),
-                                ).then((_) => _load()),
-                              ),
-                              childCount: _comics.length,
+                              (_, i) {
+                                final item = _items[i];
+                                return Stack(
+                                  children: [
+                                    ComicCard(
+                                      comic: item.comic,
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ComicDetailPage(
+                                            pathWord: item.comic.pathWord,
+                                            lastBrowseId: item.lastBrowseId,
+                                            lastBrowseName: item.lastBrowseName,
+                                          ),
+                                        ),
+                                      ).then((_) => _load()),
+                                    ),
+                                    if (item.hasUpdate)
+                                      Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: cs.error,
+                                            borderRadius: const BorderRadius.only(
+                                              topRight: Radius.circular(12),
+                                              bottomLeft: Radius.circular(10),
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: cs.error.withValues(alpha: 0.6),
+                                                blurRadius: 8,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.fiber_new_rounded,
+                                                  size: 16, color: cs.onError),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                '更新',
+                                                style: TextStyle(
+                                                  color: cs.onError,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                              childCount: _items.length,
                             ),
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -176,6 +311,34 @@ class _BookshelfPageState extends State<BookshelfPage> {
                     ),
                   ),
                 ),
+    );
+  }
+}
+
+class _OrderingTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  const _OrderingTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(icon, color: selected ? cs.primary : null),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: selected ? Icon(Icons.check, color: cs.primary) : null,
+      selected: selected,
+      onTap: onTap,
     );
   }
 }

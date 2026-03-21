@@ -154,11 +154,11 @@ class _SearchPageState extends State<SearchPage> {
       },
       child: CustomScrollView(
         slivers: [
-          const SliverAppBar(title: Text('发现'), pinned: true),
+          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
           // 搜索框
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(hp, 0, hp, 8),
+              padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
               child: SearchBar(
                 controller: _searchController,
                 hintText: '搜索漫画...',

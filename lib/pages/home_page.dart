@@ -87,7 +87,7 @@ class _HomePageState extends State<HomePage> {
       onRefresh: _load,
       child: CustomScrollView(
         slivers: [
-          const SliverAppBar(title: Text('Kira'), pinned: true),
+          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
 
           // ── 推荐区 ──
           if (_recommendations.isNotEmpty) ...[
@@ -280,6 +280,7 @@ class ComicCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -288,51 +289,23 @@ class ComicCard extends StatelessWidget {
           Expanded(
             child: Card(
               margin: EdgeInsets.zero,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: comic.cover,
-                    fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(
-                      color: cs.surfaceContainerHighest,
-                      child: Center(
-                          child: Icon(Icons.image,
-                              color: cs.onSurfaceVariant, size: 32)),
-                    ),
-                    errorWidget: (_, _, _) => Container(
-                      color: cs.surfaceContainerHighest,
-                      child: Center(
-                          child: Icon(Icons.broken_image,
-                              color: cs.onSurfaceVariant, size: 32)),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [Colors.black87, Colors.transparent],
-                        ),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(8, 16, 8, 6),
-                      child: Row(
-                        children: [
-                          Icon(Icons.local_fire_department,
-                              size: 12, color: cs.primary),
-                          const SizedBox(width: 2),
-                          Text(formatPopular(comic.popular),
-                              style: const TextStyle(
-                                  fontSize: 10, color: Colors.white70)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              child: CachedNetworkImage(
+                imageUrl: comic.cover,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                placeholder: (_, _) => Container(
+                  color: cs.surfaceContainerHighest,
+                  child: Center(
+                      child: Icon(Icons.image,
+                          color: cs.onSurfaceVariant, size: 32)),
+                ),
+                errorWidget: (_, _, _) => Container(
+                  color: cs.surfaceContainerHighest,
+                  child: Center(
+                      child: Icon(Icons.broken_image,
+                          color: cs.onSurfaceVariant, size: 32)),
+                ),
               ),
             ),
           ),
@@ -340,7 +313,22 @@ class ComicCard extends StatelessWidget {
           Text(comic.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall),
+              style: tt.bodySmall),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Icon(Icons.local_fire_department, size: 12, color: cs.primary),
+              const SizedBox(width: 2),
+              Text(formatPopular(comic.popular),
+                  style: tt.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant, fontSize: 10)),
+              const Spacer(),
+              if (comic.datetimeUpdated != null)
+                Text(formatRelativeTime(comic.datetimeUpdated!),
+                    style: tt.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant, fontSize: 10)),
+            ],
+          ),
         ],
       ),
     );
@@ -350,5 +338,17 @@ class ComicCard extends StatelessWidget {
     if (n >= 100000000) return '${(n / 100000000).toStringAsFixed(1)}亿';
     if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
     return n.toString();
+  }
+
+  static String formatRelativeTime(String dateStr) {
+    final date = DateTime.tryParse(dateStr);
+    if (date == null) return dateStr;
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return '刚刚';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
+    if (diff.inHours < 24) return '${diff.inHours}小时前';
+    if (diff.inDays < 30) return '${diff.inDays}天前';
+    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
+    return '${(diff.inDays / 365).floor()}年前';
   }
 }

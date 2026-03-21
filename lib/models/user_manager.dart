@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserManager extends ChangeNotifier {
@@ -13,6 +13,8 @@ class UserManager extends ChangeNotifier {
   static const _keyUserId = 'user_id';
   static const _keySavedUsername = 'saved_username';
   static const _keySavedPassword = 'saved_password';
+  static const _keyThemeMode = 'theme_mode';
+  static const _keyBookshelfOrdering = 'bookshelf_ordering';
 
   String? _token;
   String? _username;
@@ -21,6 +23,8 @@ class UserManager extends ChangeNotifier {
   String? _userId;
   String? _savedUsername;
   String? _savedPassword;
+  ThemeMode _themeMode = ThemeMode.system;
+  String _bookshelfOrdering = '-datetime_updated';
 
   String? get token => _token;
   String? get username => _username;
@@ -29,6 +33,8 @@ class UserManager extends ChangeNotifier {
   String? get userId => _userId;
   String? get savedUsername => _savedUsername;
   String? get savedPassword => _savedPassword;
+  ThemeMode get themeMode => _themeMode;
+  String get bookshelfOrdering => _bookshelfOrdering;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -40,6 +46,8 @@ class UserManager extends ChangeNotifier {
     _userId = prefs.getString(_keyUserId);
     _savedUsername = prefs.getString(_keySavedUsername);
     _savedPassword = prefs.getString(_keySavedPassword);
+    _themeMode = ThemeMode.values[prefs.getInt(_keyThemeMode) ?? 0];
+    _bookshelfOrdering = prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
     notifyListeners();
   }
 
@@ -95,5 +103,19 @@ class UserManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keySavedUsername);
     await prefs.remove(_keySavedPassword);
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyThemeMode, mode.index);
+    notifyListeners();
+  }
+
+  Future<void> setBookshelfOrdering(String ordering) async {
+    _bookshelfOrdering = ordering;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyBookshelfOrdering, ordering);
+    notifyListeners();
   }
 }

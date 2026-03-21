@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import '../api/api_client.dart';
@@ -67,11 +68,39 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar(title: Text('我的'), pinned: true),
+          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: _user.isLoggedIn ? _buildUserCard(cs, tt) : _buildLoginCard(cs, tt),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                color: cs.surfaceContainerLow,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.palette_outlined),
+                        title: const Text('主题模式'),
+                        trailing: SegmentedButton<ThemeMode>(
+                          segments: const [
+                            ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.settings_brightness), label: Text('自动')),
+                            ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode), label: Text('浅色')),
+                            ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode), label: Text('深色')),
+                          ],
+                          selected: {_user.themeMode},
+                          onSelectionChanged: (v) => _user.setThemeMode(v.first),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -119,38 +148,51 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Card(
           color: cs.surfaceContainerLow,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: cs.primaryContainer,
-                  child: _user.avatar != null && _user.avatar!.startsWith('http')
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: _user.avatar!,
-                            width: 64,
-                            height: 64,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Icon(Icons.person, size: 32, color: cs.onPrimaryContainer),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_user.nickname ?? _user.username ?? '',
-                          style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text('UID: ${_user.userId ?? ''}',
-                          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
-                    ],
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              final token = _user.token;
+              if (token != null && token.isNotEmpty) {
+                Clipboard.setData(ClipboardData(text: token));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Token 已复制到剪贴板'),
+                    duration: Duration(seconds: 2),
                   ),
-                ),
-              ],
+                );
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: cs.primaryContainer,
+                    child: _user.avatar != null && _user.avatar!.startsWith('http')
+                        ? ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: _user.avatar!,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Icon(Icons.person, size: 32, color: cs.onPrimaryContainer),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_user.nickname ?? _user.username ?? '',
+                            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.copy, size: 18, color: cs.onSurfaceVariant),
+                ],
+              ),
             ),
           ),
         ),
@@ -181,9 +223,11 @@ class _LoginPageState extends State<LoginPage> {
   final _api = ApiClient();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _tokenCtrl = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
   bool _rememberMe = false;
+  bool _useToken = false;
   String? _error;
 
   @override
@@ -203,6 +247,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
+    _tokenCtrl.dispose();
     super.dispose();
   }
 
@@ -246,6 +291,51 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _loginWithToken() async {
+    final token = _tokenCtrl.text.trim();
+    if (token.isEmpty) {
+      setState(() => _error = '请输入令牌');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      // 先临时保存 token 以便 API 请求携带 Authorization
+      await UserManager().saveLogin(
+        token: token,
+        userId: '',
+        username: '',
+        nickname: '',
+        avatar: '',
+      );
+      // 用 token 拉取用户信息验证有效性
+      final info = await _api.getUserInfo();
+      await UserManager().saveLogin(
+        token: token,
+        userId: info['user_id']?.toString() ?? '',
+        username: info['username']?.toString() ?? '',
+        nickname: info['nickname']?.toString() ?? info['username']?.toString() ?? '',
+        avatar: info['avatar']?.toString() ?? '',
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      // 令牌无效，清除
+      await UserManager().logout();
+      String msg = '令牌无效或已过期';
+      if (e is DioException && e.response?.data is Map) {
+        msg = e.response?.data['message'] ?? msg;
+      }
+      setState(() {
+        _error = msg;
+        _loading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -268,52 +358,81 @@ class _LoginPageState extends State<LoginPage> {
                     .textTheme
                     .headlineMedium
                     ?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 40),
-            TextField(
-              controller: _usernameCtrl,
-              decoration: InputDecoration(
-                labelText: '用户名',
-                prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              textInputAction: TextInputAction.next,
+            const SizedBox(height: 32),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('账号密码'), icon: Icon(Icons.person_outline)),
+                ButtonSegment(value: true, label: Text('令牌'), icon: Icon(Icons.key)),
+              ],
+              selected: {_useToken},
+              onSelectionChanged: (v) => setState(() {
+                _useToken = v.first;
+                _error = null;
+              }),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordCtrl,
-              obscureText: _obscure,
-              decoration: InputDecoration(
-                labelText: '密码',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                      _obscure ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscure = !_obscure),
+            const SizedBox(height: 24),
+            if (!_useToken) ...[
+              TextField(
+                controller: _usernameCtrl,
+                decoration: InputDecoration(
+                  labelText: '用户名',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                textInputAction: TextInputAction.next,
               ),
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _login(),
-            ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordCtrl,
+                obscureText: _obscure,
+                decoration: InputDecoration(
+                  labelText: '密码',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                        _obscure ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _login(),
+              ),
+            ] else ...[
+              TextField(
+                controller: _tokenCtrl,
+                decoration: InputDecoration(
+                  labelText: '令牌 (Token)',
+                  prefixIcon: const Icon(Icons.key),
+                  hintText: '粘贴你的登录令牌',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _loginWithToken(),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!,
                   style: TextStyle(color: cs.error),
                   textAlign: TextAlign.center),
             ],
-            const SizedBox(height: 8),
-            CheckboxListTile(
-              value: _rememberMe,
-              onChanged: (v) => setState(() => _rememberMe = v ?? false),
-              title: const Text('记住账号'),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            ),
+            if (!_useToken) ...[
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                value: _rememberMe,
+                onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                title: const Text('记住账号'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
             const SizedBox(height: 8),
             FilledButton(
-              onPressed: _loading ? null : _login,
+              onPressed: _loading ? null : (_useToken ? _loginWithToken : _login),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

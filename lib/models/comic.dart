@@ -50,6 +50,8 @@ class Comic {
   final String? brief;
   final Map<String, dynamic>? status;
   final Map<String, dynamic>? lastChapter;
+  final String? lastChapterId;
+  final String? lastChapterName;
   final Map<String, ComicGroup>? groups;
   final Map<String, dynamic>? region;
 
@@ -65,12 +67,14 @@ class Comic {
     this.brief,
     this.status,
     this.lastChapter,
+    this.lastChapterId,
+    this.lastChapterName,
     this.groups,
     this.region,
   });
 
   factory Comic.fromJson(Map<String, dynamic> json) => Comic(
-        uuid: json['uuid'],
+        uuid: json['uuid']?.toString(),
         name: json['name'] ?? '',
         pathWord: json['path_word'] ?? '',
         cover: json['cover'] ?? '',
@@ -87,6 +91,8 @@ class Comic {
         brief: json['brief'],
         status: json['status'] is Map ? json['status'] : null,
         lastChapter: json['last_chapter'] is Map ? json['last_chapter'] : null,
+        lastChapterId: json['last_chapter_id']?.toString(),
+        lastChapterName: json['last_chapter_name']?.toString(),
         region: json['region'] is Map ? json['region'] : null,
       );
 
@@ -110,8 +116,23 @@ class Comic {
       brief: comic.brief,
       status: comic.status,
       lastChapter: comic.lastChapter,
+      lastChapterId: comic.lastChapterId,
+      lastChapterName: comic.lastChapterName,
       groups: groupsMap,
       region: comic.region,
     );
   }
+}
+
+class BookshelfItem {
+  final Comic comic;
+  final String? lastBrowseId;
+  final String? lastBrowseName;
+
+  BookshelfItem({required this.comic, this.lastBrowseId, this.lastBrowseName});
+
+  bool get hasUpdate =>
+      lastBrowseId != null &&
+      comic.lastChapterId != null &&
+      lastBrowseId != comic.lastChapterId;
 }

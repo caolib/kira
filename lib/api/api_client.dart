@@ -44,8 +44,9 @@ class ApiClient {
           // 注入已保存的 cookie
           final hostCookies = _cookies[options.uri.host];
           if (hostCookies != null && hostCookies.isNotEmpty) {
-            options.headers['Cookie'] =
-                hostCookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+            options.headers['Cookie'] = hostCookies.entries
+                .map((e) => '${e.key}=${e.value}')
+                .join('; ');
           }
 
           handler.next(options);
@@ -60,8 +61,8 @@ class ApiClient {
               final nameValue = raw.split(';').first.trim();
               final eqIdx = nameValue.indexOf('=');
               if (eqIdx > 0) {
-                _cookies[host]![nameValue.substring(0, eqIdx)] =
-                    nameValue.substring(eqIdx + 1);
+                _cookies[host]![nameValue.substring(0, eqIdx)] = nameValue
+                    .substring(eqIdx + 1);
               }
             }
           }
@@ -90,8 +91,11 @@ class ApiClient {
     final encoded = base64Encode(utf8.encode('$password-$salt'));
     final resp = await _dio.post(
       _url('/api/v3/login', _hostSf),
-      data: 'username=$username&password=$encoded&salt=$salt&source=Official&version=2.2.0&platform=3',
-      options: Options(contentType: 'application/x-www-form-urlencoded;charset=utf-8'),
+      data:
+          'username=$username&password=$encoded&salt=$salt&source=Official&version=2.2.0&platform=3',
+      options: Options(
+        contentType: 'application/x-www-form-urlencoded;charset=utf-8',
+      ),
     );
     return resp.data['results'];
   }
@@ -185,8 +189,9 @@ class ApiClient {
       params: {'limit': limit, 'offset': offset},
       host: _hostSd,
     );
-    final list =
-        (data['list'] as List).map((e) => Chapter.fromJson(e)).toList();
+    final list = (data['list'] as List)
+        .map((e) => Chapter.fromJson(e))
+        .toList();
     return (list: list, total: data['total'] as int);
   }
 
@@ -225,8 +230,8 @@ class ApiClient {
   }
 
   // 10. 个人书架
-  Future<({List<Comic> list, int total})> getBookshelf({
-    int limit = 21,
+  Future<({List<BookshelfItem> list, int total})> getBookshelf({
+    int limit = 12,
     int offset = 0,
     String ordering = '-datetime_modifier',
   }) async {
@@ -241,9 +246,19 @@ class ApiClient {
       },
       host: _hostSf,
     );
-    final list = (data['list'] as List)
-        .map((e) => Comic.fromJson(e['comic']))
-        .toList();
+    final list = (data['list'] as List).map((e) {
+      final comic = Comic.fromJson(e['comic']);
+      final browse = e['last_browse'];
+      return BookshelfItem(
+        comic: comic,
+        lastBrowseId: browse is Map
+            ? browse['last_browse_id']?.toString()
+            : null,
+        lastBrowseName: browse is Map
+            ? browse['last_browse_name']?.toString()
+            : null,
+      );
+    }).toList();
     return (list: list, total: data['total'] as int);
   }
 

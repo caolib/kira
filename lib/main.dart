@@ -11,16 +11,37 @@ void main() async {
   runApp(const KiraApp());
 }
 
-class KiraApp extends StatelessWidget {
+class KiraApp extends StatefulWidget {
   const KiraApp({super.key});
 
-  static const _seed = Color(0xFF6750A4);
+  @override
+  State<KiraApp> createState() => _KiraAppState();
+}
+
+class _KiraAppState extends State<KiraApp> {
+  final _user = UserManager();
 
   static final _cardTheme = CardThemeData(
-    clipBehavior: Clip.antiAlias,
+    clipBehavior: Clip.hardEdge,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     elevation: 0,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _user.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    _user.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,18 +49,24 @@ class KiraApp extends StatelessWidget {
       title: 'Kira',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorSchemeSeed: _seed,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueGrey,
+          brightness: Brightness.light,
+          surface: Colors.white,
+        ),
         useMaterial3: true,
-        brightness: Brightness.light,
         cardTheme: _cardTheme,
       ),
       darkTheme: ThemeData(
-        colorSchemeSeed: _seed,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueGrey,
+          brightness: Brightness.dark,
+          surface: Colors.black,
+        ),
         useMaterial3: true,
-        brightness: Brightness.dark,
         cardTheme: _cardTheme,
       ),
-      themeMode: ThemeMode.system,
+      themeMode: _user.themeMode,
       home: const MainPage(),
     );
   }
