@@ -1,3 +1,3 @@
 # kira
 
-A comic reader app.
+A third-party client based on hotmanga
