@@ -349,14 +349,18 @@ class ComicCard extends StatelessWidget {
             children: [
               Icon(Icons.local_fire_department, size: 12, color: cs.primary),
               const SizedBox(width: 2),
-              Text(formatPopular(comic.popular),
-                  style: tt.labelSmall
-                      ?.copyWith(color: cs.onSurfaceVariant, fontSize: 10)),
-              const Spacer(),
-              if (comic.datetimeUpdated != null)
+              Flexible(
+                child: Text(formatPopular(comic.popular),
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant, fontSize: 10)),
+              ),
+              if (comic.datetimeUpdated != null) ...[
+                const SizedBox(width: 4),
                 Text(formatRelativeTime(comic.datetimeUpdated!),
                     style: tt.labelSmall
                         ?.copyWith(color: cs.onSurfaceVariant, fontSize: 10)),
+              ],
             ],
           ),
         ],

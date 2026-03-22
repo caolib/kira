@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/chapter.dart';
+import '../utils/reading_history.dart';
 import 'reader_page.dart';
 
 class ComicDetailPage extends StatefulWidget {
@@ -33,11 +34,29 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   bool _briefExpanded = false;
   bool _reversed = true;
   bool _isCollected = false;
+  // 本地阅读记录（优先级高于书架传入的记录）
+  String? _lastBrowseId;
+  String? _lastBrowseName;
+  int _lastBrowsePage = 1;
 
   @override
   void initState() {
     super.initState();
+    _lastBrowseId = widget.lastBrowseId;
+    _lastBrowseName = widget.lastBrowseName;
+    _loadLocalHistory();
     _loadComic();
+  }
+
+  Future<void> _loadLocalHistory() async {
+    final record = await ReadingHistory.get(widget.pathWord);
+    if (record != null && mounted) {
+      setState(() {
+        _lastBrowseId = record.chapterUuid;
+        _lastBrowseName = record.chapterName;
+        _lastBrowsePage = record.page;
+      });
+    }
   }
 
   Future<void> _loadComic() async {
@@ -275,7 +294,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
             ),
           ),
         // ── 继续阅读 + 分组切换（响应式同行） ──
-        if (widget.lastBrowseId != null ||
+        if (_lastBrowseId != null ||
             (comic.groups != null && comic.groups!.length > 1))
           SliverToBoxAdapter(
             child: Padding(
@@ -285,20 +304,21 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  if (widget.lastBrowseId != null)
+                  if (_lastBrowseId != null)
                     FilledButton.icon(
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ReaderPage(
                             pathWord: widget.pathWord,
-                            chapterUuid: widget.lastBrowseId!,
-                            chapterName: widget.lastBrowseName ?? '',
+                            chapterUuid: _lastBrowseId!,
+                            chapterName: _lastBrowseName ?? '',
+                            initialPage: _lastBrowsePage,
                           ),
                         ),
-                      ),
+                      ).then((_) => _loadLocalHistory()),
                       icon: const Icon(Icons.play_arrow, size: 18),
-                      label: Text('继续  ${widget.lastBrowseName ?? ''}',
+                      label: Text('继续  ${_lastBrowseName ?? ''}',
                           style: const TextStyle(fontSize: 13)),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
@@ -417,7 +437,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                             chapterName: ch.name,
                           ),
                         ),
-                      ),
+                      ).then((_) => _loadLocalHistory()),
                       child: Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(

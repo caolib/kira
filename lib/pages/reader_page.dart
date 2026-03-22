@@ -5,17 +5,20 @@ import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/user_manager.dart';
 import '../utils/toast.dart';
+import '../utils/reading_history.dart';
 
 class ReaderPage extends StatefulWidget {
   final String pathWord;
   final String chapterUuid;
   final String chapterName;
+  final int initialPage;
 
   const ReaderPage({
     super.key,
     required this.pathWord,
     required this.chapterUuid,
     required this.chapterName,
+    this.initialPage = 1,
   });
 
   @override
@@ -40,6 +43,8 @@ class _ReaderPageState extends State<ReaderPage> {
   bool get _isPageMode => _user.readerMode == 1;
   bool get _isDarkMode =>
       Theme.of(context).brightness == Brightness.dark;
+
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
@@ -78,20 +83,47 @@ class _ReaderPageState extends State<ReaderPage> {
       final detail =
           await _api.getChapterDetail(widget.pathWord, _currentUuid);
       if (!mounted) return;
+      // 首次加载且有 initialPage 参数时跳到指定页
+      final startPage = _isFirstLoad && widget.initialPage > 1
+          ? widget.initialPage.clamp(1, detail.contents.length)
+          : 1;
+      _isFirstLoad = false;
       setState(() {
         _detail = detail;
         _loading = false;
-        _currentPage = 1;
+        _currentPage = startPage;
       });
       if (_isPageMode) {
         _pageController.dispose();
-        _pageController = PageController();
+        _pageController = PageController(initialPage: startPage - 1);
       } else {
-        _scrollController.jumpTo(0);
+        if (startPage > 1) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients && detail.contents.isNotEmpty) {
+              final ratio = (startPage - 1) / detail.contents.length;
+              _jumpingScroll = true;
+              _scrollController
+                  .jumpTo(ratio * _scrollController.position.maxScrollExtent);
+              _jumpingScroll = false;
+            }
+          });
+        } else {
+          _scrollController.jumpTo(0);
+        }
       }
+      _saveReadingHistory();
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _saveReadingHistory() {
+    ReadingHistory.save(
+      pathWord: widget.pathWord,
+      chapterUuid: _currentUuid,
+      chapterName: _detail?.name ?? widget.chapterName,
+      page: _currentPage,
+    );
   }
 
   void _goChapter(String? uuid) {
@@ -233,6 +265,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 .clamp(1, imageCount);
             if (page != _currentPage) {
               setState(() => _currentPage = page);
+              _saveReadingHistory();
             }
           }
           return false;
@@ -310,6 +343,7 @@ class _ReaderPageState extends State<ReaderPage> {
             _currentPage = index + 1;
             if (!_isDraggingSlider) _showToolbar = false;
           });
+          _saveReadingHistory();
         },
         itemBuilder: (_, i) => Center(child: _buildImage(i)),
       ),
