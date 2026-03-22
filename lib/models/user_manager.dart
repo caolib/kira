@@ -16,6 +16,11 @@ class UserManager extends ChangeNotifier {
   static const _keySavedPassword = 'saved_password';
   static const _keyThemeMode = 'theme_mode';
   static const _keyBookshelfOrdering = 'bookshelf_ordering';
+  static const _keyReaderMode = 'reader_mode';
+  static const _keyReaderImageGap = 'reader_image_gap';
+  static const _keyReaderVolumeKey = 'reader_volume_key';
+  static const _keyReaderPageRTL = 'reader_page_rtl';
+  static const _keyReaderDimming = 'reader_dimming';
 
   String? _token;
   String? _username;
@@ -26,6 +31,11 @@ class UserManager extends ChangeNotifier {
   String? _savedPassword;
   ThemeMode _themeMode = ThemeMode.system;
   String _bookshelfOrdering = '-datetime_updated';
+  int _readerMode = 0;
+  double _readerImageGap = 0.0;
+  bool _readerVolumeKey = true;
+  bool _readerPageRTL = false;
+  double _readerDimming = 0.3;
 
   String? get token => _token;
   String? get username => _username;
@@ -36,6 +46,11 @@ class UserManager extends ChangeNotifier {
   String? get savedPassword => _savedPassword;
   ThemeMode get themeMode => _themeMode;
   String get bookshelfOrdering => _bookshelfOrdering;
+  int get readerMode => _readerMode;
+  double get readerImageGap => _readerImageGap;
+  bool get readerVolumeKey => _readerVolumeKey;
+  bool get readerPageRTL => _readerPageRTL;
+  double get readerDimming => _readerDimming;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -49,6 +64,11 @@ class UserManager extends ChangeNotifier {
     _savedPassword = prefs.getString(_keySavedPassword);
     _themeMode = ThemeMode.values[prefs.getInt(_keyThemeMode) ?? 0];
     _bookshelfOrdering = prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
+    _readerMode = prefs.getInt(_keyReaderMode) ?? 0;
+    _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
+    _readerVolumeKey = prefs.getBool(_keyReaderVolumeKey) ?? true;
+    _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
+    _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
     notifyListeners();
   }
 
@@ -117,6 +137,41 @@ class UserManager extends ChangeNotifier {
     _bookshelfOrdering = ordering;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyBookshelfOrdering, ordering);
+    notifyListeners();
+  }
+
+  Future<void> setReaderMode(int mode) async {
+    _readerMode = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyReaderMode, mode);
+    notifyListeners();
+  }
+
+  Future<void> setReaderImageGap(double gap) async {
+    _readerImageGap = gap;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyReaderImageGap, gap);
+    notifyListeners();
+  }
+
+  Future<void> setReaderVolumeKey(bool enabled) async {
+    _readerVolumeKey = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyReaderVolumeKey, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setReaderPageRTL(bool rtl) async {
+    _readerPageRTL = rtl;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyReaderPageRTL, rtl);
+    notifyListeners();
+  }
+
+  Future<void> setReaderDimming(double value) async {
+    _readerDimming = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyReaderDimming, value);
     notifyListeners();
   }
 

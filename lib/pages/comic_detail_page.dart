@@ -350,27 +350,31 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 ),
                 const Spacer(),
                 if (_totalPages > 1) ...[
-                  IconButton.filledTonal(
-                    onPressed: _chapterPage > 0
-                        ? () => _loadChapterPage(_chapterPage - 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_left),
-                    tooltip: '上一页',
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Text(
-                      '${_chapterPage + 1}/$_totalPages',
-                      style: tt.titleSmall,
-                    ),
-                  ),
-                  IconButton.filledTonal(
-                    onPressed: _chapterPage < _totalPages - 1
-                        ? () => _loadChapterPage(_chapterPage + 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_right),
-                    tooltip: '下一页',
-                  ),
+                  ...List.generate(_totalPages, (i) {
+                    final isSelected = i == _chapterPage;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: isSelected
+                          ? FilledButton.tonal(
+                              onPressed: null,
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(36, 36),
+                                padding: EdgeInsets.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text('${i + 1}'),
+                            )
+                          : OutlinedButton(
+                              onPressed: () => _loadChapterPage(i),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(36, 36),
+                                padding: EdgeInsets.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text('${i + 1}'),
+                            ),
+                    );
+                  }),
                 ],
                 IconButton(
                   icon: Icon(
