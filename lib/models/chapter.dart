@@ -29,6 +29,17 @@ class Chapter {
         next: json['next'],
         ordered: json['ordered'] ?? 0,
       );
+
+  Map<String, dynamic> toJson() => {
+        'uuid': uuid,
+        'index': index,
+        'name': name,
+        'size': size,
+        'datetime_created': datetimeCreated,
+        'prev': prev,
+        'next': next,
+        'ordered': ordered,
+      };
 }
 
 class ChapterDetail extends Chapter {

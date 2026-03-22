@@ -41,6 +41,9 @@ class ComicGroup {
         count: json['count'] ?? 0,
         name: json['name'] ?? '',
       );
+
+  Map<String, dynamic> toJson() =>
+      {'path_word': pathWord, 'count': count, 'name': name};
 }
 
 class Comic {
@@ -98,6 +101,14 @@ class Comic {
         lastChapter: json['last_chapter'] is Map ? json['last_chapter'] : null,
         lastChapterId: json['last_chapter_id']?.toString(),
         lastChapterName: json['last_chapter_name']?.toString(),
+        groups: json['groups'] is Map
+            ? (json['groups'] as Map).map(
+                (k, v) => MapEntry(
+                  k.toString(),
+                  ComicGroup.fromJson(Map<String, dynamic>.from(v)),
+                ),
+              )
+            : null,
         region: json['region'] is Map ? json['region'] : null,
       );
 
@@ -115,6 +126,7 @@ class Comic {
         'last_chapter': lastChapter,
         'last_chapter_id': lastChapterId,
         'last_chapter_name': lastChapterName,
+        'groups': groups?.map((k, v) => MapEntry(k, v.toJson())),
         'region': region,
       };
 

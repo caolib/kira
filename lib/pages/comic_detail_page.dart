@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/chapter.dart';
+import '../utils/data_cache.dart';
 import '../utils/reading_history.dart';
 import 'reader_page.dart';
 
@@ -23,11 +24,14 @@ class ComicDetailPage extends StatefulWidget {
 
 class _ComicDetailPageState extends State<ComicDetailPage> {
   final _api = ApiClient();
+  final _cache = DataCache();
   Comic? _comic;
   List<Chapter> _chapters = [];
   String _selectedGroup = 'default';
   bool _loadingComic = true;
+  bool _refreshingComic = false;
   bool _loadingChapters = false;
+  bool _keepShowingCachedChapters = false;
   int _chapterTotal = 0;
   int _chapterPage = 0; // 当前页码（0-based）
   static const _pageSize = 100;
@@ -39,13 +43,22 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   String? _lastBrowseName;
   int _lastBrowsePage = 1;
 
+  String get _cacheKey => 'comic_detail_${widget.pathWord}';
+
   @override
   void initState() {
     super.initState();
     _lastBrowseId = widget.lastBrowseId;
     _lastBrowseName = widget.lastBrowseName;
-    _loadLocalHistory();
-    _loadComic();
+    _initializePage();
+  }
+
+  Future<void> _initializePage() async {
+    await Future.wait([
+      _loadLocalHistory(),
+      _loadFromCache(),
+    ]);
+    await _loadComic();
   }
 
   Future<void> _loadLocalHistory() async {
@@ -59,34 +72,130 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     }
   }
 
+  Future<void> _loadFromCache() async {
+    final cached = await _cache.get(_cacheKey);
+    if (cached is! Map) return;
+    final comicJson = cached['comic'];
+    if (comicJson is! Map) return;
+
+    final comic = Comic.fromJson(Map<String, dynamic>.from(comicJson));
+    final cachedGroup = cached['selectedGroup']?.toString();
+    final selectedGroup = _resolveSelectedGroup(
+      comic,
+      preferredGroup: cachedGroup,
+    );
+    final canReuseCachedChapters = cachedGroup == null || cachedGroup == selectedGroup;
+    final cachedChapters = canReuseCachedChapters
+        ? (cached['chapters'] as List?)
+                ?.map((j) => Chapter.fromJson(Map<String, dynamic>.from(j)))
+                .toList() ??
+            []
+        : <Chapter>[];
+
+    if (!mounted) return;
+    setState(() {
+      _comic = comic;
+      _selectedGroup = selectedGroup;
+      _chapters = cachedChapters;
+      _chapterTotal = canReuseCachedChapters ? cached['chapterTotal'] ?? 0 : 0;
+      _chapterPage = canReuseCachedChapters ? cached['chapterPage'] ?? 0 : 0;
+      _isCollected = cached['isCollected'] == true;
+      _loadingComic = false;
+    });
+  }
+
+  Future<void> _saveCache() async {
+    final comic = _comic;
+    if (comic == null) return;
+    await _cache.put(_cacheKey, {
+      'comic': comic.toJson(),
+      'selectedGroup': _selectedGroup,
+      'chapterPage': _chapterPage,
+      'chapterTotal': _chapterTotal,
+      'chapters': _chapters.map((c) => c.toJson()).toList(),
+      'isCollected': _isCollected,
+    });
+  }
+
+  String _resolveSelectedGroup(
+    Comic comic, {
+    String? preferredGroup,
+  }) {
+    final groups = comic.groups;
+    if (groups != null && groups.isNotEmpty) {
+      if (preferredGroup != null && groups.containsKey(preferredGroup)) {
+        return preferredGroup;
+      }
+      return groups.keys.first;
+    }
+    return 'default';
+  }
+
   Future<void> _loadComic() async {
+    final showRefreshNotice = _comic != null;
+    if (mounted) {
+      setState(() {
+        if (!showRefreshNotice) {
+          _loadingComic = true;
+        }
+        _refreshingComic = showRefreshNotice;
+      });
+    }
+
     try {
       final comic = await _api.getComicDetail(widget.pathWord);
       if (!mounted) return;
+      final selectedGroup = _resolveSelectedGroup(
+        comic,
+        preferredGroup: _selectedGroup,
+      );
+
       setState(() {
         _comic = comic;
         _loadingComic = false;
-        if (comic.groups != null && comic.groups!.isNotEmpty) {
-          _selectedGroup = comic.groups!.keys.first;
-        }
+        _selectedGroup = selectedGroup;
       });
-      _loadChapterPage(0);
-      // 查询收藏状态（不阻塞）
-      _api.getComicQuery(widget.pathWord).then((query) {
-        if (mounted) setState(() => _isCollected = query['collect'] != null);
-      }).catchError((_) {});
+
+      await _saveCache();
+      await _loadChapterPageForHistory(comic: comic, group: selectedGroup);
+      await _loadCollectState();
     } catch (_) {
       if (mounted) setState(() => _loadingComic = false);
+    } finally {
+      if (mounted) setState(() => _refreshingComic = false);
     }
   }
 
-  Future<void> _loadChapterPage(int page) async {
+  Future<void> _loadCollectState() async {
+    try {
+      final query = await _api.getComicQuery(widget.pathWord);
+      if (!mounted) return;
+      setState(() => _isCollected = query['collect'] != null);
+      await _saveCache();
+    } catch (_) {}
+  }
+
+  Future<void> _loadChapterPage(
+    int page, {
+    String? group,
+    bool keepVisibleDuringLoad = false,
+  }) async {
     if (_loadingChapters) return;
-    setState(() => _loadingChapters = true);
+    final targetGroup = group ?? _selectedGroup;
+
+    setState(() {
+      _loadingChapters = true;
+      _keepShowingCachedChapters =
+          keepVisibleDuringLoad &&
+          _chapters.isNotEmpty &&
+          targetGroup == _selectedGroup &&
+          page == _chapterPage;
+    });
+
     try {
       final result = await _api.getChapterList(
         widget.pathWord,
-        group: _selectedGroup,
+        group: targetGroup,
         limit: _pageSize,
         offset: page * _pageSize,
       );
@@ -96,21 +205,60 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         _chapterTotal = result.total;
         _chapterPage = page;
         _loadingChapters = false;
+        _keepShowingCachedChapters = false;
       });
+      await _saveCache();
     } catch (_) {
-      if (mounted) setState(() => _loadingChapters = false);
+      if (mounted) {
+        setState(() {
+          _loadingChapters = false;
+          _keepShowingCachedChapters = false;
+        });
+      }
     }
   }
 
   int get _totalPages => (_chapterTotal / _pageSize).ceil();
+
+  /// 根据阅读记录中的章节名提取数字，自动跳到对应分页
+  Future<void> _loadChapterPageForHistory({
+    Comic? comic,
+    String? group,
+  }) async {
+    final targetGroup = group ?? _selectedGroup;
+    final total = comic?.groups?[targetGroup]?.count ??
+        _comic?.groups?[targetGroup]?.count ??
+        0;
+    final page = _resolveHistoryChapterPage(total);
+    await _loadChapterPage(
+      page,
+      group: targetGroup,
+      keepVisibleDuringLoad:
+          targetGroup == _selectedGroup &&
+          page == _chapterPage &&
+          _chapters.isNotEmpty,
+    );
+  }
+
+  int _resolveHistoryChapterPage(int total) {
+    if (_lastBrowseName == null || total <= _pageSize) return 0;
+    final match = RegExp(r'第(\d+)[话集章回]').firstMatch(_lastBrowseName!);
+    if (match == null) return 0;
+
+    final num = int.parse(match.group(1)!);
+    final totalPages = (total / _pageSize).ceil();
+    return ((num - 1) / _pageSize).floor().clamp(0, totalPages - 1);
+  }
 
   Future<void> _toggleCollect() async {
     final newState = !_isCollected;
     setState(() => _isCollected = newState);
     try {
       await _api.toggleCollect(_comic!.uuid!, collect: newState);
+      await _saveCache();
     } catch (_) {
       setState(() => _isCollected = !newState);
+      await _saveCache();
     }
   }
 
@@ -154,14 +302,58 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     ],
                   ),
                 )
-              : _buildBody(cs, tt),
+              : Column(
+                  children: [
+                    if (_refreshingComic) _buildRefreshingNotice(cs, tt),
+                    Expanded(child: _buildBody(cs, tt)),
+                  ],
+                ),
+    );
+  }
+
+  Future<void> _refresh() async {
+    await _loadLocalHistory();
+    await _loadComic();
+  }
+
+  Widget _buildRefreshingNotice(ColorScheme cs, TextTheme tt) {
+    return Material(
+      color: cs.primaryContainer.withValues(alpha: 0.7),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cs.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '正在刷新最新数据...',
+                style: tt.bodySmall?.copyWith(
+                  color: cs.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildBody(ColorScheme cs, TextTheme tt) {
     final comic = _comic!;
-    return CustomScrollView(
-      slivers: [
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: CustomScrollView(
+        slivers: [
         // ── 漫画信息卡片 ──
         SliverToBoxAdapter(
           child: Padding(
@@ -409,7 +601,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           ),
         ),
         // ── 章节网格 ──
-        if (_loadingChapters)
+        if (_loadingChapters && (!_keepShowingCachedChapters || _chapters.isEmpty))
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.all(32),
@@ -423,8 +615,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
               delegate: SliverChildBuilderDelegate(
                 (_, i) {
                   final ch = _displayChapters[i];
+                  final isLastRead = _lastBrowseId == ch.uuid;
                   return Material(
-                    color: cs.surfaceContainerLow,
+                    color: isLastRead
+                        ? cs.primaryContainer
+                        : cs.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(10),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(10),
@@ -450,7 +645,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
-                                style: tt.bodySmall,
+                                style: isLastRead
+                                    ? tt.bodySmall?.copyWith(
+                                        color: cs.onPrimaryContainer,
+                                        fontWeight: FontWeight.bold)
+                                    : tt.bodySmall,
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -478,6 +677,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
       ],
+      ),
     );
   }
 
