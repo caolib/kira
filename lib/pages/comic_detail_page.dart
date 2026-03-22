@@ -297,13 +297,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           ),
                         ),
                       ),
-                      icon: const Icon(Icons.play_arrow),
-                      label: Text('继续阅读  ${widget.lastBrowseName ?? ''}'),
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: Text('继续  ${widget.lastBrowseName ?? ''}',
+                          style: const TextStyle(fontSize: 13)),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
+                            horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
@@ -314,7 +317,8 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                             .map((e) => ButtonSegment(
                                   value: e.key,
                                   label:
-                                      Text('${e.value.name}(${e.value.count})'),
+                                      Text('${e.value.name}(${e.value.count})',
+                                          style: const TextStyle(fontSize: 13)),
                                 ))
                             .toList(),
                         selected: {_selectedGroup},
@@ -322,6 +326,10 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           setState(() => _selectedGroup = v.first);
                           _loadChapterPage(0);
                         },
+                        style: ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                       ),
                     ),
                 ],
@@ -437,7 +445,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 childCount: _displayChapters.length,
               ),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 200,
+                maxCrossAxisExtent: 120,
                 mainAxisExtent: 52,
                 mainAxisSpacing: 6,
                 crossAxisSpacing: 6,

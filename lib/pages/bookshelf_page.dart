@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../utils/toast.dart';
 import 'comic_detail_page.dart';
 import 'home_page.dart';
 
@@ -20,6 +21,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   int _offset = 0;
   int _total = 0;
   bool _loadingMore = false;
+  bool _refreshing = false;
   late String _ordering = _user.bookshelfOrdering;
 
   @override
@@ -27,7 +29,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     super.initState();
     _user.addListener(_onUserChanged);
     if (_user.isLoggedIn) {
-      _load();
+      _load(silent: true);
     } else {
       _loading = false;
     }
@@ -42,7 +44,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   void _onUserChanged() {
     if (!mounted) return;
     if (_user.isLoggedIn) {
-      _load();
+      _load(silent: true);
     } else {
       setState(() {
         _items = [];
@@ -52,7 +54,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
     }
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool silent = false}) async {
+    if (_refreshing) return;
+    _refreshing = true;
     final isInitial = _items.isEmpty;
     if (isInitial) setState(() => _loading = true);
     _offset = 0;
@@ -65,25 +69,38 @@ class _BookshelfPageState extends State<BookshelfPage> {
         _offset = data.list.length;
         _loading = false;
       });
+      if (!silent && mounted) {
+        showToast(context, '刷新成功');
+      }
     } catch (e) {
       debugPrint('BookshelfPage load error: $e');
       if (isInitial && mounted) setState(() => _loading = false);
+      if (!silent && mounted) {
+        showToast(context, '刷新失败', isError: true);
+      }
+    } finally {
+      _refreshing = false;
     }
   }
 
   Future<void> _loadMore() async {
-    if (_loadingMore || _offset >= _total) return;
+    if (_loadingMore || _refreshing || _offset >= _total) return;
     _loadingMore = true;
     try {
-      final data = await _api.getBookshelf(offset: _offset, ordering: _ordering);
+      final data = await _api.getBookshelf(
+        offset: _offset,
+        ordering: _ordering,
+      );
+      if (!mounted) return;
       setState(() {
         _items.addAll(data.list);
         _offset = _items.length;
       });
     } catch (e) {
       debugPrint('BookshelfPage loadMore error: $e');
+    } finally {
+      _loadingMore = false;
     }
-    _loadingMore = false;
   }
 
   static String _orderingLabel(String ordering) {
@@ -103,7 +120,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     Navigator.pop(context);
     setState(() => _ordering = ordering);
     _user.setBookshelfOrdering(ordering);
-    _load();
+    _load(silent: true);
   }
 
   @override
@@ -118,199 +135,213 @@ class _BookshelfPageState extends State<BookshelfPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-              ? CustomScrollView(
+          ? CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SizedBox(height: MediaQuery.of(context).padding.top),
+                ),
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.bookmark_border,
+                          size: 64,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '书架空空如也',
+                          style: tt.titleMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '去发现页找点好看的漫画吧',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.tonalIcon(
+                          onPressed: _load,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('刷新'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (n) {
+                  if (n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
+                    _loadMore();
+                  }
+                  return false;
+                },
+                child: CustomScrollView(
                   slivers: [
-                    SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
-                    SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: MediaQuery.of(context).padding.top,
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(hp, 4, hp, 8),
+                        child: Row(
                           children: [
-                            Icon(Icons.bookmark_border,
-                                size: 64, color: cs.onSurfaceVariant),
-                            const SizedBox(height: 16),
-                            Text('书架空空如也',
-                                style: tt.titleMedium?.copyWith(
-                                    color: cs.onSurfaceVariant)),
-                            const SizedBox(height: 8),
-                            Text('去发现页找点好看的漫画吧',
-                                style: tt.bodySmall?.copyWith(
-                                    color: cs.onSurfaceVariant)),
-                            const SizedBox(height: 16),
-                            FilledButton.tonalIcon(
-                              onPressed: _load,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('刷新'),
+                            Text(
+                              '共 $_total 部收藏',
+                              style: tt.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                            const Spacer(),
+                            ActionChip(
+                              avatar: const Icon(Icons.sort, size: 18),
+                              label: Text(_orderingLabel(_ordering)),
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  builder: (_) => SafeArea(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            16,
+                                            16,
+                                            16,
+                                            8,
+                                          ),
+                                          child: Text(
+                                            '排序方式',
+                                            style: tt.titleMedium,
+                                          ),
+                                        ),
+                                        _OrderingTile(
+                                          icon: Icons.update,
+                                          title: '作品更新时间',
+                                          subtitle: '按漫画最新章节的更新时间排序',
+                                          selected:
+                                              _ordering == '-datetime_updated',
+                                          onTap: () => _setOrdering(
+                                            context,
+                                            '-datetime_updated',
+                                          ),
+                                        ),
+                                        _OrderingTile(
+                                          icon: Icons.bookmark_added,
+                                          title: '收藏时间',
+                                          subtitle: '按加入书架的时间排序',
+                                          selected:
+                                              _ordering == '-datetime_modifier',
+                                          onTap: () => _setOrdering(
+                                            context,
+                                            '-datetime_modifier',
+                                          ),
+                                        ),
+                                        _OrderingTile(
+                                          icon: Icons.menu_book,
+                                          title: '阅读时间',
+                                          subtitle: '按最近阅读/浏览的时间排序',
+                                          selected:
+                                              _ordering == '-datetime_browse',
+                                          onTap: () => _setOrdering(
+                                            context,
+                                            '-datetime_browse',
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (n) {
-                      if (n.metrics.pixels >
-                          n.metrics.maxScrollExtent - 300) {
-                        _loadMore();
-                      }
-                      return false;
-                    },
-                    child: CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(hp, 4, hp, 8),
-                            child: Row(
-                              children: [
-                                Text(
-                                  '共 $_total 部收藏',
-                                  style: tt.bodySmall?.copyWith(
-                                      color: cs.onSurfaceVariant),
-                                ),
-                                const Spacer(),
-                                IconButton(
-                                  icon: const Icon(Icons.refresh, size: 20),
-                                  onPressed: _load,
-                                  tooltip: '刷新',
-                                ),
-                                ActionChip(
-                                  avatar: const Icon(Icons.sort, size: 18),
-                                  label: Text(_orderingLabel(_ordering)),
-                                  onPressed: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      builder: (_) => SafeArea(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Padding(
-                                              padding: const EdgeInsets.fromLTRB(
-                                                  16, 16, 16, 8),
-                                              child: Text('排序方式',
-                                                  style: tt.titleMedium),
-                                            ),
-                                            _OrderingTile(
-                                              icon: Icons.update,
-                                              title: '作品更新时间',
-                                              subtitle: '按漫画最新章节的更新时间排序',
-                                              selected: _ordering ==
-                                                  '-datetime_updated',
-                                              onTap: () => _setOrdering(
-                                                  context, '-datetime_updated'),
-                                            ),
-                                            _OrderingTile(
-                                              icon: Icons.bookmark_added,
-                                              title: '收藏时间',
-                                              subtitle: '按加入书架的时间排序',
-                                              selected: _ordering ==
-                                                  '-datetime_modifier',
-                                              onTap: () => _setOrdering(
-                                                  context, '-datetime_modifier'),
-                                            ),
-                                            _OrderingTile(
-                                              icon: Icons.menu_book,
-                                              title: '阅读时间',
-                                              subtitle: '按最近阅读/浏览的时间排序',
-                                              selected: _ordering ==
-                                                  '-datetime_browse',
-                                              onTap: () => _setOrdering(
-                                                  context, '-datetime_browse'),
-                                            ),
-                                            const SizedBox(height: 8),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SliverPadding(
-                          padding: EdgeInsets.symmetric(horizontal: hp),
-                          sliver: SliverGrid(
-                            delegate: SliverChildBuilderDelegate(
-                              (_, i) {
-                                final item = _items[i];
-                                return Stack(
-                                  children: [
-                                    ComicCard(
-                                      comic: item.comic,
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => ComicDetailPage(
-                                            pathWord: item.comic.pathWord,
-                                            lastBrowseId: item.lastBrowseId,
-                                            lastBrowseName: item.lastBrowseName,
-                                          ),
-                                        ),
-                                      ).then((_) => _load()),
+                    SliverPadding(
+                      padding: EdgeInsets.symmetric(horizontal: hp),
+                      sliver: SliverGrid(
+                        delegate: SliverChildBuilderDelegate((_, i) {
+                          final item = _items[i];
+                          return Stack(
+                            children: [
+                              ComicCard(
+                                comic: item.comic,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ComicDetailPage(
+                                      pathWord: item.comic.pathWord,
+                                      lastBrowseId: item.lastBrowseId,
+                                      lastBrowseName: item.lastBrowseName,
                                     ),
-                                    if (item.hasUpdate)
-                                      Positioned(
-                                        top: 0,
-                                        right: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: cs.error,
-                                            borderRadius: const BorderRadius.only(
-                                              topRight: Radius.circular(12),
-                                              bottomLeft: Radius.circular(10),
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: cs.error.withValues(alpha: 0.6),
-                                                blurRadius: 8,
-                                                spreadRadius: 2,
-                                              ),
-                                            ],
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.fiber_new_rounded,
-                                                  size: 16, color: cs.onError),
-                                              const SizedBox(width: 2),
-                                              Text(
-                                                '更新',
-                                                style: TextStyle(
-                                                  color: cs.onError,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                  ),
+                                ).then((_) => _load(silent: true)),
+                              ),
+                              if (item.hasUpdate)
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: cs.error,
+                                      borderRadius: const BorderRadius.only(
+                                        topRight: Radius.circular(12),
+                                        bottomLeft: Radius.circular(10),
                                       ),
-                                  ],
-                                );
-                              },
-                              childCount: _items.length,
-                            ),
-                            gridDelegate:
-                                const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 160,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: cs.error.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          blurRadius: 8,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      '有更新',
+                                      style: TextStyle(
+                                        color: cs.onError,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        }, childCount: _items.length),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 130,
                               childAspectRatio: 0.55,
                               mainAxisSpacing: 12,
                               crossAxisSpacing: 12,
                             ),
-                          ),
-                        ),
-                        const SliverPadding(
-                            padding: EdgeInsets.only(bottom: 24)),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 }

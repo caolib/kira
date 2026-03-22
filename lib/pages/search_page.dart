@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/comic.dart' as m;
+import '../utils/data_cache.dart';
 import 'comic_detail_page.dart';
 
 class SearchPage extends StatefulWidget {
@@ -26,10 +27,12 @@ class _SearchPageState extends State<SearchPage> {
   bool _loadingMore = false;
   bool _searching = false;
   String? _searchQuery;
+  final _cache = DataCache();
 
   @override
   void initState() {
     super.initState();
+    _loadFromCache();
     _loadInit();
   }
 
@@ -39,17 +42,39 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
+  Future<void> _loadFromCache() async {
+    final cached = await _cache.get('search_init');
+    if (cached != null && _loading) {
+      setState(() {
+        _keywords = List<String>.from(cached['keywords'] ?? []);
+        _tags = (cached['tags'] as List?)
+                ?.map((t) => m.Theme.fromJson(t))
+                .toList() ??
+            [];
+        _loading = false;
+      });
+    }
+  }
+
   Future<void> _loadInit() async {
     try {
-      final keywords = await _api.getHotKeywords();
-      final tags = await _api.getComicTags();
+      final keywordsFuture = _api.getHotKeywords();
+      final tagsFuture = _api.getComicTags();
+      final keywords = await keywordsFuture;
+      final tags = await tagsFuture;
+      if (!mounted) return;
       setState(() {
         _keywords = keywords;
         _tags = tags;
         _loading = false;
       });
-    } catch (_) {
-      setState(() => _loading = false);
+      _cache.put('search_init', {
+        'keywords': keywords,
+        'tags': tags.map((t) => t.toJson()).toList(),
+      });
+    } catch (e) {
+      debugPrint('SearchPage loadInit error: $e');
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -313,7 +338,7 @@ class _SearchPageState extends State<SearchPage> {
                   childCount: _comics.length,
                 ),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 160,
+                  maxCrossAxisExtent: 130,
                   childAspectRatio: 0.55,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,

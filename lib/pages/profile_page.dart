@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
+import '../utils/toast.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -47,11 +50,13 @@ class _ProfilePageState extends State<ProfilePage> {
         content: const Text('确定要退出登录吗？'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('确定')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确定'),
+          ),
         ],
       ),
     );
@@ -68,11 +73,15 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.of(context).padding.top),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: _user.isLoggedIn ? _buildUserCard(cs, tt) : _buildLoginCard(cs, tt),
+              child: _user.isLoggedIn
+                  ? _buildUserCard(cs, tt)
+                  : _buildLoginCard(cs, tt),
             ),
           ),
           SliverToBoxAdapter(
@@ -84,17 +93,61 @@ class _ProfilePageState extends State<ProfilePage> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.palette_outlined),
-                        title: const Text('主题模式'),
-                        trailing: SegmentedButton<ThemeMode>(
-                          segments: const [
-                            ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.settings_brightness), label: Text('自动')),
-                            ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode), label: Text('浅色')),
-                            ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode), label: Text('深色')),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.palette_outlined,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 16),
+                                const Text('主题模式'),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: SegmentedButton<ThemeMode>(
+                                segments: const [
+                                  ButtonSegment(
+                                    value: ThemeMode.system,
+                                    icon: Icon(Icons.settings_brightness),
+                                    label: Text('系统'),
+                                  ),
+                                  ButtonSegment(
+                                    value: ThemeMode.light,
+                                    icon: Icon(Icons.light_mode),
+                                    label: Text('浅色'),
+                                  ),
+                                  ButtonSegment(
+                                    value: ThemeMode.dark,
+                                    icon: Icon(Icons.dark_mode),
+                                    label: Text('深色'),
+                                  ),
+                                ],
+                                selected: {_user.themeMode},
+                                onSelectionChanged: (v) =>
+                                    _user.setThemeMode(v.first),
+                              ),
+                            ),
                           ],
-                          selected: {_user.themeMode},
-                          onSelectionChanged: (v) => _user.setThemeMode(v.first),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.info_outline),
+                        title: const Text('关于'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AboutPage()),
                         ),
                       ),
                     ],
@@ -121,7 +174,11 @@ class _ProfilePageState extends State<ProfilePage> {
               CircleAvatar(
                 radius: 32,
                 backgroundColor: cs.primaryContainer,
-                child: Icon(Icons.person, size: 32, color: cs.onPrimaryContainer),
+                child: Icon(
+                  Icons.person,
+                  size: 32,
+                  color: cs.onPrimaryContainer,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -130,8 +187,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     Text('未登录', style: tt.titleMedium),
                     const SizedBox(height: 4),
-                    Text('点击登录以使用书架等功能',
-                        style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                      '点击登录以使用书架等功能',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
                   ],
                 ),
               ),
@@ -154,12 +213,7 @@ class _ProfilePageState extends State<ProfilePage> {
               final token = _user.token;
               if (token != null && token.isNotEmpty) {
                 Clipboard.setData(ClipboardData(text: token));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Token 已复制到剪贴板'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                showToast(context, 'Token 已复制到剪贴板');
               }
             },
             child: Padding(
@@ -169,7 +223,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   CircleAvatar(
                     radius: 32,
                     backgroundColor: cs.primaryContainer,
-                    child: _user.avatar != null && _user.avatar!.startsWith('http')
+                    child:
+                        _user.avatar != null && _user.avatar!.startsWith('http')
                         ? ClipOval(
                             child: CachedNetworkImage(
                               imageUrl: _user.avatar!,
@@ -178,17 +233,41 @@ class _ProfilePageState extends State<ProfilePage> {
                               fit: BoxFit.cover,
                             ),
                           )
-                        : Icon(Icons.person, size: 32, color: cs.onPrimaryContainer),
+                        : Icon(
+                            Icons.person,
+                            size: 32,
+                            color: cs.onPrimaryContainer,
+                          ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_user.nickname ?? _user.username ?? '',
-                            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          _user.nickname ?? _user.username ?? '',
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: '刷新用户信息',
+                    onPressed: () async {
+                      try {
+                        await _user.refreshUserInfo();
+                        if (mounted) {
+                          showToast(context, '用户信息已刷新');
+                        }
+                      } catch (_) {
+                        if (mounted) {
+                          showToast(context, '刷新失败，请重试', isError: true);
+                        }
+                      }
+                    },
                   ),
                   Icon(Icons.copy, size: 18, color: cs.onSurfaceVariant),
                 ],
@@ -278,6 +357,7 @@ class _LoginPageState extends State<LoginPage> {
         nickname: result['nickname'] ?? result['username'],
         avatar: result['avatar'] ?? '',
       );
+      await UserManager().refreshUserInfo();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       String msg = '登录失败';
@@ -318,7 +398,8 @@ class _LoginPageState extends State<LoginPage> {
         token: token,
         userId: info['user_id']?.toString() ?? '',
         username: info['username']?.toString() ?? '',
-        nickname: info['nickname']?.toString() ?? info['username']?.toString() ?? '',
+        nickname:
+            info['nickname']?.toString() ?? info['username']?.toString() ?? '',
         avatar: info['avatar']?.toString() ?? '',
       );
       if (mounted) Navigator.pop(context, true);
@@ -352,17 +433,26 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             Icon(Icons.menu_book, size: 64, color: cs.primary),
             const SizedBox(height: 16),
-            Text('Kira',
-                textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Kira',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 32),
             SegmentedButton<bool>(
               segments: const [
-                ButtonSegment(value: false, label: Text('账号密码'), icon: Icon(Icons.person_outline)),
-                ButtonSegment(value: true, label: Text('令牌'), icon: Icon(Icons.key)),
+                ButtonSegment(
+                  value: false,
+                  label: Text('账号密码'),
+                  icon: Icon(Icons.person_outline),
+                ),
+                ButtonSegment(
+                  value: true,
+                  label: Text('令牌'),
+                  icon: Icon(Icons.key),
+                ),
               ],
               selected: {_useToken},
               onSelectionChanged: (v) => setState(() {
@@ -378,7 +468,8 @@ class _LoginPageState extends State<LoginPage> {
                   labelText: '用户名',
                   prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 textInputAction: TextInputAction.next,
               ),
@@ -391,11 +482,13 @@ class _LoginPageState extends State<LoginPage> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                        _obscure ? Icons.visibility_off : Icons.visibility),
+                      _obscure ? Icons.visibility_off : Icons.visibility,
+                    ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _login(),
@@ -408,7 +501,8 @@ class _LoginPageState extends State<LoginPage> {
                   prefixIcon: const Icon(Icons.key),
                   hintText: '粘贴你的登录令牌',
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _loginWithToken(),
@@ -416,9 +510,11 @@ class _LoginPageState extends State<LoginPage> {
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!,
-                  style: TextStyle(color: cs.error),
-                  textAlign: TextAlign.center),
+              Text(
+                _error!,
+                style: TextStyle(color: cs.error),
+                textAlign: TextAlign.center,
+              ),
             ],
             if (!_useToken) ...[
               const SizedBox(height: 8),
@@ -432,21 +528,90 @@ class _LoginPageState extends State<LoginPage> {
             ],
             const SizedBox(height: 8),
             FilledButton(
-              onPressed: _loading ? null : (_useToken ? _loginWithToken : _login),
+              onPressed: _loading
+                  ? null
+                  : (_useToken ? _loginWithToken : _login),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: _loading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('登录', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── 关于页 ──
+
+class AboutPage extends StatelessWidget {
+  const AboutPage({super.key});
+
+  static const _repoUrl = 'https://github.com/caolib/kira';
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('关于')),
+      body: FutureBuilder<PackageInfo>(
+        future: PackageInfo.fromPlatform(),
+        builder: (context, snapshot) {
+          final version = snapshot.hasData
+              ? '${snapshot.data!.version}+${snapshot.data!.buildNumber}'
+              : '...';
+
+          return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+            children: [
+              Icon(Icons.menu_book, size: 80, color: cs.primary),
+              const SizedBox(height: 16),
+              Text(
+                'Kira',
+                textAlign: TextAlign.center,
+                style: tt.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '版本 $version',
+                textAlign: TextAlign.center,
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 32),
+              Card(
+                color: cs.surfaceContainerLow,
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.code),
+                      title: const Text('源代码'),
+                      subtitle: const Text('caolib/kira'),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () async {
+                        await launchUrl(
+                          Uri.parse(_repoUrl),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

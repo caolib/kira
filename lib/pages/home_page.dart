@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
+import '../utils/data_cache.dart';
 import 'comic_detail_page.dart';
 import 'recommend_page.dart';
 import 'ranking_page.dart';
@@ -16,6 +17,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _api = ApiClient();
+  final _cache = DataCache();
   List<Comic> _recommendations = [];
   List<Comic> _rankingPreview = [];
   bool _loading = true;
@@ -24,24 +26,52 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _loadFromCache();
     _load();
   }
 
+  Future<void> _loadFromCache() async {
+    final cached = await _cache.get('home');
+    if (cached != null && _loading) {
+      setState(() {
+        _recommendations = (cached['recommendations'] as List?)
+                ?.map((j) => Comic.fromJson(j))
+                .toList() ??
+            [];
+        _rankingPreview = (cached['ranking'] as List?)
+                ?.map((j) => Comic.fromJson(j))
+                .toList() ??
+            [];
+        _loading = false;
+      });
+    }
+  }
+
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (_recommendations.isEmpty) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
-      final recs = await _api.getRecommendations(limit: 10);
-      final ranking = await _api.getComicList(ordering: '-popular', limit: 6);
+      final recsFuture = _api.getRecommendations(limit: 10);
+      final rankingFuture = _api.getComicList(ordering: '-popular', limit: 6);
+      final recs = await recsFuture;
+      final ranking = await rankingFuture;
+      if (!mounted) return;
       setState(() {
         _recommendations = recs;
         _rankingPreview = ranking.list;
         _loading = false;
       });
+      _cache.put('home', {
+        'recommendations': recs.map((c) => c.toJson()).toList(),
+        'ranking': ranking.list.map((c) => c.toJson()).toList(),
+      });
     } catch (e) {
       debugPrint('HomePage load error: $e');
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = e.toString();
@@ -149,7 +179,7 @@ class _HomePageState extends State<HomePage> {
                   childCount: _rankingPreview.length,
                 ),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 160,
+                  maxCrossAxisExtent: 130,
                   childAspectRatio: 0.55,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,

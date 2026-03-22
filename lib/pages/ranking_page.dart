@@ -109,7 +109,7 @@ class _RankingPageState extends State<RankingPage> {
                 padding: EdgeInsets.symmetric(horizontal: hp, vertical: 12),
                 itemCount: _comics.length,
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 160,
+                  maxCrossAxisExtent: 130,
                   childAspectRatio: 0.55,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,

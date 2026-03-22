@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api/api_client.dart';
 
 class UserManager extends ChangeNotifier {
   static final UserManager _instance = UserManager._();
@@ -117,5 +118,17 @@ class UserManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyBookshelfOrdering, ordering);
     notifyListeners();
+  }
+
+  Future<void> refreshUserInfo() async {
+    if (!isLoggedIn) return;
+    final info = await ApiClient().getUserInfo();
+    await saveLogin(
+      token: _token!,
+      userId: info['user_id']?.toString() ?? _userId ?? '',
+      username: info['username']?.toString() ?? _username ?? '',
+      nickname: info['nickname']?.toString() ?? _nickname ?? '',
+      avatar: info['avatar']?.toString() ?? _avatar ?? '',
+    );
   }
 }

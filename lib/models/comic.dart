@@ -8,6 +8,8 @@ class Author {
         name: json['name'] ?? '',
         pathWord: json['path_word'] ?? '',
       );
+
+  Map<String, dynamic> toJson() => {'name': name, 'path_word': pathWord};
 }
 
 class Theme {
@@ -22,6 +24,9 @@ class Theme {
         pathWord: json['path_word'] ?? '',
         count: json['count'] ?? 0,
       );
+
+  Map<String, dynamic> toJson() =>
+      {'name': name, 'path_word': pathWord, 'count': count};
 }
 
 class ComicGroup {
@@ -95,6 +100,23 @@ class Comic {
         lastChapterName: json['last_chapter_name']?.toString(),
         region: json['region'] is Map ? json['region'] : null,
       );
+
+  Map<String, dynamic> toJson() => {
+        'uuid': uuid,
+        'name': name,
+        'path_word': pathWord,
+        'cover': cover,
+        'popular': popular,
+        'author': authors.map((a) => a.toJson()).toList(),
+        'theme': themes.map((t) => t.toJson()).toList(),
+        'datetime_updated': datetimeUpdated,
+        'brief': brief,
+        'status': status,
+        'last_chapter': lastChapter,
+        'last_chapter_id': lastChapterId,
+        'last_chapter_name': lastChapterName,
+        'region': region,
+      };
 
   factory Comic.fromDetailJson(Map<String, dynamic> json) {
     final comic = Comic.fromJson(json['comic']);
