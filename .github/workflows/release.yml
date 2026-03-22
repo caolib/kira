@@ -28,12 +28,6 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
       - name: Restore Android signing files
         shell: bash
         env:
@@ -76,6 +70,12 @@ jobs:
             -alias "$ANDROID_KEY_ALIAS" \
             -keypass "$ANDROID_KEY_PASSWORD" \
             > /dev/null
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
 
       - name: Get dependencies
         run: flutter pub get
