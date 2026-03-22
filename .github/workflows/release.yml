@@ -11,9 +11,12 @@ on:
         required: true
         default: 'v0.1.0'
 
+env:
+  RELEASE_TAG: ${{ github.ref_name || github.event.inputs.tag_name }}
+
 jobs:
   build-android:
-    name: Build Android APK
+    name: Build Android Split APKs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,25 +26,38 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
+          cache: 'gradle'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build split APKs
+        run: flutter build apk --release --split-per-abi
 
-      - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/kira-${{ github.ref_name || github.event.inputs.tag_name }}.apk
+      - name: Rename APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd build/app/outputs/flutter-apk
 
-      - name: Upload APK artifact
+          for apk in app-*-release.apk; do
+            abi="${apk#app-}"
+            abi="${abi%-release.apk}"
+            mv "$apk" "kira-${RELEASE_TAG}-${abi}.apk"
+          done
+
+          ls -lh kira-*.apk
+
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: android-split-apks
           path: build/app/outputs/flutter-apk/kira-*.apk
 
   release:
@@ -51,22 +67,24 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download APK
+      - name: Download APKs
         uses: actions/download-artifact@v4
         with:
-          name: android-apk
+          name: android-split-apks
           path: artifacts/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || github.event.inputs.tag_name }}
-          name: Kira ${{ github.ref_name || github.event.inputs.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Kira ${{ env.RELEASE_TAG }}
           body: |
-            ## Kira ${{ github.ref_name || github.event.inputs.tag_name }}
+            ## Kira ${{ env.RELEASE_TAG }}
 
             ### 安装说明
-            - 下载 APK 文件并安装到 Android 设备
+            - `arm64-v8a`：适用于大多数 64 位 Android 手机，优先下载这个
+            - `armeabi-v7a`：适用于较老的 32 位 Android 设备
+            - `x86_64`：适用于部分模拟器或 x86_64 设备
           draft: false
           prerelease: false
           files: artifacts/*.apk
