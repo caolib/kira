@@ -1,4 +1,4 @@
-package com.example.kira
+package io.github.caolib.kira
 
 import android.view.KeyEvent
 import io.flutter.embedding.android.FlutterActivity
@@ -13,7 +13,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         volumeChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.example.kira/volume"
+            "io.github.caolib.kira/volume"
         )
         volumeChannel?.setMethodCallHandler { call, result ->
             when (call.method) {

@@ -1,3 +1,3 @@
 # kira
 
-A new Flutter project.
+A comic reader app.

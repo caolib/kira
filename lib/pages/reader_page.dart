@@ -26,7 +26,7 @@ class ReaderPage extends StatefulWidget {
 }
 
 class _ReaderPageState extends State<ReaderPage> {
-  static const _volumeChannel = MethodChannel('com.example.kira/volume');
+  static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
 
   final _api = ApiClient();
   final _user = UserManager();
