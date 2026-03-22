@@ -3,13 +3,13 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag_name:
-        description: '发布版本号 (如 v0.1.0)'
+        description: "发布版本号 (如 v0.1.0)"
         required: true
-        default: 'v0.1.0'
+        default: "v0.1.0"
 
 env:
   RELEASE_TAG: ${{ github.ref_name || github.event.inputs.tag_name }}
@@ -24,9 +24,9 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
 
       - name: Restore Android signing files
         shell: bash
@@ -74,27 +74,21 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: "stable"
           cache: true
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build split APKs
-        run: flutter build apk --release --split-per-abi
+      - name: Build APK (arm64-v8a)
+        run: flutter build apk --release --target-platform android-arm64
 
-      - name: Rename APKs
+      - name: Rename APK
         shell: bash
         run: |
           set -euo pipefail
           cd build/app/outputs/flutter-apk
-
-          for apk in app-*-release.apk; do
-            abi="${apk#app-}"
-            abi="${abi%-release.apk}"
-            mv "$apk" "kira-${RELEASE_TAG}-${abi}.apk"
-          done
-
+          mv app-release.apk "kira-${RELEASE_TAG}-arm64-v8a.apk"
           ls -lh kira-*.apk
 
       - name: Upload APK artifacts
@@ -120,14 +114,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          name: Kira ${{ env.RELEASE_TAG }}
-          body: |
-            ## Kira ${{ env.RELEASE_TAG }}
-
-            ### 安装说明
-            - `arm64-v8a`：适用于大多数 64 位 Android 手机，优先下载这个
-            - `armeabi-v7a`：适用于较老的 32 位 Android 设备
-            - `x86_64`：适用于部分模拟器或 x86_64 设备
+          name: App ${{ env.RELEASE_TAG }}
+          body_path: docs/CHANGELOG.md
           draft: false
           prerelease: false
           files: artifacts/*.apk
