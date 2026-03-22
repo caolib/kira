@@ -431,7 +431,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.menu_book, size: 64, color: cs.primary),
+            Image.asset('assets/ic_launcher.png', width: 64, height: 64),
             const SizedBox(height: 16),
             Text(
               'Kira',
@@ -576,7 +576,7 @@ class AboutPage extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
             children: [
-              Icon(Icons.menu_book, size: 80, color: cs.primary),
+              Image.asset('assets/ic_launcher.png', width: 80, height: 80),
               const SizedBox(height: 16),
               Text(
                 'Kira',
