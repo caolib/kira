@@ -104,16 +104,16 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: docs/CHANGELOG.md
+          sparse-checkout-cone-mode: false
+
       - name: Download APKs
         uses: actions/download-artifact@v7
         with:
           name: android-split-apks
           path: artifacts/
-
-      - uses: actions/checkout@v6
-        with:
-          sparse-checkout: docs/CHANGELOG.md
-          sparse-checkout-cone-mode: false
 
       - name: Create GitHub Release
         env:
