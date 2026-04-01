@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../utils/toast.dart';
 import 'comic_detail_page.dart';
 import 'home_page.dart';
+import 'profile_page.dart';
 
 class BookshelfPage extends StatefulWidget {
   const BookshelfPage({super.key});
@@ -22,6 +24,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   int _total = 0;
   bool _loadingMore = false;
   bool _refreshing = false;
+  bool _showingLoginPrompt = false;
   late String _ordering = _user.bookshelfOrdering;
 
   @override
@@ -75,7 +78,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
     } catch (e) {
       debugPrint('BookshelfPage load error: $e');
       if (isInitial && mounted) setState(() => _loading = false);
-      if (!silent && mounted) {
+      if (_isUnauthorized(e)) {
+        await _handleUnauthorized();
+      } else if (!silent && mounted) {
         showToast(context, '刷新失败', isError: true);
       }
     } finally {
@@ -98,9 +103,58 @@ class _BookshelfPageState extends State<BookshelfPage> {
       });
     } catch (e) {
       debugPrint('BookshelfPage loadMore error: $e');
+      if (_isUnauthorized(e)) {
+        await _handleUnauthorized();
+      }
     } finally {
       _loadingMore = false;
     }
+  }
+
+  bool _isUnauthorized(Object error) =>
+      error is DioException && error.response?.statusCode == 401;
+
+  Future<void> _handleUnauthorized() async {
+    if (_showingLoginPrompt || !mounted) return;
+    _showingLoginPrompt = true;
+
+    await _user.logout();
+    if (!mounted) {
+      _showingLoginPrompt = false;
+      return;
+    }
+
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('登录已过期'),
+        content: const Text('书架需要登录后才能继续使用，是否现在重新登录？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('稍后再说'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('去登录'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogin == true && mounted) {
+      final loggedIn = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      if (loggedIn == true && mounted) {
+        _load(silent: true);
+      }
+    } else if (mounted) {
+      showToast(context, '登录后可继续查看书架', isError: true);
+    }
+
+    _showingLoginPrompt = false;
   }
 
   static String _orderingLabel(String ordering) {

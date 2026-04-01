@@ -41,6 +41,7 @@ class _ReaderPageState extends State<ReaderPage> {
   bool _jumpingScroll = false;
   bool _isDraggingSlider = false;
   bool _autoAdvancingScrollChapter = false;
+  bool _volumeChannelAvailable = true;
 
   bool get _isPageMode => _user.readerMode == 1;
   bool get _isVerticalPageMode => _isPageMode && _user.readerPageVertical;
@@ -61,7 +62,7 @@ class _ReaderPageState extends State<ReaderPage> {
 
   @override
   void dispose() {
-    _volumeChannel.invokeMethod('disable');
+    _setVolumeIntercept(false);
     _volumeChannel.setMethodCallHandler(null);
     _scrollController.dispose();
     _pageController.dispose();
@@ -77,7 +78,19 @@ class _ReaderPageState extends State<ReaderPage> {
 
   void _updateVolumeIntercept() {
     final should = _isPageMode && _user.readerVolumeKey;
-    _volumeChannel.invokeMethod(should ? 'enable' : 'disable');
+    _setVolumeIntercept(should);
+  }
+
+  Future<void> _setVolumeIntercept(bool enabled) async {
+    if (!_volumeChannelAvailable) return;
+    try {
+      await _volumeChannel.invokeMethod(enabled ? 'enable' : 'disable');
+    } on MissingPluginException {
+      _volumeChannelAvailable = false;
+    } on PlatformException catch (e) {
+      debugPrint('Volume channel unavailable: $e');
+      _volumeChannelAvailable = false;
+    }
   }
 
   Future<void> _loadChapter() async {
