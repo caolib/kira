@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/user_manager.dart';
@@ -28,6 +31,9 @@ class ReaderPage extends StatefulWidget {
 
 class _ReaderPageState extends State<ReaderPage> {
   static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
+  static final CacheManager _readerImageCacheManager = CacheManager(
+    Config('readerImageCache', fileService: _ReaderImageFileService()),
+  );
 
   final _api = ApiClient();
   final _user = UserManager();
@@ -42,11 +48,13 @@ class _ReaderPageState extends State<ReaderPage> {
   bool _isDraggingSlider = false;
   bool _autoAdvancingScrollChapter = false;
   bool _volumeChannelAvailable = true;
+  final Map<int, int> _imageReloadVersions = {};
+  final Map<int, int> _imageRetryCounts = {};
+  final Map<int, String> _imageRetryTokens = {};
 
   bool get _isPageMode => _user.readerMode == 1;
   bool get _isVerticalPageMode => _isPageMode && _user.readerPageVertical;
-  bool get _isDarkMode =>
-      Theme.of(context).brightness == Brightness.dark;
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
 
   bool _isFirstLoad = true;
 
@@ -96,8 +104,7 @@ class _ReaderPageState extends State<ReaderPage> {
   Future<void> _loadChapter() async {
     setState(() => _loading = true);
     try {
-      final detail =
-          await _api.getChapterDetail(widget.pathWord, _currentUuid);
+      final detail = await _api.getChapterDetail(widget.pathWord, _currentUuid);
       if (!mounted) return;
       // 首次加载且有 initialPage 参数时跳到指定页
       final startPage = _isFirstLoad && widget.initialPage > 1
@@ -108,6 +115,9 @@ class _ReaderPageState extends State<ReaderPage> {
         _detail = detail;
         _loading = false;
         _currentPage = startPage;
+        _imageReloadVersions.clear();
+        _imageRetryCounts.clear();
+        _imageRetryTokens.clear();
       });
       if (_isPageMode) {
         _pageController.dispose();
@@ -194,43 +204,125 @@ class _ReaderPageState extends State<ReaderPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ReaderSettingsPanel(
-        onChanged: _onSettingsChanged,
-      ),
+      builder: (_) => _ReaderSettingsPanel(onChanged: _onSettingsChanged),
     );
   }
 
   // ── 公共图片组件 ──
 
+  void _retryImage(int index) {
+    setState(() {
+      _imageRetryCounts.remove(index);
+      _imageRetryTokens.remove(index);
+      _imageReloadVersions[index] = (_imageReloadVersions[index] ?? 0) + 1;
+    });
+  }
+
+  void _clearImageRetryState(int index) {
+    if (!_imageRetryCounts.containsKey(index) &&
+        !_imageRetryTokens.containsKey(index)) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _imageRetryCounts.remove(index);
+        _imageRetryTokens.remove(index);
+      });
+    });
+  }
+
+  void _scheduleImageRetry(int index) {
+    final attempts = _imageRetryCounts[index] ?? 0;
+    if (attempts >= 3) return;
+
+    final version = _imageReloadVersions[index] ?? 0;
+    final token = '$version-$attempts';
+    if (_imageRetryTokens[index] == token) return;
+    _imageRetryTokens[index] = token;
+
+    Future<void>.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      final currentVersion = _imageReloadVersions[index] ?? 0;
+      if (currentVersion != version) return;
+
+      setState(() {
+        _imageRetryCounts[index] = attempts + 1;
+        _imageRetryTokens.remove(index);
+        _imageReloadVersions[index] = currentVersion + 1;
+      });
+    });
+  }
+
+  Future<void> _copyImageUrl(int index) async {
+    final imageUrl = _detail?.contents[index];
+    if (imageUrl == null || imageUrl.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: imageUrl));
+    if (!mounted) return;
+    showToast(context, '图片链接已复制到剪贴板');
+  }
+
   Widget _buildImage(int index) {
     final cs = Theme.of(context).colorScheme;
+    final imageUrl = _detail!.contents[index];
     Widget image = CachedNetworkImage(
-      imageUrl: _detail!.contents[index],
+      key: ValueKey('$_currentUuid-$index-${_imageReloadVersions[index] ?? 0}'),
+      imageUrl: imageUrl,
+      cacheManager: _readerImageCacheManager,
       fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
       width: double.infinity,
+      imageBuilder: (_, imageProvider) {
+        _clearImageRetryState(index);
+        return Image(
+          image: imageProvider,
+          fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
+          width: double.infinity,
+        );
+      },
       placeholder: (_, _) => Container(
         height: 400,
         color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        child: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
-      errorWidget: (_, _, _) => Container(
-        height: 400,
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 48),
-              const SizedBox(height: 8),
-              Text('加载失败',
-                  style:
-                      TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
-            ],
+      errorWidget: (_, _, _) {
+        final attempts = _imageRetryCounts[index] ?? 0;
+        final canAutoRetry = attempts < 3;
+        if (canAutoRetry) {
+          _scheduleImageRetry(index);
+        }
+
+        return Container(
+          height: 400,
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 48),
+                const SizedBox(height: 8),
+                Text(
+                  canAutoRetry ? '加载失败，正在重试 ${attempts + 1}/3' : '加载失败',
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                ),
+                if (!canAutoRetry) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.tonalIcon(
+                    onPressed: () => _retryImage(index),
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('重新加载'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _copyImageUrl(index),
+                    icon: const Icon(Icons.copy_all_outlined, size: 18),
+                    label: const Text('复制图片链接'),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
     // 深色模式亮度遮罩
     if (_isDarkMode && _user.readerDimming > 0) {
@@ -269,8 +361,7 @@ class _ReaderPageState extends State<ReaderPage> {
     if (imageCount <= 0) return;
 
     final ratio = (page - 1) / imageCount;
-    final maxExtent =
-        _scrollModeEffectiveMaxExtent(_scrollController.position);
+    final maxExtent = _scrollModeEffectiveMaxExtent(_scrollController.position);
     _jumpingScroll = true;
     _scrollController.jumpTo(ratio * maxExtent);
     _jumpingScroll = false;
@@ -318,8 +409,9 @@ class _ReaderPageState extends State<ReaderPage> {
           }
           if (n.metrics.pixels > 0 && n.metrics.maxScrollExtent > 0) {
             final effectiveMax = _scrollModeEffectiveMaxExtent(n.metrics);
-            final effectivePixels =
-                n.metrics.pixels.clamp(0.0, effectiveMax).toDouble();
+            final effectivePixels = n.metrics.pixels
+                .clamp(0.0, effectiveMax)
+                .toDouble();
             final page = (imageCount * effectivePixels / effectiveMax)
                 .ceil()
                 .clamp(1, imageCount);
@@ -359,8 +451,10 @@ class _ReaderPageState extends State<ReaderPage> {
     return const Padding(
       padding: EdgeInsets.all(32),
       child: Center(
-        child: Text('已经是第一章',
-            style: TextStyle(color: Colors.white54, fontSize: 14)),
+        child: Text(
+          '已经是第一章',
+          style: TextStyle(color: Colors.white54, fontSize: 14),
+        ),
       ),
     );
   }
@@ -466,10 +560,7 @@ class _ReaderPageState extends State<ReaderPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.85),
-              Colors.transparent,
-            ],
+            colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -513,10 +604,7 @@ class _ReaderPageState extends State<ReaderPage> {
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.85),
-              Colors.transparent,
-            ],
+            colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -529,15 +617,20 @@ class _ReaderPageState extends State<ReaderPage> {
                 // 滚动条 Slider
                 Row(
                   children: [
-                    Text('$_currentPage',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
+                    Text(
+                      '$_currentPage',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                     Expanded(
                       child: SliderTheme(
                         data: SliderThemeData(
                           trackHeight: 3,
                           thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 7),
+                            enabledThumbRadius: 7,
+                          ),
                           activeTrackColor: cs.primary,
                           inactiveTrackColor: Colors.white24,
                           thumbColor: cs.primary,
@@ -571,9 +664,13 @@ class _ReaderPageState extends State<ReaderPage> {
                         ),
                       ),
                     ),
-                    Text('$total',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
+                    Text(
+                      '$total',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
                 // 按钮行
@@ -593,8 +690,10 @@ class _ReaderPageState extends State<ReaderPage> {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon:
-                          const Icon(Icons.forum_outlined, color: Colors.white),
+                      icon: const Icon(
+                        Icons.forum_outlined,
+                        color: Colors.white,
+                      ),
                       onPressed: _showChapterComments,
                       tooltip: '章节评论',
                     ),
@@ -646,6 +745,97 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 }
 
+class _ReaderImageFileService extends FileService {
+  static const Duration _timeout = Duration(seconds: 15);
+  final HttpClient _httpClient = HttpClient()..connectionTimeout = _timeout;
+
+  @override
+  Future<FileServiceResponse> get(
+    String url, {
+    Map<String, String>? headers,
+  }) async {
+    final request = await _httpClient.getUrl(Uri.parse(url)).timeout(_timeout);
+    headers?.forEach(request.headers.add);
+
+    final response = await request.close().timeout(_timeout);
+    return _ReaderImageFileServiceResponse(response);
+  }
+}
+
+class _ReaderImageFileServiceResponse implements FileServiceResponse {
+  static const Map<String, String> _imageExtensions = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
+    'image/bmp': '.bmp',
+    'image/svg+xml': '.svg',
+    'image/tiff': '.tiff',
+    'image/vnd.microsoft.icon': '.ico',
+  };
+
+  _ReaderImageFileServiceResponse(this._response);
+
+  final HttpClientResponse _response;
+  final DateTime _receivedTime = DateTime.now();
+
+  @override
+  Stream<List<int>> get content =>
+      _response.timeout(_ReaderImageFileService._timeout);
+
+  @override
+  int? get contentLength =>
+      _response.contentLength >= 0 ? _response.contentLength : null;
+
+  @override
+  int get statusCode => _response.statusCode;
+
+  @override
+  DateTime get validTill {
+    var ageDuration = const Duration(days: 7);
+    final controlHeader = _response.headers.value(
+      HttpHeaders.cacheControlHeader,
+    );
+    if (controlHeader != null) {
+      final controlSettings = controlHeader.split(',');
+      for (final setting in controlSettings) {
+        final sanitizedSetting = setting.trim().toLowerCase();
+        if (sanitizedSetting == 'no-cache') {
+          ageDuration = Duration.zero;
+        }
+        if (sanitizedSetting.startsWith('max-age=')) {
+          final validSeconds =
+              int.tryParse(sanitizedSetting.split('=')[1]) ?? 0;
+          if (validSeconds > 0) {
+            ageDuration = Duration(seconds: validSeconds);
+          }
+        }
+      }
+    }
+
+    return _receivedTime.add(ageDuration);
+  }
+
+  @override
+  String? get eTag => _response.headers.value(HttpHeaders.etagHeader);
+
+  @override
+  String get fileExtension {
+    final contentTypeHeader = _response.headers.value(
+      HttpHeaders.contentTypeHeader,
+    );
+    if (contentTypeHeader == null) return '';
+
+    try {
+      final contentType = ContentType.parse(contentTypeHeader);
+      return _imageExtensions[contentType.mimeType] ??
+          '.${contentType.subType}';
+    } catch (_) {
+      return '';
+    }
+  }
+}
+
 // ── 设置面板 ──
 
 class _ReaderSettingsPanel extends StatefulWidget {
@@ -690,9 +880,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('阅读设置',
-                  style: tt.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
+              Text(
+                '阅读设置',
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 20),
               // 阅读模式
               Text('阅读模式', style: tt.bodyMedium),
@@ -727,9 +918,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   children: [
                     Text('图片间距', style: tt.bodyMedium),
                     const Spacer(),
-                    Text('${_user.readerImageGap.round()} px',
-                        style: tt.bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                      '${_user.readerImageGap.round()} px',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
                   ],
                 ),
                 Slider(
@@ -821,9 +1013,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     const SizedBox(width: 8),
                     Text('降低亮度', style: tt.bodyMedium),
                     const Spacer(),
-                    Text('${(_user.readerDimming * 100).round()}%',
-                        style: tt.bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                      '${(_user.readerDimming * 100).round()}%',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
                   ],
                 ),
                 Slider(
