@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
+import '../utils/app_update.dart';
 import '../utils/toast.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -554,10 +555,33 @@ class _LoginPageState extends State<LoginPage> {
 
 // ── 关于页 ──
 
-class AboutPage extends StatelessWidget {
+class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
+  @override
+  State<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends State<AboutPage> {
+  final _user = UserManager();
+
   static const _repoUrl = 'https://github.com/caolib/kira';
+
+  @override
+  void initState() {
+    super.initState();
+    _user.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    _user.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -594,6 +618,27 @@ class AboutPage extends StatelessWidget {
                 color: cs.surfaceContainerLow,
                 child: Column(
                   children: [
+                    ListTile(
+                      leading: const Icon(Icons.system_update_alt),
+                      title: const Text('检查更新'),
+                      subtitle: Text(
+                        _user.skippedUpdateVersion != null &&
+                                _user.skippedUpdateVersion!.isNotEmpty
+                            ? '已跳过版本 ${_user.skippedUpdateVersion}'
+                            : (_user.autoCheckUpdate
+                                  ? '自动检查更新：已开启'
+                                  : '自动检查更新：已关闭'),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => AppUpdateService.checkAndPrompt(context),
+                    ),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.autorenew),
+                      title: const Text('启动时自动检查更新'),
+                      value: _user.autoCheckUpdate,
+                      onChanged: _user.setAutoCheckUpdate,
+                    ),
+                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.code),
                       title: const Text('源代码'),

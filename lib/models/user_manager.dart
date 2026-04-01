@@ -22,6 +22,8 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderPageRTL = 'reader_page_rtl';
   static const _keyReaderPageVertical = 'reader_page_vertical';
   static const _keyReaderDimming = 'reader_dimming';
+  static const _keyAutoCheckUpdate = 'auto_check_update';
+  static const _keySkippedUpdateVersion = 'skipped_update_version';
 
   String? _token;
   String? _username;
@@ -38,6 +40,8 @@ class UserManager extends ChangeNotifier {
   bool _readerPageRTL = false;
   bool _readerPageVertical = false;
   double _readerDimming = 0.3;
+  bool _autoCheckUpdate = true;
+  String? _skippedUpdateVersion;
 
   String? get token => _token;
   String? get username => _username;
@@ -54,6 +58,8 @@ class UserManager extends ChangeNotifier {
   bool get readerPageRTL => _readerPageRTL;
   bool get readerPageVertical => _readerPageVertical;
   double get readerDimming => _readerDimming;
+  bool get autoCheckUpdate => _autoCheckUpdate;
+  String? get skippedUpdateVersion => _skippedUpdateVersion;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -66,13 +72,16 @@ class UserManager extends ChangeNotifier {
     _savedUsername = prefs.getString(_keySavedUsername);
     _savedPassword = prefs.getString(_keySavedPassword);
     _themeMode = ThemeMode.values[prefs.getInt(_keyThemeMode) ?? 0];
-    _bookshelfOrdering = prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
+    _bookshelfOrdering =
+        prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
     _readerMode = prefs.getInt(_keyReaderMode) ?? 0;
     _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
     _readerVolumeKey = prefs.getBool(_keyReaderVolumeKey) ?? true;
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
     _readerPageVertical = prefs.getBool(_keyReaderPageVertical) ?? false;
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
+    _autoCheckUpdate = prefs.getBool(_keyAutoCheckUpdate) ?? true;
+    _skippedUpdateVersion = prefs.getString(_keySkippedUpdateVersion);
     notifyListeners();
   }
 
@@ -183,6 +192,24 @@ class UserManager extends ChangeNotifier {
     _readerDimming = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_keyReaderDimming, value);
+    notifyListeners();
+  }
+
+  Future<void> setAutoCheckUpdate(bool enabled) async {
+    _autoCheckUpdate = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAutoCheckUpdate, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setSkippedUpdateVersion(String? version) async {
+    _skippedUpdateVersion = version;
+    final prefs = await SharedPreferences.getInstance();
+    if (version == null || version.isEmpty) {
+      await prefs.remove(_keySkippedUpdateVersion);
+    } else {
+      await prefs.setString(_keySkippedUpdateVersion, version);
+    }
     notifyListeners();
   }
 

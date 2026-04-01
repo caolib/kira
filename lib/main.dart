@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'models/user_manager.dart';
 import 'pages/home_page.dart';
 import 'pages/search_page.dart';
 import 'pages/bookshelf_page.dart';
 import 'pages/profile_page.dart';
+import 'utils/app_update.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,6 +84,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _index = 0;
   final _user = UserManager();
+  bool _didAutoCheckUpdate = false;
 
   static const _allPages = [
     HomePage(),
@@ -102,6 +105,9 @@ class _MainPageState extends State<MainPage> {
         );
       });
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeAutoCheckUpdate();
+    });
   }
 
   @override
@@ -116,6 +122,12 @@ class _MainPageState extends State<MainPage> {
       final maxIndex = _user.isLoggedIn ? 3 : 2;
       if (_index > maxIndex) _index = 0;
     });
+  }
+
+  Future<void> _maybeAutoCheckUpdate() async {
+    if (!mounted || _didAutoCheckUpdate || !_user.autoCheckUpdate) return;
+    _didAutoCheckUpdate = true;
+    await AppUpdateService.checkAndPrompt(context, auto: true);
   }
 
   // 未登录时 tabs: [首页(0), 发现(1), 我的(2)]
