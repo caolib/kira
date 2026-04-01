@@ -20,6 +20,7 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderImageGap = 'reader_image_gap';
   static const _keyReaderVolumeKey = 'reader_volume_key';
   static const _keyReaderPageRTL = 'reader_page_rtl';
+  static const _keyReaderPageVertical = 'reader_page_vertical';
   static const _keyReaderDimming = 'reader_dimming';
 
   String? _token;
@@ -35,6 +36,7 @@ class UserManager extends ChangeNotifier {
   double _readerImageGap = 0.0;
   bool _readerVolumeKey = true;
   bool _readerPageRTL = false;
+  bool _readerPageVertical = false;
   double _readerDimming = 0.3;
 
   String? get token => _token;
@@ -50,6 +52,7 @@ class UserManager extends ChangeNotifier {
   double get readerImageGap => _readerImageGap;
   bool get readerVolumeKey => _readerVolumeKey;
   bool get readerPageRTL => _readerPageRTL;
+  bool get readerPageVertical => _readerPageVertical;
   double get readerDimming => _readerDimming;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
@@ -68,6 +71,7 @@ class UserManager extends ChangeNotifier {
     _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
     _readerVolumeKey = prefs.getBool(_keyReaderVolumeKey) ?? true;
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
+    _readerPageVertical = prefs.getBool(_keyReaderPageVertical) ?? false;
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
     notifyListeners();
   }
@@ -165,6 +169,13 @@ class UserManager extends ChangeNotifier {
     _readerPageRTL = rtl;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyReaderPageRTL, rtl);
+    notifyListeners();
+  }
+
+  Future<void> setReaderPageVertical(bool vertical) async {
+    _readerPageVertical = vertical;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyReaderPageVertical, vertical);
     notifyListeners();
   }
 

@@ -16,6 +16,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const _homeCacheKey = 'home_v2';
+  static const _rankingOrdering = '-datetime_updated';
+
   final _api = ApiClient();
   final _cache = DataCache();
   List<Comic> _recommendations = [];
@@ -31,7 +34,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadFromCache() async {
-    final cached = await _cache.get('home');
+    final cached = await _cache.get(_homeCacheKey);
     if (cached != null && _loading) {
       setState(() {
         _recommendations = (cached['recommendations'] as List?)
@@ -56,7 +59,10 @@ class _HomePageState extends State<HomePage> {
     }
     try {
       final recsFuture = _api.getRecommendations(limit: 10);
-      final rankingFuture = _api.getComicList(ordering: '-popular', limit: 6);
+      final rankingFuture = _api.getComicList(
+        ordering: _rankingOrdering,
+        limit: 6,
+      );
       final recs = await recsFuture;
       final ranking = await rankingFuture;
       if (!mounted) return;
@@ -65,7 +71,7 @@ class _HomePageState extends State<HomePage> {
         _rankingPreview = ranking.list;
         _loading = false;
       });
-      _cache.put('home', {
+      _cache.put(_homeCacheKey, {
         'recommendations': recs.map((c) => c.toJson()).toList(),
         'ranking': ranking.list.map((c) => c.toJson()).toList(),
       });

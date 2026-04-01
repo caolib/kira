@@ -19,7 +19,7 @@ class _RankingPageState extends State<RankingPage> {
   int _offset = 0;
   int _total = 0;
   bool _loadingMore = false;
-  String _ordering = '-popular';
+  String _ordering = '-datetime_updated';
 
   @override
   void initState() {

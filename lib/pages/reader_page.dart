@@ -6,6 +6,7 @@ import '../models/chapter.dart';
 import '../models/user_manager.dart';
 import '../utils/toast.dart';
 import '../utils/reading_history.dart';
+import 'chapter_comments_sheet.dart';
 
 class ReaderPage extends StatefulWidget {
   final String pathWord;
@@ -39,8 +40,10 @@ class _ReaderPageState extends State<ReaderPage> {
   int _currentPage = 1;
   bool _jumpingScroll = false;
   bool _isDraggingSlider = false;
+  bool _autoAdvancingScrollChapter = false;
 
   bool get _isPageMode => _user.readerMode == 1;
+  bool get _isVerticalPageMode => _isPageMode && _user.readerPageVertical;
   bool get _isDarkMode =>
       Theme.of(context).brightness == Brightness.dark;
 
@@ -99,20 +102,20 @@ class _ReaderPageState extends State<ReaderPage> {
       } else {
         if (startPage > 1) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_scrollController.hasClients && detail.contents.isNotEmpty) {
-              final ratio = (startPage - 1) / detail.contents.length;
-              _jumpingScroll = true;
-              _scrollController
-                  .jumpTo(ratio * _scrollController.position.maxScrollExtent);
-              _jumpingScroll = false;
-            }
+            _jumpToScrollPage(startPage, totalPages: detail.contents.length);
           });
         } else {
-          _scrollController.jumpTo(0);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(0);
+            }
+          });
         }
       }
+      _autoAdvancingScrollChapter = false;
       _saveReadingHistory();
     } catch (_) {
+      _autoAdvancingScrollChapter = false;
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -169,15 +172,7 @@ class _ReaderPageState extends State<ReaderPage> {
       _pageController = PageController(initialPage: page - 1);
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients &&
-            _detail != null &&
-            _detail!.contents.isNotEmpty) {
-          final ratio = (page - 1) / _detail!.contents.length;
-          _jumpingScroll = true;
-          _scrollController
-              .jumpTo(ratio * _scrollController.position.maxScrollExtent);
-          _jumpingScroll = false;
-        }
+        _jumpToScrollPage(page);
       });
     }
   }
@@ -244,6 +239,56 @@ class _ReaderPageState extends State<ReaderPage> {
 
   // ── 滚动模式 ──
 
+  double _scrollModeTailExtent(BuildContext context) {
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    return viewportHeight < 280 ? 280 : viewportHeight;
+  }
+
+  double _scrollModeEffectiveMaxExtent(ScrollMetrics metrics) {
+    final effectiveMax =
+        metrics.maxScrollExtent - _scrollModeTailExtent(context);
+    return effectiveMax > 0 ? effectiveMax : metrics.maxScrollExtent;
+  }
+
+  void _jumpToScrollPage(int page, {int? totalPages}) {
+    if (!_scrollController.hasClients) return;
+    final imageCount = totalPages ?? _detail?.contents.length ?? 0;
+    if (imageCount <= 0) return;
+
+    final ratio = (page - 1) / imageCount;
+    final maxExtent =
+        _scrollModeEffectiveMaxExtent(_scrollController.position);
+    _jumpingScroll = true;
+    _scrollController.jumpTo(ratio * maxExtent);
+    _jumpingScroll = false;
+  }
+
+  bool _shouldAutoAdvanceScrollChapter(ScrollNotification notification) {
+    if (_detail?.next == null || _loading || _autoAdvancingScrollChapter) {
+      return false;
+    }
+
+    final reachedBottom =
+        notification.metrics.pixels >= notification.metrics.maxScrollExtent - 8;
+    if (!reachedBottom) return false;
+
+    if (notification is ScrollUpdateNotification) {
+      return (notification.scrollDelta ?? 0) > 0;
+    }
+    if (notification is OverscrollNotification) {
+      return notification.overscroll > 0;
+    }
+    return false;
+  }
+
+  void _autoAdvanceToNextChapter() {
+    final nextUuid = _detail?.next;
+    if (nextUuid == null || _autoAdvancingScrollChapter) return;
+
+    _autoAdvancingScrollChapter = true;
+    _goChapter(nextUuid);
+  }
+
   Widget _buildScrollMode() {
     final imageCount = _detail!.contents.length;
     final hasHeader = _detail!.prev == null;
@@ -259,14 +304,19 @@ class _ReaderPageState extends State<ReaderPage> {
             setState(() => _showToolbar = false);
           }
           if (n.metrics.pixels > 0 && n.metrics.maxScrollExtent > 0) {
-            final page = (imageCount * n.metrics.pixels /
-                    n.metrics.maxScrollExtent)
+            final effectiveMax = _scrollModeEffectiveMaxExtent(n.metrics);
+            final effectivePixels =
+                n.metrics.pixels.clamp(0.0, effectiveMax).toDouble();
+            final page = (imageCount * effectivePixels / effectiveMax)
                 .ceil()
                 .clamp(1, imageCount);
             if (page != _currentPage) {
               setState(() => _currentPage = page);
               _saveReadingHistory();
             }
+          }
+          if (_shouldAutoAdvanceScrollChapter(n)) {
+            _autoAdvanceToNextChapter();
           }
           return false;
         },
@@ -304,38 +354,78 @@ class _ReaderPageState extends State<ReaderPage> {
 
   Widget _buildNextChapterTail() {
     final hasNext = _detail?.next != null;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
-      child: Center(
-        child: FilledButton.icon(
-          onPressed: hasNext
-              ? () => _goChapter(_detail!.next)
-              : () => Navigator.pop(context),
-          icon: Icon(hasNext ? Icons.skip_next : Icons.list),
-          label: Text(hasNext ? '下一章' : '返回目录'),
+    return ColoredBox(
+      color: Colors.black,
+      child: SizedBox(
+        height: _scrollModeTailExtent(context),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              hasNext ? '继续下滑进入下一章' : '已经是最后一章',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                height: 1.6,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  void _showChapterComments() {
+    final detail = _detail;
+    if (detail == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChapterCommentsSheet(
+        chapterUuid: detail.uuid,
+        chapterName: detail.name,
       ),
     );
   }
 
   // ── 翻页模式 ──
 
+  void _handlePageModeTap(TapUpDetails details) {
+    if (_isVerticalPageMode) {
+      final screenHeight = MediaQuery.of(context).size.height;
+      final y = details.globalPosition.dy;
+      if (y < screenHeight / 3) {
+        _prevPage();
+      } else if (y > screenHeight * 2 / 3) {
+        _nextPage();
+      } else {
+        setState(() => _showToolbar = !_showToolbar);
+      }
+      return;
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final x = details.globalPosition.dx;
+    if (x < screenWidth / 3) {
+      _user.readerPageRTL ? _nextPage() : _prevPage();
+    } else if (x > screenWidth * 2 / 3) {
+      _user.readerPageRTL ? _prevPage() : _nextPage();
+    } else {
+      setState(() => _showToolbar = !_showToolbar);
+    }
+  }
+
   Widget _buildPageMode() {
     return GestureDetector(
-      onTapUp: (details) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        final x = details.globalPosition.dx;
-        if (x < screenWidth / 3) {
-          _user.readerPageRTL ? _nextPage() : _prevPage();
-        } else if (x > screenWidth * 2 / 3) {
-          _user.readerPageRTL ? _prevPage() : _nextPage();
-        } else {
-          setState(() => _showToolbar = !_showToolbar);
-        }
-      },
+      onTapUp: _handlePageModeTap,
       child: PageView.builder(
         controller: _pageController,
-        reverse: _user.readerPageRTL,
+        scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
+        reverse: !_isVerticalPageMode && _user.readerPageRTL,
         allowImplicitScrolling: true,
         itemCount: _detail!.contents.length,
         onPageChanged: (index) {
@@ -462,10 +552,7 @@ class _ReaderPageState extends State<ReaderPage> {
                             if (_isPageMode) {
                               _pageController.jumpToPage(page - 1);
                             } else if (_scrollController.hasClients) {
-                              final ratio = (page - 1) / total;
-                              _scrollController.jumpTo(ratio *
-                                  _scrollController
-                                      .position.maxScrollExtent);
+                              _jumpToScrollPage(page, totalPages: total);
                             }
                           },
                         ),
@@ -492,6 +579,12 @@ class _ReaderPageState extends State<ReaderPage> {
                       ),
                     ),
                     const Spacer(),
+                    IconButton(
+                      icon:
+                          const Icon(Icons.forum_outlined, color: Colors.white),
+                      onPressed: _showChapterComments,
+                      tooltip: '章节评论',
+                    ),
                     IconButton(
                       icon: const Icon(Icons.settings, color: Colors.white),
                       onPressed: _showSettingsPanel,
@@ -638,9 +731,9 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   },
                 ),
               ],
-              // 翻页方向（仅翻页模式）
+              // 翻页设置（仅翻页模式）
               if (isPageMode) ...[
-                Text('翻页方向', style: tt.bodyMedium),
+                Text('翻页轴向', style: tt.bodyMedium),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
@@ -648,24 +741,52 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     segments: const [
                       ButtonSegment(
                         value: false,
-                        icon: Icon(Icons.arrow_forward),
-                        label: Text('从左到右'),
+                        icon: Icon(Icons.swap_horiz),
+                        label: Text('左右'),
                       ),
                       ButtonSegment(
                         value: true,
-                        icon: Icon(Icons.arrow_back),
-                        label: Text('从右到左'),
+                        icon: Icon(Icons.swap_vert),
+                        label: Text('上下'),
                       ),
                     ],
-                    selected: {_user.readerPageRTL},
+                    selected: {_user.readerPageVertical},
                     onSelectionChanged: (v) {
-                      _user.setReaderPageRTL(v.first);
+                      _user.setReaderPageVertical(v.first);
                       setState(() {});
                       widget.onChanged();
                     },
                   ),
                 ),
                 const SizedBox(height: 8),
+                if (!_user.readerPageVertical) ...[
+                  Text('翻页方向', style: tt.bodyMedium),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          icon: Icon(Icons.arrow_forward),
+                          label: Text('从左到右'),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          icon: Icon(Icons.arrow_back),
+                          label: Text('从右到左'),
+                        ),
+                      ],
+                      selected: {_user.readerPageRTL},
+                      onSelectionChanged: (v) {
+                        _user.setReaderPageRTL(v.first);
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 // 音量键翻页
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,

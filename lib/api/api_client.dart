@@ -4,23 +4,50 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import '../models/comic.dart';
 import '../models/chapter.dart';
+import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
 
 class ApiClient {
   static const _hostSg = 'mapi.hotmangasg.com';
   static const _hostSf = 'mapi.hotmangasf.com';
   static const _hostSd = 'mapi.hotmangasd.com';
+  static const _hostComment = 'api.mangacopy.com';
 
   static final ApiClient _instance = ApiClient._();
   factory ApiClient() => _instance;
 
   late final Dio _dio;
+  late final Dio _commentDio;
   final _user = UserManager();
   // 手动管理 cookie: host → {name: value}
   final Map<String, Map<String, String>> _cookies = {};
 
   ApiClient._() {
     _dio = Dio();
+    _commentDio = Dio(
+      BaseOptions(
+        headers: {
+          'accept': 'application/json, text/plain, */*',
+          'accept-language':
+              'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,en-GB;q=0.6,ru;q=0.5,ja;q=0.4,zh-TW;q=0.3',
+          'cache-control': 'no-cache',
+          'origin': 'https://www.mangacopy.com',
+          'pragma': 'no-cache',
+          'priority': 'u=1, i',
+          'sec-ch-ua':
+              '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-site',
+          'user-agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
+          'Host': _hostComment,
+          'Connection': 'keep-alive',
+        },
+      ),
+    );
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -227,6 +254,28 @@ class ApiClient {
       host: _hostSd,
     );
     return ChapterDetail.fromJson(data);
+  }
+
+  // 9.1 章节评论
+  Future<({List<ChapterComment> list, int total})> getChapterComments(
+    String chapterId, {
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    final resp = await _commentDio.get(
+      'https://$_hostComment/api/v3/roasts',
+      queryParameters: {
+        'chapter_id': chapterId,
+        'limit': limit,
+        'offset': offset,
+        '_update': true,
+      },
+    );
+    final results = resp.data['results'] as Map<String, dynamic>;
+    final list = (results['list'] as List)
+        .map((e) => ChapterComment.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    return (list: list, total: results['total'] as int? ?? 0);
   }
 
   // 10. 个人书架
