@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../api/api_client.dart';
 import '../models/chapter_comment.dart';
@@ -19,10 +20,12 @@ class ChapterCommentsSheet extends StatefulWidget {
 }
 
 class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
-  static const _pageSize = 30;
+  static const _pageSize = 100;
 
   final _api = ApiClient();
   final _scrollController = ScrollController();
+  final GlobalKey _listViewKey = GlobalKey();
+  final GlobalKey _loadMoreTriggerKey = GlobalKey();
 
   List<ChapterComment> _comments = [];
   bool _loading = true;
@@ -61,12 +64,25 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       );
       if (!mounted) return;
 
+      final mergedComments = loadMore
+          ? [
+              ..._comments,
+              ...data.list.where(
+                (item) => !_comments.any((existing) => existing.id == item.id),
+              ),
+            ]
+          : data.list;
+
       setState(() {
-        _comments = loadMore ? [..._comments, ...data.list] : data.list;
+        _comments = mergedComments;
         _total = data.total;
         _loading = false;
         _loadingMore = false;
         _error = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _tryLoadMoreWhenTriggerVisible();
       });
     } catch (e) {
       if (!mounted) return;
@@ -79,11 +95,52 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.metrics.pixels >
-        notification.metrics.maxScrollExtent - 240) {
+    _tryLoadMoreWhenTriggerVisible();
+    return false;
+  }
+
+  void _tryLoadMoreWhenTriggerVisible() {
+    if (_loading || _loadingMore || _comments.length >= _total) return;
+
+    final listContext = _listViewKey.currentContext;
+    final triggerContext = _loadMoreTriggerKey.currentContext;
+    if (listContext == null || triggerContext == null) return;
+
+    final listObject = listContext.findRenderObject();
+    final triggerObject = triggerContext.findRenderObject();
+    if (listObject is! RenderBox || triggerObject is! RenderBox) return;
+
+    final viewport = RenderAbstractViewport.maybeOf(triggerObject);
+    if (viewport == null) return;
+
+    final scrollOffset = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : 0.0;
+    final reveal = viewport.getOffsetToReveal(triggerObject, 0).offset;
+    final viewportEnd = scrollOffset + listObject.size.height;
+    if (reveal <= viewportEnd) {
       _loadComments(loadMore: true);
     }
-    return false;
+  }
+
+  String _formatRelativeTime(String raw) {
+    if (raw.isEmpty) return '';
+
+    final normalized = raw.replaceFirst(' ', 'T');
+    final parsed = DateTime.tryParse(normalized);
+    if (parsed == null) return raw;
+
+    final now = DateTime.now();
+    final localTime = parsed.isUtc ? parsed.toLocal() : parsed;
+    final diff = now.difference(localTime);
+
+    if (diff.isNegative) return '刚刚';
+    if (diff.inSeconds < 60) return '刚刚';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
+    if (diff.inHours < 24) return '${diff.inHours}小时前';
+    if (diff.inDays < 30) return '${diff.inDays}天前';
+    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
+    return '${(diff.inDays / 365).floor()}年前';
   }
 
   @override
@@ -121,32 +178,31 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                         children: [
                           Text(
                             '章节评论',
-                            style: tt.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                            style: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             widget.chapterName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: tt.bodySmall
-                                ?.copyWith(color: cs.onSurfaceVariant),
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     Text(
                       _total > 0 ? '$_total 条' : '',
-                      style: tt.bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
               Divider(height: 1, color: cs.outlineVariant),
-              Expanded(
-                child: _buildBody(context, cs, tt),
-              ),
+              Expanded(child: _buildBody(context, cs, tt)),
             ],
           ),
         ),
@@ -170,8 +226,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               const SizedBox(height: 12),
               Text(
                 '评论加载失败',
-                style:
-                    tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               Text(
@@ -218,31 +273,29 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       child: RefreshIndicator(
         onRefresh: () => _loadComments(),
         child: ListView.separated(
+          key: _listViewKey,
           controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          itemCount: _comments.length + 1,
+          itemCount: _comments.length + (_loadingMore ? 1 : 0),
           separatorBuilder: (_, index) => const SizedBox(height: 12),
           itemBuilder: (_, index) {
-            if (index == _comments.length) {
-              if (_loadingMore) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (_comments.length < _total) {
-                return Center(
-                  child: TextButton(
-                    onPressed: () => _loadComments(loadMore: true),
-                    child: const Text('加载更多'),
-                  ),
-                );
-              }
-              return const SizedBox(height: 12);
+            if (index == _comments.length && _loadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator()),
+              );
             }
 
             final comment = _comments[index];
-            return _CommentCard(comment: comment);
+            final shouldTriggerLoadMore =
+                index == _comments.length - 1 && _comments.length < _total;
+            return KeyedSubtree(
+              key: shouldTriggerLoadMore ? _loadMoreTriggerKey : null,
+              child: _CommentCard(
+                comment: comment,
+                relativeTime: _formatRelativeTime(comment.createAt),
+              ),
+            );
           },
         ),
       ),
@@ -252,8 +305,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
 class _CommentCard extends StatelessWidget {
   final ChapterComment comment;
+  final String relativeTime;
 
-  const _CommentCard({required this.comment});
+  const _CommentCard({required this.comment, required this.relativeTime});
 
   @override
   Widget build(BuildContext context) {
@@ -282,23 +336,27 @@ class _CommentCard extends StatelessWidget {
                         comment.userName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: tt.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        style: tt.labelMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      comment.createAt,
-                      style: tt.labelSmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
+                      relativeTime,
+                      style: tt.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 SelectableText(
                   comment.comment,
-                  style: tt.bodySmall?.copyWith(height: 1.5),
+                  style: tt.bodyMedium?.copyWith(
+                    height: 1.6,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -332,13 +390,19 @@ class _CommentAvatar extends StatelessWidget {
                 fit: BoxFit.cover,
                 placeholder: (_, _) => ColoredBox(
                   color: cs.surfaceContainerHighest,
-                  child: Icon(Icons.person,
-                      size: 20, color: cs.onSurfaceVariant),
+                  child: Icon(
+                    Icons.person,
+                    size: 20,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
                 errorWidget: (_, _, _) => ColoredBox(
                   color: cs.surfaceContainerHighest,
-                  child: Icon(Icons.person,
-                      size: 20, color: cs.onSurfaceVariant),
+                  child: Icon(
+                    Icons.person,
+                    size: 20,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               ),
       ),

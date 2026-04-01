@@ -461,6 +461,13 @@ class _ReaderPageState extends State<ReaderPage> {
 
   Widget _buildNextChapterTail() {
     final hasNext = _detail?.next != null;
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
+      backgroundColor: Colors.white.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+    );
+
     return ColoredBox(
       color: Colors.black,
       child: SizedBox(
@@ -468,15 +475,27 @@ class _ReaderPageState extends State<ReaderPage> {
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              hasNext ? '继续下滑进入下一章' : '已经是最后一章',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                height: 1.6,
-                letterSpacing: 1.2,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  hasNext ? '继续下滑进入下一章' : '已经是最后一章',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    height: 1.6,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _showChapterComments,
+                  icon: const Icon(Icons.forum_outlined),
+                  label: const Text('查看本章评论'),
+                  style: buttonStyle,
+                ),
+              ],
             ),
           ),
         ),
