@@ -142,6 +142,17 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
+                      if (_user.isLoggedIn &&
+                          _user.savedUsername != null &&
+                          _user.savedPassword != null)
+                        SwitchListTile(
+                          secondary: const Icon(Icons.login),
+                          title: const Text('自动登录'),
+                          subtitle: const Text('登录过期时自动重新登录'),
+                          value: _user.autoLogin,
+                          onChanged: _user.setAutoLogin,
+                        ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
                       ListTile(
                         leading: const Icon(Icons.info_outline),
                         title: const Text('关于'),

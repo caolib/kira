@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -21,6 +22,8 @@ class ApiClient {
   final _user = UserManager();
   // 手动管理 cookie: host → {name: value}
   final Map<String, Map<String, String>> _cookies = {};
+  // 防止并发 401 触发多次自动登录
+  Completer<bool>? _autoLoginCompleter;
 
   ApiClient._() {
     _dio = Dio();
@@ -94,6 +97,50 @@ class ApiClient {
             }
           }
           handler.next(response);
+        },
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401 && _user.autoLogin) {
+            final username = _user.savedUsername;
+            final password = _user.savedPassword;
+            if (username != null &&
+                username.isNotEmpty &&
+                password != null &&
+                password.isNotEmpty) {
+              try {
+                // 防止并发 401 同时触发多次登录
+                if (_autoLoginCompleter != null) {
+                  final success = await _autoLoginCompleter!.future;
+                  if (!success) return handler.next(error);
+                } else {
+                  _autoLoginCompleter = Completer<bool>();
+                  try {
+                    final result = await login(username, password);
+                    await _user.saveLogin(
+                      token: result['token'],
+                      userId: result['user_id'],
+                      username: result['username'],
+                      nickname: result['nickname'] ?? result['username'],
+                      avatar: result['avatar'] ?? '',
+                    );
+                    _autoLoginCompleter!.complete(true);
+                  } catch (_) {
+                    _autoLoginCompleter!.complete(false);
+                    _autoLoginCompleter = null;
+                    return handler.next(error);
+                  }
+                  _autoLoginCompleter = null;
+                }
+                // 用新 token 重试原请求
+                final opts = error.requestOptions;
+                opts.headers['Authorization'] = 'Token ${_user.token}';
+                final resp = await _dio.fetch(opts);
+                return handler.resolve(resp);
+              } catch (_) {
+                return handler.next(error);
+              }
+            }
+          }
+          handler.next(error);
         },
       ),
     );

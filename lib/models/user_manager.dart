@@ -24,6 +24,7 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderDimming = 'reader_dimming';
   static const _keyAutoCheckUpdate = 'auto_check_update';
   static const _keySkippedUpdateVersion = 'skipped_update_version';
+  static const _keyAutoLogin = 'auto_login';
 
   String? _token;
   String? _username;
@@ -42,6 +43,7 @@ class UserManager extends ChangeNotifier {
   double _readerDimming = 0.3;
   bool _autoCheckUpdate = true;
   String? _skippedUpdateVersion;
+  bool _autoLogin = false;
 
   String? get token => _token;
   String? get username => _username;
@@ -60,6 +62,7 @@ class UserManager extends ChangeNotifier {
   double get readerDimming => _readerDimming;
   bool get autoCheckUpdate => _autoCheckUpdate;
   String? get skippedUpdateVersion => _skippedUpdateVersion;
+  bool get autoLogin => _autoLogin;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -82,6 +85,7 @@ class UserManager extends ChangeNotifier {
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
     _autoCheckUpdate = prefs.getBool(_keyAutoCheckUpdate) ?? true;
     _skippedUpdateVersion = prefs.getString(_keySkippedUpdateVersion);
+    _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
     notifyListeners();
   }
 
@@ -210,6 +214,13 @@ class UserManager extends ChangeNotifier {
     } else {
       await prefs.setString(_keySkippedUpdateVersion, version);
     }
+    notifyListeners();
+  }
+
+  Future<void> setAutoLogin(bool enabled) async {
+    _autoLogin = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAutoLogin, enabled);
     notifyListeners();
   }
 
