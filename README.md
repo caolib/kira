@@ -1,8 +1,8 @@
 # kira
 
-A third-party client based on hotmanga
+一个热辣漫画的第三方客户端 | A third-party client based on hotmanga
 
-<img width="718" height="1229" alt="image" src="https://github.com/user-attachments/assets/b8f19701-016f-4dc4-b464-6f0c5e051585" />
+<img width="auto" height="600" alt="image" src="https://github.com/user-attachments/assets/b8f19701-016f-4dc4-b464-6f0c5e051585" />
 
 ## 免责声明
 
