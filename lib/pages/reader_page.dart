@@ -174,15 +174,21 @@ class _ReaderPageState extends State<ReaderPage> {
 
   void _nextPage() {
     if (_detail == null) return;
-    if (_currentPage < _detail!.contents.length) {
+    final imageCount = _detail!.contents.length;
+    final pageIndex = _pageController.page?.round() ?? 0;
+    if (pageIndex >= imageCount) {
+      // 当前在过渡页，跳转下一章
+      if (_detail!.next != null) {
+        _goChapter(_detail!.next);
+      } else {
+        showToast(context, '已经是最后一章了');
+      }
+    } else {
+      // 正常翻页（包括从最后一张图翻到过渡页）
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-    } else if (_detail!.next != null) {
-      _goChapter(_detail!.next);
-    } else {
-      showToast(context, '已经是最后一页了');
     }
   }
 
@@ -459,7 +465,7 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildNextChapterTail() {
+  Widget _buildChapterEndContent({required String hint}) {
     final hasNext = _detail?.next != null;
     final buttonStyle = OutlinedButton.styleFrom(
       foregroundColor: Colors.white,
@@ -468,6 +474,40 @@ class _ReaderPageState extends State<ReaderPage> {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
     );
 
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          hasNext ? hint : '已经是最后一章',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 16,
+            height: 1.6,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: _showChapterComments,
+          icon: const Icon(Icons.forum_outlined),
+          label: const Text('查看本章评论'),
+          style: buttonStyle,
+        ),
+        if (!hasNext) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.list),
+            label: const Text('返回目录'),
+            style: buttonStyle,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNextChapterTail() {
     return ColoredBox(
       color: Colors.black,
       child: SizedBox(
@@ -475,28 +515,7 @@ class _ReaderPageState extends State<ReaderPage> {
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  hasNext ? '继续下滑进入下一章' : '已经是最后一章',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                    height: 1.6,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: _showChapterComments,
-                  icon: const Icon(Icons.forum_outlined),
-                  label: const Text('查看本章评论'),
-                  style: buttonStyle,
-                ),
-              ],
-            ),
+            child: _buildChapterEndContent(hint: '继续下滑进入下一章'),
           ),
         ),
       ),
@@ -546,6 +565,7 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildPageMode() {
+    final imageCount = _detail!.contents.length;
     return GestureDetector(
       onTapUp: _handlePageModeTap,
       child: PageView.builder(
@@ -553,15 +573,30 @@ class _ReaderPageState extends State<ReaderPage> {
         scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
         reverse: !_isVerticalPageMode && _user.readerPageRTL,
         allowImplicitScrolling: true,
-        itemCount: _detail!.contents.length,
+        itemCount: imageCount + 1,
         onPageChanged: (index) {
           setState(() {
-            _currentPage = index + 1;
+            if (index < imageCount) {
+              _currentPage = index + 1;
+            }
+            // 过渡页不更新 _currentPage
             if (!_isDraggingSlider) _showToolbar = false;
           });
-          _saveReadingHistory();
+          if (index < imageCount) _saveReadingHistory();
         },
-        itemBuilder: (_, i) => Center(child: _buildImage(i)),
+        itemBuilder: (_, i) {
+          if (i < imageCount) return Center(child: _buildImage(i));
+          // 章末过渡页
+          return ColoredBox(
+            color: Colors.black,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: _buildChapterEndContent(hint: '继续翻页进入下一章'),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

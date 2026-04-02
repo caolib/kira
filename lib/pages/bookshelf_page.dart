@@ -64,7 +64,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     if (isInitial) {
       setState(() => _loading = true);
     } else {
-      setState(() {});  // 触发 UI 显示刷新指示器
+      setState(() {}); // 触发 UI 显示刷新指示器
     }
     _offset = 0;
     try {
@@ -389,7 +389,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
                                       ],
                                     ),
                                     child: Text(
-                                      '有更新',
+                                      '更新',
                                       style: TextStyle(
                                         color: cs.onError,
                                         fontSize: 11,
