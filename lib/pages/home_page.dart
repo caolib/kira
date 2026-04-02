@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../api/api_client.dart';
@@ -24,6 +23,7 @@ class _HomePageState extends State<HomePage> {
   List<Comic> _recommendations = [];
   List<Comic> _rankingPreview = [];
   bool _loading = true;
+  bool _refreshing = false;
   String? _error;
 
   @override
@@ -51,11 +51,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _load() async {
-    if (_recommendations.isEmpty) {
+    final hasData = _recommendations.isNotEmpty;
+    if (!hasData) {
       setState(() {
         _loading = true;
         _error = null;
       });
+    } else {
+      setState(() => _refreshing = true);
     }
     try {
       final recsFuture = _api.getRecommendations(limit: 10);
@@ -70,6 +73,7 @@ class _HomePageState extends State<HomePage> {
         _recommendations = recs;
         _rankingPreview = ranking.list;
         _loading = false;
+        _refreshing = false;
       });
       _cache.put(_homeCacheKey, {
         'recommendations': recs.map((c) => c.toJson()).toList(),
@@ -80,6 +84,7 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
+        _refreshing = false;
         _error = e.toString();
       });
     }
@@ -124,6 +129,10 @@ class _HomePageState extends State<HomePage> {
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
+          if (_refreshing)
+            const SliverToBoxAdapter(
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
 
           // ── 推荐区 ──
           if (_recommendations.isNotEmpty) ...[
@@ -139,25 +148,17 @@ class _HomePageState extends State<HomePage> {
             SliverToBoxAdapter(
               child: SizedBox(
                 height: 210,
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(
-                    dragDevices: {
-                      PointerDeviceKind.touch,
-                      PointerDeviceKind.mouse,
-                    },
-                  ),
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: EdgeInsets.symmetric(horizontal: hp),
-                    itemCount: _recommendations.length,
-                    itemBuilder: (_, i) {
-                      final c = _recommendations[i];
-                      return _RecommendCard(
-                        comic: c,
-                        onTap: () => _openComic(c),
-                      );
-                    },
-                  ),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: hp),
+                  itemCount: _recommendations.length,
+                  itemBuilder: (_, i) {
+                    final c = _recommendations[i];
+                    return _RecommendCard(
+                      comic: c,
+                      onTap: () => _openComic(c),
+                    );
+                  },
                 ),
               ),
             ),

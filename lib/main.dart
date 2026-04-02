@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'models/user_manager.dart';
@@ -11,6 +12,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await UserManager().init();
   runApp(const KiraApp());
+}
+
+/// 允许鼠标拖拽触发滚动和下拉刷新（桌面端适配）
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+      };
 }
 
 class KiraApp extends StatefulWidget {
@@ -50,6 +61,7 @@ class _KiraAppState extends State<KiraApp> {
     return MaterialApp(
       title: 'Kira',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: _AppScrollBehavior(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blueGrey,

@@ -61,7 +61,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
     if (_refreshing) return;
     _refreshing = true;
     final isInitial = _items.isEmpty;
-    if (isInitial) setState(() => _loading = true);
+    if (isInitial) {
+      setState(() => _loading = true);
+    } else {
+      setState(() {});  // 触发 UI 显示刷新指示器
+    }
     _offset = 0;
     try {
       final data = await _api.getBookshelf(ordering: _ordering);
@@ -85,6 +89,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
       }
     } finally {
       _refreshing = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -256,6 +261,10 @@ class _BookshelfPageState extends State<BookshelfPage> {
                         height: MediaQuery.of(context).padding.top,
                       ),
                     ),
+                    if (_refreshing)
+                      const SliverToBoxAdapter(
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(hp, 4, hp, 8),
