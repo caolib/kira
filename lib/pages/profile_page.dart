@@ -66,6 +66,32 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _refreshUserInfo() async {
+    try {
+      await _user.refreshUserInfo();
+      if (mounted) {
+        showToast(context, '用户信息已刷新');
+      }
+    } catch (_) {
+      if (mounted) {
+        showToast(context, '刷新失败，请重试', isError: true);
+      }
+    }
+  }
+
+  Future<void> _copyToken() async {
+    final token = _user.token;
+    if (token == null || token.isEmpty) {
+      showToast(context, '暂无可复制的令牌', isError: true);
+      return;
+    }
+
+    await Clipboard.setData(ClipboardData(text: token));
+    if (mounted) {
+      showToast(context, '令牌已复制到剪贴板');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -219,84 +245,103 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Card(
           color: cs.surfaceContainerLow,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              final token = _user.token;
-              if (token != null && token.isNotEmpty) {
-                Clipboard.setData(ClipboardData(text: token));
-                showToast(context, 'Token 已复制到剪贴板');
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: cs.primaryContainer,
-                    child:
-                        _user.avatar != null && _user.avatar!.startsWith('http')
-                        ? ClipOval(
-                            child: CachedNetworkImage(
-                              imageUrl: _user.avatar!,
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Icon(
-                            Icons.person,
-                            size: 32,
-                            color: cs.onPrimaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: cs.primaryContainer,
+                  child:
+                      _user.avatar != null && _user.avatar!.startsWith('http')
+                      ? ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: _user.avatar!,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
                           ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _user.nickname ?? _user.username ?? '',
-                          style: tt.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        )
+                      : Icon(
+                          Icons.person,
+                          size: 32,
+                          color: cs.onPrimaryContainer,
                         ),
-                      ],
-                    ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _user.nickname ?? _user.username ?? '',
+                        style: tt.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: '刷新用户信息',
-                    onPressed: () async {
-                      try {
-                        await _user.refreshUserInfo();
-                        if (mounted) {
-                          showToast(context, '用户信息已刷新');
-                        }
-                      } catch (_) {
-                        if (mounted) {
-                          showToast(context, '刷新失败，请重试', isError: true);
-                        }
-                      }
-                    },
-                  ),
-                  Icon(Icons.copy, size: 18, color: cs.onSurfaceVariant),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
-            label: const Text('退出登录'),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _buildUserActionButton(
+                icon: Icons.refresh,
+                label: '刷新用户信息',
+                onPressed: () => _refreshUserInfo(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildUserActionButton(
+                icon: Icons.copy_outlined,
+                label: '复制令牌',
+                onPressed: () => _copyToken(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildUserActionButton(
+                icon: Icons.logout,
+                label: '退出登录',
+                onPressed: () => _logout(),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildUserActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      height: 44,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18),
+              const SizedBox(width: 6),
+              Text(label, maxLines: 1),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
