@@ -7,6 +7,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/user_manager.dart';
+import '../utils/download_manager.dart';
 import '../utils/toast.dart';
 import '../utils/reading_history.dart';
 import 'chapter_comments_sheet.dart';
@@ -36,6 +37,7 @@ class _ReaderPageState extends State<ReaderPage> {
   );
 
   final _api = ApiClient();
+  final _downloads = DownloadManager();
   final _user = UserManager();
   final _scrollController = ScrollController();
   PageController _pageController = PageController();
@@ -104,7 +106,14 @@ class _ReaderPageState extends State<ReaderPage> {
   Future<void> _loadChapter() async {
     setState(() => _loading = true);
     try {
-      final detail = await _api.getChapterDetail(widget.pathWord, _currentUuid);
+      final detail =
+          await _downloads.getDownloadedChapterDetail(
+            widget.pathWord,
+            _currentUuid,
+          ) ??
+          await _api.getChapterDetail(widget.pathWord, _currentUuid);
+      if (detail.contents.isEmpty)
+        throw StateError('Chapter has no readable pages');
       if (!mounted) return;
       // 首次加载且有 initialPage 参数时跳到指定页
       final startPage = _isFirstLoad && widget.initialPage > 1
@@ -261,43 +270,28 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Future<void> _copyImageUrl(int index) async {
-    final imageUrl = _detail?.contents[index];
-    if (imageUrl == null || imageUrl.isEmpty) return;
-    await Clipboard.setData(ClipboardData(text: imageUrl));
+    final imageSource = _detail?.contents[index];
+    if (imageSource == null || imageSource.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: imageSource));
     if (!mounted) return;
-    showToast(context, '图片链接已复制到剪贴板');
+    showToast(
+      context,
+      _detail?.isDownloaded == true ? '图片路径已复制到剪贴板' : '图片链接已复制到剪贴板',
+    );
   }
 
   Widget _buildImage(int index) {
     final cs = Theme.of(context).colorScheme;
-    final imageUrl = _detail!.contents[index];
-    Widget image = CachedNetworkImage(
-      key: ValueKey('$_currentUuid-$index-${_imageReloadVersions[index] ?? 0}'),
-      imageUrl: imageUrl,
-      cacheManager: _readerImageCacheManager,
-      fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
-      width: double.infinity,
-      imageBuilder: (_, imageProvider) {
-        _clearImageRetryState(index);
-        return Image(
-          image: imageProvider,
-          fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
-          width: double.infinity,
-        );
-      },
-      placeholder: (_, _) => Container(
-        height: 400,
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      ),
-      errorWidget: (_, _, _) {
-        final attempts = _imageRetryCounts[index] ?? 0;
-        final canAutoRetry = attempts < 3;
-        if (canAutoRetry) {
-          _scheduleImageRetry(index);
-        }
+    final imageSource = _detail!.contents[index];
+    Widget image;
 
-        return Container(
+    if (_detail!.isDownloaded) {
+      _clearImageRetryState(index);
+      image = Image.file(
+        File(imageSource),
+        fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
+        width: double.infinity,
+        errorBuilder: (_, _, _) => Container(
           height: 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           child: Center(
@@ -307,29 +301,87 @@ class _ReaderPageState extends State<ReaderPage> {
                 Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 48),
                 const SizedBox(height: 8),
                 Text(
-                  canAutoRetry ? '加载失败，正在重试 ${attempts + 1}/3' : '加载失败',
+                  '本地图片损坏或缺失',
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                 ),
-                if (!canAutoRetry) ...[
-                  const SizedBox(height: 12),
-                  FilledButton.tonalIcon(
-                    onPressed: () => _retryImage(index),
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('重新加载'),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _copyImageUrl(index),
-                    icon: const Icon(Icons.copy_all_outlined, size: 18),
-                    label: const Text('复制图片链接'),
-                  ),
-                ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => _copyImageUrl(index),
+                  icon: const Icon(Icons.copy_all_outlined, size: 18),
+                  label: const Text('复制图片路径'),
+                ),
               ],
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    } else {
+      image = CachedNetworkImage(
+        key: ValueKey(
+          '$_currentUuid-$index-${_imageReloadVersions[index] ?? 0}',
+        ),
+        imageUrl: imageSource,
+        cacheManager: _readerImageCacheManager,
+        fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
+        width: double.infinity,
+        imageBuilder: (_, imageProvider) {
+          _clearImageRetryState(index);
+          return Image(
+            image: imageProvider,
+            fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
+            width: double.infinity,
+          );
+        },
+        placeholder: (_, _) => Container(
+          height: 400,
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+        errorWidget: (_, _, _) {
+          final attempts = _imageRetryCounts[index] ?? 0;
+          final canAutoRetry = attempts < 3;
+          if (canAutoRetry) {
+            _scheduleImageRetry(index);
+          }
+
+          return Container(
+            height: 400,
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.broken_image,
+                    color: cs.onSurfaceVariant,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    canAutoRetry ? '加载失败，正在重试 ${attempts + 1}/3' : '加载失败',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                  ),
+                  if (!canAutoRetry) ...[
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: () => _retryImage(index),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('重新加载'),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _copyImageUrl(index),
+                      icon: const Icon(Icons.copy_all_outlined, size: 18),
+                      label: const Text('复制图片链接'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
     // 深色模式亮度遮罩
     if (_isDarkMode && _user.readerDimming > 0) {
       image = Stack(
@@ -533,6 +585,8 @@ class _ReaderPageState extends State<ReaderPage> {
       builder: (_) => ChapterCommentsSheet(
         chapterUuid: detail.uuid,
         chapterName: detail.name,
+        initialComments: detail.isDownloaded ? detail.comments : null,
+        initialTotal: detail.isDownloaded ? detail.commentTotal : null,
       ),
     );
   }

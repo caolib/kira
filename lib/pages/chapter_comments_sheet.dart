@@ -8,11 +8,15 @@ import '../models/chapter_comment.dart';
 class ChapterCommentsSheet extends StatefulWidget {
   final String chapterUuid;
   final String chapterName;
+  final List<ChapterComment>? initialComments;
+  final int? initialTotal;
 
   const ChapterCommentsSheet({
     super.key,
     required this.chapterUuid,
     required this.chapterName,
+    this.initialComments,
+    this.initialTotal,
   });
 
   @override
@@ -36,6 +40,12 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialComments != null) {
+      _comments = List<ChapterComment>.from(widget.initialComments!);
+      _total = widget.initialTotal ?? _comments.length;
+      _loading = false;
+      return;
+    }
     _loadComments();
   }
 
@@ -46,6 +56,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Future<void> _loadComments({bool loadMore = false}) async {
+    if (widget.initialComments != null) return;
     if (loadMore) {
       if (_loading || _loadingMore || _comments.length >= _total) return;
       setState(() => _loadingMore = true);
@@ -271,7 +282,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     return NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
       child: RefreshIndicator(
-        onRefresh: () => _loadComments(),
+        onRefresh: widget.initialComments != null
+            ? () async {}
+            : () => _loadComments(),
         child: ListView.separated(
           key: _listViewKey,
           controller: _scrollController,

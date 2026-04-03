@@ -16,13 +16,22 @@ class ChapterComment {
   });
 
   factory ChapterComment.fromJson(Map<String, dynamic> json) => ChapterComment(
-        id: json['id'] is int
-            ? json['id'] as int
-            : int.tryParse(json['id']?.toString() ?? '') ?? 0,
-        createAt: json['create_at']?.toString() ?? '',
-        userId: json['user_id']?.toString() ?? '',
-        userName: json['user_name']?.toString() ?? '匿名用户',
-        userAvatar: json['user_avatar']?.toString() ?? '',
-        comment: json['comment']?.toString() ?? '',
-      );
+    id: json['id'] is int
+        ? json['id'] as int
+        : int.tryParse(json['id']?.toString() ?? '') ?? 0,
+    createAt: json['create_at']?.toString() ?? '',
+    userId: json['user_id']?.toString() ?? '',
+    userName: json['user_name']?.toString() ?? '匿名用户',
+    userAvatar: json['user_avatar']?.toString() ?? '',
+    comment: json['comment']?.toString() ?? '',
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'create_at': createAt,
+    'user_id': userId,
+    'user_name': userName,
+    'user_avatar': userAvatar,
+    'comment': comment,
+  };
 }
