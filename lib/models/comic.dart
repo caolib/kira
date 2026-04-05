@@ -207,3 +207,17 @@ class BookshelfItem {
       comic.lastChapterId != null &&
       lastBrowseId != comic.lastChapterId;
 }
+
+class BrowseHistoryItem {
+  final int id;
+  final Comic comic;
+  final String? lastBrowseId;
+  final String? lastBrowseName;
+
+  BrowseHistoryItem({
+    required this.id,
+    required this.comic,
+    this.lastBrowseId,
+    this.lastBrowseName,
+  });
+}

@@ -179,6 +179,33 @@ class ApiClient {
     return await _get('/api/v3/member/info', host: _hostSf);
   }
 
+  /// 获取浏览记录
+  Future<({List<BrowseHistoryItem> list, int total})> getBrowseHistory({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final data = await _get(
+      '/api/v3/member/browse/comics',
+      params: {
+        'free_type': 1,
+        'offset': offset,
+        'limit': limit,
+        '_update': true,
+      },
+      host: _hostSf,
+    );
+    final list = (data['list'] as List).map((e) {
+      final item = Map<String, dynamic>.from(e);
+      return BrowseHistoryItem(
+        id: item['id'] as int? ?? 0,
+        lastBrowseId: item['last_chapter_id']?.toString(),
+        lastBrowseName: item['last_chapter_name']?.toString(),
+        comic: Comic.fromJson(Map<String, dynamic>.from(item['comic'])),
+      );
+    }).toList();
+    return (list: list, total: data['total'] as int? ?? list.length);
+  }
+
   // ── 漫画相关 ──
 
   // 1. 热门搜索关键词

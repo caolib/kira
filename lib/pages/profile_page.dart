@@ -8,6 +8,7 @@ import '../api/api_client.dart';
 import '../models/user_manager.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
+import 'browse_history_page.dart';
 import 'local_comics_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -189,6 +190,21 @@ class _ProfilePageState extends State<ProfilePage> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const LocalComicsPage(),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.history),
+                        title: const Text('浏览记录'),
+                        subtitle: const Text('查看最近浏览过的漫画'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BrowseHistoryPage(
+                              loginPageBuilder: (_) => const LoginPage(),
+                            ),
                           ),
                         ),
                       ),
