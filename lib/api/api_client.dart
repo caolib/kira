@@ -13,6 +13,7 @@ class ApiClient {
   static const _hostSf = 'mapi.hotmangasf.com';
   static const _hostSd = 'mapi.hotmangasd.com';
   static const _hostComment = 'api.mangacopy.com';
+  static const _hostWeb = 'www.manga2026.xyz';
 
   static final ApiClient _instance = ApiClient._();
   factory ApiClient() => _instance;
@@ -153,6 +154,17 @@ class ApiClient {
 
   String _url(String path, [String host = _hostSg]) => 'https://$host$path';
 
+  String _buildRegisterCookie() {
+    final random = Random();
+
+    String segment(int length) => List.generate(
+      length,
+      (_) => random.nextInt(16).toRadixString(16),
+    ).join();
+
+    return 'uncer=${segment(8)}-${segment(4)}-${segment(4)}-${segment(4)}-${segment(12)}; age=18; webp=1';
+  }
+
   Future<Map<String, dynamic>> _get(
     String path, {
     Map<String, dynamic>? params,
@@ -193,6 +205,105 @@ class ApiClient {
 
   void clearAuthState() {
     _cookies.clear();
+  }
+
+  Future<List<String>> getSecurityQuestions() async {
+    final resp = await _dio.get(
+      _url('/api/v3/member/securityquestionall/', _hostSd),
+    );
+    final results = resp.data['results'] as List? ?? const [];
+    return results
+        .map((e) => e['code']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> register({
+    required String username,
+    required String password,
+    required String question,
+    required String answer,
+  }) async {
+    Map<String, dynamic> parseResponse(dynamic raw) {
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+      if (raw is String && raw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map) return Map<String, dynamic>.from(decoded);
+        } catch (_) {
+          return {'message': raw};
+        }
+      }
+      return {};
+    }
+
+    String resolveMessage(Map<String, dynamic> data, Response<dynamic>? resp) {
+      final results = data['results'];
+      return data['message']?.toString() ??
+          (results is Map ? results['detail']?.toString() : null) ??
+          resp?.statusMessage ??
+          '注册失败';
+    }
+
+    final dio = Dio(
+      BaseOptions(
+        validateStatus: (_) => true,
+        headers: {
+          'accept': 'application/json, text/plain, */*',
+          'accept-language':
+              'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,en-GB;q=0.6,ru;q=0.5,ja;q=0.4,zh-TW;q=0.3',
+          'cache-control': 'no-cache',
+          'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'platform': '2',
+          'pragma': 'no-cache',
+          'origin': 'https://$_hostWeb',
+          'referer': 'https://$_hostWeb/web/login/loginByAccount',
+          'priority': 'u=1, i',
+          'sec-ch-ua':
+              '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-origin',
+          'user-agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
+          'Cookie': _buildRegisterCookie(),
+        },
+      ),
+    );
+
+    final resp = await dio.post(
+      'https://$_hostWeb/api/v2/register',
+      data: Uri(
+        queryParameters: {
+          'username': username,
+          'password': password,
+          'source': '',
+          'platform': '2',
+          'code': '',
+          'invite_code': '',
+          'version': '2025.12.10',
+          'question': question,
+          'answer': answer,
+        },
+      ).query,
+    );
+
+    final data = parseResponse(resp.data);
+    if (resp.statusCode == 200 && data['code'] == 200) {
+      final results = data['results'];
+      return results is Map ? Map<String, dynamic>.from(results) : {};
+    }
+
+    final message = resolveMessage(data, resp);
+    throw DioException(
+      requestOptions: resp.requestOptions,
+      response: resp,
+      message: message,
+      error: message,
+      type: DioExceptionType.badResponse,
+    );
   }
 
   /// 获取浏览记录

@@ -5,6 +5,8 @@
 
 Platform folders (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) should only hold platform-specific integration code. Static assets live in `assets/` and must also be declared in `pubspec.yaml`. Release notes belong in `docs/CHANGELOG.md`. Use `ref/` for reference material, not production code.
 
+The `/ref` folder contains the interface documentation for this application.
+
 ## Build, Test, and Development Commands
 Run these from the repository root:
 
