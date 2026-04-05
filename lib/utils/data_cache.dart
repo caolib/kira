@@ -8,16 +8,34 @@ class DataCache {
   DataCache._();
 
   static const _prefix = 'cache_';
+  static const _dataKey = '__cache_data__';
+  static const _expiresAtKey = '__cache_expires_at__';
 
-  Future<void> put(String key, dynamic data) async {
+  Future<void> put(String key, dynamic data, {Duration? ttl}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_prefix$key', jsonEncode(data));
+    final payload = ttl == null
+        ? data
+        : {
+            _dataKey: data,
+            _expiresAtKey: DateTime.now().add(ttl).millisecondsSinceEpoch,
+          };
+    await prefs.setString('$_prefix$key', jsonEncode(payload));
   }
 
   Future<dynamic> get(String key) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('$_prefix$key');
     if (raw == null) return null;
-    return jsonDecode(raw);
+    final decoded = jsonDecode(raw);
+    if (decoded is Map<String, dynamic> && decoded.containsKey(_dataKey)) {
+      final expiresAt = decoded[_expiresAtKey] as int?;
+      if (expiresAt != null &&
+          DateTime.now().millisecondsSinceEpoch > expiresAt) {
+        await prefs.remove('$_prefix$key');
+        return null;
+      }
+      return decoded[_dataKey];
+    }
+    return decoded;
   }
 }

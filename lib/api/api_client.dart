@@ -190,14 +190,14 @@ class ApiClient {
     return (data['list'] as List).map((e) => e['keyword'] as String).toList();
   }
 
-  // 2. 分类标签
+  // 2. 全部漫画标签
   Future<List<Theme>> getComicTags() async {
     final data = await _get(
-      '/api/v3/h5/filterIndex/comic/tags',
-      params: {'type': 1},
-      host: _hostSf,
+      '/api/v3/theme/comic/count',
+      params: {'free_type': 1, 'limit': 500, 'offset': 0, '_update': true},
+      host: _hostSd,
     );
-    return (data['theme'] as List).map((e) => Theme.fromJson(e)).toList();
+    return (data['list'] as List).map((e) => Theme.fromJson(e)).toList();
   }
 
   // 3. 推荐漫画

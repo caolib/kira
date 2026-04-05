@@ -14,6 +14,9 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
+  static const _searchInitCacheKey = 'search_init_v2';
+  static const _searchInitCacheTtl = Duration(days: 3);
+
   final _api = ApiClient();
   final _searchController = TextEditingController();
   List<String> _keywords = [];
@@ -32,7 +35,6 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
-    _loadFromCache();
     _loadInit();
   }
 
@@ -42,22 +44,23 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  Future<void> _loadFromCache() async {
-    final cached = await _cache.get('search_init');
-    if (cached != null && _loading) {
-      setState(() {
-        _keywords = List<String>.from(cached['keywords'] ?? []);
-        _tags = (cached['tags'] as List?)
-                ?.map((t) => m.Theme.fromJson(t))
-                .toList() ??
-            [];
-        _loading = false;
-      });
-    }
-  }
-
   Future<void> _loadInit() async {
     try {
+      final cached = await _cache.get(_searchInitCacheKey);
+      if (cached != null) {
+        if (!mounted) return;
+        setState(() {
+          _keywords = List<String>.from(cached['keywords'] ?? []);
+          _tags =
+              (cached['tags'] as List?)
+                  ?.map((t) => m.Theme.fromJson(t))
+                  .toList() ??
+              [];
+          _loading = false;
+        });
+        return;
+      }
+
       final keywordsFuture = _api.getHotKeywords();
       final tagsFuture = _api.getComicTags();
       final keywords = await keywordsFuture;
@@ -68,10 +71,10 @@ class _SearchPageState extends State<SearchPage> {
         _tags = tags;
         _loading = false;
       });
-      _cache.put('search_init', {
+      _cache.put(_searchInitCacheKey, {
         'keywords': keywords,
         'tags': tags.map((t) => t.toJson()).toList(),
-      });
+      }, ttl: _searchInitCacheTtl);
     } catch (e) {
       debugPrint('SearchPage loadInit error: $e');
       if (mounted) setState(() => _loading = false);
@@ -131,8 +134,7 @@ class _SearchPageState extends State<SearchPage> {
     _loadingMore = true;
     if (_searchQuery != null) {
       try {
-        final result =
-            await _api.searchComics(_searchQuery!, offset: _offset);
+        final result = await _api.searchComics(_searchQuery!, offset: _offset);
         setState(() {
           _comics.addAll(result.list);
           _offset = _comics.length;
@@ -142,6 +144,20 @@ class _SearchPageState extends State<SearchPage> {
       await _loadComics(reset: false);
     }
     _loadingMore = false;
+  }
+
+  void _selectTag(String? tagPathWord) {
+    _searchController.clear();
+    setState(() {
+      _selectedTag = tagPathWord;
+      _searchQuery = null;
+      _offset = 0;
+      _total = 0;
+      _comics = [];
+    });
+    if (tagPathWord != null) {
+      _loadComics();
+    }
   }
 
   void _clearSearch() {
@@ -179,7 +195,9 @@ class _SearchPageState extends State<SearchPage> {
       },
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.of(context).padding.top),
+          ),
           // 搜索框
           SliverToBoxAdapter(
             child: Padding(
@@ -196,7 +214,7 @@ class _SearchPageState extends State<SearchPage> {
                         IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: _clearSearch,
-                        )
+                        ),
                       ]
                     : null,
                 onSubmitted: _doSearch,
@@ -217,12 +235,18 @@ class _SearchPageState extends State<SearchPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.local_fire_department,
-                            size: 20, color: cs.primary),
+                        Icon(
+                          Icons.local_fire_department,
+                          size: 20,
+                          color: cs.primary,
+                        ),
                         const SizedBox(width: 6),
-                        Text('热门搜索',
-                            style: tt.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          '热门搜索',
+                          style: tt.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -230,12 +254,17 @@ class _SearchPageState extends State<SearchPage> {
                       spacing: 8,
                       runSpacing: 8,
                       children: _keywords
-                          .map((k) => ActionChip(
-                                label: Text(k),
-                                onPressed: () => _onKeywordTap(k),
-                                avatar: Icon(Icons.trending_up,
-                                    size: 16, color: cs.primary),
-                              ))
+                          .map(
+                            (k) => ActionChip(
+                              label: Text(k),
+                              onPressed: () => _onKeywordTap(k),
+                              avatar: Icon(
+                                Icons.trending_up,
+                                size: 16,
+                                color: cs.primary,
+                              ),
+                            ),
+                          )
                           .toList(),
                     ),
                     const SizedBox(height: 20),
@@ -243,8 +272,8 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ),
             ),
-          // 分类标签
-          if (_searchQuery == null && !_searching)
+          // 全部标签
+          if (_tags.isNotEmpty && _searchQuery == null && !_searching)
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
@@ -255,28 +284,44 @@ class _SearchPageState extends State<SearchPage> {
                       children: [
                         Icon(Icons.category, size: 20, color: cs.primary),
                         const SizedBox(width: 6),
-                        Text('分类',
-                            style: tt.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          '全部标签',
+                          style: tt.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_tags.length} 个',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _tags.map((t) {
-                        final selected = _selectedTag == t.pathWord;
-                        return FilterChip(
-                          label: Text(t.name),
-                          selected: selected,
+                      children: [
+                        FilterChip(
+                          label: const Text('全部'),
+                          selected: _selectedTag == null,
                           showCheckmark: false,
-                          onSelected: (v) {
-                            setState(() =>
-                                _selectedTag = v ? t.pathWord : null);
-                            if (v) _loadComics();
-                          },
-                        );
-                      }).toList(),
+                          onSelected: (_) => _selectTag(null),
+                        ),
+                        ..._tags.map((t) {
+                          final selected = _selectedTag == t.pathWord;
+                          final countLabel = t.count > 0 ? ' ${t.count}' : '';
+                          return FilterChip(
+                            label: Text('${t.name}$countLabel'),
+                            selected: selected,
+                            showCheckmark: false,
+                            onSelected: (v) =>
+                                _selectTag(v ? t.pathWord : null),
+                          );
+                        }),
+                      ],
                     ),
                     if (_comics.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -321,22 +366,18 @@ class _SearchPageState extends State<SearchPage> {
             SliverPadding(
               padding: EdgeInsets.symmetric(horizontal: hp),
               sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) {
-                    final c = _comics[i];
-                    return _ComicGridItem(
-                      comic: c,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ComicDetailPage(pathWord: c.pathWord),
-                        ),
+                delegate: SliverChildBuilderDelegate((_, i) {
+                  final c = _comics[i];
+                  return _ComicGridItem(
+                    comic: c,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ComicDetailPage(pathWord: c.pathWord),
                       ),
-                    );
-                  },
-                  childCount: _comics.length,
-                ),
+                    ),
+                  );
+                }, childCount: _comics.length),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 130,
                   childAspectRatio: 0.55,
@@ -376,15 +417,21 @@ class _ComicGridItem extends StatelessWidget {
                 placeholder: (_, _) => Container(
                   color: cs.surfaceContainerHighest,
                   child: Center(
-                    child: Icon(Icons.image,
-                        color: cs.onSurfaceVariant, size: 32),
+                    child: Icon(
+                      Icons.image,
+                      color: cs.onSurfaceVariant,
+                      size: 32,
+                    ),
                   ),
                 ),
                 errorWidget: (_, _, _) => Container(
                   color: cs.surfaceContainerHighest,
                   child: Center(
-                    child: Icon(Icons.broken_image,
-                        color: cs.onSurfaceVariant, size: 32),
+                    child: Icon(
+                      Icons.broken_image,
+                      color: cs.onSurfaceVariant,
+                      size: 32,
+                    ),
                   ),
                 ),
               ),
