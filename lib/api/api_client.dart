@@ -91,8 +91,13 @@ class ApiClient {
               final nameValue = raw.split(';').first.trim();
               final eqIdx = nameValue.indexOf('=');
               if (eqIdx > 0) {
-                _cookies[host]![nameValue.substring(0, eqIdx)] = nameValue
-                    .substring(eqIdx + 1);
+                final name = nameValue.substring(0, eqIdx);
+                final value = nameValue.substring(eqIdx + 1);
+                if (value.isEmpty || value == '""') {
+                  _cookies[host]!.remove(name);
+                } else {
+                  _cookies[host]![name] = value;
+                }
               }
             }
           }
@@ -177,6 +182,17 @@ class ApiClient {
   /// 获取个人信息
   Future<Map<String, dynamic>> getUserInfo() async {
     return await _get('/api/v3/member/info', host: _hostSf);
+  }
+
+  Future<void> logout() async {
+    await _dio.post(
+      _url('/api/v3/logout', _hostSf),
+      options: Options(contentType: 'application/x-www-form-urlencoded'),
+    );
+  }
+
+  void clearAuthState() {
+    _cookies.clear();
   }
 
   /// 获取浏览记录

@@ -112,6 +112,7 @@ class UserManager extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    ApiClient().clearAuthState();
     _token = null;
     _userId = null;
     _username = null;

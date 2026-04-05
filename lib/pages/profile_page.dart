@@ -64,7 +64,13 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
     if (confirm == true) {
-      await _user.logout();
+      try {
+        await ApiClient().logout();
+      } catch (e) {
+        debugPrint('ProfilePage logout error: $e');
+      } finally {
+        await _user.logout();
+      }
     }
   }
 
