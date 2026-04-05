@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
+
+class SavedCredential {
+  final String username;
+  final String password;
+
+  const SavedCredential({required this.username, required this.password});
+
+  factory SavedCredential.fromJson(Map<String, dynamic> json) =>
+      SavedCredential(
+        username: json['username']?.toString() ?? '',
+        password: json['password']?.toString() ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {'username': username, 'password': password};
+}
 
 class UserManager extends ChangeNotifier {
   static final UserManager _instance = UserManager._();
@@ -14,6 +30,7 @@ class UserManager extends ChangeNotifier {
   static const _keyUserId = 'user_id';
   static const _keySavedUsername = 'saved_username';
   static const _keySavedPassword = 'saved_password';
+  static const _keySavedCredentials = 'saved_credentials';
   static const _keyThemeMode = 'theme_mode';
   static const _keyBookshelfOrdering = 'bookshelf_ordering';
   static const _keyReaderMode = 'reader_mode';
@@ -33,6 +50,7 @@ class UserManager extends ChangeNotifier {
   String? _userId;
   String? _savedUsername;
   String? _savedPassword;
+  List<SavedCredential> _savedCredentials = [];
   ThemeMode _themeMode = ThemeMode.system;
   String _bookshelfOrdering = '-datetime_updated';
   int _readerMode = 0;
@@ -52,6 +70,8 @@ class UserManager extends ChangeNotifier {
   String? get userId => _userId;
   String? get savedUsername => _savedUsername;
   String? get savedPassword => _savedPassword;
+  List<SavedCredential> get savedCredentials =>
+      List.unmodifiable(_savedCredentials);
   ThemeMode get themeMode => _themeMode;
   String get bookshelfOrdering => _bookshelfOrdering;
   int get readerMode => _readerMode;
@@ -74,6 +94,35 @@ class UserManager extends ChangeNotifier {
     _userId = prefs.getString(_keyUserId);
     _savedUsername = prefs.getString(_keySavedUsername);
     _savedPassword = prefs.getString(_keySavedPassword);
+    final savedCredentialsRaw = prefs.getString(_keySavedCredentials);
+    if (savedCredentialsRaw != null && savedCredentialsRaw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(savedCredentialsRaw);
+        if (decoded is List) {
+          _savedCredentials = decoded
+              .whereType<Map>()
+              .map(
+                (e) => SavedCredential.fromJson(Map<String, dynamic>.from(e)),
+              )
+              .where((e) => e.username.isNotEmpty)
+              .toList();
+        }
+      } catch (_) {
+        _savedCredentials = [];
+      }
+    }
+    if (_savedCredentials.isEmpty &&
+        _savedUsername != null &&
+        _savedUsername!.isNotEmpty &&
+        _savedPassword != null) {
+      _savedCredentials = [
+        SavedCredential(username: _savedUsername!, password: _savedPassword!),
+      ];
+      await prefs.setString(
+        _keySavedCredentials,
+        jsonEncode(_savedCredentials.map((e) => e.toJson()).toList()),
+      );
+    }
     _themeMode = ThemeMode.values[prefs.getInt(_keyThemeMode) ?? 0];
     _bookshelfOrdering =
         prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
@@ -131,17 +180,53 @@ class UserManager extends ChangeNotifier {
   Future<void> saveCredentials(String username, String password) async {
     _savedUsername = username;
     _savedPassword = password;
+    _savedCredentials.removeWhere((e) => e.username == username);
+    _savedCredentials.insert(
+      0,
+      SavedCredential(username: username, password: password),
+    );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySavedUsername, username);
     await prefs.setString(_keySavedPassword, password);
+    await prefs.setString(
+      _keySavedCredentials,
+      jsonEncode(_savedCredentials.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<void> clearCredentials() async {
     _savedUsername = null;
     _savedPassword = null;
+    _savedCredentials = [];
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keySavedUsername);
     await prefs.remove(_keySavedPassword);
+    await prefs.remove(_keySavedCredentials);
+  }
+
+  Future<void> removeSavedCredential(String username) async {
+    _savedCredentials.removeWhere((e) => e.username == username);
+    if (_savedUsername == username) {
+      if (_savedCredentials.isNotEmpty) {
+        _savedUsername = _savedCredentials.first.username;
+        _savedPassword = _savedCredentials.first.password;
+      } else {
+        _savedUsername = null;
+        _savedPassword = null;
+      }
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (_savedUsername == null) {
+      await prefs.remove(_keySavedUsername);
+      await prefs.remove(_keySavedPassword);
+    } else {
+      await prefs.setString(_keySavedUsername, _savedUsername!);
+      await prefs.setString(_keySavedPassword, _savedPassword ?? '');
+    }
+    await prefs.setString(
+      _keySavedCredentials,
+      jsonEncode(_savedCredentials.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

@@ -45,6 +45,17 @@ class _ProfilePageState extends State<ProfilePage> {
     if (result == true) setState(() {});
   }
 
+  void _switchAccount() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+    if (result == true && mounted) {
+      showToast(context, '账号已切换');
+      setState(() {});
+    }
+  }
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -323,32 +334,48 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildUserActionButton(
-                icon: Icons.refresh,
-                label: '刷新用户信息',
-                onPressed: () => _refreshUserInfo(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildUserActionButton(
-                icon: Icons.copy_outlined,
-                label: '复制令牌',
-                onPressed: () => _copyToken(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildUserActionButton(
-                icon: Icons.logout,
-                label: '退出登录',
-                onPressed: () => _logout(),
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final buttonWidth = (constraints.maxWidth - 8) / 2;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                SizedBox(
+                  width: buttonWidth,
+                  child: _buildUserActionButton(
+                    icon: Icons.refresh,
+                    label: '刷新用户',
+                    onPressed: () => _refreshUserInfo(),
+                  ),
+                ),
+                SizedBox(
+                  width: buttonWidth,
+                  child: _buildUserActionButton(
+                    icon: Icons.switch_account,
+                    label: '切换账号',
+                    onPressed: () => _switchAccount(),
+                  ),
+                ),
+                SizedBox(
+                  width: buttonWidth,
+                  child: _buildUserActionButton(
+                    icon: Icons.copy_outlined,
+                    label: '复制令牌',
+                    onPressed: () => _copyToken(),
+                  ),
+                ),
+                SizedBox(
+                  width: buttonWidth,
+                  child: _buildUserActionButton(
+                    icon: Icons.logout,
+                    label: '退出登录',
+                    onPressed: () => _logout(),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -400,6 +427,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _api = ApiClient();
+  final _user = UserManager();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _tokenCtrl = TextEditingController();
@@ -412,22 +440,53 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    final user = UserManager();
-    if (user.savedUsername != null) {
-      _usernameCtrl.text = user.savedUsername!;
+    if (_user.savedUsername != null) {
+      _usernameCtrl.text = _user.savedUsername!;
       _rememberMe = true;
     }
-    if (user.savedPassword != null) {
-      _passwordCtrl.text = user.savedPassword!;
+    if (_user.savedPassword != null) {
+      _passwordCtrl.text = _user.savedPassword!;
     }
+    _user.addListener(_onUserChanged);
   }
 
   @override
   void dispose() {
+    _user.removeListener(_onUserChanged);
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _tokenCtrl.dispose();
     super.dispose();
+  }
+
+  void _onUserChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _applySavedCredential(SavedCredential credential) {
+    setState(() {
+      _useToken = false;
+      _rememberMe = true;
+      _error = null;
+      _usernameCtrl.text = credential.username;
+      _passwordCtrl.text = credential.password;
+    });
+  }
+
+  Future<void> _removeSavedCredential(SavedCredential credential) async {
+    await _user.removeSavedCredential(credential.username);
+    if (!mounted) return;
+    if (_usernameCtrl.text.trim() == credential.username) {
+      setState(() {
+        final next = _user.savedCredentials.isNotEmpty
+            ? _user.savedCredentials.first
+            : null;
+        _usernameCtrl.text = next?.username ?? '';
+        _passwordCtrl.text = next?.password ?? '';
+        _rememberMe = next != null;
+      });
+    }
+    showToast(context, '已移除 ${credential.username}');
   }
 
   Future<void> _goRegister() async {
@@ -466,7 +525,7 @@ class _LoginPageState extends State<LoginPage> {
       if (_rememberMe) {
         await UserManager().saveCredentials(username, password);
       } else {
-        await UserManager().clearCredentials();
+        await UserManager().removeSavedCredential(username);
       }
       await UserManager().saveLogin(
         token: result['token'],
@@ -580,6 +639,22 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             if (!_useToken) ...[
+              if (_user.savedCredentials.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _user.savedCredentials.map((credential) {
+                    return InputChip(
+                      label: Text(credential.username),
+                      avatar: const Icon(Icons.person, size: 18),
+                      onPressed: () => _applySavedCredential(credential),
+                      onDeleted: () => _removeSavedCredential(credential),
+                      deleteIcon: const Icon(Icons.close, size: 18),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
               TextField(
                 controller: _usernameCtrl,
                 decoration: InputDecoration(
