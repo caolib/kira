@@ -16,9 +16,14 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   static const _searchInitCacheKey = 'search_init_v2';
   static const _searchInitCacheTtl = Duration(days: 3);
+  static const _tagSpacing = 8.0;
+  static const _tagRows = 4;
+  static const _tagRowHeight = 36.0;
+  static const _tagScrollbarSpace = 20.0;
 
   final _api = ApiClient();
   final _searchController = TextEditingController();
+  final _tagScrollController = ScrollController();
   List<String> _keywords = [];
   List<m.Theme> _tags = [];
   String? _selectedTag;
@@ -40,8 +45,23 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   void dispose() {
+    _tagScrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<List<_TagChipData>> _buildTagColumns() {
+    final items = _tags.map((t) {
+      final countLabel = t.count > 0 ? ' ${t.count}' : '';
+      return _TagChipData(label: '${t.name}$countLabel', pathWord: t.pathWord);
+    }).toList();
+
+    final columns = <List<_TagChipData>>[];
+    for (var i = 0; i < items.length; i += _tagRows) {
+      final end = (i + _tagRows < items.length) ? i + _tagRows : items.length;
+      columns.add(items.sublist(i, end));
+    }
+    return columns;
   }
 
   Future<void> _loadInit() async {
@@ -182,6 +202,11 @@ class _SearchPageState extends State<SearchPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth.clamp(0.0, 900.0);
     final hp = (screenWidth - contentWidth) / 2 + 16;
+    const tagSectionHeight =
+        _tagRows * _tagRowHeight +
+        (_tagRows - 1) * _tagSpacing +
+        _tagScrollbarSpace;
+    final tagColumns = _buildTagColumns();
 
     if (_loading) return const Center(child: CircularProgressIndicator());
 
@@ -300,28 +325,69 @@ class _SearchPageState extends State<SearchPage> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        FilterChip(
-                          label: const Text('全部'),
-                          selected: _selectedTag == null,
-                          showCheckmark: false,
-                          onSelected: (_) => _selectTag(null),
+                    SizedBox(
+                      height: tagSectionHeight,
+                      child: Scrollbar(
+                        controller: _tagScrollController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _tagScrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.only(
+                            bottom: _tagScrollbarSpace,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var i = 0; i < tagColumns.length; i++)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    right: i == tagColumns.length - 1
+                                        ? 0
+                                        : _tagSpacing,
+                                  ),
+                                  child: IntrinsicWidth(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        for (
+                                          var j = 0;
+                                          j < tagColumns[i].length;
+                                          j++
+                                        ) ...[
+                                          SizedBox(
+                                            height: _tagRowHeight,
+                                            child: FilterChip(
+                                              label: Text(
+                                                tagColumns[i][j].label,
+                                              ),
+                                              selected:
+                                                  _selectedTag ==
+                                                  tagColumns[i][j].pathWord,
+                                              showCheckmark: false,
+                                              onSelected: (selected) =>
+                                                  _selectTag(
+                                                    selected
+                                                        ? tagColumns[i][j]
+                                                              .pathWord
+                                                        : tagColumns[i][j]
+                                                              .pathWord,
+                                                  ),
+                                            ),
+                                          ),
+                                          if (j != tagColumns[i].length - 1)
+                                            const SizedBox(height: _tagSpacing),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                        ..._tags.map((t) {
-                          final selected = _selectedTag == t.pathWord;
-                          final countLabel = t.count > 0 ? ' ${t.count}' : '';
-                          return FilterChip(
-                            label: Text('${t.name}$countLabel'),
-                            selected: selected,
-                            showCheckmark: false,
-                            onSelected: (v) =>
-                                _selectTag(v ? t.pathWord : null),
-                          );
-                        }),
-                      ],
+                      ),
                     ),
                     if (_comics.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -391,6 +457,13 @@ class _SearchPageState extends State<SearchPage> {
       ),
     );
   }
+}
+
+class _TagChipData {
+  final String label;
+  final String? pathWord;
+
+  const _TagChipData({required this.label, this.pathWord});
 }
 
 class _ComicGridItem extends StatelessWidget {

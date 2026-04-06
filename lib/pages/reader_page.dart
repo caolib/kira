@@ -48,7 +48,8 @@ class _ReaderPageState extends State<ReaderPage> {
   int _currentPage = 1;
   bool _jumpingScroll = false;
   bool _isDraggingSlider = false;
-  bool _autoAdvancingScrollChapter = false;
+  bool _autoAdvancingChapter = false;
+  double _pageModeChapterOverscroll = 0;
   bool _volumeChannelAvailable = true;
   final Map<int, int> _imageReloadVersions = {};
   final Map<int, int> _imageRetryCounts = {};
@@ -124,6 +125,7 @@ class _ReaderPageState extends State<ReaderPage> {
         _detail = detail;
         _loading = false;
         _currentPage = startPage;
+        _pageModeChapterOverscroll = 0;
         _imageReloadVersions.clear();
         _imageRetryCounts.clear();
         _imageRetryTokens.clear();
@@ -144,10 +146,10 @@ class _ReaderPageState extends State<ReaderPage> {
           });
         }
       }
-      _autoAdvancingScrollChapter = false;
+      _autoAdvancingChapter = false;
       _saveReadingHistory();
     } catch (_) {
-      _autoAdvancingScrollChapter = false;
+      _autoAdvancingChapter = false;
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -185,15 +187,15 @@ class _ReaderPageState extends State<ReaderPage> {
     if (_detail == null) return;
     final imageCount = _detail!.contents.length;
     final pageIndex = _pageController.page?.round() ?? 0;
-    if (pageIndex >= imageCount) {
-      // 当前在过渡页，跳转下一章
+    if (pageIndex >= imageCount - 1) {
+      // 当前在最后一张图，继续翻页时跳转下一章。
       if (_detail!.next != null) {
         _goChapter(_detail!.next);
       } else {
         showToast(context, '已经是最后一章了');
       }
     } else {
-      // 正常翻页（包括从最后一张图翻到过渡页）
+      // 正常翻页。
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -426,7 +428,7 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   bool _shouldAutoAdvanceScrollChapter(ScrollNotification notification) {
-    if (_detail?.next == null || _loading || _autoAdvancingScrollChapter) {
+    if (_detail?.next == null || _loading || _autoAdvancingChapter) {
       return false;
     }
 
@@ -445,10 +447,65 @@ class _ReaderPageState extends State<ReaderPage> {
 
   void _autoAdvanceToNextChapter() {
     final nextUuid = _detail?.next;
-    if (nextUuid == null || _autoAdvancingScrollChapter) return;
+    if (nextUuid == null || _autoAdvancingChapter) return;
 
-    _autoAdvancingScrollChapter = true;
+    _setPageModeChapterOverscroll(0);
+    _autoAdvancingChapter = true;
     _goChapter(nextUuid);
+  }
+
+  void _setPageModeChapterOverscroll(double value) {
+    final nextValue = value < 0 ? 0.0 : value;
+    if ((_pageModeChapterOverscroll - nextValue).abs() < 0.5) return;
+    if (!mounted) {
+      _pageModeChapterOverscroll = nextValue;
+      return;
+    }
+    setState(() => _pageModeChapterOverscroll = nextValue);
+  }
+
+  void _resetPageModeChapterOverscroll() {
+    _setPageModeChapterOverscroll(0);
+  }
+
+  Offset _pageModeChapterTranslation() {
+    final offset = _pageModeChapterOverscroll;
+    if (offset <= 0) return Offset.zero;
+    if (_isVerticalPageMode) return Offset(0, -offset);
+    return Offset(_user.readerPageRTL ? offset : -offset, 0);
+  }
+
+  bool _shouldAutoAdvancePageChapter(ScrollNotification notification) {
+    if (_detail?.next == null || _loading || _autoAdvancingChapter) {
+      _resetPageModeChapterOverscroll();
+      return false;
+    }
+
+    final imageCount = _detail?.contents.length ?? 0;
+    final currentIndex = (_pageController.page ?? (_currentPage - 1).toDouble())
+        .round();
+    final isLastPage = imageCount > 0 && currentIndex >= imageCount - 1;
+    if (!isLastPage) {
+      _resetPageModeChapterOverscroll();
+      return false;
+    }
+
+    if (notification is ScrollStartNotification ||
+        notification is ScrollEndNotification) {
+      _resetPageModeChapterOverscroll();
+      return false;
+    }
+
+    if (notification is! OverscrollNotification) return false;
+
+    final triggerThreshold = notification.metrics.viewportDimension / 3;
+    _setPageModeChapterOverscroll(
+      (_pageModeChapterOverscroll + notification.overscroll.abs()).clamp(
+        0.0,
+        triggerThreshold,
+      ),
+    );
+    return _pageModeChapterOverscroll >= triggerThreshold;
   }
 
   Widget _buildScrollMode() {
@@ -518,11 +575,17 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildChapterEndContent({required String hint}) {
-    final hasNext = _detail?.next != null;
+    final nextUuid = _detail?.next;
+    final hasNext = nextUuid != null;
     final buttonStyle = OutlinedButton.styleFrom(
       foregroundColor: Colors.white,
       side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
       backgroundColor: Colors.white.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+    );
+    final primaryButtonStyle = FilledButton.styleFrom(
+      foregroundColor: Colors.white,
+      backgroundColor: Colors.white.withValues(alpha: 0.18),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
     );
 
@@ -539,23 +602,139 @@ class _ReaderPageState extends State<ReaderPage> {
             letterSpacing: 1.2,
           ),
         ),
-        const SizedBox(height: 16),
+        if (hasNext) ...[
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () => _goChapter(nextUuid),
+            icon: const Icon(Icons.skip_next),
+            label: const Text('下一章'),
+            style: primaryButtonStyle,
+          ),
+        ],
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.list),
+          label: const Text('目录'),
+          style: buttonStyle,
+        ),
+        const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: _showChapterComments,
           icon: const Icon(Icons.forum_outlined),
-          label: const Text('查看本章评论'),
+          label: const Text('评论'),
           style: buttonStyle,
         ),
-        if (!hasNext) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.list),
-            label: const Text('返回目录'),
-            style: buttonStyle,
-          ),
-        ],
       ],
+    );
+  }
+
+  Widget _buildChapterEndActionsRow() {
+    final nextUuid = _detail?.next;
+    final hasNext = nextUuid != null;
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
+      backgroundColor: Colors.white.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+    final primaryButtonStyle = FilledButton.styleFrom(
+      foregroundColor: Colors.white,
+      backgroundColor: Colors.white.withValues(alpha: 0.18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.list),
+          label: const Text('目录'),
+          style: buttonStyle,
+        ),
+        OutlinedButton.icon(
+          onPressed: _showChapterComments,
+          icon: const Icon(Icons.forum_outlined),
+          label: const Text('评论'),
+          style: buttonStyle,
+        ),
+        if (hasNext)
+          FilledButton.icon(
+            onPressed: () => _goChapter(nextUuid),
+            icon: const Icon(Icons.skip_next),
+            label: const Text('下一章'),
+            style: primaryButtonStyle,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPageModeEndActions() {
+    final nextUuid = _detail?.next;
+    final hasNext = nextUuid != null;
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+      backgroundColor: Colors.black.withValues(alpha: 0.55),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      minimumSize: const Size(0, 40),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+    final primaryButtonStyle = FilledButton.styleFrom(
+      foregroundColor: Colors.white,
+      backgroundColor: Colors.white.withValues(alpha: 0.16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      minimumSize: const Size(0, 40),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+
+    return SafeArea(
+      top: false,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(12, 0, 12, _showToolbar ? 92 : 12),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 520),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.list_rounded, size: 18),
+                    label: const Text('目录'),
+                    style: buttonStyle,
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _showChapterComments,
+                    icon: const Icon(Icons.forum_outlined, size: 18),
+                    label: const Text('评论'),
+                    style: buttonStyle,
+                  ),
+                  if (hasNext)
+                    FilledButton.icon(
+                      onPressed: () => _goChapter(nextUuid),
+                      icon: const Icon(Icons.skip_next_rounded, size: 18),
+                      label: const Text('下一章'),
+                      style: primaryButtonStyle,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -564,10 +743,27 @@ class _ReaderPageState extends State<ReaderPage> {
       color: Colors.black,
       child: SizedBox(
         height: _scrollModeTailExtent(context),
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: _buildChapterEndContent(hint: '继续下滑进入下一章'),
+            padding: const EdgeInsets.fromLTRB(32, 72, 32, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _detail?.next != null ? '继续下滑或点击按钮进入下一章' : '已经是最后一章',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    height: 1.6,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildChapterEndActionsRow(),
+              ],
+            ),
           ),
         ),
       ),
@@ -622,35 +818,52 @@ class _ReaderPageState extends State<ReaderPage> {
     final imageCount = _detail!.contents.length;
     return GestureDetector(
       onTapUp: _handlePageModeTap,
-      child: PageView.builder(
-        controller: _pageController,
-        scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
-        reverse: !_isVerticalPageMode && _user.readerPageRTL,
-        allowImplicitScrolling: true,
-        itemCount: imageCount + 1,
-        onPageChanged: (index) {
-          setState(() {
-            if (index < imageCount) {
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (_shouldAutoAdvancePageChapter(notification)) {
+            _autoAdvanceToNextChapter();
+          }
+          return false;
+        },
+        child: PageView.builder(
+          controller: _pageController,
+          scrollDirection: _isVerticalPageMode
+              ? Axis.vertical
+              : Axis.horizontal,
+          reverse: !_isVerticalPageMode && _user.readerPageRTL,
+          allowImplicitScrolling: true,
+          itemCount: imageCount,
+          onPageChanged: (index) {
+            setState(() {
               _currentPage = index + 1;
-            }
-            // 过渡页不更新 _currentPage
-            if (!_isDraggingSlider) _showToolbar = false;
-          });
-          if (index < imageCount) _saveReadingHistory();
-        },
-        itemBuilder: (_, i) {
-          if (i < imageCount) return Center(child: _buildImage(i));
-          // 章末过渡页
-          return ColoredBox(
-            color: Colors.black,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: _buildChapterEndContent(hint: '继续翻页进入下一章'),
+              if (!_isDraggingSlider) _showToolbar = false;
+            });
+            _resetPageModeChapterOverscroll();
+            _saveReadingHistory();
+          },
+          itemBuilder: (_, i) {
+            if (i < imageCount - 1) return Center(child: _buildImage(i));
+
+            final translation = _pageModeChapterTranslation();
+            return AnimatedContainer(
+              duration: _pageModeChapterOverscroll == 0
+                  ? const Duration(milliseconds: 180)
+                  : Duration.zero,
+              curve: Curves.easeOutCubic,
+              transform: Matrix4.translationValues(
+                translation.dx,
+                translation.dy,
+                0,
               ),
-            ),
-          );
-        },
+              child: Stack(
+                children: [
+                  Center(child: _buildImage(i)),
+                  _buildPageModeEndActions(),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -664,13 +877,7 @@ class _ReaderPageState extends State<ReaderPage> {
       left: 0,
       right: 0,
       child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent],
-          ),
-        ),
+        color: Colors.black,
         child: SafeArea(
           bottom: false,
           child: Padding(
@@ -708,13 +915,7 @@ class _ReaderPageState extends State<ReaderPage> {
       left: 0,
       right: 0,
       child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent],
-          ),
-        ),
+        color: Colors.black,
         child: SafeArea(
           top: false,
           child: Padding(
@@ -797,6 +998,11 @@ class _ReaderPageState extends State<ReaderPage> {
                       ),
                     ),
                     const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.list, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                      tooltip: '目录',
+                    ),
                     IconButton(
                       icon: const Icon(
                         Icons.forum_outlined,
@@ -993,7 +1199,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              // 阅读模式
               Text('阅读模式', style: tt.bodyMedium),
               const SizedBox(height: 8),
               SizedBox(
