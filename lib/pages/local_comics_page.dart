@@ -438,6 +438,9 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width,
+      ),
       backgroundColor: Colors.transparent,
       builder: (_) => ChapterCommentsSheet(
         chapterUuid: detail.uuid,

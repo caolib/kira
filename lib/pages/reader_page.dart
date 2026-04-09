@@ -777,6 +777,9 @@ class _ReaderPageState extends State<ReaderPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width,
+      ),
       backgroundColor: Colors.transparent,
       builder: (_) => ChapterCommentsSheet(
         chapterUuid: detail.uuid,

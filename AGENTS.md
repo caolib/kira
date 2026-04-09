@@ -33,8 +33,5 @@ PRs should include a short behavior summary, linked issues when applicable, test
 ## Security & Release Notes
 Do not commit signing material such as `android/key.properties` or keystores. The GitHub release workflow expects Android signing secrets and publishes tag-based releases named `v*`.
 
-## flutter
-Don't use the flutter test, analyze, pub get, etc. commands!
-
 ## Notification
 When you have completed all the tasks given by the user and have finished the final summary, use the notification skill to notify the user that the task is complete, title="kira", message="All tasks have been completed"

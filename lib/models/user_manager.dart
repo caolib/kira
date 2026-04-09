@@ -39,6 +39,11 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderPageRTL = 'reader_page_rtl';
   static const _keyReaderPageVertical = 'reader_page_vertical';
   static const _keyReaderDimming = 'reader_dimming';
+  static const _keyCommentCompactLayout = 'comment_compact_layout';
+  static const _keyCommentShowAvatar = 'comment_show_avatar';
+  static const _keyCommentShowUserName = 'comment_show_user_name';
+  static const _keyCommentShowTime = 'comment_show_time';
+  static const _keyCommentFontScale = 'comment_font_scale';
   static const _keyAutoCheckUpdate = 'auto_check_update';
   static const _keySkippedUpdateVersion = 'skipped_update_version';
   static const _keyAutoLogin = 'auto_login';
@@ -59,6 +64,11 @@ class UserManager extends ChangeNotifier {
   bool _readerPageRTL = false;
   bool _readerPageVertical = false;
   double _readerDimming = 0.3;
+  bool _commentCompactLayout = true;
+  bool _commentShowAvatar = true;
+  bool _commentShowUserName = true;
+  bool _commentShowTime = true;
+  double _commentFontScale = 1.0;
   bool _autoCheckUpdate = true;
   String? _skippedUpdateVersion;
   bool _autoLogin = false;
@@ -80,6 +90,11 @@ class UserManager extends ChangeNotifier {
   bool get readerPageRTL => _readerPageRTL;
   bool get readerPageVertical => _readerPageVertical;
   double get readerDimming => _readerDimming;
+  bool get commentCompactLayout => _commentCompactLayout;
+  bool get commentShowAvatar => _commentShowAvatar;
+  bool get commentShowUserName => _commentShowUserName;
+  bool get commentShowTime => _commentShowTime;
+  double get commentFontScale => _commentFontScale;
   bool get autoCheckUpdate => _autoCheckUpdate;
   String? get skippedUpdateVersion => _skippedUpdateVersion;
   bool get autoLogin => _autoLogin;
@@ -132,6 +147,11 @@ class UserManager extends ChangeNotifier {
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
     _readerPageVertical = prefs.getBool(_keyReaderPageVertical) ?? false;
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
+    _commentCompactLayout = prefs.getBool(_keyCommentCompactLayout) ?? true;
+    _commentShowAvatar = prefs.getBool(_keyCommentShowAvatar) ?? true;
+    _commentShowUserName = prefs.getBool(_keyCommentShowUserName) ?? true;
+    _commentShowTime = prefs.getBool(_keyCommentShowTime) ?? true;
+    _commentFontScale = prefs.getDouble(_keyCommentFontScale) ?? 1.0;
     _autoCheckUpdate = prefs.getBool(_keyAutoCheckUpdate) ?? true;
     _skippedUpdateVersion = prefs.getString(_keySkippedUpdateVersion);
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
@@ -282,6 +302,41 @@ class UserManager extends ChangeNotifier {
     _readerDimming = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_keyReaderDimming, value);
+    notifyListeners();
+  }
+
+  Future<void> setCommentCompactLayout(bool compact) async {
+    _commentCompactLayout = compact;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCommentCompactLayout, compact);
+    notifyListeners();
+  }
+
+  Future<void> setCommentShowAvatar(bool enabled) async {
+    _commentShowAvatar = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCommentShowAvatar, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setCommentShowUserName(bool enabled) async {
+    _commentShowUserName = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCommentShowUserName, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setCommentShowTime(bool enabled) async {
+    _commentShowTime = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCommentShowTime, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setCommentFontScale(double scale) async {
+    _commentFontScale = scale;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyCommentFontScale, scale);
     notifyListeners();
   }
 
