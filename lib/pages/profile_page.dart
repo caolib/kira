@@ -872,6 +872,7 @@ class _RegisterPageState extends State<RegisterPage> {
           final results = data['results'];
           msg =
               data['message']?.toString() ??
+              data['detail']?.toString() ??
               (results is Map ? results['detail']?.toString() : null) ??
               msg;
         }

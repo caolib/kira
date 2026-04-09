@@ -240,6 +240,7 @@ class ApiClient {
     String resolveMessage(Map<String, dynamic> data, Response<dynamic>? resp) {
       final results = data['results'];
       return data['message']?.toString() ??
+          data['detail']?.toString() ??
           (results is Map ? results['detail']?.toString() : null) ??
           resp?.statusMessage ??
           '注册失败';
