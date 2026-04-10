@@ -11,6 +11,17 @@ import '../utils/toast.dart';
 import 'browse_history_page.dart';
 import 'local_comics_page.dart';
 
+const _appDisclaimerItems = [
+  '本应用为非官方第三方客户端，仅基于第三方平台提供的接口或公开可访问资源进行内容展示与访问。',
+  '本应用不生产、上传、编辑、修改或预先审查具体展示内容，相关内容均来源于第三方返回结果，开发者无法对其进行完全控制。',
+  '本应用展示的内容中，可能包含成人内容或其他不适宜未成年人浏览的信息；如您未满 18 周岁，或您所在地法律法规禁止访问相关内容，请立即停止使用本应用。',
+  '用户应自行判断相关内容是否适合浏览，并确保其使用行为符合所在地法律法规。',
+  '如第三方内容存在侵权、违法、违规或其他不当情形，相关责任原则上由内容提供方承担；开发者将在收到有效通知后，根据实际情况采取必要处理措施。',
+];
+
+const _appDisclaimerFooter =
+    '继续使用本应用，即表示您已阅读、理解并同意上述说明；如您不同意，请立即停止使用并卸载本应用。';
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -1020,6 +1031,56 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
+class DisclaimerPage extends StatelessWidget {
+  const DisclaimerPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('免责声明')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        children: [
+          Text(
+            '请在使用本应用前仔细阅读以下声明：',
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            color: cs.surfaceContainerLow,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final item in _appDisclaimerItems) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('• ', style: tt.bodyMedium),
+                        Expanded(child: Text(item, style: tt.bodyMedium)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(
+                    _appDisclaimerFooter,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── 关于页 ──
 
 class AboutPage extends StatefulWidget {
@@ -1104,6 +1165,19 @@ class _AboutPageState extends State<AboutPage> {
                       title: const Text('启动时自动检查更新'),
                       value: _user.autoCheckUpdate,
                       onChanged: _user.setAutoCheckUpdate,
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.gavel_outlined),
+                      title: const Text('免责声明'),
+                      subtitle: const Text('查看应用使用声明与内容说明'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DisclaimerPage(),
+                        ),
+                      ),
                     ),
                     const Divider(height: 1),
                     ListTile(

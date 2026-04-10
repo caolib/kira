@@ -47,6 +47,7 @@ class UserManager extends ChangeNotifier {
   static const _keyAutoCheckUpdate = 'auto_check_update';
   static const _keySkippedUpdateVersion = 'skipped_update_version';
   static const _keyAutoLogin = 'auto_login';
+  static const _keyDisclaimerAccepted = 'disclaimer_accepted';
 
   String? _token;
   String? _username;
@@ -72,6 +73,7 @@ class UserManager extends ChangeNotifier {
   bool _autoCheckUpdate = true;
   String? _skippedUpdateVersion;
   bool _autoLogin = false;
+  bool _disclaimerAccepted = false;
 
   String? get token => _token;
   String? get username => _username;
@@ -98,6 +100,7 @@ class UserManager extends ChangeNotifier {
   bool get autoCheckUpdate => _autoCheckUpdate;
   String? get skippedUpdateVersion => _skippedUpdateVersion;
   bool get autoLogin => _autoLogin;
+  bool get disclaimerAccepted => _disclaimerAccepted;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -155,6 +158,7 @@ class UserManager extends ChangeNotifier {
     _autoCheckUpdate = prefs.getBool(_keyAutoCheckUpdate) ?? true;
     _skippedUpdateVersion = prefs.getString(_keySkippedUpdateVersion);
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
+    _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
     notifyListeners();
   }
 
@@ -362,6 +366,13 @@ class UserManager extends ChangeNotifier {
     _autoLogin = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyAutoLogin, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setDisclaimerAccepted(bool accepted) async {
+    _disclaimerAccepted = accepted;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDisclaimerAccepted, accepted);
     notifyListeners();
   }
 
