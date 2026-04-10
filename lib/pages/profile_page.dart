@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../models/app_theme_option.dart';
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
 import '../utils/app_update.dart';
@@ -30,6 +32,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final _user = UserManager();
+  bool _userActionsExpanded = false;
 
   @override
   void initState() {
@@ -121,6 +124,47 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickCustomThemeColor() async {
+    final initialColor = _user.customThemeColor;
+    final color = await showColorPickerDialog(
+      context,
+      initialColor,
+      pickersEnabled: const <ColorPickerType, bool>{
+        ColorPickerType.both: false,
+        ColorPickerType.primary: false,
+        ColorPickerType.accent: false,
+        ColorPickerType.bw: false,
+        ColorPickerType.custom: false,
+        ColorPickerType.wheel: true,
+      },
+      enableShadesSelection: false,
+      enableTonalPalette: false,
+      enableOpacity: false,
+      showColorCode: true,
+      colorCodeHasColor: true,
+      showEditIconButton: true,
+      wheelDiameter: 220,
+      wheelWidth: 20,
+      wheelSquareBorderRadius: 12,
+      wheelHasBorder: true,
+      dialogTitle: const Text('选择主题色'),
+      heading: const Text('点击色盘选择一个自定义主题色'),
+      wheelSubheading: const Text('拖动取色点，实时预览主题色'),
+      borderRadius: 12,
+      constraints: const BoxConstraints(maxWidth: 460),
+    );
+
+    if (_user.themeColor != customThemeOptionId &&
+        color.toARGB32() == initialColor.toARGB32()) {
+      return;
+    }
+
+    await _user.setCustomThemeColor(color);
+    if (mounted) {
+      showToast(context, '主题配色已更新为 ${_colorToHex(color)}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -175,7 +219,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ButtonSegment(
                                     value: ThemeMode.system,
                                     icon: Icon(Icons.settings_brightness),
-                                    label: Text('系统'),
+                                    label: Text('跟随系统'),
                                   ),
                                   ButtonSegment(
                                     value: ThemeMode.light,
@@ -192,6 +236,86 @@ class _ProfilePageState extends State<ProfilePage> {
                                 onSelectionChanged: (v) =>
                                     _user.setThemeMode(v.first),
                               ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '主题配色',
+                              style: tt.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '当前配色：${_user.themeOption.label}${_user.themeColor == customThemeOptionId ? ' ${_colorToHex(_user.customThemeColor)}' : ''}',
+                              style: tt.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                for (final option in appThemeOptions)
+                                  ChoiceChip(
+                                    avatar: CircleAvatar(
+                                      radius: 9,
+                                      backgroundColor: option.seedColor,
+                                    ),
+                                    label: Text(option.label),
+                                    selected: _user.themeColor == option.id,
+                                    selectedColor: option.seedColor.withValues(
+                                      alpha: 0.18,
+                                    ),
+                                    side: BorderSide(
+                                      color: _user.themeColor == option.id
+                                          ? option.seedColor.withValues(
+                                              alpha: 0.65,
+                                            )
+                                          : cs.outlineVariant,
+                                    ),
+                                    labelStyle: tt.bodyMedium?.copyWith(
+                                      color: _user.themeColor == option.id
+                                          ? option.seedColor
+                                          : null,
+                                      fontWeight: _user.themeColor == option.id
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                    onSelected: (_) =>
+                                        _user.setThemeColor(option.id),
+                                  ),
+                                ChoiceChip(
+                                  avatar: CircleAvatar(
+                                    radius: 9,
+                                    backgroundColor: _user.customThemeColor,
+                                  ),
+                                  label: const Text('自定'),
+                                  selected:
+                                      _user.themeColor == customThemeOptionId,
+                                  selectedColor: _user.customThemeColor
+                                      .withValues(alpha: 0.18),
+                                  side: BorderSide(
+                                    color:
+                                        _user.themeColor == customThemeOptionId
+                                        ? _user.customThemeColor.withValues(
+                                            alpha: 0.65,
+                                          )
+                                        : cs.outlineVariant,
+                                  ),
+                                  labelStyle: tt.bodyMedium?.copyWith(
+                                    color:
+                                        _user.themeColor == customThemeOptionId
+                                        ? _user.customThemeColor
+                                        : null,
+                                    fontWeight:
+                                        _user.themeColor == customThemeOptionId
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                  onSelected: (_) => _pickCustomThemeColor(),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -298,96 +422,118 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildUserCard(ColorScheme cs, TextTheme tt) {
-    return Column(
-      children: [
-        Card(
-          color: cs.surfaceContainerLow,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: cs.primaryContainer,
-                  child:
-                      _user.avatar != null && _user.avatar!.startsWith('http')
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: _user.avatar!,
-                            width: 64,
-                            height: 64,
-                            fit: BoxFit.cover,
+    return Card(
+      color: cs.surfaceContainerLow,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          setState(() {
+            _userActionsExpanded = !_userActionsExpanded;
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: cs.primaryContainer,
+                    child:
+                        _user.avatar != null && _user.avatar!.startsWith('http')
+                        ? ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: _user.avatar!,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Icon(
+                            Icons.person,
+                            size: 32,
+                            color: cs.onPrimaryContainer,
                           ),
-                        )
-                      : Icon(
-                          Icons.person,
-                          size: 32,
-                          color: cs.onPrimaryContainer,
-                        ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _user.nickname ?? _user.username ?? '',
-                        style: tt.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      _user.nickname ?? _user.username ?? '',
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _userActionsExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.expand_more,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: _userActionsExpanded
+                    ? Column(
+                        children: [
+                          const SizedBox(height: 12),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final buttonWidth = (constraints.maxWidth - 8) / 2;
+                              return Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  SizedBox(
+                                    width: buttonWidth,
+                                    child: _buildUserActionButton(
+                                      icon: Icons.refresh,
+                                      label: '刷新用户',
+                                      onPressed: () => _refreshUserInfo(),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: buttonWidth,
+                                    child: _buildUserActionButton(
+                                      icon: Icons.switch_account,
+                                      label: '切换账号',
+                                      onPressed: () => _switchAccount(),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: buttonWidth,
+                                    child: _buildUserActionButton(
+                                      icon: Icons.copy_outlined,
+                                      label: '复制令牌',
+                                      onPressed: () => _copyToken(),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: buttonWidth,
+                                    child: _buildUserActionButton(
+                                      icon: Icons.logout,
+                                      label: '退出登录',
+                                      onPressed: () => _logout(),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final buttonWidth = (constraints.maxWidth - 8) / 2;
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                SizedBox(
-                  width: buttonWidth,
-                  child: _buildUserActionButton(
-                    icon: Icons.refresh,
-                    label: '刷新用户',
-                    onPressed: () => _refreshUserInfo(),
-                  ),
-                ),
-                SizedBox(
-                  width: buttonWidth,
-                  child: _buildUserActionButton(
-                    icon: Icons.switch_account,
-                    label: '切换账号',
-                    onPressed: () => _switchAccount(),
-                  ),
-                ),
-                SizedBox(
-                  width: buttonWidth,
-                  child: _buildUserActionButton(
-                    icon: Icons.copy_outlined,
-                    label: '复制令牌',
-                    onPressed: () => _copyToken(),
-                  ),
-                ),
-                SizedBox(
-                  width: buttonWidth,
-                  child: _buildUserActionButton(
-                    icon: Icons.logout,
-                    label: '退出登录',
-                    onPressed: () => _logout(),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ],
+      ),
     );
   }
 
@@ -417,6 +563,11 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+}
+
+String _colorToHex(Color color) {
+  final rgb = color.toARGB32() & 0xFFFFFF;
+  return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
 }
 
 // ── 登录页 ──

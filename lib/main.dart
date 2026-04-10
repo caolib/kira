@@ -57,30 +57,27 @@ class _KiraAppState extends State<KiraApp> {
     if (mounted) setState(() {});
   }
 
+  ThemeData _buildTheme(Brightness brightness) {
+    final seedColor = _user.themeOption.seedColor;
+    return ThemeData(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: seedColor,
+        brightness: brightness,
+        surface: brightness == Brightness.dark ? Colors.black : Colors.white,
+      ),
+      useMaterial3: true,
+      cardTheme: _cardTheme,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Kira',
       debugShowCheckedModeBanner: false,
       scrollBehavior: _AppScrollBehavior(),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueGrey,
-          brightness: Brightness.light,
-          surface: Colors.white,
-        ),
-        useMaterial3: true,
-        cardTheme: _cardTheme,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueGrey,
-          brightness: Brightness.dark,
-          surface: Colors.black,
-        ),
-        useMaterial3: true,
-        cardTheme: _cardTheme,
-      ),
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
       themeMode: _user.themeMode,
       home: const MainPage(),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_theme_option.dart';
 import '../api/api_client.dart';
 
 class SavedCredential {
@@ -32,6 +33,8 @@ class UserManager extends ChangeNotifier {
   static const _keySavedPassword = 'saved_password';
   static const _keySavedCredentials = 'saved_credentials';
   static const _keyThemeMode = 'theme_mode';
+  static const _keyThemeColor = 'theme_color';
+  static const _keyCustomThemeColor = 'custom_theme_color';
   static const _keyBookshelfOrdering = 'bookshelf_ordering';
   static const _keyReaderMode = 'reader_mode';
   static const _keyReaderScrollDirection = 'reader_scroll_direction';
@@ -59,6 +62,8 @@ class UserManager extends ChangeNotifier {
   String? _savedPassword;
   List<SavedCredential> _savedCredentials = [];
   ThemeMode _themeMode = ThemeMode.system;
+  String _themeColor = appThemeOptions.first.id;
+  int _customThemeColorValue = defaultCustomThemeColor.toARGB32();
   String _bookshelfOrdering = '-datetime_updated';
   int _readerMode = 0;
   int _readerScrollDirection = 2;
@@ -87,6 +92,19 @@ class UserManager extends ChangeNotifier {
   List<SavedCredential> get savedCredentials =>
       List.unmodifiable(_savedCredentials);
   ThemeMode get themeMode => _themeMode;
+  String get themeColor => _themeColor;
+  Color get customThemeColor => Color(_customThemeColorValue);
+  AppThemeOption get themeOption {
+    if (_themeColor == customThemeOptionId) {
+      return AppThemeOption(
+        id: customThemeOptionId,
+        label: '自定',
+        seedColor: customThemeColor,
+      );
+    }
+    return resolveAppThemeOption(_themeColor);
+  }
+
   String get bookshelfOrdering => _bookshelfOrdering;
   int get readerMode => _readerMode;
   int get readerScrollDirection => _readerScrollDirection;
@@ -145,6 +163,13 @@ class UserManager extends ChangeNotifier {
       );
     }
     _themeMode = ThemeMode.values[prefs.getInt(_keyThemeMode) ?? 0];
+    final savedThemeColor = prefs.getString(_keyThemeColor);
+    _themeColor = savedThemeColor == customThemeOptionId
+        ? customThemeOptionId
+        : resolveAppThemeOption(savedThemeColor).id;
+    _customThemeColorValue =
+        prefs.getInt(_keyCustomThemeColor) ??
+        defaultCustomThemeColor.toARGB32();
     _bookshelfOrdering =
         prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
     _readerMode = prefs.getInt(_keyReaderMode) ?? 0;
@@ -262,6 +287,34 @@ class UserManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyThemeMode, mode.index);
     notifyListeners();
+  }
+
+  Future<void> setThemeColor(String themeColor) async {
+    final nextThemeColor = themeColor == customThemeOptionId
+        ? customThemeOptionId
+        : resolveAppThemeOption(themeColor).id;
+    if (_themeColor == nextThemeColor) return;
+
+    _themeColor = nextThemeColor;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyThemeColor, nextThemeColor);
+    notifyListeners();
+  }
+
+  Future<void> setCustomThemeColor(Color color) async {
+    final nextColorValue = color.toARGB32();
+    final shouldNotify =
+        _customThemeColorValue != nextColorValue ||
+        _themeColor != customThemeOptionId;
+
+    _customThemeColorValue = nextColorValue;
+    _themeColor = customThemeOptionId;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyCustomThemeColor, nextColorValue);
+    await prefs.setString(_keyThemeColor, customThemeOptionId);
+
+    if (shouldNotify) notifyListeners();
   }
 
   Future<void> setBookshelfOrdering(String ordering) async {
