@@ -133,9 +133,7 @@ class _DisclaimerDialogState extends State<_DisclaimerDialog> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('• ', style: tt.bodyMedium),
-                            Expanded(
-                              child: Text(item, style: tt.bodyMedium),
-                            ),
+                            Expanded(child: Text(item, style: tt.bodyMedium)),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -217,14 +215,6 @@ class _MainPageState extends State<MainPage> {
   Future<void> _runStartupFlow() async {
     await _ensureDisclaimerAccepted();
     if (!mounted) return;
-
-    if (!_user.isLoggedIn) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
-      if (!mounted) return;
-    }
 
     await _maybeAutoCheckUpdate();
   }
