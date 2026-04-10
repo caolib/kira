@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 import '../api/api_client.dart';
 import '../models/chapter_comment.dart';
@@ -12,6 +11,9 @@ class ChapterCommentsSheet extends StatefulWidget {
   final String chapterName;
   final List<ChapterComment>? initialComments;
   final int? initialTotal;
+  final bool hasNextChapter;
+  final VoidCallback? onNextChapter;
+  final VoidCallback? onBackToCatalog;
 
   const ChapterCommentsSheet({
     super.key,
@@ -19,6 +21,9 @@ class ChapterCommentsSheet extends StatefulWidget {
     required this.chapterName,
     this.initialComments,
     this.initialTotal,
+    this.hasNextChapter = false,
+    this.onNextChapter,
+    this.onBackToCatalog,
   });
 
   @override
@@ -292,23 +297,66 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               bottom: 16,
               child: SafeArea(
                 top: false,
-                child: SizedBox.square(
-                  dimension: 52,
-                  child: FilledButton.tonal(
-                    style: FilledButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size.square(52),
-                      maximumSize: const Size.square(52),
+                child: Builder(
+                  builder: (context) {
+                    const buttonBackgroundColor = Color(0xFFD9ECFF);
+                    const buttonForegroundColor = Color(0xFF1F3B5B);
+                    final buttonStyle = FilledButton.styleFrom(
+                      backgroundColor: buttonBackgroundColor,
+                      foregroundColor: buttonForegroundColor,
+                      elevation: 0,
+                      minimumSize: const Size(0, 52),
+                      maximumSize: const Size.fromHeight(52),
+                      fixedSize: const Size.fromHeight(52),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    child: const Center(
-                      child: Icon(Icons.keyboard_arrow_down_rounded),
-                    ),
-                  ),
+                    );
+
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton.icon(
+                          style: buttonStyle,
+                          onPressed: widget.hasNextChapter
+                              ? widget.onNextChapter
+                              : () {
+                                  widget.onBackToCatalog?.call();
+                                  Navigator.of(context).pop('back_to_catalog');
+                                },
+                          icon: Icon(
+                            widget.hasNextChapter
+                                ? Icons.skip_next_rounded
+                                : Icons.list_rounded,
+                          ),
+                          label: Text(widget.hasNextChapter ? '下一话' : '返回目录'),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox.square(
+                          dimension: 52,
+                          child: FilledButton(
+                            style: buttonStyle.copyWith(
+                              padding: const WidgetStatePropertyAll(
+                                EdgeInsets.zero,
+                              ),
+                              minimumSize: const WidgetStatePropertyAll(
+                                Size.square(52),
+                              ),
+                              maximumSize: const WidgetStatePropertyAll(
+                                Size.square(52),
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            child: const Center(
+                              child: Icon(Icons.keyboard_arrow_down_rounded),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),

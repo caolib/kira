@@ -19,8 +19,7 @@ const _appDisclaimerItems = [
   '如第三方内容存在侵权、违法、违规或其他不当情形，相关责任原则上由内容提供方承担；开发者将在收到有效通知后，根据实际情况采取必要处理措施。',
 ];
 
-const _appDisclaimerFooter =
-    '继续使用本应用，即表示您已阅读、理解并同意上述说明；如您不同意，请立即停止使用并卸载本应用。';
+const _appDisclaimerFooter = '继续使用本应用，即表示您已阅读、理解并同意上述说明；如您不同意，请立即停止使用并卸载本应用。';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -508,6 +507,7 @@ class _LoginPageState extends State<LoginPage> {
     if (result == null || !mounted) return;
 
     await UserManager().saveCredentials(result.username, result.password);
+    if (!mounted) return;
     setState(() {
       _useToken = false;
       _rememberMe = true;
@@ -958,7 +958,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const Center(child: CircularProgressIndicator())
             else ...[
               DropdownButtonFormField<String>(
-                value: _selectedQuestion,
+                initialValue: _selectedQuestion,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: '账号安全问题',

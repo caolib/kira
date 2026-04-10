@@ -34,6 +34,7 @@ class UserManager extends ChangeNotifier {
   static const _keyThemeMode = 'theme_mode';
   static const _keyBookshelfOrdering = 'bookshelf_ordering';
   static const _keyReaderMode = 'reader_mode';
+  static const _keyReaderScrollDirection = 'reader_scroll_direction';
   static const _keyReaderImageGap = 'reader_image_gap';
   static const _keyReaderVolumeKey = 'reader_volume_key';
   static const _keyReaderPageRTL = 'reader_page_rtl';
@@ -60,6 +61,7 @@ class UserManager extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   String _bookshelfOrdering = '-datetime_updated';
   int _readerMode = 0;
+  int _readerScrollDirection = 2;
   double _readerImageGap = 0.0;
   bool _readerVolumeKey = true;
   bool _readerPageRTL = false;
@@ -87,6 +89,7 @@ class UserManager extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   String get bookshelfOrdering => _bookshelfOrdering;
   int get readerMode => _readerMode;
+  int get readerScrollDirection => _readerScrollDirection;
   double get readerImageGap => _readerImageGap;
   bool get readerVolumeKey => _readerVolumeKey;
   bool get readerPageRTL => _readerPageRTL;
@@ -145,6 +148,7 @@ class UserManager extends ChangeNotifier {
     _bookshelfOrdering =
         prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
     _readerMode = prefs.getInt(_keyReaderMode) ?? 0;
+    _readerScrollDirection = prefs.getInt(_keyReaderScrollDirection) ?? 2;
     _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
     _readerVolumeKey = prefs.getBool(_keyReaderVolumeKey) ?? true;
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
@@ -271,6 +275,13 @@ class UserManager extends ChangeNotifier {
     _readerMode = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyReaderMode, mode);
+    notifyListeners();
+  }
+
+  Future<void> setReaderScrollDirection(int direction) async {
+    _readerScrollDirection = direction;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyReaderScrollDirection, direction);
     notifyListeners();
   }
 

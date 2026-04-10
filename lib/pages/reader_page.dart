@@ -58,6 +58,10 @@ class _ReaderPageState extends State<ReaderPage> {
   bool get _isPageMode => _user.readerMode == 1;
   bool get _isVerticalPageMode => _isPageMode && _user.readerPageVertical;
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+  bool get _isHorizontalScrollMode =>
+      !_isPageMode && _user.readerScrollDirection != 2;
+  bool get _isReversedScrollMode =>
+      !_isPageMode && _user.readerScrollDirection == 1;
 
   bool _isFirstLoad = true;
 
@@ -113,8 +117,9 @@ class _ReaderPageState extends State<ReaderPage> {
             _currentUuid,
           ) ??
           await _api.getChapterDetail(widget.pathWord, _currentUuid);
-      if (detail.contents.isEmpty)
+      if (detail.contents.isEmpty) {
         throw StateError('Chapter has no readable pages');
+      }
       if (!mounted) return;
       // 首次加载且有 initialPage 参数时跳到指定页
       final startPage = _isFirstLoad && widget.initialPage > 1
@@ -285,14 +290,19 @@ class _ReaderPageState extends State<ReaderPage> {
   Widget _buildImage(int index) {
     final cs = Theme.of(context).colorScheme;
     final imageSource = _detail!.contents[index];
+    final useFullViewport = _isPageMode || _isHorizontalScrollMode;
+    final imageFit = _isHorizontalScrollMode
+        ? BoxFit.fitHeight
+        : (useFullViewport ? BoxFit.contain : BoxFit.fitWidth);
     Widget image;
 
     if (_detail!.isDownloaded) {
       _clearImageRetryState(index);
       image = Image.file(
         File(imageSource),
-        fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
-        width: double.infinity,
+        fit: imageFit,
+        width: _isHorizontalScrollMode ? null : double.infinity,
+        height: useFullViewport ? double.infinity : null,
         errorBuilder: (_, _, _) => Container(
           height: 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
@@ -324,14 +334,16 @@ class _ReaderPageState extends State<ReaderPage> {
         ),
         imageUrl: imageSource,
         cacheManager: _readerImageCacheManager,
-        fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
-        width: double.infinity,
+        fit: imageFit,
+        width: _isHorizontalScrollMode ? null : double.infinity,
+        height: useFullViewport ? double.infinity : null,
         imageBuilder: (_, imageProvider) {
           _clearImageRetryState(index);
           return Image(
             image: imageProvider,
-            fit: _isPageMode ? BoxFit.contain : BoxFit.fitWidth,
-            width: double.infinity,
+            fit: imageFit,
+            width: _isHorizontalScrollMode ? null : double.infinity,
+            height: useFullViewport ? double.infinity : null,
           );
         },
         placeholder: (_, _) => Container(
@@ -405,8 +417,11 @@ class _ReaderPageState extends State<ReaderPage> {
   // ── 滚动模式 ──
 
   double _scrollModeTailExtent(BuildContext context) {
-    final viewportHeight = MediaQuery.sizeOf(context).height;
-    return viewportHeight < 280 ? 280 : viewportHeight;
+    final viewportSize = MediaQuery.sizeOf(context);
+    final extent = _isHorizontalScrollMode
+        ? viewportSize.width
+        : viewportSize.height;
+    return extent < 280 ? 280 : extent;
   }
 
   double _scrollModeEffectiveMaxExtent(ScrollMetrics metrics) {
@@ -512,6 +527,9 @@ class _ReaderPageState extends State<ReaderPage> {
     final imageCount = _detail!.contents.length;
     final hasHeader = _detail!.prev == null;
     final totalItems = (hasHeader ? 1 : 0) + imageCount + 1;
+    final scrollDirection = _isHorizontalScrollMode
+        ? Axis.horizontal
+        : Axis.vertical;
     return GestureDetector(
       onTap: () => setState(() => _showToolbar = !_showToolbar),
       child: NotificationListener<ScrollNotification>(
@@ -542,19 +560,30 @@ class _ReaderPageState extends State<ReaderPage> {
         },
         child: ListView.separated(
           controller: _scrollController,
+          scrollDirection: scrollDirection,
+          reverse: _isReversedScrollMode,
           itemCount: totalItems,
           separatorBuilder: (_, i) {
             final imageStart = hasHeader ? 1 : 0;
             final imageEnd = imageStart + imageCount - 1;
             if (i >= imageStart && i < imageEnd) {
-              return SizedBox(height: _user.readerImageGap);
+              return _isHorizontalScrollMode
+                  ? SizedBox(width: _user.readerImageGap)
+                  : SizedBox(height: _user.readerImageGap);
             }
             return const SizedBox.shrink();
           },
           itemBuilder: (_, i) {
             if (hasHeader && i == 0) return _buildFirstChapterHead();
             final imageIndex = i - (hasHeader ? 1 : 0);
-            if (imageIndex < imageCount) return _buildImage(imageIndex);
+            if (imageIndex < imageCount) {
+              final image = _buildImage(imageIndex);
+              if (_isHorizontalScrollMode) {
+                final viewportSize = MediaQuery.sizeOf(context);
+                return SizedBox(height: viewportSize.height, child: image);
+              }
+              return image;
+            }
             return _buildNextChapterTail();
           },
         ),
@@ -563,70 +592,21 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildFirstChapterHead() {
-    return const Padding(
-      padding: EdgeInsets.all(32),
-      child: Center(
-        child: Text(
-          '已经是第一章',
-          style: TextStyle(color: Colors.white54, fontSize: 14),
-        ),
+    final message = const Center(
+      child: Text(
+        '已经是第一章',
+        style: TextStyle(color: Colors.white54, fontSize: 14),
       ),
     );
-  }
 
-  Widget _buildChapterEndContent({required String hint}) {
-    final nextUuid = _detail?.next;
-    final hasNext = nextUuid != null;
-    final buttonStyle = OutlinedButton.styleFrom(
-      foregroundColor: Colors.white,
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
-      backgroundColor: Colors.white.withValues(alpha: 0.08),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-    );
-    final primaryButtonStyle = FilledButton.styleFrom(
-      foregroundColor: Colors.white,
-      backgroundColor: Colors.white.withValues(alpha: 0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-    );
+    if (_isHorizontalScrollMode) {
+      return SizedBox(
+        width: _scrollModeTailExtent(context),
+        child: Padding(padding: const EdgeInsets.all(32), child: message),
+      );
+    }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          hasNext ? hint : '已经是最后一章',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 16,
-            height: 1.6,
-            letterSpacing: 1.2,
-          ),
-        ),
-        if (hasNext) ...[
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () => _goChapter(nextUuid),
-            icon: const Icon(Icons.skip_next),
-            label: const Text('下一章'),
-            style: primaryButtonStyle,
-          ),
-        ],
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.list),
-          label: const Text('目录'),
-          style: buttonStyle,
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _showChapterComments,
-          icon: const Icon(Icons.forum_outlined),
-          label: const Text('评论'),
-          style: buttonStyle,
-        ),
-      ],
-    );
+    return Padding(padding: const EdgeInsets.all(32), child: message);
   }
 
   Widget _buildChapterEndActionsRow() {
@@ -696,7 +676,7 @@ class _ReaderPageState extends State<ReaderPage> {
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(12, 0, 12, _showToolbar ? 92 : 12),
+          padding: EdgeInsets.fromLTRB(12, 0, 12, _showToolbar ? 46 : 6),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 520),
             decoration: BoxDecoration(
@@ -739,55 +719,64 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildNextChapterTail() {
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(32, 72, 32, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _detail?.next != null ? '继续下滑或点击按钮进入下一章' : '已经是最后一章',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+              height: 1.6,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildChapterEndActionsRow(),
+        ],
+      ),
+    );
+
     return ColoredBox(
       color: Colors.black,
       child: SizedBox(
-        height: _scrollModeTailExtent(context),
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(32, 72, 32, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _detail?.next != null ? '继续下滑或点击按钮进入下一章' : '已经是最后一章',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                    height: 1.6,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildChapterEndActionsRow(),
-              ],
-            ),
-          ),
-        ),
+        width: _isHorizontalScrollMode ? _scrollModeTailExtent(context) : null,
+        height: _isHorizontalScrollMode ? null : _scrollModeTailExtent(context),
+        child: Align(alignment: Alignment.topCenter, child: content),
       ),
     );
   }
 
-  void _showChapterComments() {
+  Future<void> _showChapterComments() async {
     final detail = _detail;
     if (detail == null) return;
 
-    showModalBottomSheet(
+    final action = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.sizeOf(context).width,
-      ),
+      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width),
       backgroundColor: Colors.transparent,
       builder: (_) => ChapterCommentsSheet(
         chapterUuid: detail.uuid,
         chapterName: detail.name,
         initialComments: detail.isDownloaded ? detail.comments : null,
         initialTotal: detail.isDownloaded ? detail.commentTotal : null,
+        hasNextChapter: detail.next != null,
+        onNextChapter: detail.next == null
+            ? null
+            : () {
+                Navigator.of(context).maybePop();
+                _goChapter(detail.next);
+              },
       ),
     );
+
+    if (action == 'back_to_catalog' && mounted) {
+      Navigator.of(context).maybePop();
+    }
   }
 
   // ── 翻页模式 ──
@@ -1165,6 +1154,7 @@ class _ReaderSettingsPanel extends StatefulWidget {
 
 class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
   final _user = UserManager();
+  static const _scrollDirectionLabels = ['从左到右', '从右到左', '从上到下'];
 
   @override
   Widget build(BuildContext context) {
@@ -1230,12 +1220,43 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
               const SizedBox(height: 16),
               // 图片间距（仅滚动模式）
               if (!isPageMode) ...[
+                Text('滚动方向', style: tt.bodyMedium),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 0,
+                        icon: Icon(Icons.arrow_forward),
+                        label: Text('从左到右'),
+                      ),
+                      ButtonSegment(
+                        value: 1,
+                        icon: Icon(Icons.arrow_back),
+                        label: Text('从右到左'),
+                      ),
+                      ButtonSegment(
+                        value: 2,
+                        icon: Icon(Icons.arrow_downward),
+                        label: Text('从上到下'),
+                      ),
+                    ],
+                    selected: {_user.readerScrollDirection},
+                    onSelectionChanged: (v) {
+                      _user.setReaderScrollDirection(v.first);
+                      setState(() {});
+                      widget.onChanged();
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Text('图片间距', style: tt.bodyMedium),
                     const Spacer(),
                     Text(
-                      '${_user.readerImageGap.round()} px',
+                      '${_scrollDirectionLabels[_user.readerScrollDirection]} · ${_user.readerImageGap.round()} px',
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
