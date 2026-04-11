@@ -299,8 +299,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 top: false,
                 child: Builder(
                   builder: (context) {
-                    const buttonBackgroundColor = Color(0xFFD9ECFF);
-                    const buttonForegroundColor = Color(0xFF1F3B5B);
+                    final buttonBackgroundColor = cs.primaryContainer;
+                    final buttonForegroundColor = cs.onPrimaryContainer;
                     final buttonStyle = FilledButton.styleFrom(
                       backgroundColor: buttonBackgroundColor,
                       foregroundColor: buttonForegroundColor,
