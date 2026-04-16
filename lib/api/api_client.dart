@@ -103,6 +103,28 @@ class ApiClient {
               }
             }
           }
+          // 业务错误码（如 210 账号密码错误）视为请求失败
+          final data = response.data;
+          if (data is Map) {
+            final code = data['code'];
+            if (code != null && code != 200) {
+              final message =
+                  data['message']?.toString() ??
+                  (data['results'] is Map
+                      ? data['results']['detail']?.toString()
+                      : null) ??
+                  '请求失败（code: $code）';
+              return handler.reject(
+                DioException(
+                  requestOptions: response.requestOptions,
+                  response: response,
+                  message: message,
+                  error: message,
+                  type: DioExceptionType.badResponse,
+                ),
+              );
+            }
+          }
           handler.next(response);
         },
         onError: (error, handler) async {

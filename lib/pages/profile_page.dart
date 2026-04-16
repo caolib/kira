@@ -59,13 +59,86 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _switchAccount() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
+    final credentials = _user.savedCredentials;
+    final otherAccounts = credentials
+        .where((c) => c.username != _user.username)
+        .toList();
+    final hasToken = otherAccounts.any(
+      (c) => c.token != null && c.token!.isNotEmpty,
     );
-    if (result == true && mounted) {
-      showToast(context, '账号已切换');
-      setState(() {});
+
+    // 没有其他账号或没有存储令牌，回退到登录页
+    if (otherAccounts.isEmpty || !hasToken) {
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      if (result == true && mounted) {
+        showToast(context, '账号已切换');
+        setState(() {});
+      }
+      return;
+    }
+
+    final cs = Theme.of(context).colorScheme;
+    final selected = await showModalBottomSheet<SavedCredential>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '切换账号',
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+            ),
+            const Divider(height: 1),
+            ...otherAccounts.map((cred) {
+              final displayName = cred.nickname ?? cred.username;
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: cs.primaryContainer,
+                  child: Text(
+                    displayName.isNotEmpty
+                        ? displayName[0].toUpperCase()
+                        : '?',
+                    style: TextStyle(color: cs.onPrimaryContainer),
+                  ),
+                ),
+                title: Text(displayName),
+                subtitle: Text(cred.username),
+                trailing: const Icon(Icons.swap_horiz),
+                onTap: () => Navigator.pop(ctx, cred),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+
+    if (selected == null || !mounted) return;
+
+    if (selected.token != null && selected.token!.isNotEmpty) {
+      final success = await _user.switchToCredential(selected);
+      if (mounted) {
+        if (success) {
+          showToast(context, '账号已切换');
+        } else {
+          showToast(context, '切换失败，请重试', isError: true);
+        }
+      }
+    } else {
+      // 该账号无令牌，回退到登录页
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      if (result == true && mounted) {
+        showToast(context, '账号已切换');
+        setState(() {});
+      }
     }
   }
 

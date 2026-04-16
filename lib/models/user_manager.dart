@@ -7,16 +7,59 @@ import '../api/api_client.dart';
 class SavedCredential {
   final String username;
   final String password;
+  final String? token;
+  final String? loginSource;
+  final String? userId;
+  final String? nickname;
+  final String? avatar;
 
-  const SavedCredential({required this.username, required this.password});
+  const SavedCredential({
+    required this.username,
+    required this.password,
+    this.token,
+    this.loginSource,
+    this.userId,
+    this.nickname,
+    this.avatar,
+  });
 
   factory SavedCredential.fromJson(Map<String, dynamic> json) =>
       SavedCredential(
         username: json['username']?.toString() ?? '',
         password: json['password']?.toString() ?? '',
+        token: json['token']?.toString(),
+        loginSource: json['login_source']?.toString(),
+        userId: json['user_id']?.toString(),
+        nickname: json['nickname']?.toString(),
+        avatar: json['avatar']?.toString(),
       );
 
-  Map<String, dynamic> toJson() => {'username': username, 'password': password};
+  Map<String, dynamic> toJson() => {
+        'username': username,
+        'password': password,
+        if (token != null) 'token': token,
+        if (loginSource != null) 'login_source': loginSource,
+        if (userId != null) 'user_id': userId,
+        if (nickname != null) 'nickname': nickname,
+        if (avatar != null) 'avatar': avatar,
+      };
+
+  SavedCredential copyWith({
+    String? token,
+    String? loginSource,
+    String? userId,
+    String? nickname,
+    String? avatar,
+  }) =>
+      SavedCredential(
+        username: username,
+        password: password,
+        token: token ?? this.token,
+        loginSource: loginSource ?? this.loginSource,
+        userId: userId ?? this.userId,
+        nickname: nickname ?? this.nickname,
+        avatar: avatar ?? this.avatar,
+      );
 }
 
 class UserManager extends ChangeNotifier {
@@ -214,6 +257,22 @@ class UserManager extends ChangeNotifier {
     await prefs.setString(_keyUsername, username);
     await prefs.setString(_keyNickname, nickname);
     await prefs.setString(_keyAvatar, avatar);
+
+    // 同步更新对应凭证的令牌和用户信息
+    final idx = _savedCredentials.indexWhere((e) => e.username == username);
+    if (idx >= 0) {
+      _savedCredentials[idx] = _savedCredentials[idx].copyWith(
+        token: token,
+        loginSource: _loginSource,
+        userId: userId,
+        nickname: nickname,
+        avatar: avatar,
+      );
+      await prefs.setString(
+        _keySavedCredentials,
+        jsonEncode(_savedCredentials.map((e) => e.toJson()).toList()),
+      );
+    }
     notifyListeners();
   }
 
@@ -259,6 +318,50 @@ class UserManager extends ChangeNotifier {
     await prefs.remove(_keySavedUsername);
     await prefs.remove(_keySavedPassword);
     await prefs.remove(_keySavedCredentials);
+  }
+
+  /// 直接切换到已保存的凭证（无需重新登录）
+  Future<bool> switchToCredential(SavedCredential credential) async {
+    if (credential.token == null || credential.token!.isEmpty) return false;
+
+    _token = credential.token;
+    _username = credential.username;
+    _nickname = credential.nickname;
+    _avatar = credential.avatar;
+    _userId = credential.userId;
+    if (credential.loginSource != null) {
+      _loginSource = credential.loginSource!;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyToken, _token!);
+    if (_userId != null) await prefs.setString(_keyUserId, _userId!);
+    if (_username != null) await prefs.setString(_keyUsername, _username!);
+    if (_nickname != null) await prefs.setString(_keyNickname, _nickname!);
+    if (_avatar != null) await prefs.setString(_keyAvatar, _avatar!);
+    if (credential.loginSource != null) {
+      await prefs.setString(_keyLoginSource, credential.loginSource!);
+    }
+
+    // 更新凭证顺序，将选中的凭证移到最前
+    _savedCredentials.removeWhere((e) => e.username == credential.username);
+    _savedCredentials.insert(0, credential);
+    _savedUsername = credential.username;
+    _savedPassword = credential.password;
+    await prefs.setString(_keySavedUsername, credential.username);
+    await prefs.setString(_keySavedPassword, credential.password);
+    await prefs.setString(
+      _keySavedCredentials,
+      jsonEncode(_savedCredentials.map((e) => e.toJson()).toList()),
+    );
+
+    notifyListeners();
+
+    // 后台刷新用户信息
+    try {
+      await refreshUserInfo();
+    } catch (_) {}
+    return true;
   }
 
   Future<void> removeSavedCredential(String username) async {
