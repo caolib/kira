@@ -52,6 +52,7 @@ class UserManager extends ChangeNotifier {
   static const _keySkippedUpdateVersion = 'skipped_update_version';
   static const _keyAutoLogin = 'auto_login';
   static const _keyDisclaimerAccepted = 'disclaimer_accepted';
+  static const _keyLoginSource = 'login_source';
 
   String? _token;
   String? _username;
@@ -81,6 +82,7 @@ class UserManager extends ChangeNotifier {
   String? _skippedUpdateVersion;
   bool _autoLogin = false;
   bool _disclaimerAccepted = false;
+  String _loginSource = 'hotmanga';
 
   String? get token => _token;
   String? get username => _username;
@@ -122,6 +124,7 @@ class UserManager extends ChangeNotifier {
   String? get skippedUpdateVersion => _skippedUpdateVersion;
   bool get autoLogin => _autoLogin;
   bool get disclaimerAccepted => _disclaimerAccepted;
+  String get loginSource => _loginSource;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -188,6 +191,7 @@ class UserManager extends ChangeNotifier {
     _skippedUpdateVersion = prefs.getString(_keySkippedUpdateVersion);
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
     _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
+    _loginSource = prefs.getString(_keyLoginSource) ?? 'hotmanga';
     notifyListeners();
   }
 
@@ -438,6 +442,12 @@ class UserManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyDisclaimerAccepted, accepted);
     notifyListeners();
+  }
+
+  Future<void> setLoginSource(String source) async {
+    _loginSource = source;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyLoginSource, source);
   }
 
   Future<void> refreshUserInfo() async {

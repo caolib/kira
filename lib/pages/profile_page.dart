@@ -219,7 +219,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ButtonSegment(
                                     value: ThemeMode.system,
                                     icon: Icon(Icons.settings_brightness),
-                                    label: Text('跟随系统'),
+                                    label: Text('系统'),
                                   ),
                                   ButtonSegment(
                                     value: ThemeMode.light,
@@ -469,10 +469,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   AnimatedRotation(
                     turns: _userActionsExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.expand_more,
-                      color: cs.onSurfaceVariant,
-                    ),
+                    child: Icon(Icons.expand_more, color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -485,7 +482,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           const SizedBox(height: 12),
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              final buttonWidth = (constraints.maxWidth - 8) / 2;
+                              final buttonWidth =
+                                  (constraints.maxWidth - 8) / 2;
                               return Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
@@ -596,6 +594,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscure = true;
   bool _rememberMe = false;
   bool _useToken = false;
+  bool _useCopyLogin = false;
   String? _error;
 
   @override
@@ -609,6 +608,7 @@ class _LoginPageState extends State<LoginPage> {
       _passwordCtrl.text = _user.savedPassword!;
     }
     _user.addListener(_onUserChanged);
+    _useCopyLogin = _user.loginSource == 'copy';
   }
 
   @override
@@ -683,7 +683,10 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final result = await _api.login(username, password);
+      final result = _useCopyLogin
+          ? await _api.copyLogin(username, password)
+          : await _api.login(username, password);
+      await UserManager().setLoginSource(_useCopyLogin ? 'copy' : 'hotmanga');
       if (_rememberMe) {
         await UserManager().saveCredentials(username, password);
       } else {
@@ -700,8 +703,12 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       String msg = '登录失败';
-      if (e is DioException && e.response?.data is Map) {
-        msg = e.response?.data['message'] ?? msg;
+      if (e is DioException) {
+        if (e.response?.data is Map) {
+          msg = e.response?.data['message'] ?? msg;
+        } else if (e.message != null && e.message!.isNotEmpty) {
+          msg = e.message!;
+        }
       }
       setState(() {
         _error = msg;
@@ -801,6 +808,26 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             if (!_useToken) ...[
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                    value: false,
+                    label: Text('热辣'),
+                    icon: Icon(Icons.phone_android, size: 18),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text('拷贝'),
+                    icon: Icon(Icons.language, size: 18),
+                  ),
+                ],
+                selected: {_useCopyLogin},
+                onSelectionChanged: (v) => setState(() {
+                  _useCopyLogin = v.first;
+                  _error = null;
+                }),
+              ),
+              const SizedBox(height: 16),
               if (_user.savedCredentials.isNotEmpty) ...[
                 Wrap(
                   spacing: 8,

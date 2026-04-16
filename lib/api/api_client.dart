@@ -13,6 +13,7 @@ class ApiClient {
   static const _hostSf = 'mapi.hotmangasf.com';
   static const _hostSd = 'mapi.hotmangasd.com';
   static const _hostComment = 'api.mangacopy.com';
+  static const _hostCopy = 'www.mangacopy.com';
   static const _hostWeb = 'www.manga2026.xyz';
 
   static final ApiClient _instance = ApiClient._();
@@ -120,7 +121,9 @@ class ApiClient {
                 } else {
                   _autoLoginCompleter = Completer<bool>();
                   try {
-                    final result = await login(username, password);
+                    final result = _user.loginSource == 'copy'
+                        ? await copyLogin(username, password)
+                        : await login(username, password);
                     await _user.saveLogin(
                       token: result['token'],
                       userId: result['user_id'],
@@ -189,6 +192,68 @@ class ApiClient {
       ),
     );
     return resp.data['results'];
+  }
+
+  /// 拷贝登录
+  Future<Map<String, dynamic>> copyLogin(
+    String username,
+    String password,
+  ) async {
+    final salt = Random().nextInt(900000) + 100000;
+    final encoded = base64Encode(utf8.encode('$password-$salt'));
+    final dio = Dio(
+      BaseOptions(
+        validateStatus: (_) => true,
+        headers: {
+          'accept': 'application/json, text/plain, */*',
+          'accept-language':
+              'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,en-GB;q=0.6,ru;q=0.5,ja;q=0.4,zh-TW;q=0.3',
+          'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'platform': '2',
+          'origin': 'https://$_hostCopy',
+          'referer': 'https://$_hostCopy/web/login/loginByAccount',
+          'priority': 'u=1, i',
+          'sec-ch-ua':
+              '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-origin',
+          'user-agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
+        },
+      ),
+    );
+
+    final resp = await dio.post(
+      'https://$_hostCopy/api/kb/web/login',
+      data: Uri(
+        queryParameters: {
+          'username': username,
+          'password': encoded,
+          'salt': salt.toString(),
+          'platform': '2',
+          'version': '2025.12.10',
+          'source': 'freeSite',
+        },
+      ).query,
+    );
+
+    final data = resp.data;
+    if (data is Map && data['code'] == 200) {
+      return Map<String, dynamic>.from(data['results']);
+    }
+
+    final message =
+        data is Map ? (data['message']?.toString() ?? '登录失败') : '登录失败';
+    throw DioException(
+      requestOptions: resp.requestOptions,
+      response: resp,
+      message: message,
+      error: message,
+      type: DioExceptionType.badResponse,
+    );
   }
 
   /// 获取个人信息
