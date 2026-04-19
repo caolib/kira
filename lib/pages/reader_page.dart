@@ -188,6 +188,9 @@ class _ReaderPageState extends State<ReaderPage> {
       }
       _autoAdvancingChapter = false;
       _saveReadingHistory();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _preloadImages(startPage - 1);
+      });
     } catch (_) {
       _autoAdvancingChapter = false;
       if (mounted) setState(() => _loading = false);
@@ -269,6 +272,25 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
+  // ── 图片预加载 ──
+
+  void _preloadImages(int centerIndex, {int range = 2}) {
+    if (_detail == null || _detail!.isDownloaded) return;
+    final count = _detail!.contents.length;
+    for (int offset = -range; offset <= range; offset++) {
+      final i = centerIndex + offset;
+      if (i < 0 || i >= count) continue;
+      precacheImage(
+        CachedNetworkImageProvider(
+          _detail!.contents[i],
+          cacheManager: _readerImageCacheManager,
+        ),
+        context,
+        onError: (_, __) {},
+      );
+    }
+  }
+
   // ── 公共图片组件 ──
 
   void _retryImage(int index) {
@@ -334,6 +356,10 @@ class _ReaderPageState extends State<ReaderPage> {
     final imageFit = _isHorizontalScrollMode
         ? BoxFit.fitHeight
         : (useFullViewport ? BoxFit.contain : BoxFit.fitWidth);
+    final screenSize = MediaQuery.sizeOf(context);
+    final memCacheWidth = _isHorizontalScrollMode
+        ? (screenSize.height * MediaQuery.devicePixelRatioOf(context)).round()
+        : (screenSize.width * MediaQuery.devicePixelRatioOf(context)).round();
     Widget image;
 
     if (_detail!.isDownloaded) {
@@ -375,6 +401,7 @@ class _ReaderPageState extends State<ReaderPage> {
         imageUrl: imageSource,
         cacheManager: _readerImageCacheManager,
         fit: imageFit,
+        memCacheWidth: memCacheWidth,
         width: _isHorizontalScrollMode ? null : double.infinity,
         height: useFullViewport ? double.infinity : null,
         imageBuilder: (_, imageProvider) {
@@ -595,6 +622,7 @@ class _ReaderPageState extends State<ReaderPage> {
             if (page != _currentPage) {
               setState(() => _currentPage = page);
               _saveReadingHistory();
+              _preloadImages(page - 1);
             }
           }
           if (_shouldAutoAdvanceScrollChapter(n)) {
@@ -607,6 +635,9 @@ class _ReaderPageState extends State<ReaderPage> {
           scrollDirection: scrollDirection,
           padding: EdgeInsets.zero,
           reverse: _isReversedScrollMode,
+          cacheExtent: _isHorizontalScrollMode
+              ? MediaQuery.sizeOf(context).width
+              : MediaQuery.sizeOf(context).height,
           itemCount: totalItems,
           separatorBuilder: (_, i) {
             final imageStart = hasHeader ? 1 : 0;
@@ -880,6 +911,7 @@ class _ReaderPageState extends State<ReaderPage> {
             });
             _resetPageModeChapterOverscroll();
             _saveReadingHistory();
+            _preloadImages(index);
           },
           itemBuilder: (_, i) {
             if (i < imageCount - 1) return Center(child: _buildImage(i));
