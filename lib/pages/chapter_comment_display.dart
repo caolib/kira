@@ -5,6 +5,7 @@ List<ChapterCommentDisplayEntry> groupChapterComments(
 ) {
   final groupedByContent = <String, List<ChapterComment>>{};
   final orderedKeys = <String>[];
+  final duplicates = <ChapterComment>[];
 
   for (final comment in comments) {
     final key = comment.comment;
@@ -12,12 +13,21 @@ List<ChapterCommentDisplayEntry> groupChapterComments(
       orderedKeys.add(key);
       return <ChapterComment>[];
     });
+    // 同一用户重复发相同内容的评论不参与合并，保留为独立条目
+    if (bucket.any(
+      (c) => c.userId == comment.userId && c.userId.isNotEmpty,
+    )) {
+      duplicates.add(comment);
+      continue;
+    }
     bucket.add(comment);
   }
 
   final entries = [
     for (final key in orderedKeys)
       ChapterCommentDisplayEntry(comments: groupedByContent[key]!),
+    for (final dup in duplicates)
+      ChapterCommentDisplayEntry(comments: [dup]),
   ];
 
   final firstAppearanceOrder = <String, int>{

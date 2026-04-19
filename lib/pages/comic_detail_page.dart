@@ -429,6 +429,32 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     ),
                   ),
                 ),
+                if (_lastBrowseId != null)
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: FloatingActionButton.extended(
+                      heroTag: 'continue_reading',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ReaderPage(
+                            pathWord: widget.pathWord,
+                            chapterUuid: _lastBrowseId!,
+                            chapterName: _lastBrowseName ?? '',
+                            initialPage: _lastBrowsePage,
+                          ),
+                        ),
+                      ).then((_) => _loadLocalHistory()),
+                      icon: const Icon(Icons.play_arrow, size: 20),
+                      label: Text(
+                        _lastBrowsePage > 1
+                            ? '${_lastBrowseName ?? ''} · P$_lastBrowsePage'
+                            : _lastBrowseName ?? '',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ),
               ],
             ),
     );
@@ -828,73 +854,32 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 ),
               ),
             ),
-          // ── 继续阅读 + 分组切换（响应式同行） ──
-          if (_lastBrowseId != null ||
-              (comic.groups != null && comic.groups!.length > 1))
+          // ── 分组切换 ──
+          if (comic.groups != null && comic.groups!.length > 1)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (_lastBrowseId != null)
-                      FilledButton.icon(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ReaderPage(
-                              pathWord: widget.pathWord,
-                              chapterUuid: _lastBrowseId!,
-                              chapterName: _lastBrowseName ?? '',
-                              initialPage: _lastBrowsePage,
-                            ),
-                          ),
-                        ).then((_) => _loadLocalHistory()),
-                        icon: const Icon(Icons.play_arrow, size: 18),
-                        label: Text(
-                          '继续  ${_lastBrowseName ?? ''}',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                child: SegmentedButton<String>(
+                  segments: comic.groups!.entries
+                      .map(
+                        (e) => ButtonSegment(
+                          value: e.key,
+                          label: Text(
+                            '${e.value.name}(${e.value.count})',
+                            style: const TextStyle(fontSize: 13),
                           ),
                         ),
-                      ),
-                    if (comic.groups != null && comic.groups!.length > 1)
-                      IntrinsicWidth(
-                        child: SegmentedButton<String>(
-                          segments: comic.groups!.entries
-                              .map(
-                                (e) => ButtonSegment(
-                                  value: e.key,
-                                  label: Text(
-                                    '${e.value.name}(${e.value.count})',
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          selected: {_selectedGroup},
-                          onSelectionChanged: (v) {
-                            setState(() => _selectedGroup = v.first);
-                            _loadChapterPage(0);
-                          },
-                          style: ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      ),
-                  ],
+                      )
+                      .toList(),
+                  selected: {_selectedGroup},
+                  onSelectionChanged: (v) {
+                    setState(() => _selectedGroup = v.first);
+                    _loadChapterPage(0);
+                  },
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
               ),
             ),
@@ -978,7 +963,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 ),
               ),
             ),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
         ],
       ),
     );

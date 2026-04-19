@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
-import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models/app_theme_option.dart';
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
+import 'appearance_page.dart';
 import 'browse_history_page.dart';
 import 'local_comics_page.dart';
+import 'network_page.dart';
 
 const _appDisclaimerItems = [
   '本应用为非官方第三方客户端，仅基于第三方平台提供的接口或公开可访问资源进行内容展示与访问。',
@@ -33,8 +33,6 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _user = UserManager();
   bool _userActionsExpanded = false;
-  bool _testingLatency = false;
-  Map<int, Map<String, int?>> _latencyResults = {};
 
   @override
   void initState() {
@@ -199,47 +197,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _pickCustomThemeColor() async {
-    final initialColor = _user.customThemeColor;
-    final color = await showColorPickerDialog(
-      context,
-      initialColor,
-      pickersEnabled: const <ColorPickerType, bool>{
-        ColorPickerType.both: false,
-        ColorPickerType.primary: false,
-        ColorPickerType.accent: false,
-        ColorPickerType.bw: false,
-        ColorPickerType.custom: false,
-        ColorPickerType.wheel: true,
-      },
-      enableShadesSelection: false,
-      enableTonalPalette: false,
-      enableOpacity: false,
-      showColorCode: true,
-      colorCodeHasColor: true,
-      showEditIconButton: true,
-      wheelDiameter: 220,
-      wheelWidth: 20,
-      wheelSquareBorderRadius: 12,
-      wheelHasBorder: true,
-      dialogTitle: const Text('选择主题色'),
-      heading: const Text('点击色盘选择一个自定义主题色'),
-      wheelSubheading: const Text('拖动取色点，实时预览主题色'),
-      borderRadius: 12,
-      constraints: const BoxConstraints(maxWidth: 460),
-    );
-
-    if (_user.themeColor != customThemeOptionId &&
-        color.toARGB32() == initialColor.toARGB32()) {
-      return;
-    }
-
-    await _user.setCustomThemeColor(color);
-    if (mounted) {
-      showToast(context, '主题配色已更新为 ${_colorToHex(color)}');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -268,208 +225,37 @@ class _ProfilePageState extends State<ProfilePage> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                      ListTile(
+                        leading: const Icon(Icons.palette_outlined),
+                        title: const Text('外观'),
+                        subtitle: Text(
+                          '${_user.themeOption.label} · ${_user.themeMode == ThemeMode.system ? '跟随系统' : _user.themeMode == ThemeMode.light ? '浅色' : '深色'}',
+                          style: tt.bodySmall,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.palette_outlined,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 16),
-                                const Text('主题模式'),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: SegmentedButton<ThemeMode>(
-                                segments: const [
-                                  ButtonSegment(
-                                    value: ThemeMode.system,
-                                    icon: Icon(Icons.settings_brightness),
-                                    label: Text('系统'),
-                                  ),
-                                  ButtonSegment(
-                                    value: ThemeMode.light,
-                                    icon: Icon(Icons.light_mode),
-                                    label: Text('浅色'),
-                                  ),
-                                  ButtonSegment(
-                                    value: ThemeMode.dark,
-                                    icon: Icon(Icons.dark_mode),
-                                    label: Text('深色'),
-                                  ),
-                                ],
-                                selected: {_user.themeMode},
-                                onSelectionChanged: (v) =>
-                                    _user.setThemeMode(v.first),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '主题配色',
-                              style: tt.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '当前配色：${_user.themeOption.label}${_user.themeColor == customThemeOptionId ? ' ${_colorToHex(_user.customThemeColor)}' : ''}',
-                              style: tt.bodySmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                for (final option in appThemeOptions)
-                                  ChoiceChip(
-                                    avatar: CircleAvatar(
-                                      radius: 9,
-                                      backgroundColor: option.seedColor,
-                                    ),
-                                    label: Text(option.label),
-                                    selected: _user.themeColor == option.id,
-                                    selectedColor: option.seedColor.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                    side: BorderSide(
-                                      color: _user.themeColor == option.id
-                                          ? option.seedColor.withValues(
-                                              alpha: 0.65,
-                                            )
-                                          : cs.outlineVariant,
-                                    ),
-                                    labelStyle: tt.bodyMedium?.copyWith(
-                                      color: _user.themeColor == option.id
-                                          ? option.seedColor
-                                          : null,
-                                      fontWeight: _user.themeColor == option.id
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                    ),
-                                    onSelected: (_) =>
-                                        _user.setThemeColor(option.id),
-                                  ),
-                                ChoiceChip(
-                                  avatar: CircleAvatar(
-                                    radius: 9,
-                                    backgroundColor: _user.customThemeColor,
-                                  ),
-                                  label: const Text('自定'),
-                                  selected:
-                                      _user.themeColor == customThemeOptionId,
-                                  selectedColor: _user.customThemeColor
-                                      .withValues(alpha: 0.18),
-                                  side: BorderSide(
-                                    color:
-                                        _user.themeColor == customThemeOptionId
-                                        ? _user.customThemeColor.withValues(
-                                            alpha: 0.65,
-                                          )
-                                        : cs.outlineVariant,
-                                  ),
-                                  labelStyle: tt.bodyMedium?.copyWith(
-                                    color:
-                                        _user.themeColor == customThemeOptionId
-                                        ? _user.customThemeColor
-                                        : null,
-                                    fontWeight:
-                                        _user.themeColor == customThemeOptionId
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                  ),
-                                  onSelected: (_) => _pickCustomThemeColor(),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1, indent: 16, endIndent: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.dns_outlined,
-                                    color: cs.onSurfaceVariant),
-                                const SizedBox(width: 16),
-                                const Text('API 线路'),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: SegmentedButton<int>(
-                                segments: const [
-                                  ButtonSegment(
-                                    value: 0,
-                                    label: Text('线路 1'),
-                                  ),
-                                  ButtonSegment(
-                                    value: 1,
-                                    label: Text('线路 2'),
-                                  ),
-                                ],
-                                selected: {_user.apiRoute},
-                                onSelectionChanged: (v) =>
-                                    _user.setApiRoute(v.first),
-                              ),
-                            ),
-                          ],
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AppearancePage(),
+                          ),
                         ),
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
                       ListTile(
-                        leading: const Icon(Icons.speed),
-                        title: const Text('测试线路延迟'),
-                        subtitle: _testingLatency
-                            ? const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child:
-                                        CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text('测试中...'),
-                                ],
-                              )
-                            : _latencyResults.isNotEmpty
-                                ? Text(
-                                    _buildLatencySummary(tt),
-                                    style: tt.bodySmall,
-                                  )
-                                : const Text('检测各线路的响应延迟'),
-                        trailing: _testingLatency
-                            ? null
-                            : const Icon(Icons.play_arrow),
-                        onTap: _testingLatency ? null : _testLatency,
-                      ),
-                      if (_latencyResults.isNotEmpty) ...[
-                        const Divider(height: 1, indent: 16, endIndent: 16),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: _buildLatencyDetail(tt, cs),
+                        leading: const Icon(Icons.dns_outlined),
+                        title: const Text('网络'),
+                        subtitle: Text(
+                          'API 线路 ${_user.apiRoute + 1}',
+                          style: tt.bodySmall,
                         ),
-                      ],
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NetworkPage(),
+                          ),
+                        ),
+                      ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
                       if (_user.isLoggedIn &&
                           _user.savedUsername != null &&
@@ -528,93 +314,6 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
-  }
-
-  String _buildLatencySummary(TextTheme tt) {
-    final buffer = StringBuffer();
-    for (final entry in _latencyResults.entries) {
-      final label = ApiClient.routeLabels[entry.key];
-      final values = entry.value.values.whereType<int>().toList();
-      if (values.isNotEmpty) {
-        final avg = values.reduce((a, b) => a + b) ~/ values.length;
-        buffer.write('$label: ${avg}ms  ');
-      } else {
-        buffer.write('$label: 超时  ');
-      }
-    }
-    return buffer.toString().trim();
-  }
-
-  Widget _buildLatencyDetail(TextTheme tt, ColorScheme cs) {
-    Widget buildRoute(int index) {
-      final hosts = _latencyResults[index];
-      if (hosts == null) return const SizedBox.shrink();
-      return Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              ApiClient.routeLabels[index],
-              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            for (var i = 0; i < hosts.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text('节点 ${i + 1}', style: tt.bodySmall),
-                    ),
-                    Text(
-                      hosts.values.elementAt(i) != null
-                          ? '${hosts.values.elementAt(i)} ms'
-                          : '超时',
-                      style: tt.bodySmall?.copyWith(
-                        color: hosts.values.elementAt(i) != null
-                            ? cs.primary
-                            : cs.error,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        buildRoute(0),
-        const SizedBox(width: 16),
-        buildRoute(1),
-      ],
-    );
-  }
-
-  Future<void> _testLatency() async {
-    setState(() {
-      _testingLatency = true;
-      _latencyResults.clear();
-    });
-    final api = ApiClient();
-    try {
-      final results = await Future.wait([
-        api.testRouteLatency(0).then((r) => MapEntry(0, r)),
-        api.testRouteLatency(1).then((r) => MapEntry(1, r)),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _testingLatency = false;
-        _latencyResults = Map.fromEntries(results);
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _testingLatency = false);
-    }
   }
 
   Widget _buildLoginCard(ColorScheme cs, TextTheme tt) {
@@ -798,11 +497,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-}
-
-String _colorToHex(Color color) {
-  final rgb = color.toARGB32() & 0xFFFFFF;
-  return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
 }
 
 // ── 登录页 ──

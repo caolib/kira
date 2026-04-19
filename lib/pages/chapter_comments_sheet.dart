@@ -621,6 +621,16 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     final textScaler = MediaQuery.textScalerOf(context);
 
     if (entry.isMerged) {
+      if (!_showUserAvatar) {
+        if (!_shouldShowMergedCountTag(entry.count)) return 0;
+        final countTagWidth = _measureTextWidth(
+          _formatMergedCount(entry.count),
+          textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+          textScaler,
+          maxWidth,
+        );
+        return countTagWidth + 34;
+      }
       final avatarCount = entry.avatarComments().length;
       final avatarWidth = _avatarStackWidth(
         avatarCount,
@@ -745,6 +755,7 @@ class _CommentCard extends StatelessWidget {
               compact: compact,
               contentSpacing: contentSpacing,
               bodyStyle: bodyStyle,
+              showAvatar: showAvatar,
             )
           : Column(
               mainAxisSize: MainAxisSize.min,
@@ -805,19 +816,18 @@ class _MergedCommentContent extends StatelessWidget {
   final bool compact;
   final double contentSpacing;
   final TextStyle? bodyStyle;
+  final bool showAvatar;
 
   const _MergedCommentContent({
     required this.entry,
     required this.compact,
     required this.contentSpacing,
     required this.bodyStyle,
+    this.showAvatar = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final avatars = entry.avatarComments();
-    final avatarSize = compact ? 22.0 : 26.0;
-    final avatarOverlap = compact ? 8.0 : 10.0;
     final showCountTag = _shouldShowMergedCountTag(entry.count);
 
     return Column(
@@ -825,20 +835,16 @@ class _MergedCommentContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _CommentAvatarStack(
-                  comments: avatars,
-                  avatarSize: avatarSize,
-                  overlap: avatarOverlap,
-                ),
+            if (showAvatar)
+              _CommentAvatarStack(
+                comments: entry.avatarComments(),
+                avatarSize: compact ? 22.0 : 26.0,
+                overlap: compact ? 8.0 : 10.0,
               ),
-            ),
+            const Spacer(),
             if (showCountTag) ...[
-              const SizedBox(width: 8),
+              if (showAvatar) const SizedBox(width: 8),
               _MergedCommentCountTag(count: entry.count, compact: compact),
             ],
           ],
@@ -872,14 +878,14 @@ class _MergedCommentCountTag extends StatelessWidget {
         vertical: compact ? 2 : 4,
       ),
       decoration: BoxDecoration(
-        color: cs.error,
+        color: cs.primary,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         _formatMergedCount(count),
         textAlign: TextAlign.center,
         style: tt.labelSmall?.copyWith(
-          color: cs.onError,
+          color: cs.onPrimary,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -1171,9 +1177,9 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
   }
 }
 
-String _formatMergedCount(int count) => count > 99 ? '99+' : '$count';
+String _formatMergedCount(int count) => count > 99 ? 'x99+' : 'x$count';
 
-bool _shouldShowMergedCountTag(int count) => count > 5;
+bool _shouldShowMergedCountTag(int count) => count > 1;
 
 TextStyle? _buildCommentUserStyle(
   TextTheme textTheme,
