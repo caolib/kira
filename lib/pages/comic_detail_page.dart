@@ -411,10 +411,24 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 ],
               ),
             )
-          : Column(
+          : Stack(
               children: [
-                if (_refreshingComic) _buildRefreshingNotice(cs, tt),
-                Expanded(child: _buildBody(cs, tt)),
+                _buildBody(cs, tt),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: _refreshingComic
+                          ? _buildRefreshingNotice(cs, tt)
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
               ],
             ),
     );
