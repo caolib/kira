@@ -86,6 +86,8 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderPageRTL = 'reader_page_rtl';
   static const _keyReaderPageVertical = 'reader_page_vertical';
   static const _keyReaderDimming = 'reader_dimming';
+  static const _keyImageLoadTimeout = 'image_load_timeout';
+  static const _keyImageRetryCount = 'image_retry_count';
   static const _keyCommentCompactLayout = 'comment_compact_layout';
   static const _keyCommentShowAvatar = 'comment_show_avatar';
   static const _keyCommentShowUserName = 'comment_show_user_name';
@@ -116,6 +118,8 @@ class UserManager extends ChangeNotifier {
   bool _readerPageRTL = false;
   bool _readerPageVertical = false;
   double _readerDimming = 0.3;
+  int _imageLoadTimeout = 15; // 秒
+  int _imageRetryCount = 1;
   bool _commentCompactLayout = true;
   bool _commentShowAvatar = true;
   bool _commentShowUserName = true;
@@ -158,6 +162,8 @@ class UserManager extends ChangeNotifier {
   bool get readerPageRTL => _readerPageRTL;
   bool get readerPageVertical => _readerPageVertical;
   double get readerDimming => _readerDimming;
+  int get imageLoadTimeout => _imageLoadTimeout;
+  int get imageRetryCount => _imageRetryCount;
   bool get commentCompactLayout => _commentCompactLayout;
   bool get commentShowAvatar => _commentShowAvatar;
   bool get commentShowUserName => _commentShowUserName;
@@ -225,6 +231,8 @@ class UserManager extends ChangeNotifier {
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
     _readerPageVertical = prefs.getBool(_keyReaderPageVertical) ?? false;
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
+    _imageLoadTimeout = prefs.getInt(_keyImageLoadTimeout) ?? 15;
+    _imageRetryCount = prefs.getInt(_keyImageRetryCount) ?? 1;
     _commentCompactLayout = prefs.getBool(_keyCommentCompactLayout) ?? true;
     _commentShowAvatar = prefs.getBool(_keyCommentShowAvatar) ?? true;
     _commentShowUserName = prefs.getBool(_keyCommentShowUserName) ?? true;
@@ -477,6 +485,20 @@ class UserManager extends ChangeNotifier {
     _readerDimming = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_keyReaderDimming, value);
+    notifyListeners();
+  }
+
+  Future<void> setImageLoadTimeout(int seconds) async {
+    _imageLoadTimeout = seconds;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyImageLoadTimeout, seconds);
+    notifyListeners();
+  }
+
+  Future<void> setImageRetryCount(int count) async {
+    _imageRetryCount = count;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyImageRetryCount, count);
     notifyListeners();
   }
 

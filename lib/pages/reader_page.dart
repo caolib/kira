@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/user_manager.dart';
 import '../utils/download_manager.dart';
+import '../utils/image_load_stats.dart';
 import '../utils/toast.dart';
 import '../utils/reading_history.dart';
 import 'chapter_comments_sheet.dart';
@@ -33,9 +35,22 @@ class ReaderPage extends StatefulWidget {
 class _ReaderPageState extends State<ReaderPage> {
   static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
   static const _hiddenToolbarSlideOffset = 1.05;
-  static final CacheManager _readerImageCacheManager = CacheManager(
-    Config('readerImageCache', fileService: _ReaderImageFileService()),
-  );
+  static CacheManager? _cachedImageManager;
+  static int _cachedImageManagerTimeout = -1;
+
+  CacheManager get _readerImageCacheManager {
+    final seconds = _user.imageLoadTimeout;
+    if (_cachedImageManager == null || _cachedImageManagerTimeout != seconds) {
+      _cachedImageManager = CacheManager(
+        Config(
+          'readerImageCache',
+          fileService: _ReaderImageFileService(Duration(seconds: seconds)),
+        ),
+      );
+      _cachedImageManagerTimeout = seconds;
+    }
+    return _cachedImageManager!;
+  }
 
   final _api = ApiClient();
   final _downloads = DownloadManager();
@@ -227,6 +242,10 @@ class _ReaderPageState extends State<ReaderPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      ),
       builder: (_) => _ReaderSettingsPanel(onChanged: _onSettingsChanged),
     );
   }
@@ -257,14 +276,15 @@ class _ReaderPageState extends State<ReaderPage> {
 
   void _scheduleImageRetry(int index) {
     final attempts = _imageRetryCounts[index] ?? 0;
-    if (attempts >= 3) return;
+    final retryLimit = _user.imageRetryCount;
+    if (attempts >= retryLimit) return;
 
     final version = _imageReloadVersions[index] ?? 0;
     final token = '$version-$attempts';
     if (_imageRetryTokens[index] == token) return;
     _imageRetryTokens[index] = token;
 
-    Future<void>.delayed(const Duration(milliseconds: 500), () {
+    Future<void>.delayed(const Duration(milliseconds: 200), () {
       if (!mounted) return;
       final currentVersion = _imageReloadVersions[index] ?? 0;
       if (currentVersion != version) return;
@@ -318,7 +338,7 @@ class _ReaderPageState extends State<ReaderPage> {
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton.icon(
+                FilledButton.tonalIcon(
                   onPressed: () => _copyImageUrl(index),
                   icon: const Icon(Icons.copy_all_outlined, size: 18),
                   label: const Text('复制图片路径'),
@@ -354,7 +374,8 @@ class _ReaderPageState extends State<ReaderPage> {
         ),
         errorWidget: (_, _, _) {
           final attempts = _imageRetryCounts[index] ?? 0;
-          final canAutoRetry = attempts < 3;
+          final retryLimit = _user.imageRetryCount;
+          final canAutoRetry = attempts < retryLimit;
           if (canAutoRetry) {
             _scheduleImageRetry(index);
           }
@@ -373,7 +394,9 @@ class _ReaderPageState extends State<ReaderPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    canAutoRetry ? '加载失败，正在重试 ${attempts + 1}/3' : '加载失败',
+                    canAutoRetry
+                        ? '加载失败，正在重试 ${attempts + 1}/$retryLimit'
+                        : '加载失败',
                     style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                   ),
                   if (!canAutoRetry) ...[
@@ -384,7 +407,7 @@ class _ReaderPageState extends State<ReaderPage> {
                       label: const Text('重新加载'),
                     ),
                     const SizedBox(height: 8),
-                    OutlinedButton.icon(
+                    FilledButton.tonalIcon(
                       onPressed: () => _copyImageUrl(index),
                       icon: const Icon(Icons.copy_all_outlined, size: 18),
                       label: const Text('复制图片链接'),
@@ -1066,19 +1089,39 @@ class _ReaderPageState extends State<ReaderPage> {
 }
 
 class _ReaderImageFileService extends FileService {
-  static const Duration _timeout = Duration(seconds: 15);
-  final HttpClient _httpClient = HttpClient()..connectionTimeout = _timeout;
+  _ReaderImageFileService(this.timeout)
+    : _httpClient = HttpClient()..connectionTimeout = timeout;
+
+  final Duration timeout;
+  final HttpClient _httpClient;
+
+  static const _defaultHeaders = {
+    'user-agent':
+        'Mozilla/5.0 (Linux; Android 12; 23117RK66C Build/V417IR; wv) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 '
+        'Chrome/110.0.5481.154 Mobile Safari/537.36',
+    'accept':
+        'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+    'x-requested-with': 'com.manga2020.app',
+    'sec-fetch-site': 'cross-site',
+    'sec-fetch-mode': 'no-cors',
+    'sec-fetch-dest': 'image',
+    'accept-encoding': 'gzip, deflate',
+    'accept-language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+  };
 
   @override
   Future<FileServiceResponse> get(
     String url, {
     Map<String, String>? headers,
   }) async {
-    final request = await _httpClient.getUrl(Uri.parse(url)).timeout(_timeout);
+    final stopwatch = Stopwatch()..start();
+    final request = await _httpClient.getUrl(Uri.parse(url)).timeout(timeout);
+    _defaultHeaders.forEach(request.headers.set);
     headers?.forEach(request.headers.add);
 
-    final response = await request.close().timeout(_timeout);
-    return _ReaderImageFileServiceResponse(response);
+    final response = await request.close().timeout(timeout);
+    return _ReaderImageFileServiceResponse(response, timeout, stopwatch);
   }
 }
 
@@ -1094,14 +1137,39 @@ class _ReaderImageFileServiceResponse implements FileServiceResponse {
     'image/vnd.microsoft.icon': '.ico',
   };
 
-  _ReaderImageFileServiceResponse(this._response);
+  _ReaderImageFileServiceResponse(
+    this._response,
+    this._timeout,
+    this._stopwatch,
+  );
 
   final HttpClientResponse _response;
+  final Duration _timeout;
+  final Stopwatch _stopwatch;
   final DateTime _receivedTime = DateTime.now();
+  bool _recorded = false;
 
   @override
-  Stream<List<int>> get content =>
-      _response.timeout(_ReaderImageFileService._timeout);
+  Stream<List<int>> get content {
+    return _response
+        .timeout(_timeout)
+        .transform(
+          StreamTransformer<List<int>, List<int>>.fromHandlers(
+            handleDone: (sink) {
+              if (!_recorded) {
+                _recorded = true;
+                _stopwatch.stop();
+                ImageLoadStats().record(_stopwatch.elapsed);
+              }
+              sink.close();
+            },
+            handleError: (error, stackTrace, sink) {
+              _recorded = true;
+              sink.addError(error, stackTrace);
+            },
+          ),
+        );
+  }
 
   @override
   int? get contentLength =>
@@ -1168,7 +1236,24 @@ class _ReaderSettingsPanel extends StatefulWidget {
 
 class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
   final _user = UserManager();
+  final _stats = ImageLoadStats();
   static const _scrollDirectionLabels = ['从左到右', '从右到左', '从上到下'];
+
+  @override
+  void initState() {
+    super.initState();
+    _stats.addListener(_onStatsChanged);
+  }
+
+  @override
+  void dispose() {
+    _stats.removeListener(_onStatsChanged);
+    super.dispose();
+  }
+
+  void _onStatsChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1184,7 +1269,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1382,6 +1467,96 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   },
                 ),
               ],
+              const SizedBox(height: 8),
+              Text(
+                '图片加载',
+                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text('超时时间', style: tt.bodyMedium),
+                  const Spacer(),
+                  Text(
+                    '${_user.imageLoadTimeout} s',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+              Slider(
+                value: _user.imageLoadTimeout.toDouble(),
+                min: 3,
+                max: 60,
+                divisions: 57,
+                label: '${_user.imageLoadTimeout} s',
+                onChanged: (v) {
+                  _user.setImageLoadTimeout(v.round());
+                  setState(() {});
+                  widget.onChanged();
+                },
+              ),
+              Text(
+                '设置太小可能导致图片加载失败，太大可能导致长时间转圈',
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              Builder(
+                builder: (_) {
+                  final avg = _stats.averageMs;
+                  final count = _stats.sampleCount;
+                  if (avg == null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '暂无加载记录（阅读图片后此处显示平均耗时供参考）',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    );
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '最近10分钟内加载了 $count 张，平均 ${(avg / 1000).toStringAsFixed(1)} s',
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.refresh, size: 18),
+                  const SizedBox(width: 8),
+                  Text('重试次数', style: tt.bodyMedium),
+                  const Spacer(),
+                  Text(
+                    _user.imageRetryCount == 0
+                        ? '关闭'
+                        : '${_user.imageRetryCount} 次',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+              Slider(
+                value: _user.imageRetryCount.toDouble(),
+                min: 0,
+                max: 5,
+                divisions: 5,
+                label: _user.imageRetryCount == 0
+                    ? '关闭'
+                    : '${_user.imageRetryCount} 次',
+                onChanged: (v) {
+                  _user.setImageRetryCount(v.round());
+                  setState(() {});
+                  widget.onChanged();
+                },
+              ),
               const SizedBox(height: 8),
             ],
           ),
