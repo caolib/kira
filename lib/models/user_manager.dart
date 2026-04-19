@@ -98,6 +98,7 @@ class UserManager extends ChangeNotifier {
   static const _keyAutoLogin = 'auto_login';
   static const _keyDisclaimerAccepted = 'disclaimer_accepted';
   static const _keyLoginSource = 'login_source';
+  static const _keyApiRoute = 'api_route';
 
   String? _token;
   String? _username;
@@ -130,6 +131,7 @@ class UserManager extends ChangeNotifier {
   bool _autoLogin = false;
   bool _disclaimerAccepted = false;
   String _loginSource = 'hotmanga';
+  int _apiRoute = 0; // 0=线路1(默认), 1=线路2
 
   String? get token => _token;
   String? get username => _username;
@@ -174,6 +176,7 @@ class UserManager extends ChangeNotifier {
   bool get autoLogin => _autoLogin;
   bool get disclaimerAccepted => _disclaimerAccepted;
   String get loginSource => _loginSource;
+  int get apiRoute => _apiRoute;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -243,6 +246,7 @@ class UserManager extends ChangeNotifier {
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
     _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
     _loginSource = prefs.getString(_keyLoginSource) ?? 'hotmanga';
+    _apiRoute = prefs.getInt(_keyApiRoute) ?? 0;
     notifyListeners();
   }
 
@@ -573,6 +577,13 @@ class UserManager extends ChangeNotifier {
     _loginSource = source;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLoginSource, source);
+  }
+
+  Future<void> setApiRoute(int route) async {
+    _apiRoute = route;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyApiRoute, route);
+    notifyListeners();
   }
 
   Future<void> refreshUserInfo() async {

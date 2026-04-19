@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
@@ -10,11 +11,18 @@ import '../models/user_manager.dart';
 
 class ApiClient {
   static const _hostSg = 'mapi.hotmangasg.com';
-  static const _hostSf = 'mapi.hotmangasf.com';
   static const _hostSd = 'mapi.hotmangasd.com';
+  static const _hostSf = 'mapi.hotmangasf.com';
   static const _hostComment = 'api.mangacopy.com';
   static const _hostCopy = 'www.mangacopy.com';
   static const _hostWeb = 'www.manga2026.xyz';
+
+  static const _routes = [
+    ['mapi.hotmangasg.com', 'mapi.hotmangasd.com', 'mapi.hotmangasf.com'],
+    ['mapi.elfgjfghkk.club', 'mapi.fgjfghkkcenter.club', 'mapi.fgjfghkk.club'],
+  ];
+
+  static const routeLabels = ['线路 1', '线路 2'];
 
   static final ApiClient _instance = ApiClient._();
   factory ApiClient() => _instance;
@@ -22,6 +30,7 @@ class ApiClient {
   late final Dio _dio;
   late final Dio _commentDio;
   final _user = UserManager();
+  int _hostIndex = 0;
   // 手动管理 cookie: host → {name: value}
   final Map<String, Map<String, String>> _cookies = {};
   // 防止并发 401 触发多次自动登录
@@ -177,7 +186,14 @@ class ApiClient {
     );
   }
 
-  String _url(String path, [String host = _hostSg]) => 'https://$host$path';
+  String _nextHost() {
+    final route = _routes[_user.apiRoute];
+    final host = route[_hostIndex % route.length];
+    _hostIndex++;
+    return host;
+  }
+
+  String _url(String path, [String? _]) => 'https://${_nextHost()}$path';
 
   String _buildRegisterCookie() {
     final random = Random();
@@ -206,7 +222,7 @@ class ApiClient {
     final salt = Random().nextInt(9000) + 1000;
     final encoded = base64Encode(utf8.encode('$password-$salt'));
     final resp = await _dio.post(
-      _url('/api/v3/login', _hostSf),
+      _url('/api/v3/login', _hostSg),
       data:
           'username=$username&password=$encoded&salt=$salt&source=Official&version=2.2.0&platform=3',
       options: Options(
@@ -280,12 +296,12 @@ class ApiClient {
 
   /// 获取个人信息
   Future<Map<String, dynamic>> getUserInfo() async {
-    return await _get('/api/v3/member/info', host: _hostSf);
+    return await _get('/api/v3/member/info', host: _hostSg);
   }
 
   Future<void> logout() async {
     await _dio.post(
-      _url('/api/v3/logout', _hostSf),
+      _url('/api/v3/logout', _hostSg),
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );
   }
@@ -407,7 +423,7 @@ class ApiClient {
         'limit': limit,
         '_update': true,
       },
-      host: _hostSf,
+      host: _hostSg,
     );
     final list = (data['list'] as List).map((e) {
       final item = Map<String, dynamic>.from(e);
@@ -451,7 +467,7 @@ class ApiClient {
     final data = await _get(
       '/api/v3/recs',
       params: {'pos': pos, 'limit': limit, 'offset': offset, 'free_type': 1},
-      host: _hostSf,
+      host: _hostSg,
     );
     return (data['list'] as List)
         .where((e) => e['comic'] != null)
@@ -473,7 +489,7 @@ class ApiClient {
       'ordering': ordering,
     };
     if (theme != null) params['theme'] = theme;
-    final data = await _get('/api/v3/comics', params: params, host: _hostSf);
+    final data = await _get('/api/v3/comics', params: params, host: _hostSg);
     final list = (data['list'] as List).map((e) => Comic.fromJson(e)).toList();
     return (list: list, total: data['total'] as int);
   }
@@ -582,7 +598,7 @@ class ApiClient {
         'ordering': ordering,
         '_update': true,
       },
-      host: _hostSf,
+      host: _hostSg,
     );
     final list = (data['list'] as List).map((e) {
       final comic = Comic.fromJson(e['comic']);
@@ -608,5 +624,31 @@ class ApiClient {
       data: 'comic_id=$comicId&is_collect=${collect ? 1 : 0}',
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );
+  }
+
+  // ── 线路延迟测试 ──
+
+  /// 获取指定线路的所有 host
+  List<String> getRouteHosts(int routeIndex) => _routes[routeIndex];
+
+  /// 测试指定线路所有 host 的延迟，返回 {host: 毫秒数，超时为 null}
+  Future<Map<String, int?>> testRouteLatency(int routeIndex) async {
+    final hosts = getRouteHosts(routeIndex);
+    final results = <String, int?>{};
+    await Future.wait(hosts.map((host) async {
+      try {
+        final sw = Stopwatch()..start();
+        await SecureSocket.connect(
+          host,
+          443,
+          timeout: const Duration(seconds: 5),
+        );
+        sw.stop();
+        results[host] = sw.elapsedMilliseconds;
+      } catch (_) {
+        results[host] = null;
+      }
+    }));
+    return results;
   }
 }

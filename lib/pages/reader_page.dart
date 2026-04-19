@@ -101,7 +101,7 @@ class _ReaderPageState extends State<ReaderPage> {
     _currentUuid = widget.chapterUuid;
     _loadChapter();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _volumeChannel.invokeMethod('enableImmersive');
+    _volumeChannel.invokeMethod('enableImmersive').catchError((_) {});
     _volumeChannel.setMethodCallHandler(_handleVolumeMethod);
     _updateVolumeIntercept();
   }
@@ -109,7 +109,7 @@ class _ReaderPageState extends State<ReaderPage> {
   @override
   void dispose() {
     _setVolumeIntercept(false);
-    _volumeChannel.invokeMethod('disableImmersive');
+    _volumeChannel.invokeMethod('disableImmersive').catchError((_) {});
     _volumeChannel.setMethodCallHandler(null);
     _scrollController.dispose();
     _pageController.dispose();
