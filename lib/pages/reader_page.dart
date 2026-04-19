@@ -60,6 +60,20 @@ class _ReaderPageState extends State<ReaderPage> {
   ChapterDetail? _detail;
   bool _loading = true;
   bool _showToolbar = false;
+
+  void _toggleToolbar() {
+    _showToolbar = !_showToolbar;
+    if (_showToolbar) {
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+    setState(() {});
+  }
   late String _currentUuid;
   int _currentPage = 1;
   bool _jumpingScroll = false;
@@ -87,6 +101,7 @@ class _ReaderPageState extends State<ReaderPage> {
     _currentUuid = widget.chapterUuid;
     _loadChapter();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _volumeChannel.invokeMethod('enableImmersive');
     _volumeChannel.setMethodCallHandler(_handleVolumeMethod);
     _updateVolumeIntercept();
   }
@@ -94,10 +109,14 @@ class _ReaderPageState extends State<ReaderPage> {
   @override
   void dispose() {
     _setVolumeIntercept(false);
+    _volumeChannel.invokeMethod('disableImmersive');
     _volumeChannel.setMethodCallHandler(null);
     _scrollController.dispose();
     _pageController.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
     super.dispose();
   }
 
@@ -555,13 +574,14 @@ class _ReaderPageState extends State<ReaderPage> {
         ? Axis.horizontal
         : Axis.vertical;
     return GestureDetector(
-      onTap: () => setState(() => _showToolbar = !_showToolbar),
+      onTap: () => _toggleToolbar(),
       child: NotificationListener<ScrollNotification>(
         onNotification: (n) {
           if (_jumpingScroll || _isDraggingSlider) return false;
           if (n is ScrollUpdateNotification &&
               _showToolbar &&
               (n.scrollDelta ?? 0).abs() > 0) {
+            SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
             setState(() => _showToolbar = false);
           }
           if (n.metrics.pixels > 0 && n.metrics.maxScrollExtent > 0) {
@@ -815,7 +835,7 @@ class _ReaderPageState extends State<ReaderPage> {
       } else if (y > screenHeight * 2 / 3) {
         _nextPage();
       } else {
-        setState(() => _showToolbar = !_showToolbar);
+        _toggleToolbar();
       }
       return;
     }
@@ -853,7 +873,10 @@ class _ReaderPageState extends State<ReaderPage> {
           onPageChanged: (index) {
             setState(() {
               _currentPage = index + 1;
-              if (!_isDraggingSlider) _showToolbar = false;
+              if (!_isDraggingSlider) {
+                _showToolbar = false;
+                SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+              }
             });
             _resetPageModeChapterOverscroll();
             _saveReadingHistory();
@@ -1072,17 +1095,25 @@ class _ReaderPageState extends State<ReaderPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          if (_loading)
-            const Center(child: CircularProgressIndicator())
-          else if (_detail != null)
-            _isPageMode ? _buildPageMode() : _buildScrollMode(),
-          _buildTopBar(),
-          if (_detail != null) _buildBottomBar(cs),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: _showToolbar
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.light.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: Colors.transparent,
+            ),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_detail != null)
+              _isPageMode ? _buildPageMode() : _buildScrollMode(),
+            _buildTopBar(),
+            if (_detail != null) _buildBottomBar(cs),
+          ],
+        ),
       ),
     );
   }
@@ -1237,7 +1268,7 @@ class _ReaderSettingsPanel extends StatefulWidget {
 class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
   final _user = UserManager();
   final _stats = ImageLoadStats();
-  static const _scrollDirectionLabels = ['从左到右', '从右到左', '从上到下'];
+  static const _scrollDirectionLabels = ['左到右', '右到左', '上到下'];
 
   @override
   void initState() {
@@ -1328,17 +1359,17 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       ButtonSegment(
                         value: 0,
                         icon: Icon(Icons.arrow_forward),
-                        label: Text('从左到右'),
+                        label: Text('左到右'),
                       ),
                       ButtonSegment(
                         value: 1,
                         icon: Icon(Icons.arrow_back),
-                        label: Text('从右到左'),
+                        label: Text('右到左'),
                       ),
                       ButtonSegment(
                         value: 2,
                         icon: Icon(Icons.arrow_downward),
-                        label: Text('从上到下'),
+                        label: Text('上到下'),
                       ),
                     ],
                     selected: {_user.readerScrollDirection},
@@ -1410,12 +1441,12 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                         ButtonSegment(
                           value: false,
                           icon: Icon(Icons.arrow_forward),
-                          label: Text('从左到右'),
+                          label: Text('左到右'),
                         ),
                         ButtonSegment(
                           value: true,
                           icon: Icon(Icons.arrow_back),
-                          label: Text('从右到左'),
+                          label: Text('右到左'),
                         ),
                       ],
                       selected: {_user.readerPageRTL},

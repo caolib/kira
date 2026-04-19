@@ -12,6 +12,10 @@ import 'utils/app_update.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await UserManager().init();
+  SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: SystemUiOverlay.values,
+  );
   runApp(const KiraApp());
 }
 
