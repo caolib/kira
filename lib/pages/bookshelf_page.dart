@@ -95,7 +95,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
   Future<void> _loadMore() async {
     if (_loadingMore || _refreshing || _offset >= _total) return;
-    _loadingMore = true;
+    setState(() => _loadingMore = true);
     try {
       final data = await _api.getBookshelf(
         offset: _offset,
@@ -112,7 +112,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
         await _handleUnauthorized();
       }
     } finally {
-      _loadingMore = false;
+      if (mounted) {
+        setState(() => _loadingMore = false);
+      } else {
+        _loadingMore = false;
+      }
     }
   }
 
@@ -410,6 +414,33 @@ class _BookshelfPageState extends State<BookshelfPage> {
                             ),
                       ),
                     ),
+                    if (_loadingMore)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  '正在加载更多漫画...',
+                                  style: tt.bodyMedium?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
                   ],
                 ),
