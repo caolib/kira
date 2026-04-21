@@ -23,6 +23,8 @@ const _appDisclaimerItems = [
 
 const _appDisclaimerFooter = '继续使用本应用，即表示您已阅读、理解并同意上述说明；如您不同意，请立即停止使用并卸载本应用。';
 
+enum _SwitchAccountSheetAction { addAccount }
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -81,7 +83,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     final cs = Theme.of(context).colorScheme;
-    final selected = await showModalBottomSheet<SavedCredential>(
+    final selected = await showModalBottomSheet<Object>(
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(
@@ -113,12 +115,41 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () => Navigator.pop(ctx, cred),
               );
             }),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(
+                    ctx,
+                    _SwitchAccountSheetAction.addAccount,
+                  ),
+                  icon: const Icon(Icons.person_add_alt_1),
+                  label: const Text('添加账号'),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
 
     if (selected == null || !mounted) return;
+
+    if (selected == _SwitchAccountSheetAction.addAccount) {
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      if (result == true && mounted) {
+        showToast(context, '账号已切换');
+        setState(() {});
+      }
+      return;
+    }
+
+    if (selected is! SavedCredential) return;
 
     if (selected.token != null && selected.token!.isNotEmpty) {
       final success = await _user.switchToCredential(selected);
