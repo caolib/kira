@@ -11,12 +11,14 @@ class ReadingHistory {
     required String chapterUuid,
     required String chapterName,
     int page = 1,
+    int totalPage = 0,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final data = jsonEncode({
       'chapterUuid': chapterUuid,
       'chapterName': chapterName,
       'page': page,
+      'totalPage': totalPage,
     });
     await prefs.setString('$_prefix$pathWord', data);
   }
@@ -32,6 +34,7 @@ class ReadingHistory {
         chapterUuid: map['chapterUuid'] as String,
         chapterName: map['chapterName'] as String,
         page: map['page'] as int? ?? 1,
+        totalPage: map['totalPage'] as int? ?? 0,
       );
     } catch (_) {
       return null;
@@ -43,10 +46,12 @@ class ReadingRecord {
   final String chapterUuid;
   final String chapterName;
   final int page;
+  final int totalPage;
 
   const ReadingRecord({
     required this.chapterUuid,
     required this.chapterName,
     required this.page,
+    this.totalPage = 0,
   });
 }

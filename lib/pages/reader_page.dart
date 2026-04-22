@@ -203,6 +203,7 @@ class _ReaderPageState extends State<ReaderPage> {
       chapterUuid: _currentUuid,
       chapterName: _detail?.name ?? widget.chapterName,
       page: _currentPage,
+      totalPage: _detail?.contents.length ?? 0,
     );
   }
 

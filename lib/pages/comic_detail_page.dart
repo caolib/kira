@@ -43,10 +43,14 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   bool _reversed = true;
   bool _isCollected = false;
   bool _selectionMode = false;
+  Chapter? _nextBrowseChapter;
+  String? _nextBrowseChapterSourceId;
+  bool _loadingNextBrowseChapter = false;
   // 本地阅读记录（优先级高于书架传入的记录）
   String? _lastBrowseId;
   String? _lastBrowseName;
   int _lastBrowsePage = 1;
+  int _lastBrowseTotalPage = 0;
 
   String get _cacheKey => 'comic_detail_${widget.pathWord}';
 
@@ -85,7 +89,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         _lastBrowseId = record.chapterUuid;
         _lastBrowseName = record.chapterName;
         _lastBrowsePage = record.page;
+        _lastBrowseTotalPage = record.totalPage;
       });
+      await _syncNextBrowseChapter();
     }
   }
 
@@ -120,6 +126,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _isCollected = cached['isCollected'] == true;
       _loadingComic = false;
     });
+    await _syncNextBrowseChapter();
   }
 
   Future<void> _saveCache() async {
@@ -225,6 +232,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         _keepShowingCachedChapters = false;
       });
       await _saveCache();
+      await _syncNextBrowseChapter();
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -263,6 +271,109 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     final num = int.parse(match.group(1)!);
     final totalPages = (total / _pageSize).ceil();
     return ((num - 1) / _pageSize).floor().clamp(0, totalPages - 1);
+  }
+
+  Chapter? _chapterByUuid(String? uuid) {
+    if (uuid == null || uuid.isEmpty) return null;
+    for (final chapter in _chapters) {
+      if (chapter.uuid == uuid) return chapter;
+    }
+    return null;
+  }
+
+  bool get _isLastBrowseComplete {
+    if (_lastBrowseTotalPage <= 0) return false;
+    final unreadThreshold = _lastBrowseTotalPage <= 1
+        ? 1
+        : _lastBrowseTotalPage - 1;
+    return _lastBrowsePage >= unreadThreshold;
+  }
+
+  String _continueReadingLabel() {
+    final name = _lastBrowseName ?? '';
+    if (_lastBrowseTotalPage > 1) {
+      return '$name · $_lastBrowsePage/$_lastBrowseTotalPage';
+    }
+    return name;
+  }
+
+  Future<void> _syncNextBrowseChapter() async {
+    if (!mounted) return;
+
+    final currentChapter = _chapterByUuid(_lastBrowseId);
+    final canShowNext =
+        currentChapter != null &&
+        _isLastBrowseComplete &&
+        currentChapter.next != null;
+
+    if (!canShowNext) {
+      if (_nextBrowseChapter != null || _nextBrowseChapterSourceId != null) {
+        setState(() {
+          _nextBrowseChapter = null;
+          _nextBrowseChapterSourceId = null;
+        });
+      }
+      return;
+    }
+
+    final nextUuid = currentChapter!.next!;
+    final cachedNext = _chapterByUuid(nextUuid);
+    if (cachedNext != null) {
+      if (_nextBrowseChapter?.uuid != cachedNext.uuid) {
+        setState(() {
+          _nextBrowseChapter = cachedNext;
+          _nextBrowseChapterSourceId = nextUuid;
+        });
+      }
+      return;
+    }
+
+    if (_loadingNextBrowseChapter && _nextBrowseChapterSourceId == nextUuid) {
+      return;
+    }
+
+    _loadingNextBrowseChapter = true;
+    _nextBrowseChapterSourceId = nextUuid;
+    try {
+      final nextPage = _chapterPage < _totalPages - 1 ? _chapterPage + 1 : null;
+      Chapter? nextChapter;
+      if (nextPage != null) {
+        final result = await _api.getChapterList(
+          widget.pathWord,
+          group: _selectedGroup,
+          limit: _pageSize,
+          offset: nextPage * _pageSize,
+        );
+        for (final chapter in result.list) {
+          if (chapter.uuid == nextUuid) {
+            nextChapter = chapter;
+            break;
+          }
+        }
+      }
+
+      if (nextChapter != null &&
+          mounted &&
+          _lastBrowseId == currentChapter.uuid) {
+        setState(() {
+          _nextBrowseChapter = nextChapter;
+        });
+      } else if (mounted && _lastBrowseId == currentChapter.uuid) {
+        setState(() {
+          _nextBrowseChapter = null;
+        });
+      }
+    } catch (_) {
+      if (mounted && _nextBrowseChapterSourceId == nextUuid) {
+        setState(() {
+          _nextBrowseChapter = null;
+        });
+      }
+    } finally {
+      if (_nextBrowseChapterSourceId == nextUuid) {
+        _loadingNextBrowseChapter = false;
+      }
+    }
   }
 
   Future<void> _toggleCollect() async {
@@ -433,26 +544,50 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                   Positioned(
                     right: 16,
                     bottom: 16,
-                    child: FloatingActionButton.extended(
-                      heroTag: 'continue_reading',
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ReaderPage(
-                            pathWord: widget.pathWord,
-                            chapterUuid: _lastBrowseId!,
-                            chapterName: _lastBrowseName ?? '',
-                            initialPage: _lastBrowsePage,
+                    child: Wrap(
+                      spacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        if (_nextBrowseChapter != null)
+                          FloatingActionButton.extended(
+                            heroTag: 'next_chapter',
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ReaderPage(
+                                  pathWord: widget.pathWord,
+                                  chapterUuid: _nextBrowseChapter!.uuid,
+                                  chapterName: _nextBrowseChapter!.name,
+                                ),
+                              ),
+                            ).then((_) => _loadLocalHistory()),
+                            icon: const Icon(Icons.skip_next, size: 20),
+                            label: Text(
+                              _nextBrowseChapter!.name,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        FloatingActionButton.extended(
+                          heroTag: 'continue_reading',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ReaderPage(
+                                pathWord: widget.pathWord,
+                                chapterUuid: _lastBrowseId!,
+                                chapterName: _lastBrowseName ?? '',
+                                initialPage: _lastBrowsePage,
+                              ),
+                            ),
+                          ).then((_) => _loadLocalHistory()),
+                          icon: const Icon(Icons.play_arrow, size: 20),
+                          label: Text(
+                            _continueReadingLabel(),
+                            style: const TextStyle(fontSize: 13),
                           ),
                         ),
-                      ).then((_) => _loadLocalHistory()),
-                      icon: const Icon(Icons.play_arrow, size: 20),
-                      label: Text(
-                        _lastBrowsePage > 1
-                            ? '${_lastBrowseName ?? ''} · P$_lastBrowsePage'
-                            : _lastBrowseName ?? '',
-                        style: const TextStyle(fontSize: 13),
-                      ),
+                      ],
                     ),
                   ),
               ],
