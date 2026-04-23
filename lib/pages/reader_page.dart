@@ -287,7 +287,7 @@ class _ReaderPageState extends State<ReaderPage> {
           cacheManager: _readerImageCacheManager,
         ),
         context,
-        onError: (_, __) {},
+        onError: (_, _) {},
       );
     }
   }

@@ -316,7 +316,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       return;
     }
 
-    final nextUuid = currentChapter!.next!;
+    final nextUuid = currentChapter.next!;
     final cachedNext = _chapterByUuid(nextUuid);
     if (cachedNext != null) {
       if (_nextBrowseChapter?.uuid != cachedNext.uuid) {

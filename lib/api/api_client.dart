@@ -12,7 +12,6 @@ import '../models/user_manager.dart';
 class ApiClient {
   static const _hostSg = 'mapi.hotmangasg.com';
   static const _hostSd = 'mapi.hotmangasd.com';
-  static const _hostSf = 'mapi.hotmangasf.com';
   static const _hostComment = 'api.mangacopy.com';
   static const _hostCopy = 'www.mangacopy.com';
   static const _hostWeb = 'www.manga2026.xyz';
