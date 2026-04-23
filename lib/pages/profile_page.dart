@@ -52,6 +52,27 @@ class _ProfilePageState extends State<ProfilePage> {
     if (mounted) setState(() {});
   }
 
+  bool _isCopyCredential(SavedCredential credential) {
+    final source = credential.loginSource;
+    if (source != null && source.isNotEmpty) {
+      return source == 'copy';
+    }
+    if (credential.username == _user.savedUsername) {
+      return _user.loginSource == 'copy';
+    }
+    return false;
+  }
+
+  String _credentialTypeLabel(SavedCredential credential) {
+    return _isCopyCredential(credential) ? '拷贝' : '热辣';
+  }
+
+  IconData _credentialTypeIcon(SavedCredential credential) {
+    return _isCopyCredential(credential)
+        ? Icons.language
+        : Icons.phone_android;
+  }
+
   void _goLogin() async {
     final result = await Navigator.push<bool>(
       context,
@@ -99,6 +120,8 @@ class _ProfilePageState extends State<ProfilePage> {
             const Divider(height: 1),
             ...otherAccounts.map((cred) {
               final displayName = cred.nickname ?? cred.username;
+              final showUsername =
+                  cred.username.isNotEmpty && displayName != cred.username;
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: cs.primaryContainer,
@@ -110,7 +133,56 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 title: Text(displayName),
-                subtitle: Text(cred.username),
+                subtitle: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (showUsername)
+                      Text(
+                        cred.username,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    if (showUsername) const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            _isCopyCredential(cred)
+                                ? cs.tertiaryContainer
+                                : cs.secondaryContainer,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _credentialTypeIcon(cred),
+                            size: 14,
+                            color:
+                                _isCopyCredential(cred)
+                                    ? cs.onTertiaryContainer
+                                    : cs.onSecondaryContainer,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _credentialTypeLabel(cred),
+                            style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
+                              color:
+                                  _isCopyCredential(cred)
+                                      ? cs.onTertiaryContainer
+                                      : cs.onSecondaryContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 trailing: const Icon(Icons.swap_horiz),
                 onTap: () => Navigator.pop(ctx, cred),
               );
@@ -569,6 +641,7 @@ class _LoginPageState extends State<LoginPage> {
     if (_user.savedPassword != null) {
       _passwordCtrl.text = _user.savedPassword!;
     }
+    _usernameCtrl.addListener(_onCredentialDraftChanged);
     _user.addListener(_onUserChanged);
     _useCopyLogin = _user.loginSource == 'copy';
   }
@@ -576,6 +649,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void dispose() {
     _user.removeListener(_onUserChanged);
+    _usernameCtrl.removeListener(_onCredentialDraftChanged);
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _tokenCtrl.dispose();
@@ -586,9 +660,194 @@ class _LoginPageState extends State<LoginPage> {
     if (mounted) setState(() {});
   }
 
+  void _onCredentialDraftChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool _isCopyCredential(SavedCredential credential) {
+    final source = credential.loginSource;
+    if (source != null && source.isNotEmpty) {
+      return source == 'copy';
+    }
+    if (credential.username == _user.savedUsername) {
+      return _user.loginSource == 'copy';
+    }
+    return false;
+  }
+
+  String _credentialTypeLabel(SavedCredential credential) {
+    return _isCopyCredential(credential) ? '拷贝' : '热辣';
+  }
+
+  IconData _credentialTypeIcon(SavedCredential credential) {
+    return _isCopyCredential(credential)
+        ? Icons.language
+        : Icons.phone_android;
+  }
+
+  bool _isCredentialSelected(SavedCredential credential) {
+    return !_useToken &&
+        _usernameCtrl.text.trim() == credential.username &&
+        _useCopyLogin == _isCopyCredential(credential);
+  }
+
+  Widget _buildCredentialBadge({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required Color backgroundColor,
+    required Color foregroundColor,
+  }) {
+    final tt = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: foregroundColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: tt.labelSmall?.copyWith(
+              color: foregroundColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavedCredentialCard(
+    BuildContext context,
+    SavedCredential credential,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final isCopy = _isCopyCredential(credential);
+    final isSelected = _isCredentialSelected(credential);
+    final nickname = credential.nickname?.trim();
+    final typeBackgroundColor =
+        isCopy ? cs.tertiaryContainer : cs.secondaryContainer;
+    final typeForegroundColor =
+        isCopy ? cs.onTertiaryContainer : cs.onSecondaryContainer;
+    final initial =
+        credential.username.isNotEmpty
+            ? credential.username.substring(0, 1).toUpperCase()
+            : '?';
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color:
+            isSelected
+                ? cs.primaryContainer.withValues(alpha: 0.45)
+                : cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isSelected ? cs.primary : cs.outlineVariant,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _applySavedCredential(credential),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor:
+                      isSelected ? cs.primary : cs.surfaceContainerHighest,
+                  child: Text(
+                    initial,
+                    style: tt.titleMedium?.copyWith(
+                      color:
+                          isSelected ? cs.onPrimary : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        credential.username,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (nickname != null &&
+                          nickname.isNotEmpty &&
+                          nickname != credential.username) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          nickname,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildCredentialBadge(
+                            context: context,
+                            icon: _credentialTypeIcon(credential),
+                            label: _credentialTypeLabel(credential),
+                            backgroundColor: typeBackgroundColor,
+                            foregroundColor: typeForegroundColor,
+                          ),
+                          if (isSelected)
+                            _buildCredentialBadge(
+                              context: context,
+                              icon: Icons.check_circle,
+                              label: '当前已选',
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: '移除账号',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _removeSavedCredential(credential),
+                  icon: Icon(
+                    Icons.close,
+                    size: 18,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _applySavedCredential(SavedCredential credential) {
     setState(() {
       _useToken = false;
+      _useCopyLogin = _isCopyCredential(credential);
       _rememberMe = true;
       _error = null;
       _usernameCtrl.text = credential.username;
@@ -606,6 +865,9 @@ class _LoginPageState extends State<LoginPage> {
             : null;
         _usernameCtrl.text = next?.username ?? '';
         _passwordCtrl.text = next?.password ?? '';
+        if (next != null) {
+          _useCopyLogin = _isCopyCredential(next);
+        }
         _rememberMe = next != null;
       });
     }
@@ -791,18 +1053,34 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 16),
               if (_user.savedCredentials.isNotEmpty) ...[
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _user.savedCredentials.map((credential) {
-                    return InputChip(
-                      label: Text(credential.username),
-                      avatar: const Icon(Icons.person, size: 18),
-                      onPressed: () => _applySavedCredential(credential),
-                      onDeleted: () => _removeSavedCredential(credential),
-                      deleteIcon: const Icon(Icons.close, size: 18),
-                    );
-                  }).toList(),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '已保存账号',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '点按快速填充账号密码，右侧可移除',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 10),
+                Column(
+                  children: [
+                    for (var i = 0; i < _user.savedCredentials.length; i++) ...[
+                      _buildSavedCredentialCard(
+                        context,
+                        _user.savedCredentials[i],
+                      ),
+                      if (i != _user.savedCredentials.length - 1)
+                        const SizedBox(height: 10),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],
