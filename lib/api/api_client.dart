@@ -185,8 +185,32 @@ class ApiClient {
     );
   }
 
+  final Map<String, double> _hostWeights = {};
+
   String _nextHost() {
     final route = _routes[_user.apiRoute];
+
+    double totalWeight = 0.0;
+    for (final host in route) {
+      if (!_hostWeights.containsKey(host)) {
+        _hostWeights[host] = 1.0;
+      }
+      totalWeight += _hostWeights[host]!;
+    }
+
+    if (totalWeight <= 0) {
+      // 如果所有节点都超时（权重为0），或者未测试，退回到轮询
+      final host = route[_hostIndex % route.length];
+      _hostIndex++;
+      return host;
+    }
+
+    double r = Random().nextDouble() * totalWeight;
+    for (final host in route) {
+      r -= _hostWeights[host]!;
+      if (r <= 0) return host;
+    }
+
     final host = route[_hostIndex % route.length];
     _hostIndex++;
     return host;
@@ -282,8 +306,9 @@ class ApiClient {
       return Map<String, dynamic>.from(data['results']);
     }
 
-    final message =
-        data is Map ? (data['message']?.toString() ?? '登录失败') : '登录失败';
+    final message = data is Map
+        ? (data['message']?.toString() ?? '登录失败')
+        : '登录失败';
     throw DioException(
       requestOptions: resp.requestOptions,
       response: resp,
@@ -634,20 +659,31 @@ class ApiClient {
   Future<Map<String, int?>> testRouteLatency(int routeIndex) async {
     final hosts = getRouteHosts(routeIndex);
     final results = <String, int?>{};
-    await Future.wait(hosts.map((host) async {
-      try {
-        final sw = Stopwatch()..start();
-        await SecureSocket.connect(
-          host,
-          443,
-          timeout: const Duration(seconds: 5),
-        );
-        sw.stop();
-        results[host] = sw.elapsedMilliseconds;
-      } catch (_) {
-        results[host] = null;
+    await Future.wait(
+      hosts.map((host) async {
+        try {
+          final sw = Stopwatch()..start();
+          await SecureSocket.connect(
+            host,
+            443,
+            timeout: const Duration(seconds: 3),
+          );
+          sw.stop();
+          results[host] = sw.elapsedMilliseconds;
+        } catch (_) {
+          results[host] = null;
+        }
+      }),
+    );
+
+    for (final entry in results.entries) {
+      if (entry.value == null || entry.value! <= 0) {
+        _hostWeights[entry.key] = 0.0;
+      } else {
+        _hostWeights[entry.key] = 1000.0 / entry.value!;
       }
-    }));
+    }
+
     return results;
   }
 }
