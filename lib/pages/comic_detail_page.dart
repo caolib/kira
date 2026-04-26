@@ -671,7 +671,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     child: const Text('取消'),
                   ),
                   Text(
-                    '按当前列表顺序串行下载，避免并发请求',
+                    '按当前列表顺序串行下载，避免请求太频繁',
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],

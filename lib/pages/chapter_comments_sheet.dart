@@ -368,7 +368,19 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
   Widget _buildBody(BuildContext context, ColorScheme cs, TextTheme tt) {
     if (_loading && _comments.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView.separated(
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          _commentListBottomPadding,
+        ),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 8,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) =>
+            _CommentSkeleton(compact: _useCompactLayout),
+      );
     }
 
     if (_error != null && _comments.isEmpty) {
@@ -698,6 +710,102 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       maxLines: 1,
     )..layout(minWidth: 0, maxWidth: maxWidth);
     return painter.size.width;
+  }
+}
+
+class _CommentSkeleton extends StatefulWidget {
+  final bool compact;
+  const _CommentSkeleton({required this.compact});
+
+  @override
+  State<_CommentSkeleton> createState() => _CommentSkeletonState();
+}
+
+class _CommentSkeletonState extends State<_CommentSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1000),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final horizontalPadding = widget.compact ? 10.0 : 12.0;
+    final topPadding = widget.compact ? 8.0 : 12.0;
+    final bottomPadding = widget.compact ? 4.0 : 12.0;
+    final avatarSize = widget.compact ? 20.0 : 28.0;
+
+    return FadeTransition(
+      opacity: Tween<double>(
+        begin: 0.3,
+        end: 0.7,
+      ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeInOut)),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          topPadding,
+          horizontalPadding,
+          bottomPadding,
+        ),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: avatarSize,
+                  height: avatarSize,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 100,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              height: widget.compact ? 14 : 16,
+              decoration: BoxDecoration(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: MediaQuery.sizeOf(context).width * 0.6,
+              height: widget.compact ? 14 : 16,
+              decoration: BoxDecoration(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 }
 
