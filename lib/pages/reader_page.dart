@@ -74,6 +74,7 @@ class _ReaderPageState extends State<ReaderPage> {
     }
     setState(() {});
   }
+
   late String _currentUuid;
   int _currentPage = 1;
   bool _jumpingScroll = false;
@@ -265,6 +266,7 @@ class _ReaderPageState extends State<ReaderPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.transparent,
       isScrollControlled: true,
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.85,
@@ -907,7 +909,9 @@ class _ReaderPageState extends State<ReaderPage> {
               _currentPage = index + 1;
               if (!_isDraggingSlider) {
                 _showToolbar = false;
-                SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+                SystemChrome.setEnabledSystemUIMode(
+                  SystemUiMode.immersiveSticky,
+                );
               }
             });
             _resetPageModeChapterOverscroll();
@@ -1302,6 +1306,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
   final _user = UserManager();
   final _stats = ImageLoadStats();
   static const _scrollDirectionLabels = ['左到右', '右到左', '上到下'];
+  bool _isDraggingBrightness = false;
 
   @override
   void initState() {
@@ -1326,64 +1331,39 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
     final isPageMode = _user.readerMode == 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: _isDraggingBrightness ? 0 : 1.0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '阅读设置',
-                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Text('阅读模式', style: tt.bodyMedium),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 0,
-                      icon: Icon(Icons.view_day),
-                      label: Text('滚动'),
-                    ),
-                    ButtonSegment(
-                      value: 1,
-                      icon: Icon(Icons.auto_stories),
-                      label: Text('翻页'),
-                    ),
-                  ],
-                  selected: {_user.readerMode},
-                  onSelectionChanged: (v) {
-                    _user.setReaderMode(v.first);
-                    setState(() {});
-                    widget.onChanged();
-                  },
+                const SizedBox(height: 16),
+                Text(
+                  '阅读设置',
+                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 16),
-              // 图片间距（仅滚动模式）
-              if (!isPageMode) ...[
-                Text('滚动方向', style: tt.bodyMedium),
+                const SizedBox(height: 20),
+                Text('阅读模式', style: tt.bodyMedium),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
@@ -1391,81 +1371,84 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     segments: const [
                       ButtonSegment(
                         value: 0,
-                        icon: Icon(Icons.arrow_forward),
-                        label: Text('左到右'),
+                        icon: Icon(Icons.view_day),
+                        label: Text('滚动'),
                       ),
                       ButtonSegment(
                         value: 1,
-                        icon: Icon(Icons.arrow_back),
-                        label: Text('右到左'),
-                      ),
-                      ButtonSegment(
-                        value: 2,
-                        icon: Icon(Icons.arrow_downward),
-                        label: Text('上到下'),
+                        icon: Icon(Icons.auto_stories),
+                        label: Text('翻页'),
                       ),
                     ],
-                    selected: {_user.readerScrollDirection},
+                    selected: {_user.readerMode},
                     onSelectionChanged: (v) {
-                      _user.setReaderScrollDirection(v.first);
+                      _user.setReaderMode(v.first);
                       setState(() {});
                       widget.onChanged();
                     },
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text('图片间距', style: tt.bodyMedium),
-                    const Spacer(),
-                    Text(
-                      '${_scrollDirectionLabels[_user.readerScrollDirection]} · ${_user.readerImageGap.round()} px',
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                // 图片间距（仅滚动模式）
+                if (!isPageMode) ...[
+                  Text('滚动方向', style: tt.bodyMedium),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment(
+                          value: 0,
+                          icon: Icon(Icons.arrow_forward),
+                          label: Text('左到右'),
+                        ),
+                        ButtonSegment(
+                          value: 1,
+                          icon: Icon(Icons.arrow_back),
+                          label: Text('右到左'),
+                        ),
+                        ButtonSegment(
+                          value: 2,
+                          icon: Icon(Icons.arrow_downward),
+                          label: Text('上到下'),
+                        ),
+                      ],
+                      selected: {_user.readerScrollDirection},
+                      onSelectionChanged: (v) {
+                        _user.setReaderScrollDirection(v.first);
+                        setState(() {});
+                        widget.onChanged();
+                      },
                     ),
-                  ],
-                ),
-                Slider(
-                  value: _user.readerImageGap,
-                  min: 0,
-                  max: 20,
-                  divisions: 20,
-                  onChanged: (v) {
-                    _user.setReaderImageGap(v);
-                    setState(() {});
-                    widget.onChanged();
-                  },
-                ),
-              ],
-              // 翻页设置（仅翻页模式）
-              if (isPageMode) ...[
-                Text('翻页轴向', style: tt.bodyMedium),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                        value: false,
-                        icon: Icon(Icons.swap_horiz),
-                        label: Text('左右'),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        icon: Icon(Icons.swap_vert),
-                        label: Text('上下'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text('图片间距', style: tt.bodyMedium),
+                      const Spacer(),
+                      Text(
+                        '${_scrollDirectionLabels[_user.readerScrollDirection]} · ${_user.readerImageGap.round()} px',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ],
-                    selected: {_user.readerPageVertical},
-                    onSelectionChanged: (v) {
-                      _user.setReaderPageVertical(v.first);
+                  ),
+                  Slider(
+                    value: _user.readerImageGap,
+                    min: 0,
+                    max: 20,
+                    divisions: 20,
+                    onChanged: (v) {
+                      _user.setReaderImageGap(v);
                       setState(() {});
                       widget.onChanged();
                     },
                   ),
-                ),
-                const SizedBox(height: 8),
-                if (!_user.readerPageVertical) ...[
-                  Text('翻页方向', style: tt.bodyMedium),
+                ],
+                // 翻页设置（仅翻页模式）
+                if (isPageMode) ...[
+                  Text('翻页轴向', style: tt.bodyMedium),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -1473,156 +1456,190 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       segments: const [
                         ButtonSegment(
                           value: false,
-                          icon: Icon(Icons.arrow_forward),
-                          label: Text('左到右'),
+                          icon: Icon(Icons.swap_horiz),
+                          label: Text('左右'),
                         ),
                         ButtonSegment(
                           value: true,
-                          icon: Icon(Icons.arrow_back),
-                          label: Text('右到左'),
+                          icon: Icon(Icons.swap_vert),
+                          label: Text('上下'),
                         ),
                       ],
-                      selected: {_user.readerPageRTL},
+                      selected: {_user.readerPageVertical},
                       onSelectionChanged: (v) {
-                        _user.setReaderPageRTL(v.first);
+                        _user.setReaderPageVertical(v.first);
                         setState(() {});
                         widget.onChanged();
                       },
                     ),
                   ),
                   const SizedBox(height: 8),
+                  if (!_user.readerPageVertical) ...[
+                    Text('翻页方向', style: tt.bodyMedium),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(
+                            value: false,
+                            icon: Icon(Icons.arrow_forward),
+                            label: Text('左到右'),
+                          ),
+                          ButtonSegment(
+                            value: true,
+                            icon: Icon(Icons.arrow_back),
+                            label: Text('右到左'),
+                          ),
+                        ],
+                        selected: {_user.readerPageRTL},
+                        onSelectionChanged: (v) {
+                          _user.setReaderPageRTL(v.first);
+                          setState(() {});
+                          widget.onChanged();
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  // 音量键翻页
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('音量键翻页'),
+                    subtitle: const Text('音量+上一页，音量-下一页'),
+                    value: _user.readerVolumeKey,
+                    onChanged: (v) {
+                      _user.setReaderVolumeKey(v);
+                      setState(() {});
+                      widget.onChanged();
+                    },
+                  ),
                 ],
-                // 音量键翻页
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('音量键翻页'),
-                  subtitle: const Text('音量+上一页，音量-下一页'),
-                  value: _user.readerVolumeKey,
-                  onChanged: (v) {
-                    _user.setReaderVolumeKey(v);
-                    setState(() {});
-                    widget.onChanged();
-                  },
+                // 亮度遮罩（仅深色模式）
+                if (isDark) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.brightness_low, size: 18),
+                      const SizedBox(width: 8),
+                      Text('降低亮度', style: tt.bodyMedium),
+                      const Spacer(),
+                      Text(
+                        '${(_user.readerDimming * 100).round()}%',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: _user.readerDimming,
+                    min: 0,
+                    max: 0.7,
+                    divisions: 14,
+                    onChangeStart: (_) =>
+                        setState(() => _isDraggingBrightness = true),
+                    onChangeEnd: (_) =>
+                        setState(() => _isDraggingBrightness = false),
+                    onChanged: (v) {
+                      _user.setReaderDimming(v);
+                      setState(() {});
+                      widget.onChanged();
+                    },
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  '图片加载',
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
-              ],
-              // 亮度遮罩（仅深色模式）
-              if (isDark) ...[
+                const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.brightness_low, size: 18),
+                    const Icon(Icons.timer_outlined, size: 18),
                     const SizedBox(width: 8),
-                    Text('降低亮度', style: tt.bodyMedium),
+                    Text('超时时间', style: tt.bodyMedium),
                     const Spacer(),
                     Text(
-                      '${(_user.readerDimming * 100).round()}%',
+                      '${_user.imageLoadTimeout} s',
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
                 ),
                 Slider(
-                  value: _user.readerDimming,
-                  min: 0,
-                  max: 0.7,
-                  divisions: 14,
+                  value: _user.imageLoadTimeout.toDouble(),
+                  min: 3,
+                  max: 60,
+                  divisions: 57,
+                  label: '${_user.imageLoadTimeout} s',
                   onChanged: (v) {
-                    _user.setReaderDimming(v);
+                    _user.setImageLoadTimeout(v.round());
                     setState(() {});
                     widget.onChanged();
                   },
                 ),
-              ],
-              const SizedBox(height: 8),
-              Text(
-                '图片加载',
-                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.timer_outlined, size: 18),
-                  const SizedBox(width: 8),
-                  Text('超时时间', style: tt.bodyMedium),
-                  const Spacer(),
-                  Text(
-                    '${_user.imageLoadTimeout} s',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-              Slider(
-                value: _user.imageLoadTimeout.toDouble(),
-                min: 3,
-                max: 60,
-                divisions: 57,
-                label: '${_user.imageLoadTimeout} s',
-                onChanged: (v) {
-                  _user.setImageLoadTimeout(v.round());
-                  setState(() {});
-                  widget.onChanged();
-                },
-              ),
-              Text(
-                '设置太小可能导致图片加载失败，太大可能导致长时间转圈',
-                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              Builder(
-                builder: (_) {
-                  final avg = _stats.averageMs;
-                  final count = _stats.sampleCount;
-                  if (avg == null) {
+                Text(
+                  '设置太小可能导致图片加载失败，太大可能导致长时间转圈',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                Builder(
+                  builder: (_) {
+                    final avg = _stats.averageMs;
+                    final count = _stats.sampleCount;
+                    if (avg == null) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '暂无加载记录（阅读图片后此处显示平均耗时供参考）',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      );
+                    }
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '暂无加载记录（阅读图片后此处显示平均耗时供参考）',
+                        '最近10分钟内加载了 $count 张，平均 ${(avg / 1000).toStringAsFixed(1)} s',
                         style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                          color: cs.primary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     );
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      '最近10分钟内加载了 $count 张，平均 ${(avg / 1000).toStringAsFixed(1)} s',
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.refresh, size: 18),
+                    const SizedBox(width: 8),
+                    Text('重试次数', style: tt.bodyMedium),
+                    const Spacer(),
+                    Text(
+                      _user.imageRetryCount == 0
+                          ? '关闭'
+                          : '${_user.imageRetryCount} 次',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.refresh, size: 18),
-                  const SizedBox(width: 8),
-                  Text('重试次数', style: tt.bodyMedium),
-                  const Spacer(),
-                  Text(
-                    _user.imageRetryCount == 0
-                        ? '关闭'
-                        : '${_user.imageRetryCount} 次',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-              Slider(
-                value: _user.imageRetryCount.toDouble(),
-                min: 0,
-                max: 5,
-                divisions: 5,
-                label: _user.imageRetryCount == 0
-                    ? '关闭'
-                    : '${_user.imageRetryCount} 次',
-                onChanged: (v) {
-                  _user.setImageRetryCount(v.round());
-                  setState(() {});
-                  widget.onChanged();
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+                  ],
+                ),
+                Slider(
+                  value: _user.imageRetryCount.toDouble(),
+                  min: 0,
+                  max: 5,
+                  divisions: 5,
+                  label: _user.imageRetryCount == 0
+                      ? '关闭'
+                      : '${_user.imageRetryCount} 次',
+                  onChanged: (v) {
+                    _user.setImageRetryCount(v.round());
+                    setState(() {});
+                    widget.onChanged();
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         ),
       ),
