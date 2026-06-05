@@ -1561,10 +1561,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 12),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.5,
-                  ),
+                Flexible(
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: choices.length,
