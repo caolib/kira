@@ -74,7 +74,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   bool _showUserName = true;
   bool _showCommentTime = true;
   double _commentFontScale = 1.0;
-  bool _showFloatingButtons = true;
+  final ValueNotifier<bool> _showFloatingButtons = ValueNotifier(true);
   double _lastScrollOffset = 0;
 
   String _aiSummary = '';
@@ -131,6 +131,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _summaryProgress.removeListener(_onSummaryProgressChanged);
     _aiSettings.removeListener(_onAiChanged);
     _scrollController.dispose();
+    _showFloatingButtons.dispose();
     super.dispose();
   }
 
@@ -238,10 +239,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
   void _handleScrollDirection() {
     final offset = _scrollController.offset;
-    if (offset > _lastScrollOffset + 2 && _showFloatingButtons) {
-      setState(() => _showFloatingButtons = false);
-    } else if (offset < _lastScrollOffset - 2 && !_showFloatingButtons) {
-      setState(() => _showFloatingButtons = true);
+    if (offset > _lastScrollOffset + 2 && _showFloatingButtons.value) {
+      _showFloatingButtons.value = false;
+    } else if (offset < _lastScrollOffset - 2 && !_showFloatingButtons.value) {
+      _showFloatingButtons.value = true;
     }
     _lastScrollOffset = offset;
   }
@@ -1190,99 +1191,113 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 Positioned(
                   right: 16,
                   bottom: 16,
-                  child: AnimatedSlide(
-                    offset: _showFloatingButtons
-                        ? Offset.zero
-                        : const Offset(0, 1.2),
-                    curve: Curves.easeInOutCubic,
-                    duration: const Duration(milliseconds: 260),
-                    child: AnimatedOpacity(
-                      opacity: _showFloatingButtons ? 1.0 : 0.0,
-                      curve: Curves.easeInOutCubic,
-                      duration: const Duration(milliseconds: 260),
-                      child: SafeArea(
-                        top: false,
-                        child: Builder(
-                          builder: (context) {
-                            final buttonBackgroundColor = cs.primaryContainer;
-                            final buttonForegroundColor = cs.onPrimaryContainer;
-                            final buttonStyle = FilledButton.styleFrom(
-                              backgroundColor: buttonBackgroundColor,
-                              foregroundColor: buttonForegroundColor,
-                              elevation: 6,
-                              shadowColor: Colors.black.withValues(alpha: 0.22),
-                              minimumSize: const Size(0, 52),
-                              maximumSize: const Size.fromHeight(52),
-                              fixedSize: const Size.fromHeight(52),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            );
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _showFloatingButtons,
+                    builder: (context, showFloatingButtons, child) {
+                      return AnimatedSlide(
+                        offset: showFloatingButtons
+                            ? Offset.zero
+                            : const Offset(0, 1.2),
+                        curve: Curves.easeInOutCubic,
+                        duration: const Duration(milliseconds: 260),
+                        child: AnimatedOpacity(
+                          opacity: showFloatingButtons ? 1.0 : 0.0,
+                          curve: Curves.easeInOutCubic,
+                          duration: const Duration(milliseconds: 260),
+                          child: SafeArea(
+                            top: false,
+                            child: Builder(
+                              builder: (context) {
+                                final buttonBackgroundColor =
+                                    cs.primaryContainer;
+                                final buttonForegroundColor =
+                                    cs.onPrimaryContainer;
+                                final buttonStyle = FilledButton.styleFrom(
+                                  backgroundColor: buttonBackgroundColor,
+                                  foregroundColor: buttonForegroundColor,
+                                  elevation: 6,
+                                  shadowColor: Colors.black.withValues(
+                                    alpha: 0.22,
+                                  ),
+                                  minimumSize: const Size(0, 52),
+                                  maximumSize: const Size.fromHeight(52),
+                                  fixedSize: const Size.fromHeight(52),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                );
 
-                            return Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                FilledButton.icon(
-                                  style: buttonStyle,
-                                  onPressed: _showPostCommentDialog,
-                                  icon: const Icon(Icons.comment_outlined),
-                                  label: const Text('评论'),
-                                ),
-                                const SizedBox(width: 8),
-                                FilledButton.icon(
-                                  style: buttonStyle,
-                                  onPressed: () {
-                                    widget.onBackToCatalog?.call();
-                                    Navigator.of(
-                                      context,
-                                    ).pop('back_to_catalog');
-                                  },
-                                  icon: const Icon(Icons.list_rounded),
-                                  label: const Text('目录'),
-                                ),
-                                if (widget.hasNextChapter) ...[
-                                  const SizedBox(width: 8),
-                                  FilledButton.icon(
-                                    style: buttonStyle,
-                                    onPressed: widget.onNextChapter,
-                                    icon: const Icon(Icons.skip_next_rounded),
-                                    label: const Text('下一话'),
-                                  ),
-                                ],
-                                const SizedBox(width: 8),
-                                SizedBox.square(
-                                  dimension: 52,
-                                  child: FilledButton(
-                                    style: buttonStyle.copyWith(
-                                      padding: const WidgetStatePropertyAll(
-                                        EdgeInsets.zero,
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FilledButton.icon(
+                                      style: buttonStyle,
+                                      onPressed: _showPostCommentDialog,
+                                      icon: const Icon(Icons.comment_outlined),
+                                      label: const Text('评论'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    FilledButton.icon(
+                                      style: buttonStyle,
+                                      onPressed: () {
+                                        widget.onBackToCatalog?.call();
+                                        Navigator.of(
+                                          context,
+                                        ).pop('back_to_catalog');
+                                      },
+                                      icon: const Icon(Icons.list_rounded),
+                                      label: const Text('目录'),
+                                    ),
+                                    if (widget.hasNextChapter) ...[
+                                      const SizedBox(width: 8),
+                                      FilledButton.icon(
+                                        style: buttonStyle,
+                                        onPressed: widget.onNextChapter,
+                                        icon: const Icon(
+                                          Icons.skip_next_rounded,
+                                        ),
+                                        label: const Text('下一话'),
                                       ),
-                                      minimumSize: const WidgetStatePropertyAll(
-                                        Size.square(52),
-                                      ),
-                                      maximumSize: const WidgetStatePropertyAll(
-                                        Size.square(52),
+                                    ],
+                                    const SizedBox(width: 8),
+                                    SizedBox.square(
+                                      dimension: 52,
+                                      child: FilledButton(
+                                        style: buttonStyle.copyWith(
+                                          padding: const WidgetStatePropertyAll(
+                                            EdgeInsets.zero,
+                                          ),
+                                          minimumSize:
+                                              const WidgetStatePropertyAll(
+                                                Size.square(52),
+                                              ),
+                                          maximumSize:
+                                              const WidgetStatePropertyAll(
+                                                Size.square(52),
+                                              ),
+                                        ),
+                                        onPressed: () =>
+                                            Navigator.of(context).maybePop(),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    onPressed: () =>
-                                        Navigator.of(context).maybePop(),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.keyboard_arrow_down_rounded,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ],

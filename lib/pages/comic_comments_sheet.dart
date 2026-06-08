@@ -512,6 +512,9 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     final totalReplies = replyState.total > 0
         ? replyState.total
         : comment.replyCount;
+    final skeletonCount = totalReplies <= 0
+        ? 1
+        : (totalReplies < _replyPageSize ? totalReplies : _replyPageSize);
 
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -519,14 +522,13 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (replyState.loading && replies.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Column(
-                children: [
-                  _ComicReplySkeleton(),
-                  SizedBox(height: 12),
-                  _ComicReplySkeleton(),
-                ],
+                children: List.generate(skeletonCount * 2 - 1, (index) {
+                  if (index.isOdd) return const SizedBox(height: 12);
+                  return const _ComicReplySkeleton();
+                }),
               ),
             ),
           if (replyState.error != null && replies.isEmpty)
@@ -838,31 +840,29 @@ class _ExpandableCommentText extends StatefulWidget {
 class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
   static const _maxLines = 3;
   bool _expanded = false;
-  bool _isOverflowing = false;
-  double _lastLayoutWidth = 0;
 
-  void _checkOverflow(double maxWidth) {
-    if (maxWidth <= 0) return;
-    if ((maxWidth - _lastLayoutWidth).abs() < 1) return;
-    _lastLayoutWidth = maxWidth;
+  @override
+  void didUpdateWidget(covariant _ExpandableCommentText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _expanded = false;
+    }
+  }
+
+  bool _isTextOverflowing(BuildContext context, double maxWidth) {
+    if (maxWidth <= 0 || !maxWidth.isFinite) return false;
 
     final textPainter = TextPainter(
       text: TextSpan(text: widget.text, style: widget.style),
       textDirection: Directionality.of(context),
       maxLines: _maxLines,
+      textScaler: MediaQuery.textScalerOf(context),
     )..layout(maxWidth: maxWidth);
 
-    final nextOverflowing = textPainter.didExceedMaxLines;
-    if (nextOverflowing != _isOverflowing) {
-      setState(() {
-        _isOverflowing = nextOverflowing;
-        if (!nextOverflowing) _expanded = false;
-      });
-    }
+    return textPainter.didExceedMaxLines;
   }
 
   void _toggleExpanded() {
-    if (!_isOverflowing) return;
     setState(() => _expanded = !_expanded);
   }
 
@@ -879,11 +879,9 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _checkOverflow(constraints.maxWidth);
-        });
+        final isOverflowing = _isTextOverflowing(context, constraints.maxWidth);
 
-        if (!_isOverflowing) {
+        if (!isOverflowing) {
           return Text(widget.text, style: widget.style);
         }
 
