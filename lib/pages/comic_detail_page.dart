@@ -81,6 +81,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   bool _isCollected = false;
   bool _selectionMode = false;
   Chapter? _nextBrowseChapter;
+  int? _nextBrowseChapterListPage;
   String? _nextBrowseChapterSourceId;
   bool _loadingNextBrowseChapter = false;
   // 本地阅读记录（优先级高于书架传入的记录）
@@ -89,8 +90,10 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   bool _usingLocalHistory = false;
   String? _lastBrowseId;
   String? _lastBrowseName;
+  int? _lastBrowseChapterListPage;
   int _lastBrowsePage = 1;
   int _lastBrowseTotalPage = 0;
+  Set<String> _readChapterUuids = const <String>{};
 
   String get _cacheKey => 'comic_detail_${widget.pathWord}';
 
@@ -136,8 +139,10 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _usingLocalHistory = record != null;
       _lastBrowseId = record?.chapterUuid ?? _officialLastBrowseId;
       _lastBrowseName = record?.chapterName ?? _officialLastBrowseName;
+      _lastBrowseChapterListPage = record?.chapterListPage;
       _lastBrowsePage = record?.page ?? 1;
       _lastBrowseTotalPage = record?.totalPage ?? 0;
+      _readChapterUuids = <String>{...?record?.readChapterUuids};
       if (_lastBrowseId != null) _reversed = true;
     });
     await _syncNextBrowseChapter();
@@ -315,7 +320,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   int get _totalPages => (_chapterTotal / _pageSize).ceil();
 
-  /// 根据阅读记录中的章节名提取数字，自动跳到对应分页
+  /// 优先使用阅读记录中的章节列表页；旧记录再按章节名估算分页。
   Future<void> _loadChapterPageForHistory({Comic? comic, String? group}) async {
     final targetGroup = group ?? _selectedGroup;
     final total =
@@ -334,13 +339,25 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   }
 
   int _resolveHistoryChapterPage(int total) {
+    final recordedPage = _lastBrowseChapterListPage;
+    if (recordedPage != null) {
+      return _normalizeChapterListPage(recordedPage, total);
+    }
+
     if (_lastBrowseName == null || total <= _pageSize) return 0;
     final match = RegExp(r'第(\d+)[话集章回卷]').firstMatch(_lastBrowseName!);
     if (match == null) return 0;
 
     final num = int.parse(match.group(1)!);
+    return _normalizeChapterListPage(((num - 1) / _pageSize).floor(), total);
+  }
+
+  int _normalizeChapterListPage(int page, int total) {
+    if (page <= 0) return 0;
+    if (total <= 0) return page;
     final totalPages = (total / _pageSize).ceil();
-    return ((num - 1) / _pageSize).floor().clamp(0, totalPages - 1);
+    if (page >= totalPages) return totalPages - 1;
+    return page;
   }
 
   Chapter? _chapterByUuid(String? uuid) {
@@ -363,6 +380,12 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     if (_lastBrowseId == null) return false;
     if (_usingLocalHistory) return true;
     return _chapterByUuid(_lastBrowseId) != null;
+  }
+
+  int? get _lastBrowseReaderChapterListPage {
+    final recordedPage = _lastBrowseChapterListPage;
+    if (recordedPage != null) return recordedPage;
+    return _chapterByUuid(_lastBrowseId) != null ? _chapterPage : null;
   }
 
   String _continueReadingLabel() {
@@ -407,6 +430,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       if (_nextBrowseChapter != null || _nextBrowseChapterSourceId != null) {
         setState(() {
           _nextBrowseChapter = null;
+          _nextBrowseChapterListPage = null;
           _nextBrowseChapterSourceId = null;
         });
       }
@@ -419,6 +443,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       if (_nextBrowseChapter?.uuid != cachedNext.uuid) {
         setState(() {
           _nextBrowseChapter = cachedNext;
+          _nextBrowseChapterListPage = _chapterPage;
           _nextBrowseChapterSourceId = nextUuid;
         });
       }
@@ -461,16 +486,19 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           _lastBrowseId == currentChapter.uuid) {
         setState(() {
           _nextBrowseChapter = nextChapter;
+          _nextBrowseChapterListPage = nextPage;
         });
       } else if (mounted && _lastBrowseId == currentChapter.uuid) {
         setState(() {
           _nextBrowseChapter = null;
+          _nextBrowseChapterListPage = null;
         });
       }
     } catch (_) {
       if (mounted && _nextBrowseChapterSourceId == nextUuid) {
         setState(() {
           _nextBrowseChapter = null;
+          _nextBrowseChapterListPage = null;
         });
       }
     } finally {
@@ -609,6 +637,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           group: _selectedGroup,
           chapterUuid: chapter.uuid,
           chapterName: chapter.name,
+          chapterListPage: _chapterPage,
         ),
       ),
     ).then((_) => _loadLocalHistory());
@@ -670,6 +699,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                   group: _selectedGroup,
                                   chapterUuid: _nextBrowseChapter!.uuid,
                                   chapterName: _nextBrowseChapter!.name,
+                                  chapterListPage:
+                                      _nextBrowseChapterListPage ??
+                                      _chapterPage,
                                 ),
                               ),
                             ).then((_) => _loadLocalHistory()),
@@ -692,6 +724,8 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                 group: _selectedGroup,
                                 chapterUuid: _lastBrowseId!,
                                 chapterName: _lastBrowseName ?? '',
+                                chapterListPage:
+                                    _lastBrowseReaderChapterListPage,
                                 initialPage: _lastBrowsePage,
                               ),
                             ),
@@ -786,6 +820,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   Widget _buildChapterCard(Chapter chapter, ColorScheme cs, TextTheme tt) {
     final isLastRead = _lastBrowseId == chapter.uuid;
+    final isRead = _readChapterUuids.contains(chapter.uuid);
     final isDownloaded = _isChapterDownloaded(chapter.uuid);
     final isQueued = _isChapterQueued(chapter.uuid);
     final isDownloading = _downloads.isDownloading(
@@ -794,27 +829,45 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
     final progress = _downloads.progressOf(widget.pathWord, chapter.uuid);
     final isSelected = _selectedChapterIds.contains(chapter.uuid);
+    final brightness = Theme.of(context).brightness;
 
     final backgroundColor = isSelected
         ? cs.secondaryContainer
         : isLastRead
         ? cs.primaryContainer
+        : isRead
+        ? Color.alphaBlend(
+            cs.primary.withValues(
+              alpha: brightness == Brightness.dark ? 0.16 : 0.08,
+            ),
+            cs.surfaceContainerLow,
+          )
         : cs.surfaceContainerLow;
     final foregroundColor = isSelected
         ? cs.onSecondaryContainer
         : isLastRead
         ? cs.onPrimaryContainer
+        : isRead
+        ? cs.onSurface.withValues(
+            alpha: brightness == Brightness.dark ? 0.70 : 0.62,
+          )
         : cs.onSurface;
+    final subtitleColor = isSelected
+        ? foregroundColor.withValues(alpha: 0.8)
+        : isRead && !isLastRead
+        ? cs.onSurfaceVariant.withValues(
+            alpha: brightness == Brightness.dark ? 0.72 : 0.62,
+          )
+        : cs.onSurfaceVariant;
 
-    final subtitle = isDownloaded
+    final statusText = isDownloaded
         ? '已下载'
         : isDownloading && progress != null
         ? '下载 ${progress.completed}/${progress.total}'
         : isQueued
         ? '排队中'
         : '${chapter.size}P';
-
-    final brightness = Theme.of(context).brightness;
+    final subtitle = isRead && !isLastRead ? '已读 · $statusText' : statusText;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
@@ -883,9 +936,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         subtitle,
                         textAlign: TextAlign.center,
                         style: tt.labelSmall?.copyWith(
-                          color: isSelected
-                              ? foregroundColor.withValues(alpha: 0.8)
-                              : cs.onSurfaceVariant,
+                          color: subtitleColor,
                           fontSize: 10,
                         ),
                       ),

@@ -31,6 +31,7 @@ class ReaderPage extends StatefulWidget {
   final String? group;
   final String chapterUuid;
   final String chapterName;
+  final int? chapterListPage;
   final int initialPage;
 
   const ReaderPage({
@@ -40,6 +41,7 @@ class ReaderPage extends StatefulWidget {
     this.group,
     required this.chapterUuid,
     required this.chapterName,
+    this.chapterListPage,
     this.initialPage = 1,
   });
 
@@ -269,6 +271,7 @@ class _ReaderPageState extends State<ReaderPage> {
       group: widget.group,
       chapterUuid: _currentUuid,
       chapterName: _detail?.name ?? widget.chapterName,
+      chapterListPage: widget.chapterListPage,
       page: _currentPage,
       totalPage: _detail?.contents.length ?? 0,
     );

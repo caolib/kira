@@ -410,6 +410,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
   String? _lastBrowseName;
   int _lastBrowsePage = 1;
   int _lastBrowseTotalPage = 0;
+  Set<String> _readChapterUuids = const <String>{};
 
   @override
   void initState() {
@@ -453,6 +454,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
       _lastBrowseName = record.chapterName;
       _lastBrowsePage = record.page;
       _lastBrowseTotalPage = record.totalPage;
+      _readChapterUuids = <String>{...record.readChapterUuids};
     });
   }
 
@@ -750,10 +752,14 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                       chapter.chapterUuid,
                     );
                     final isLastRead = _lastBrowseId == chapter.chapterUuid;
+                    final isRead = _readChapterUuids.contains(
+                      chapter.chapterUuid,
+                    );
                     return _LocalChapterCard(
                       summary: chapter,
                       selected: selected,
                       isLastRead: isLastRead,
+                      isRead: isRead,
                       selectionMode: _selectionMode,
                       onTap: () {
                         if (_selectionMode) {
@@ -862,6 +868,7 @@ class _LocalChapterCard extends StatelessWidget {
   final DownloadedChapterSummary summary;
   final bool selected;
   final bool isLastRead;
+  final bool isRead;
   final bool selectionMode;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
@@ -871,6 +878,7 @@ class _LocalChapterCard extends StatelessWidget {
     required this.summary,
     required this.selected,
     required this.isLastRead,
+    required this.isRead,
     required this.selectionMode,
     required this.onTap,
     required this.onLongPress,
@@ -881,16 +889,33 @@ class _LocalChapterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final brightness = Theme.of(context).brightness;
     final background = selected
         ? cs.secondaryContainer
         : isLastRead
         ? cs.primaryContainer
+        : isRead
+        ? Color.alphaBlend(
+            cs.primary.withValues(
+              alpha: brightness == Brightness.dark ? 0.16 : 0.08,
+            ),
+            cs.surfaceContainerLow,
+          )
         : cs.surfaceContainerLow;
     final foreground = selected
         ? cs.onSecondaryContainer
         : isLastRead
         ? cs.onPrimaryContainer
+        : isRead
+        ? cs.onSurface.withValues(
+            alpha: brightness == Brightness.dark ? 0.70 : 0.62,
+          )
         : cs.onSurface;
+    final subtitleColor = isRead && !isLastRead
+        ? cs.onSurfaceVariant.withValues(
+            alpha: brightness == Brightness.dark ? 0.72 : 0.62,
+          )
+        : cs.onSurfaceVariant;
 
     return Material(
       color: background,
@@ -944,8 +969,10 @@ class _LocalChapterCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${summary.pageCount}P',
-                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                isRead && !isLastRead
+                    ? '已读 · ${summary.pageCount}P'
+                    : '${summary.pageCount}P',
+                style: tt.labelSmall?.copyWith(color: subtitleColor),
               ),
             ],
           ),
