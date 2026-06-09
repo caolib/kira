@@ -125,27 +125,33 @@ mixin _MangaApi on _ApiClientBase {
   // 9. 章节详情
   Future<ChapterDetail> getChapterDetail(
     String pathWord,
-    String chapterUuid,
-  ) async {
+    String chapterUuid, {
+    bool forceRefresh = false,
+  }) async {
     final cacheKey = _chapterDetailCacheKey(pathWord, chapterUuid);
-    final cached = await _cache.get(cacheKey);
-    if (cached is Map) {
-      try {
-        final detail = ChapterDetail.fromJson(
-          Map<String, dynamic>.from(cached),
-        );
-        if (detail.contents.isNotEmpty) {
-          return detail;
+    if (!forceRefresh) {
+      final cached = await _cache.get(cacheKey);
+      if (cached is Map) {
+        try {
+          final detail = ChapterDetail.fromJson(
+            Map<String, dynamic>.from(cached),
+          );
+          if (detail.contents.isNotEmpty) {
+            return detail;
+          }
+          await _cache.remove(cacheKey);
+        } catch (_) {
+          await _cache.remove(cacheKey);
         }
-        await _cache.remove(cacheKey);
-      } catch (_) {
-        await _cache.remove(cacheKey);
       }
     }
 
+    final params = <String, dynamic>{'platform': 3};
+    if (forceRefresh) params['_update'] = true;
+
     final data = await _get(
       '/api/v3/comic/$pathWord/chapter/$chapterUuid',
-      params: {'platform': 3},
+      params: params,
       host: _hostSd,
     );
     final detail = ChapterDetail.fromJson(data);

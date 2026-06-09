@@ -79,6 +79,7 @@ class _ReaderPageState extends State<ReaderPage> {
   PageController _pageController = PageController();
   ChapterDetail? _detail;
   bool _loading = true;
+  bool _refreshingChapter = false;
   bool _showToolbar = false;
 
   void _toggleToolbar() {
@@ -219,28 +220,45 @@ class _ReaderPageState extends State<ReaderPage> {
     }
   }
 
-  Future<void> _loadChapter() async {
-    setState(() => _loading = true);
+  Future<void> _loadChapter({bool forceRefresh = false}) async {
+    if (forceRefresh && _refreshingChapter) return;
+    final previousPage = _currentPage;
+    setState(() {
+      if (forceRefresh) {
+        _refreshingChapter = true;
+      } else {
+        _loading = true;
+      }
+    });
     try {
       final detail =
-          await _downloads.getDownloadedChapterDetail(
+          (forceRefresh
+              ? null
+              : await _downloads.getDownloadedChapterDetail(
+                  widget.pathWord,
+                  _currentUuid,
+                )) ??
+          await _api.getChapterDetail(
             widget.pathWord,
             _currentUuid,
-          ) ??
-          await _api.getChapterDetail(widget.pathWord, _currentUuid);
+            forceRefresh: forceRefresh,
+          );
       if (detail.contents.isEmpty) {
         throw StateError('Chapter has no readable pages');
       }
       if (!mounted) return;
       // 首次加载且有 initialPage 参数时跳到指定页
-      final startPage = _isFirstLoad && widget.initialPage > 1
-          ? widget.initialPage.clamp(1, detail.contents.length)
-          : 1;
+      final startPage = forceRefresh
+          ? previousPage.clamp(1, detail.contents.length)
+          : (_isFirstLoad && widget.initialPage > 1
+                ? widget.initialPage.clamp(1, detail.contents.length)
+                : 1);
       _isFirstLoad = false;
       final hasHeader = detail.prev == null;
       setState(() {
         _detail = detail;
         _loading = false;
+        _refreshingChapter = false;
         _currentPage = startPage;
         _pageModeChapterOverscroll = 0;
         _scrollModeInitialIndex = (hasHeader ? 1 : 0) + (startPage - 1);
@@ -259,10 +277,28 @@ class _ReaderPageState extends State<ReaderPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _preloadImages(startPage - 1);
       });
-    } catch (_) {
+      if (forceRefresh && mounted) showToast(context, '图片链接已刷新');
+    } catch (e) {
       _autoAdvancingChapter = false;
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          if (!forceRefresh || _detail == null) _loading = false;
+          if (forceRefresh) _refreshingChapter = false;
+        });
+        if (forceRefresh) showToast(context, '刷新失败：${NetworkError.message(e)}');
+      }
     }
+  }
+
+  Future<void> _refreshChapter() async {
+    final detail = _detail;
+    if (_loading || _refreshingChapter || detail == null) return;
+    if (detail.isDownloaded) {
+      showToast(context, '本地章节无需刷新');
+      return;
+    }
+    _resetPageModeChapterOverscroll();
+    await _loadChapter(forceRefresh: true);
   }
 
   void _saveReadingHistory() {
@@ -914,6 +950,9 @@ class _ReaderPageState extends State<ReaderPage> {
           scrollDirection: scrollDirection,
           reverse: _isReversedScrollMode,
           padding: EdgeInsets.zero,
+          physics: _isHorizontalScrollMode
+              ? null
+              : const AlwaysScrollableScrollPhysics(),
           minCacheExtent: _isHorizontalScrollMode
               ? viewportSize.width
               : viewportSize.height,
@@ -1242,6 +1281,30 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
+  Widget _buildRefreshableReader(Widget child) {
+    final detail = _detail;
+    if (detail == null) return child;
+
+    final canUseNativeRefresh =
+        (!_isPageMode && !_isHorizontalScrollMode) ||
+        (_isPageMode && _isVerticalPageMode);
+    if (canUseNativeRefresh) {
+      return RefreshIndicator(
+        onRefresh: _refreshChapter,
+        notificationPredicate: (notification) => notification.depth == 0,
+        color: Colors.white,
+        backgroundColor: Colors.black,
+        child: child,
+      );
+    }
+
+    return _ReaderPullToRefresh(
+      enabled: !detail.isDownloaded && !_loading,
+      onRefresh: _refreshChapter,
+      child: child,
+    );
+  }
+
   // ── 工具栏 ──
 
   Widget _buildTopBar() {
@@ -1446,12 +1509,118 @@ class _ReaderPageState extends State<ReaderPage> {
             if (_loading)
               const Center(child: CircularProgressIndicator())
             else if (_detail != null)
-              _isPageMode ? _buildPageMode() : _buildScrollMode(),
+              _buildRefreshableReader(
+                _isPageMode ? _buildPageMode() : _buildScrollMode(),
+              ),
             _buildTopBar(),
             if (_detail != null) _buildBottomBar(cs),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ReaderPullToRefresh extends StatefulWidget {
+  final bool enabled;
+  final Future<void> Function() onRefresh;
+  final Widget child;
+
+  const _ReaderPullToRefresh({
+    required this.enabled,
+    required this.onRefresh,
+    required this.child,
+  });
+
+  @override
+  State<_ReaderPullToRefresh> createState() => _ReaderPullToRefreshState();
+}
+
+class _ReaderPullToRefreshState extends State<_ReaderPullToRefresh> {
+  static const _triggerExtent = 90.0;
+  double _dragExtent = 0;
+  bool _refreshing = false;
+
+  bool get _indicatorVisible => _dragExtent > 0 || _refreshing;
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    if (!widget.enabled || _refreshing) return;
+    final nextExtent = (_dragExtent + details.delta.dy).clamp(
+      0.0,
+      _triggerExtent * 1.4,
+    );
+    if (nextExtent == _dragExtent) return;
+    setState(() => _dragExtent = nextExtent);
+  }
+
+  Future<void> _handleDragEnd() async {
+    if (!widget.enabled || _refreshing) return;
+    if (_dragExtent < _triggerExtent) {
+      setState(() => _dragExtent = 0);
+      return;
+    }
+
+    setState(() {
+      _refreshing = true;
+      _dragExtent = _triggerExtent;
+    });
+    try {
+      await widget.onRefresh();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _refreshing = false;
+          _dragExtent = 0;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+
+    final progress = (_dragExtent / _triggerExtent).clamp(0.0, 1.0);
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onVerticalDragUpdate: _handleDragUpdate,
+          onVerticalDragEnd: (_) => _handleDragEnd(),
+          onVerticalDragCancel: () {
+            if (!_refreshing && mounted) setState(() => _dragExtent = 0);
+          },
+          child: widget.child,
+        ),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 12,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: _indicatorVisible ? 1 : 0,
+              child: Center(
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.72),
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: CircularProgressIndicator(
+                    value: _refreshing ? null : progress,
+                    strokeWidth: 2.4,
+                    color: Colors.white,
+                    backgroundColor: Colors.white24,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

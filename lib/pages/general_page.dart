@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../models/user_manager.dart';
 import '../utils/settings_backup.dart';
 import '../utils/toast.dart';
+import 'cache_management_page.dart';
 
 class GeneralPage extends StatefulWidget {
   const GeneralPage({super.key});
@@ -233,6 +234,21 @@ class _GeneralPageState extends State<GeneralPage> {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
+                    leading: const Icon(Icons.storage_rounded),
+                    title: const Text('缓存管理'),
+                    subtitle: const Text('查看和删除本地缓存、历史和账号数据'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CacheManagementPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
                     leading: const Icon(Icons.upload_file_rounded),
                     title: const Text('导出设置'),
                     subtitle: const Text('复制配置到剪贴板'),
@@ -271,7 +287,7 @@ class _GeneralPageState extends State<GeneralPage> {
                       ),
                     ),
                     subtitle: Text(
-                      '清除本地设置、账号、阅读记录和缓存，不删除已下载的本地漫画文件',
+                      '清除本地设置、账号、阅读记录和缓存，不会删除已下载的本地漫画文件',
                       style: tt.bodySmall?.copyWith(
                         color: cs.onErrorContainer.withValues(alpha: 0.88),
                       ),
