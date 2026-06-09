@@ -171,13 +171,16 @@ class AiSettings extends ChangeNotifier {
 
   /// 内置预设 ID。
   static const presetBasicId = 'basic';
-  static const presetSharpId = 'sharp';
-  static const presetWarmId = 'warm';
+  static const presetRoastId = 'roast';
+
+  /// 旧版内置风格预设 ID，仅用于迁移历史配置。
+  static const _legacyPresetSharpId = 'sharp';
+  static const _legacyPresetWarmId = 'warm';
 
   /// 旧版内置剧透预设 ID，仅用于迁移历史配置。
   static const presetSpoilerId = 'spoiler';
 
-  /// 不带剧透分析的基础提示词（默认）。
+  /// 默认提示词（基础提示词）。
   static const defaultPromptBasic =
       '你是一名漫画社区氛围分析师。请基于用户提供的章节评论列表，用简体中文 Markdown 输出一份简洁的总结，包含以下小标题：\n'
       '**整体氛围**（一句话概括）、**大家在聊什么**（要点列表，3~6 条）、'
@@ -185,30 +188,27 @@ class AiSettings extends ChangeNotifier {
       '**我的评论**（说说你的意见）。\n'
       '语言要凝练、有趣，不要逐条复述评论，不要编造评论里没有的内容。';
 
-  /// 毒辣风格：更直接地指出槽点和争议。
-  static const defaultPromptSharp =
-      '请以毒辣但克制的风格，基于用户提供的章节评论列表，用简体中文 Markdown 输出一份犀利总结，包含以下小标题：\n'
-      '**一句狠评**（一句话概括评论区氛围）、**主要槽点/爽点**（3~6 条）、'
-      '**争议焦点**（可选）、**值得一提**（可选）。\n'
-      '表达可以尖锐、有梗，但不要人身攻击读者或作者，不要为了毒舌而编造评论里没有的内容，不要逐条复述评论。';
-
-  /// 温和风格：更平和、友善地归纳评论。
-  static const defaultPromptWarm =
-      '请以温和、平实、有共情感的风格，基于用户提供的章节评论列表，用简体中文 Markdown 输出一份易读总结，包含以下小标题：\n'
-      '**整体感受**（一句话概括）、**大家关注的内容**（3~6 条）、'
-      '**被提到的细节**（可选）、**简短结论**。\n'
-      '语言要自然友善，不要过度煽情，不要逐条复述评论，不要编造评论里没有的内容。';
+  /// 吐槽提示词：结合信息整理并发表观点。
+  static const defaultPromptRoast =
+      '结合信息整理并发表观点\n'
+      '1. 先梳理评论区的主流声音、分歧点、大家吐槽/夸赞的核心内容；\n'
+      '2. 之后直抒胸臆，大胆表达你的立场，好坏直接点明，不中和、不打太极；\n'
+      '3. 绝对不要虚构漫画剧情，所有内容都基于现有评论；\n'
+      '4. 语言干练接地气，整体字数50~200字。\n'
+      '用简体中文 Markdown 输出一份犀利总结，包含下面两个小标题：\n'
+      '1.大家在聊什么\n'
+      '2.我的观点';
 
   /// 开启剧透分析时追加到当前提示词后的要求。
   static const spoilerAnalysisPromptAppendix =
       '【剧透分析附加要求】\n'
       '用户已开启剧透分析。请在遵循上方提示词的基础上，额外满足以下要求：\n'
       '- 正文总结中不要复述、描述、暗示或概括任何剧透内容；\n'
-      '- 可以输出 **剧透警告**，但仅当存在剧透评论时才输出此段，且只能写"本章评论中有 N 处涉及剧透，已为你遮罩"这一句，绝对不要描述、暗示或概括任何剧情/转折/结局；如果没有任何剧透评论则整段省略。\n\n'
+      '- 可以输出 **剧透警告**，但仅当存在剧透评论时才输出此段，且只能写"本章评论中有 N（这个N是剧透的数量） 处涉及剧透，已遮罩"这一句，绝对不要描述、暗示或概括任何剧情/转折/结局；如果没有任何剧透评论则整段省略。\n\n'
       '【剧透的判定标准 · 非常重要】\n'
       '只有同时满足以下全部条件的评论才应标记为剧透：\n'
-      '- 明确透露了尚未在当前章节及之前出场过的剧情走向、角色命运（死亡、复活、背叛等）或结局结果；\n'
-      '- 普通的感想（如"太好看了""画风不错"）、角色喜爱（如"XX好帅"）、对已发生情节的正常讨论、对后续的模糊期待（如"期待下一话"）、猜测与假想（未坐实的推理）——这些都【不算】剧透；\n'
+      '- 明确透露（包含猜测，有些用户会通过猜测进行剧透）了尚未在当前章节及之前出场过的剧情走向、角色命运（死亡、复活、背叛等）或结局结果；\n'
+      '- 普通的感想（如"太好看了""画风不错"）、角色喜爱（如"XX好帅"）、对已发生情节的正常讨论、对后续的模糊期待（如"期待下一话"）【不算】剧透；\n'
       '【机读输出】用户消息中每条评论开头都是它的数字 id（形如 "81216. xxx: ..."）。'
       '在整篇输出的最末尾追加一个 fenced code block（用三个反引号包裹），里面只放一个 JSON 数字数组，列出【高度剧透嫌疑】的评论 id：\n'
       '```\n'
@@ -239,15 +239,9 @@ class AiSettings extends ChangeNotifier {
       isBuiltIn: true,
     ),
     PromptPreset(
-      id: presetSharpId,
-      name: '毒辣风格',
-      prompt: defaultPromptSharp,
-      isBuiltIn: true,
-    ),
-    PromptPreset(
-      id: presetWarmId,
-      name: '温和风格',
-      prompt: defaultPromptWarm,
+      id: presetRoastId,
+      name: '吐槽提示词',
+      prompt: defaultPromptRoast,
       isBuiltIn: true,
     ),
   ];
@@ -520,6 +514,12 @@ class AiSettings extends ChangeNotifier {
   }
 
   bool _shouldKeepStoredPreset(PromptPreset preset) {
+    final isLegacyBuiltInStyle =
+        preset.id == _legacyPresetSharpId || preset.id == _legacyPresetWarmId;
+    if (isLegacyBuiltInStyle &&
+        (preset.isBuiltIn || preset.name == '毒辣风格' || preset.name == '温和风格')) {
+      return false;
+    }
     if (preset.id == presetSpoilerId &&
         (preset.isBuiltIn || preset.name == '带剧透分析的提示词')) {
       return false;
