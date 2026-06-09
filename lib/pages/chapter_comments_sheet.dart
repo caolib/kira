@@ -83,6 +83,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   bool _summaryExpanded = false;
   bool _summaryExpansionTouched = false;
   bool _summaryReasoningExpanded = false;
+  bool _summaryReasoningExpansionTouched = false;
   String? _summaryError;
   CancelToken? _summaryCancelToken;
   Set<int> _spoilerIds = const {};
@@ -149,6 +150,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     setState(() {
       _summaryExpansionTouched = true;
       _summaryExpanded = !_summaryExpanded;
+    });
+  }
+
+  void _toggleSummaryReasoningExpanded() {
+    setState(() {
+      _summaryReasoningExpansionTouched = true;
+      _summaryReasoningExpanded = !_summaryReasoningExpanded;
     });
   }
 
@@ -388,9 +396,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _aiSummary = '';
       _aiSummaryReasoning = '';
       _summaryReasoningExpanded = false;
+      _summaryReasoningExpansionTouched = false;
       _spoilerIds = const {};
       _applySummaryDefaultExpansion();
     });
+    ChapterSummaryCache.startProgress(widget.chapterUuid);
 
     final snippets = _buildCommentSnippets();
     final comicLine = widget.comicName?.trim().isNotEmpty == true
@@ -445,13 +455,29 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               ? null
               : reasoningBuffer.toString(),
         );
+      } else {
+        ChapterSummaryCache.clearProgress(widget.chapterUuid);
       }
     } catch (e) {
       if (!mounted) return;
       if (e is DioException && CancelToken.isCancel(e)) {
+        final partial = buffer.toString();
+        if (partial.isNotEmpty) {
+          await ChapterSummaryCache.set(
+            widget.chapterUuid,
+            partial,
+            reasoningContent: reasoningBuffer.isEmpty
+                ? null
+                : reasoningBuffer.toString(),
+          );
+        } else {
+          ChapterSummaryCache.clearProgress(widget.chapterUuid);
+        }
         return;
       }
-      setState(() => _summaryError = _extractSummaryError(e));
+      final message = _extractSummaryError(e);
+      ChapterSummaryCache.failProgress(widget.chapterUuid, message);
+      setState(() => _summaryError = message);
     } finally {
       if (mounted) {
         setState(() => _summarizing = false);
@@ -557,6 +583,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _summaryExpansionTouched = false;
       _summaryExpanded = !_aiSettings.summaryCollapsed;
       _summaryReasoningExpanded = false;
+      _summaryReasoningExpansionTouched = false;
       _summaryError = null;
       _spoilerIds = const {};
     });
@@ -1496,7 +1523,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   bool get _hasSummaryPanel =>
       _aiSettings.hasApiKey &&
       _aiSettings.summaryEnabled &&
-      (_aiSummary.isNotEmpty || _summarizing || _summaryError != null);
+      (_aiSummary.isNotEmpty ||
+          _aiSummaryReasoning.isNotEmpty ||
+          _summarizing ||
+          _summaryError != null);
 
   Widget _buildModelNameButton(ColorScheme cs, TextTheme tt) {
     final canSwitch = !_summarizing;
@@ -1512,14 +1542,14 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 140),
+                constraints: const BoxConstraints(maxWidth: 180),
                 child: Text(
-                  provider.model,
+                  '${provider.model} 总结',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: tt.labelSmall?.copyWith(
+                  style: tt.labelLarge?.copyWith(
                     color: canSwitch ? cs.primary : cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -1531,6 +1561,39 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Color _summaryStatusColor(
+    ColorScheme cs, {
+    required bool hasContent,
+    required bool hasReasoning,
+  }) {
+    final isError = _summaryError != null;
+    final isComplete = !_summarizing && !isError && hasContent;
+    if (_summarizing) return Colors.amber;
+    if (isError) return cs.error;
+    if (isComplete) return cs.primary;
+    if (hasReasoning) return cs.tertiary;
+    return cs.outlineVariant;
+  }
+
+  Widget _buildSummaryTitle(ColorScheme cs, TextTheme tt) {
+    final provider = _aiSettings.activeProvider;
+    if (_modelChoices.isNotEmpty) {
+      return _buildModelNameButton(cs, tt);
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
+      child: Text(
+        '${provider.model} 总结',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: tt.labelLarge?.copyWith(
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -1646,43 +1709,56 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     final hasContent = _aiSummary.isNotEmpty;
     final reasoning = _aiSummaryReasoning.trim();
     final hasReasoning = reasoning.isNotEmpty;
+    final defaultReasoningExpanded = _summarizing && !hasContent;
     final reasoningExpanded =
-        hasReasoning && (!hasContent || _summaryReasoningExpanded);
+        hasReasoning &&
+        (_summaryReasoningExpansionTouched
+            ? _summaryReasoningExpanded
+            : defaultReasoningExpanded);
+    final statusColor = _summaryStatusColor(
+      cs,
+      hasContent: hasContent,
+      hasReasoning: hasReasoning,
+    );
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: statusColor.withValues(alpha: 0.72),
+          width: 1.2,
+        ),
       ),
       padding: const EdgeInsets.fromLTRB(12, 8, 10, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Icon(Icons.smart_toy_outlined, size: 16, color: cs.primary),
-              const SizedBox(width: 6),
-              Text(
-                'AI 总结',
-                style: tt.labelLarge?.copyWith(
-                  color: cs.primary,
-                  fontWeight: FontWeight.w700,
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: _toggleSummaryExpanded,
+            child: Row(
+              children: [
+                if (_modelChoices.isEmpty)
+                  _buildSummaryTitle(cs, tt)
+                else
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {},
+                    child: _buildSummaryTitle(cs, tt),
+                  ),
+                const Spacer(),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: _summaryExpanded ? '收起' : '展开',
+                  onPressed: _toggleSummaryExpanded,
+                  icon: Icon(
+                    _summaryExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              if (_modelChoices.isNotEmpty) _buildModelNameButton(cs, tt),
-              const Spacer(),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                tooltip: _summaryExpanded ? '收起' : '展开',
-                onPressed: _toggleSummaryExpanded,
-                icon: Icon(
-                  _summaryExpanded ? Icons.expand_less : Icons.expand_more,
-                  size: 20,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
           if (_summaryExpanded) ...[
             if (hasReasoning) ...[
@@ -1691,7 +1767,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 tt,
                 reasoning: reasoning,
                 expanded: reasoningExpanded,
-                collapsed: hasContent,
+                toggleable: true,
               ),
               const SizedBox(height: 8),
             ],
@@ -1763,7 +1839,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                     visualDensity: VisualDensity.compact,
                     tooltip: '清除总结',
                     onPressed: _clearSummary,
-                    icon: const Icon(Icons.close, size: 18),
+                    icon: const Icon(Icons.delete_outline, size: 18),
                   ),
                 ],
               ],
@@ -1779,7 +1855,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     TextTheme tt, {
     required String reasoning,
     required bool expanded,
-    required bool collapsed,
+    required bool toggleable,
   }) {
     final textStyle = tt.bodySmall?.copyWith(
       color: cs.onSurfaceVariant.withValues(alpha: 0.78),
@@ -1788,11 +1864,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     );
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: collapsed
-          ? () => setState(
-              () => _summaryReasoningExpanded = !_summaryReasoningExpanded,
-            )
-          : null,
+      onTap: toggleable ? _toggleSummaryReasoningExpanded : null,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.fromLTRB(4, 2, 8, 0),
@@ -1819,7 +1891,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                   expanded ? '思考过程' : '思考过程（已折叠）',
                   style: textStyle?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                if (collapsed) ...[
+                if (toggleable) ...[
                   const SizedBox(width: 4),
                   Icon(
                     expanded ? Icons.expand_less : Icons.expand_more,

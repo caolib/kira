@@ -43,7 +43,7 @@ class ReadingHistory {
         'group': normalizedGroup,
       'chapterUuid': chapterUuid,
       'chapterName': chapterName,
-      if (chapterListPage != null) 'chapterListPage': chapterListPage,
+      'chapterListPage': ?chapterListPage,
       'page': page,
       'totalPage': totalPage,
       if (readChapterUuids.isNotEmpty) 'readChapterUuids': readChapterUuids,
