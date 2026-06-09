@@ -127,13 +127,38 @@ mixin _MangaApi on _ApiClientBase {
     String pathWord,
     String chapterUuid,
   ) async {
+    final cacheKey = _chapterDetailCacheKey(pathWord, chapterUuid);
+    final cached = await _cache.get(cacheKey);
+    if (cached is Map) {
+      try {
+        final detail = ChapterDetail.fromJson(
+          Map<String, dynamic>.from(cached),
+        );
+        if (detail.contents.isNotEmpty) {
+          return detail;
+        }
+        await _cache.remove(cacheKey);
+      } catch (_) {
+        await _cache.remove(cacheKey);
+      }
+    }
+
     final data = await _get(
       '/api/v3/comic/$pathWord/chapter/$chapterUuid',
       params: {'platform': 3},
       host: _hostSd,
     );
-    return ChapterDetail.fromJson(data);
+    final detail = ChapterDetail.fromJson(data);
+    if (detail.contents.isNotEmpty) {
+      await _cache.put(cacheKey, data);
+    }
+    return detail;
   }
+
+  String _chapterDetailCacheKey(String pathWord, String chapterUuid) =>
+      'manga_chapter_detail_v1_'
+      '${Uri.encodeComponent(pathWord)}_'
+      '${Uri.encodeComponent(chapterUuid)}';
 
   // 9.1 章节评论
   Future<({List<ChapterComment> list, int total})> getChapterComments(

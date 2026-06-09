@@ -21,6 +21,10 @@ void main() {
       await prefs.setBool('image_viewer_auto_rotate_landscape', true);
       await prefs.setInt('image_viewer_landscape_rotation', -1);
       await prefs.setString('cache_home', '{"stale":false}');
+      await prefs.setString(
+        'cache_manga_chapter_detail_v1_comic-a_chapter-3',
+        '{"chapter":{"contents":[{"url":"https://example.com/1.jpg"}]}}',
+      );
       await ReadingHistory.save(
         pathWord: 'comic-a',
         group: ReadingHistory.defaultGroup,
@@ -42,6 +46,12 @@ void main() {
       expect(preferences['image_viewer_landscape_rotation']?['value'], -1);
       expect(preferences.containsKey('reading_history_comic-a'), isTrue);
       expect(preferences.containsKey('cache_home'), isFalse);
+      expect(
+        preferences.containsKey(
+          'cache_manga_chapter_detail_v1_comic-a_chapter-3',
+        ),
+        isFalse,
+      );
     },
   );
 
@@ -50,6 +60,10 @@ void main() {
     await prefs.setString('user_token', 'old-token');
     await prefs.setBool('auto_login', false);
     await prefs.setString('cache_home', '{"stale":true}');
+    await prefs.setString(
+      'cache_manga_chapter_detail_v1_comic-b_chapter-8',
+      '{"chapter":{"contents":[{"url":"https://example.com/old.jpg"}]}}',
+    );
 
     final backup = jsonEncode({
       'app': 'kira',
@@ -84,6 +98,10 @@ void main() {
     expect(record?.chapterUuid, 'chapter-8');
     expect(record?.page, 9);
     expect(prefs.getString('cache_home'), '{"stale":true}');
+    expect(
+      prefs.getString('cache_manga_chapter_detail_v1_comic-b_chapter-8'),
+      '{"chapter":{"contents":[{"url":"https://example.com/old.jpg"}]}}',
+    );
   });
 
   test(
