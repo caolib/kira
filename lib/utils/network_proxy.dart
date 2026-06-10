@@ -19,7 +19,7 @@ class NetworkProxyEndpoint {
 
   String get findProxyRule {
     final rule = type == NetworkProxyType.socks ? 'SOCKS' : 'PROXY';
-    return '$rule $host:$port; DIRECT';
+    return '$rule $host:$port';
   }
 
   String get label {

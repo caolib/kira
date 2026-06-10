@@ -331,8 +331,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: Colors.black.withValues(alpha: 0.08),
-                    elevation: 4,
+                    shadowColor: Colors.black.withValues(alpha: 0.20),
+                    elevation: 8,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -343,14 +343,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: Color(0xFF6E9D5B),
                             ),
                             title: const Text('通用'),
-                            subtitle: Text(
-                              _user.isLoggedIn &&
-                                      _user.savedUsername != null &&
-                                      _user.savedPassword != null
-                                  ? '自动登录、设置导入导出'
-                                  : '设置导入导出',
-                              style: tt.bodySmall,
-                            ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => Navigator.push(
                               context,
@@ -366,14 +358,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: Color(0xFF7C8CFF),
                             ),
                             title: const Text('外观'),
-                            subtitle: Text(
-                              '${_user.themeOption.label} · ${_user.themeVariantOption.label} · ${_user.themeMode == ThemeMode.system
-                                  ? '跟随系统'
-                                  : _user.themeMode == ThemeMode.light
-                                  ? '浅色'
-                                  : '深色'}',
-                              style: tt.bodySmall,
-                            ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => Navigator.push(
                               context,
@@ -389,10 +373,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: Color(0xFF2BB8A5),
                             ),
                             title: const Text('网络'),
-                            subtitle: Text(
-                              'API 线路 ${_user.apiRoute + 1}',
-                              style: tt.bodySmall,
-                            ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => Navigator.push(
                               context,
@@ -408,7 +388,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: Color(0xFFE07AD0),
                             ),
                             title: const Text('AI配置'),
-                            subtitle: const Text('配置 AI 模型总结评论'),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => Navigator.push(
                               context,
@@ -424,8 +403,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 12),
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: Colors.black.withValues(alpha: 0.08),
-                    elevation: 4,
+                    shadowColor: Colors.black.withValues(alpha: 0.20),
+                    elevation: 8,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -436,7 +415,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: Color(0xFFFFA24C),
                             ),
                             title: const Text('下载中心'),
-                            subtitle: const Text('查看和管理已下载的资源'),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => Navigator.push(
                               context,
@@ -452,7 +430,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: Color(0xFF9B7BFF),
                             ),
                             title: const Text('浏览记录'),
-                            subtitle: const Text('查看最近浏览过的漫画'),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => Navigator.push(
                               context,
@@ -470,8 +447,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 12),
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: Colors.black.withValues(alpha: 0.08),
-                    elevation: 4,
+                    shadowColor: Colors.black.withValues(alpha: 0.20),
+                    elevation: 8,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
@@ -500,8 +477,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildLoginCard(ColorScheme cs, TextTheme tt) {
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: Colors.black.withValues(alpha: 0.08),
-      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.20),
+      elevation: 8,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: _goLogin,
@@ -543,8 +520,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildUserCard(ColorScheme cs, TextTheme tt) {
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: Colors.black.withValues(alpha: 0.08),
-      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.20),
+      elevation: 8,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
@@ -1227,7 +1204,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: TextButton.icon(
                   onPressed: _loading ? null : _goRegister,
                   icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('注册账号'),
+                  label: const Text('注册热辣漫画账号'),
                 ),
               ),
             ],
@@ -1265,6 +1242,12 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  static final _hotMangaRegisterUri = Uri.parse(
+    'https://m.manga2026.xyz/v2h5/register',
+  );
+  static final _copyMangaRegisterUri = Uri.parse(
+    'https://www.mangacopy.com/web/login/loginByAccount',
+  );
   static const _fallbackQuestions = [
     '我的老婆叫什麼？',
     '我的基友叫啥？',
@@ -1389,6 +1372,13 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  Future<void> _openOfficialRegister(Uri uri) async {
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      showToast(context, '无法打开官网注册页', isError: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -1397,7 +1387,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final hp = (screenWidth - contentWidth) / 2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('注册账号')),
+      appBar: AppBar(title: const Text('注册热辣漫画账号')),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(hp + 24, 24, hp + 24, 24),
         child: Column(
@@ -1516,6 +1506,31 @@ class _RegisterPageState extends State<RegisterPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Text('注册', style: TextStyle(fontSize: 16)),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '去官网注册',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _openOfficialRegister(_hotMangaRegisterUri),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('热辣漫画'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _openOfficialRegister(_copyMangaRegisterUri),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('拷贝漫画'),
+                ),
+              ],
             ),
           ],
         ),
@@ -1750,21 +1765,13 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: 32),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.08),
-                elevation: 4,
+                shadowColor: Colors.black.withValues(alpha: 0.20),
+                elevation: 8,
                 child: Column(
                   children: [
                     ListTile(
                       leading: const Icon(Icons.system_update_alt),
                       title: const Text('检查更新'),
-                      subtitle: Text(
-                        _user.skippedUpdateVersion != null &&
-                                _user.skippedUpdateVersion!.isNotEmpty
-                            ? '已跳过版本 ${_user.skippedUpdateVersion}'
-                            : (_user.autoCheckUpdate
-                                  ? '自动检查更新：已开启'
-                                  : '自动检查更新：已关闭'),
-                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => AppUpdateService.checkAndPrompt(context),
                     ),
@@ -1777,11 +1784,6 @@ class _AboutPageState extends State<AboutPage> {
                     ListTile(
                       leading: const Icon(Icons.public),
                       title: const Text('更新镜像源'),
-                      subtitle: Text(
-                        _user.updateMirrorPrefix,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _editUpdateMirrorPrefix,
                     ),
@@ -1791,8 +1793,8 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: 16),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.08),
-                elevation: 4,
+                shadowColor: Colors.black.withValues(alpha: 0.20),
+                elevation: 8,
                 child: Column(
                   children: [
                     ListTile(
@@ -1830,7 +1832,6 @@ class _AboutPageState extends State<AboutPage> {
                         ),
                       ),
                       title: const Text('源代码'),
-                      subtitle: const Text('caolib/kira'),
                       trailing: const Icon(Icons.open_in_new),
                       onTap: () async {
                         await launchUrl(

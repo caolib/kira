@@ -24,7 +24,7 @@ const _hostWeb = 'www.manga2026.xyz';
 
 const _extraApiHosts = [_hostComment, _hostCopy, _hostWeb];
 const _extraApiHostLabels = {
-  _hostComment: '评论接口',
+  _hostComment: '评论',
   _hostCopy: '拷贝登录',
   _hostWeb: '热辣登录注册',
 };

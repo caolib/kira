@@ -135,10 +135,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
     if (!mounted || targetGroup != _selectedGroup) return;
 
+    final useOfficialLastBrowse =
+        record == null && targetGroup == ReadingHistory.defaultGroup;
     setState(() {
       _usingLocalHistory = record != null;
-      _lastBrowseId = record?.chapterUuid ?? _officialLastBrowseId;
-      _lastBrowseName = record?.chapterName ?? _officialLastBrowseName;
+      _lastBrowseId =
+          record?.chapterUuid ??
+          (useOfficialLastBrowse ? _officialLastBrowseId : null);
+      _lastBrowseName =
+          record?.chapterName ??
+          (useOfficialLastBrowse ? _officialLastBrowseName : null);
       _lastBrowseChapterListPage = record?.chapterListPage;
       _lastBrowsePage = record?.page ?? 1;
       _lastBrowseTotalPage = record?.totalPage ?? 0;
@@ -378,8 +384,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   bool get _canShowLastBrowseAction {
     if (_lastBrowseId == null) return false;
-    if (_usingLocalHistory) return true;
-    return _chapterByUuid(_lastBrowseId) != null;
+    return _usingLocalHistory || _selectedGroup == ReadingHistory.defaultGroup;
   }
 
   int? get _lastBrowseReaderChapterListPage {

@@ -217,7 +217,7 @@ class _NetworkPageState extends State<NetworkPage> {
     if (index >= 0 && index < ApiClient.routeLabels.length) {
       return ApiClient.routeLabels[index];
     }
-    return '固定接口';
+    return '其他';
   }
 
   double? _averageLatency(Map<String, int?>? results) {
@@ -328,8 +328,7 @@ class _NetworkPageState extends State<NetworkPage> {
                     ),
                   ],
                   selected: {_user.networkProxyMode},
-                  onSelectionChanged: (value) =>
-                      _user.setNetworkProxyMode(value.first),
+                  onSelectionChanged: (value) => _setProxyMode(value.first),
                 ),
               ),
               const SizedBox(height: 12),
@@ -518,7 +517,7 @@ class _NetworkPageState extends State<NetworkPage> {
         final index = entry.key;
         final hosts = entry.value;
         final hostEntries = hosts.entries.toList();
-        final average = _averageLatency(hosts);
+        final average = index < 0 ? null : _averageLatency(hosts);
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
@@ -544,20 +543,22 @@ class _NetworkPageState extends State<NetworkPage> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    average == null ? '平均：超时' : '平均：${average.round()} ms',
-                    style: tt.labelMedium?.copyWith(
-                      color: average == null
-                          ? cs.error
-                          : average <= 800
-                          ? Colors.green
-                          : average <= 2000
-                          ? Colors.orange
-                          : cs.error,
-                      fontWeight: FontWeight.w600,
+                  if (index >= 0) ...[
+                    const Spacer(),
+                    Text(
+                      average == null ? '平均：超时' : '平均：${average.round()} ms',
+                      style: tt.labelMedium?.copyWith(
+                        color: average == null
+                            ? cs.error
+                            : average <= 800
+                            ? Colors.green
+                            : average <= 2000
+                            ? Colors.orange
+                            : cs.error,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),
@@ -678,6 +679,18 @@ class _NetworkPageState extends State<NetworkPage> {
     _showSnackBar(proxy == null ? '未检测到系统代理' : '已检测到 ${proxy.label}');
   }
 
+  Future<void> _setProxyMode(NetworkProxyMode mode) async {
+    await _user.setNetworkProxyMode(mode);
+    if (!mounted) return;
+    setState(_clearGoogleConnectivityResult);
+  }
+
+  void _clearGoogleConnectivityResult() {
+    _googleConnectivityOk = null;
+    _googleConnectivityLatencyMs = null;
+    _googleConnectivityMessage = null;
+  }
+
   Future<void> _saveManualProxy() async {
     final proxy = NetworkProxy.parseManualProxy(
       host: _proxyAddressController.text,
@@ -700,6 +713,7 @@ class _NetworkPageState extends State<NetworkPage> {
       type: proxy.type,
     );
     if (!mounted) return;
+    setState(_clearGoogleConnectivityResult);
     _showSnackBar('已启用 ${proxy.label}');
   }
 
@@ -715,11 +729,11 @@ class _NetworkPageState extends State<NetworkPage> {
 
     setState(() {
       _testingGoogleConnectivity = true;
-      _googleConnectivityOk = null;
-      _googleConnectivityLatencyMs = null;
-      _googleConnectivityMessage = null;
+      _clearGoogleConnectivityResult();
     });
 
+    final uri = Uri.parse('https://www.google.com/generate_204');
+    final proxyRule = NetworkProxy.findProxy(uri);
     final stopwatch = Stopwatch()..start();
     final client = NetworkProxy.createHttpClient(
       connectionTimeout: const Duration(seconds: 5),
@@ -727,7 +741,7 @@ class _NetworkPageState extends State<NetworkPage> {
 
     try {
       final request = await client
-          .getUrl(Uri.parse('https://www.google.com/generate_204'))
+          .getUrl(uri)
           .timeout(const Duration(seconds: 5));
       request.followRedirects = false;
 
@@ -745,8 +759,8 @@ class _NetworkPageState extends State<NetworkPage> {
         _googleConnectivityOk = ok;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
         _googleConnectivityMessage = ok
-            ? '连接成功，HTTP $statusCode'
-            : '连接失败，HTTP $statusCode';
+            ? '连接成功，HTTP $statusCode，$proxyRule'
+            : '连接失败，HTTP $statusCode，$proxyRule';
       });
     } on TimeoutException {
       stopwatch.stop();
@@ -755,7 +769,7 @@ class _NetworkPageState extends State<NetworkPage> {
         _testingGoogleConnectivity = false;
         _googleConnectivityOk = false;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = '连接超时，请检查网络或代理';
+        _googleConnectivityMessage = '连接超时，$proxyRule';
       });
     } on SocketException catch (e) {
       stopwatch.stop();
@@ -764,7 +778,7 @@ class _NetworkPageState extends State<NetworkPage> {
         _testingGoogleConnectivity = false;
         _googleConnectivityOk = false;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = e.message;
+        _googleConnectivityMessage = '$proxyRule：${e.message}';
       });
     } catch (e) {
       stopwatch.stop();
@@ -773,7 +787,7 @@ class _NetworkPageState extends State<NetworkPage> {
         _testingGoogleConnectivity = false;
         _googleConnectivityOk = false;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = '测试失败：$e';
+        _googleConnectivityMessage = '测试失败，$proxyRule：$e';
       });
     } finally {
       client.close(force: true);
