@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
+import '../utils/network_proxy.dart';
 
 class NetworkPage extends StatefulWidget {
   const NetworkPage({super.key});
@@ -11,19 +15,40 @@ class NetworkPage extends StatefulWidget {
 
 class _NetworkPageState extends State<NetworkPage> {
   final _user = UserManager();
+  final _proxyAddressController = TextEditingController();
   bool _testingLatency = false;
+  bool _testingGoogleConnectivity = false;
+  bool _refreshingSystemProxy = false;
+  bool _latencyExpanded = true;
+  NetworkProxyType _manualProxyType = NetworkProxyType.http;
   Map<int, Map<String, int?>> _latencyResults = {};
+  bool? _googleConnectivityOk;
+  int? _googleConnectivityLatencyMs;
+  String? _googleConnectivityMessage;
 
   @override
   void initState() {
     super.initState();
+    _proxyAddressController.text = _manualProxyAddress;
+    _manualProxyType = _user.networkProxyType;
     _user.addListener(_onChanged);
   }
 
   @override
   void dispose() {
     _user.removeListener(_onChanged);
+    _proxyAddressController.dispose();
     super.dispose();
+  }
+
+  String get _manualProxyAddress {
+    if (!_user.hasManualProxy) return '';
+
+    final host = _user.networkProxyHost;
+    final needsBrackets =
+        host.contains(':') && !host.startsWith('[') && !host.endsWith(']');
+    final displayHost = needsBrackets ? '[$host]' : host;
+    return '$displayHost:${_user.networkProxyPort}';
   }
 
   void _onChanged() {
@@ -35,14 +60,7 @@ class _NetworkPageState extends State<NetworkPage> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final selectedRouteStats = _latencyResults[_user.apiRoute];
-    double? avgLatency;
-    if (selectedRouteStats != null) {
-      final values = selectedRouteStats.values.whereType<int>().toList();
-      if (values.isNotEmpty) {
-        avgLatency = values.reduce((a, b) => a + b) / values.length;
-      }
-    }
+    final avgLatency = _averageLatency(_latencyResults[_user.apiRoute]);
 
     return Scaffold(
       appBar: AppBar(title: const Text('网络')),
@@ -114,48 +132,42 @@ class _NetworkPageState extends State<NetworkPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('测试线路延迟', style: tt.bodyLarge),
-                                const SizedBox(height: 4),
-                                _testingLatency
-                                    ? Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SizedBox(
-                                            width: 12,
-                                            height: 12,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: cs.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '正在检测各节点...',
-                                            style: tt.bodySmall,
-                                          ),
-                                        ],
-                                      )
-                                    : Text(
-                                        _latencyResults.isNotEmpty
-                                            ? _buildLatencySummary()
-                                            : '尚未进行检测',
-                                        style: tt.bodySmall?.copyWith(
-                                          color: cs.onSurfaceVariant,
+                                if (_testingLatency) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: cs.primary,
                                         ),
                                       ),
+                                      const SizedBox(width: 8),
+                                      Text('正在检测各节点...', style: tt.bodySmall),
+                                    ],
+                                  ),
+                                ] else if (_latencyResults.isEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '尚未进行检测',
+                                    style: tt.bodySmall?.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
-                          if (!_testingLatency)
-                            Icon(
-                              Icons.chevron_right,
-                              color: cs.onSurfaceVariant,
-                            ),
+                          if (!_testingLatency) _buildLatencyTrailingIcon(cs),
                         ],
                       ),
                     ),
                   ),
                 ),
-                if (_latencyResults.isNotEmpty) ...[
+                if (_latencyResults.isNotEmpty && _latencyExpanded) ...[
                   const Divider(height: 1),
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -165,6 +177,8 @@ class _NetworkPageState extends State<NetworkPage> {
               ],
             ),
           ),
+          _buildProxyCard(tt, cs),
+          _buildGoogleConnectivityCard(tt, cs),
           if (avgLatency != null && avgLatency > 1500)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -199,19 +213,301 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
-  String _buildLatencySummary() {
-    final buffer = StringBuffer();
-    for (final entry in _latencyResults.entries) {
-      final label = ApiClient.routeLabels[entry.key];
-      final values = entry.value.values.whereType<int>().toList();
-      if (values.isNotEmpty) {
-        final avg = values.reduce((a, b) => a + b) ~/ values.length;
-        buffer.write('$label: ${avg}ms  ');
-      } else {
-        buffer.write('$label: 超时  ');
+  String _latencyGroupLabel(int index) {
+    if (index >= 0 && index < ApiClient.routeLabels.length) {
+      return ApiClient.routeLabels[index];
+    }
+    return '固定接口';
+  }
+
+  double? _averageLatency(Map<String, int?>? results) {
+    final values = results?.values.whereType<int>().toList() ?? const <int>[];
+    if (values.isEmpty) return null;
+    return values.reduce((a, b) => a + b) / values.length;
+  }
+
+  int? _bestLatencyRoute(Map<int, Map<String, int?>> results) {
+    int? bestRoute;
+    double? bestAverage;
+
+    for (var i = 0; i < ApiClient.routeLabels.length; i++) {
+      final average = _averageLatency(results[i]);
+      if (average == null) continue;
+      if (bestAverage == null || average < bestAverage) {
+        bestAverage = average;
+        bestRoute = i;
       }
     }
-    return buffer.toString().trim();
+
+    return bestRoute;
+  }
+
+  Widget _buildLatencyTrailingIcon(ColorScheme cs) {
+    if (_latencyResults.isEmpty) {
+      return Icon(Icons.chevron_right, color: cs.onSurfaceVariant);
+    }
+
+    return IconButton(
+      tooltip: _latencyExpanded ? '收起测试结果' : '展开测试结果',
+      onPressed: () {
+        setState(() => _latencyExpanded = !_latencyExpanded);
+      },
+      icon: Icon(
+        _latencyExpanded
+            ? Icons.keyboard_arrow_up_rounded
+            : Icons.keyboard_arrow_down_rounded,
+        color: cs.primary,
+      ),
+    );
+  }
+
+  Widget _buildProxyCard(TextTheme tt, ColorScheme cs) {
+    final isManualMode = _user.networkProxyMode == NetworkProxyMode.manual;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: cs.outlineVariant, width: 1),
+        ),
+        color: cs.surfaceContainerLow,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.settings_ethernet, color: cs.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '代理设置',
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '重新检测系统代理',
+                    onPressed: _refreshingSystemProxy
+                        ? null
+                        : _refreshSystemProxy,
+                    icon: _refreshingSystemProxy
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.primary,
+                            ),
+                          )
+                        : const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<NetworkProxyMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: NetworkProxyMode.system,
+                      label: Text('系统'),
+                    ),
+                    ButtonSegment(
+                      value: NetworkProxyMode.manual,
+                      label: Text('手动'),
+                    ),
+                    ButtonSegment(
+                      value: NetworkProxyMode.direct,
+                      label: Text('直连'),
+                    ),
+                  ],
+                  selected: {_user.networkProxyMode},
+                  onSelectionChanged: (value) =>
+                      _user.setNetworkProxyMode(value.first),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildProxyStatusRow(
+                icon: Icons.route_outlined,
+                label: '当前应用请求',
+                value: NetworkProxy.activeProxyDescription,
+                tt: tt,
+                cs: cs,
+              ),
+              const SizedBox(height: 8),
+              _buildProxyStatusRow(
+                icon: Icons.computer_outlined,
+                label: '系统代理',
+                value: NetworkProxy.systemProxyDescription,
+                tt: tt,
+                cs: cs,
+              ),
+              if (isManualMode) ...[
+                const SizedBox(height: 16),
+                SegmentedButton<NetworkProxyType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: NetworkProxyType.http,
+                      label: Text('HTTP'),
+                    ),
+                    ButtonSegment(
+                      value: NetworkProxyType.socks,
+                      label: Text('SOCKS5'),
+                    ),
+                  ],
+                  selected: {_manualProxyType},
+                  onSelectionChanged: (value) {
+                    setState(() => _manualProxyType = value.first);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _proxyAddressController,
+                  decoration: const InputDecoration(
+                    labelText: '代理地址',
+                    hintText: '127.0.0.1:7890 或 http://127.0.0.1:7890',
+                    border: OutlineInputBorder(),
+                  ),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _saveManualProxy(),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _saveManualProxy,
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('保存并启用手动代理'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProxyStatusRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required TextTheme tt,
+    required ColorScheme cs,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: cs.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Text('$label：', style: tt.bodySmall),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGoogleConnectivityCard(TextTheme tt, ColorScheme cs) {
+    final hasResult = _googleConnectivityMessage != null;
+    final ok = _googleConnectivityOk == true;
+    final statusColor = _testingGoogleConnectivity
+        ? cs.primary
+        : hasResult
+        ? (ok ? Colors.green : cs.error)
+        : cs.onSurfaceVariant;
+    final subtitle = _testingGoogleConnectivity
+        ? '正在通过 ${NetworkProxy.activeProxyDescription} 访问 Google ...'
+        : _googleConnectivityMessage ?? '点击测试当前应用能否访问 Google';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: cs.outlineVariant, width: 1),
+        ),
+        color: cs.surfaceContainerLow,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _testingGoogleConnectivity ? null : _testGoogleConnectivity,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Row(
+                children: [
+                  _testingGoogleConnectivity
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: cs.primary,
+                          ),
+                        )
+                      : Icon(
+                          ok ? Icons.check_circle_outline : Icons.public,
+                          color: statusColor,
+                        ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Google 连通性', style: tt.bodyLarge),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: tt.bodySmall?.copyWith(
+                            color: hasResult || _testingGoogleConnectivity
+                                ? statusColor
+                                : cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_googleConnectivityLatencyMs != null &&
+                      !_testingGoogleConnectivity)
+                    Container(
+                      margin: const EdgeInsets.only(left: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '$_googleConnectivityLatencyMs ms',
+                        style: tt.labelMedium?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else if (!_testingGoogleConnectivity)
+                    Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLatencyDetail(TextTheme tt, ColorScheme cs) {
@@ -221,10 +517,8 @@ class _NetworkPageState extends State<NetworkPage> {
       children: _latencyResults.entries.map((entry) {
         final index = entry.key;
         final hosts = entry.value;
-        final weights = hosts.values
-            .map((v) => (v != null && v > 0) ? 1000.0 / v : 0.0)
-            .toList();
-        final totalWeight = weights.fold<double>(0.0, (a, b) => a + b);
+        final hostEntries = hosts.entries.toList();
+        final average = _averageLatency(hosts);
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
@@ -234,118 +528,113 @@ class _NetworkPageState extends State<NetworkPage> {
               Row(
                 children: [
                   Icon(
-                    index == 0 ? Icons.alt_route : Icons.route,
-                    size: 20,
+                    index < 0
+                        ? Icons.cloud_queue_outlined
+                        : index == 0
+                        ? Icons.alt_route
+                        : Icons.route,
+                    size: 18,
                     color: cs.primary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
-                    ApiClient.routeLabels[index],
-                    style: tt.titleMedium?.copyWith(
+                    _latencyGroupLabel(index),
+                    style: tt.titleSmall?.copyWith(
                       color: cs.primary,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    average == null ? '平均：超时' : '平均：${average.round()} ms',
+                    style: tt.labelMedium?.copyWith(
+                      color: average == null
+                          ? cs.error
+                          : average <= 800
+                          ? Colors.green
+                          : average <= 2000
+                          ? Colors.orange
+                          : cs.error,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              ...List.generate(hosts.length, (i) {
-                final latency = hosts.values.elementAt(i);
-                final weight = weights[i];
-                final pct = totalWeight > 0 ? (weight / totalWeight) : 0.0;
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const spacing = 8.0;
+                  final itemWidth = (constraints.maxWidth - spacing * 2) / 3;
 
-                Color statusColor;
-                if (latency == null) {
-                  statusColor = cs.error;
-                } else if (latency <= 800) {
-                  statusColor = Colors.green;
-                } else if (latency <= 2000) {
-                  statusColor = Colors.orange;
-                } else {
-                  statusColor = cs.error;
-                }
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: List.generate(hostEntries.length, (i) {
+                      final title = index < 0
+                          ? ApiClient().getExtraApiHostLabel(hostEntries[i].key)
+                          : '节点 ${i + 1}';
+                      final latency = hostEntries[i].value;
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: statusColor.withValues(
-                        alpha: latency != null ? 0.3 : 0.1,
-                      ),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '节点 ${i + 1}',
-                            style: tt.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                      Color statusColor;
+                      if (latency == null) {
+                        statusColor = cs.error;
+                      } else if (latency <= 800) {
+                        statusColor = Colors.green;
+                      } else if (latency <= 2000) {
+                        statusColor = Colors.orange;
+                      } else {
+                        statusColor = cs.error;
+                      }
+
+                      return SizedBox(
+                        width: itemWidth,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest.withValues(
+                              alpha: 0.4,
                             ),
-                            decoration: BoxDecoration(
-                              color: statusColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              latency != null ? '$latency ms' : '超时',
-                              style: tt.labelMedium?.copyWith(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: statusColor.withValues(
+                                alpha: latency != null ? 0.3 : 0.1,
                               ),
+                              width: 1.2,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: LinearProgressIndicator(
-                                value: pct,
-                                backgroundColor: cs.outlineVariant.withValues(
-                                  alpha: 0.4,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: tt.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                color: statusColor,
-                                minHeight: 8,
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 50,
-                            child: Text(
-                              '${(pct * 100).toStringAsFixed(1)}%',
-                              textAlign: TextAlign.end,
-                              style: tt.labelMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(height: 6),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  latency != null ? '$latency ms' : '超时',
+                                  style: tt.labelMedium?.copyWith(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                        ),
+                      );
+                    }),
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -363,15 +652,131 @@ class _NetworkPageState extends State<NetworkPage> {
       final results = await Future.wait([
         api.testRouteLatency(0).then((r) => MapEntry(0, r)),
         api.testRouteLatency(1).then((r) => MapEntry(1, r)),
+        api.testExtraApiLatency().then((r) => MapEntry(-1, r)),
       ]);
+      final latencyResults = Map<int, Map<String, int?>>.fromEntries(results);
+      final bestRoute = _bestLatencyRoute(latencyResults);
+      if (bestRoute != null && bestRoute != _user.apiRoute) {
+        await _user.setApiRoute(bestRoute);
+      }
       if (!mounted) return;
       setState(() {
         _testingLatency = false;
-        _latencyResults = Map.fromEntries(results);
+        _latencyResults = latencyResults;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() => _testingLatency = false);
+    }
+  }
+
+  Future<void> _refreshSystemProxy() async {
+    setState(() => _refreshingSystemProxy = true);
+    final proxy = await NetworkProxy.refreshSystemProxy();
+    if (!mounted) return;
+    setState(() => _refreshingSystemProxy = false);
+    _showSnackBar(proxy == null ? '未检测到系统代理' : '已检测到 ${proxy.label}');
+  }
+
+  Future<void> _saveManualProxy() async {
+    final proxy = NetworkProxy.parseManualProxy(
+      host: _proxyAddressController.text,
+      port: '',
+      type: _manualProxyType,
+    );
+    if (proxy == null) {
+      _showSnackBar('请输入有效的代理地址，例如 127.0.0.1:7890');
+      return;
+    }
+
+    _proxyAddressController.text = proxy.host.contains(':')
+        ? '[${proxy.host}]:${proxy.port}'
+        : '${proxy.host}:${proxy.port}';
+    _manualProxyType = proxy.type;
+
+    await _user.setManualProxy(
+      host: proxy.host,
+      port: proxy.port,
+      type: proxy.type,
+    );
+    if (!mounted) return;
+    _showSnackBar('已启用 ${proxy.label}');
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _testGoogleConnectivity() async {
+    if (_testingGoogleConnectivity) return;
+
+    setState(() {
+      _testingGoogleConnectivity = true;
+      _googleConnectivityOk = null;
+      _googleConnectivityLatencyMs = null;
+      _googleConnectivityMessage = null;
+    });
+
+    final stopwatch = Stopwatch()..start();
+    final client = NetworkProxy.createHttpClient(
+      connectionTimeout: const Duration(seconds: 5),
+    );
+
+    try {
+      final request = await client
+          .getUrl(Uri.parse('https://www.google.com/generate_204'))
+          .timeout(const Duration(seconds: 5));
+      request.followRedirects = false;
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+      await response.drain<void>();
+      stopwatch.stop();
+
+      final statusCode = response.statusCode;
+      final ok = statusCode >= 200 && statusCode < 400;
+      if (!mounted) return;
+      setState(() {
+        _testingGoogleConnectivity = false;
+        _googleConnectivityOk = ok;
+        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
+        _googleConnectivityMessage = ok
+            ? '连接成功，HTTP $statusCode'
+            : '连接失败，HTTP $statusCode';
+      });
+    } on TimeoutException {
+      stopwatch.stop();
+      if (!mounted) return;
+      setState(() {
+        _testingGoogleConnectivity = false;
+        _googleConnectivityOk = false;
+        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
+        _googleConnectivityMessage = '连接超时，请检查网络或代理';
+      });
+    } on SocketException catch (e) {
+      stopwatch.stop();
+      if (!mounted) return;
+      setState(() {
+        _testingGoogleConnectivity = false;
+        _googleConnectivityOk = false;
+        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
+        _googleConnectivityMessage = e.message;
+      });
+    } catch (e) {
+      stopwatch.stop();
+      if (!mounted) return;
+      setState(() {
+        _testingGoogleConnectivity = false;
+        _googleConnectivityOk = false;
+        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
+        _googleConnectivityMessage = '测试失败：$e';
+      });
+    } finally {
+      client.close(force: true);
     }
   }
 }

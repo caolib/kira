@@ -9,7 +9,7 @@ mixin _UserApi on _ApiClientBase {
     final salt = Random().nextInt(9000) + 1000;
     final encoded = base64Encode(utf8.encode('$password-$salt'));
     final resp = await _dio.post(
-      _url('/api/v3/login', _hostSg),
+      _url('/api/v3/login'),
       data:
           'username=$username&password=$encoded&salt=$salt&source=Official&version=2.2.0&platform=3',
       options: Options(
@@ -85,12 +85,12 @@ mixin _UserApi on _ApiClientBase {
 
   /// 获取个人信息
   Future<Map<String, dynamic>> getUserInfo() async {
-    return await _get('/api/v3/member/info', host: _hostSg);
+    return await _get('/api/v3/member/info');
   }
 
   Future<void> logout() async {
     await _dio.post(
-      _url('/api/v3/logout', _hostSg),
+      _url('/api/v3/logout'),
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );
   }
@@ -100,9 +100,7 @@ mixin _UserApi on _ApiClientBase {
   }
 
   Future<List<String>> getSecurityQuestions() async {
-    final resp = await _dio.get(
-      _url('/api/v3/member/securityquestionall/', _hostSd),
-    );
+    final resp = await _dio.get(_url('/api/v3/member/securityquestionall/'));
     final results = resp.data['results'] as List? ?? const [];
     return results
         .map((e) => e['code']?.toString() ?? '')
@@ -212,7 +210,6 @@ mixin _UserApi on _ApiClientBase {
         'limit': limit,
         '_update': true,
       },
-      host: _hostSg,
     );
     final list = (data['list'] as List).map((e) {
       final item = Map<String, dynamic>.from(e);

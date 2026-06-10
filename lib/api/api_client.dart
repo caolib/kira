@@ -18,15 +18,16 @@ part 'manga/manga_api.dart';
 part 'network/network_api.dart';
 part 'user/user_api.dart';
 
-const _hostSg = 'mapi.hotmangasg.com';
-const _hostSd = 'mapi.hotmangasd.com';
-const _hostMangaHome = 'api.2024manga.com';
-// const _hostComment = 'api.mangacopy.com';
 const _hostComment = 'api.copy2000.online';
-const _hostComicComment = 'api.copy2000.online';
-const _hostMemberComment = 'api.mangacopy.com';
 const _hostCopy = 'www.mangacopy.com';
 const _hostWeb = 'www.manga2026.xyz';
+
+const _extraApiHosts = [_hostComment, _hostCopy, _hostWeb];
+const _extraApiHostLabels = {
+  _hostComment: '评论接口',
+  _hostCopy: '拷贝登录',
+  _hostWeb: '热辣登录注册',
+};
 
 const _routes = [
   ['mapi.hotmangasg.com', 'mapi.hotmangasd.com', 'mapi.hotmangasf.com'],
@@ -228,7 +229,7 @@ abstract class _ApiClientBase {
     return host;
   }
 
-  String _url(String path, [String? _]) => 'https://${_nextHost()}$path';
+  String _url(String path) => 'https://${_nextHost()}$path';
 
   Options _browserRequestOptions(
     String host, {
@@ -261,12 +262,8 @@ abstract class _ApiClientBase {
   Future<Map<String, dynamic>> _get(
     String path, {
     Map<String, dynamic>? params,
-    String host = _hostSg,
   }) async {
-    final url = host == _hostMangaHome
-        ? 'https://$host$path'
-        : _url(path, host);
-    final resp = await _dio.get(url, queryParameters: params);
+    final resp = await _dio.get(_url(path), queryParameters: params);
     return resp.data['results'];
   }
 }

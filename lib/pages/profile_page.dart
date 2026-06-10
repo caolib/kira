@@ -1774,7 +1774,6 @@ class _AboutPageState extends State<AboutPage> {
                       value: _user.autoCheckUpdate,
                       onChanged: _user.setAutoCheckUpdate,
                     ),
-                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.public),
                       title: const Text('更新镜像源'),
@@ -1786,7 +1785,16 @@ class _AboutPageState extends State<AboutPage> {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _editUpdateMirrorPrefix,
                     ),
-                    const Divider(height: 1),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                color: cs.surfaceContainerLow,
+                shadowColor: Colors.black.withValues(alpha: 0.08),
+                elevation: 4,
+                child: Column(
+                  children: [
                     ListTile(
                       leading: const Icon(Icons.gavel_outlined),
                       title: const Text('免责声明'),

@@ -8,7 +8,6 @@ mixin _MangaApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/h5/discoverIndex/freeComic',
       params: {'platform': 3, '_update': true},
-      host: _hostMangaHome,
     );
     return MangaHome.fromJson(data);
   }
@@ -27,7 +26,6 @@ mixin _MangaApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/theme/comic/count',
       params: {'free_type': 1, 'limit': 500, 'offset': 0, '_update': true},
-      host: _hostSd,
     );
     return (data['list'] as List).map((e) => Theme.fromJson(e)).toList();
   }
@@ -41,7 +39,6 @@ mixin _MangaApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/recs',
       params: {'pos': pos, 'limit': limit, 'offset': offset, 'free_type': 1},
-      host: _hostSg,
     );
     return (data['list'] as List)
         .where((e) => e['comic'] != null)
@@ -63,7 +60,7 @@ mixin _MangaApi on _ApiClientBase {
       'ordering': ordering,
     };
     if (theme != null) params['theme'] = theme;
-    final data = await _get('/api/v3/comics', params: params, host: _hostSg);
+    final data = await _get('/api/v3/comics', params: params);
     final list = (data['list'] as List).map((e) => Comic.fromJson(e)).toList();
     return (list: list, total: data['total'] as int);
   }
@@ -73,14 +70,13 @@ mixin _MangaApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/comic2/$pathWord',
       params: {'platform': 3},
-      host: _hostSd,
     );
     return Comic.fromDetailJson(data);
   }
 
   // 6. 用户状态查询
   Future<Map<String, dynamic>> getComicQuery(String pathWord) async {
-    return await _get('/api/v3/comic2/$pathWord/query', host: _hostSd);
+    return await _get('/api/v3/comic2/$pathWord/query');
   }
 
   // 7. 章节列表
@@ -93,7 +89,6 @@ mixin _MangaApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/comic/$pathWord/group/$group/chapters',
       params: {'limit': limit, 'offset': offset},
-      host: _hostSd,
     );
     final list = (data['list'] as List)
         .map((e) => Chapter.fromJson(e))
@@ -152,7 +147,6 @@ mixin _MangaApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/comic/$pathWord/chapter/$chapterUuid',
       params: params,
-      host: _hostSd,
     );
     final detail = ChapterDetail.fromJson(data);
     if (detail.contents.isNotEmpty) {
@@ -202,56 +196,30 @@ mixin _MangaApi on _ApiClientBase {
       throw const HttpException('请先登录后再发表评论');
     }
 
-    final hosts = <String>[_hostComment, _hostMemberComment];
-    DioException? lastNetworkError;
+    final resp = await _commentDio.post(
+      'https://$_hostComment/api/v3/member/roast',
+      data: {'chapter_id': chapterId, 'roast': trimmed, '_update': true},
+      options: _browserRequestOptions(
+        _hostComment,
+        contentType: Headers.formUrlEncodedContentType,
+        headers: {'Authorization': 'Token $token'},
+      ),
+    );
 
-    for (final host in hosts) {
-      try {
-        final resp = await _commentDio.post(
-          'https://$host/api/v3/member/roast',
-          data: {'chapter_id': chapterId, 'roast': trimmed, '_update': true},
-          options: _browserRequestOptions(
-            host,
-            contentType: Headers.formUrlEncodedContentType,
-            headers: {'Authorization': 'Token $token'},
-          ),
+    final data = resp.data;
+    if (data is Map) {
+      final code = data['code'];
+      if (code != null && code != 200) {
+        final message = data['message']?.toString() ?? '发表评论失败';
+        throw DioException(
+          requestOptions: resp.requestOptions,
+          response: resp,
+          message: message,
+          error: message,
+          type: DioExceptionType.badResponse,
         );
-
-        final data = resp.data;
-        if (data is Map) {
-          final code = data['code'];
-          if (code != null && code != 200) {
-            final message = data['message']?.toString() ?? '发表评论失败';
-            throw DioException(
-              requestOptions: resp.requestOptions,
-              response: resp,
-              message: message,
-              error: message,
-              type: DioExceptionType.badResponse,
-            );
-          }
-        }
-        return;
-      } on DioException catch (e) {
-        if (_isTransientCommentNetworkError(e)) {
-          lastNetworkError = e;
-          continue;
-        }
-        rethrow;
       }
     }
-
-    if (lastNetworkError != null) {
-      throw lastNetworkError;
-    }
-  }
-
-  bool _isTransientCommentNetworkError(DioException error) {
-    if (error.type != DioExceptionType.unknown) return false;
-    final inner = error.error;
-    return inner is HandshakeException ||
-        inner is SocketException ||
-        inner is HttpException;
   }
 
   // 9.3 漫画评论 / 评论回复
@@ -262,7 +230,7 @@ mixin _MangaApi on _ApiClientBase {
     int offset = 0,
   }) async {
     final resp = await _commentDio.get(
-      'https://$_hostComicComment/api/v3/comments',
+      'https://$_hostComment/api/v3/comments',
       queryParameters: {
         'comic_id': comicId,
         'reply_id': replyId,
@@ -270,10 +238,7 @@ mixin _MangaApi on _ApiClientBase {
         'offset': offset,
         'platform': 3,
       },
-      options: _browserRequestOptions(
-        _hostComicComment,
-        secFetchSite: 'cross-site',
-      ),
+      options: _browserRequestOptions(_hostComment, secFetchSite: 'cross-site'),
     );
     final results = resp.data['results'] as Map<String, dynamic>;
     final list = (results['list'] as List)
@@ -297,7 +262,6 @@ mixin _MangaApi on _ApiClientBase {
         'ordering': ordering,
         '_update': true,
       },
-      host: _hostSg,
     );
     final list = (data['list'] as List).map((e) {
       final comic = Comic.fromJson(e['comic']);
@@ -317,9 +281,8 @@ mixin _MangaApi on _ApiClientBase {
 
   // 11. 收藏/取消收藏漫画
   Future<void> toggleCollect(String comicId, {required bool collect}) async {
-    final host = collect ? _hostSg : _hostSd;
     await _dio.post(
-      _url('/api/v3/member/collect/comic', host),
+      _url('/api/v3/member/collect/comic'),
       data: 'comic_id=$comicId&is_collect=${collect ? 1 : 0}',
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );

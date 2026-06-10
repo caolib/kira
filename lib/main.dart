@@ -15,6 +15,7 @@ import 'pages/search_page.dart';
 import 'pages/bookshelf_page.dart';
 import 'pages/profile_page.dart';
 import 'utils/app_update.dart';
+import 'utils/network_proxy.dart';
 
 bool get isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
@@ -23,6 +24,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await UserManager().init();
+  await NetworkProxy.init();
   if (isDesktop) {
     final font = UserManager().desktopFontFamily;
     if (font.isNotEmpty) {

@@ -13,7 +13,6 @@ mixin _AnimeApi on _ApiClientBase {
         'limit': limit,
         '_update': true,
       },
-      host: _hostSd,
     );
     final list = (data['list'] as List? ?? const []).whereType<Map>().map((e) {
       final item = Map<String, dynamic>.from(e);
@@ -42,7 +41,6 @@ mixin _AnimeApi on _ApiClientBase {
         'free_type': 1,
         '_update': true,
       },
-      host: _hostSd,
     );
     final list = (data['list'] as List)
         .map((e) => Anime.fromJson(Map<String, dynamic>.from(e)))
@@ -64,7 +62,6 @@ mixin _AnimeApi on _ApiClientBase {
         'ordering': ordering,
         '_update': true,
       },
-      host: _hostSd,
     );
     final list = (data['list'] as List? ?? const []).whereType<Map>().map((e) {
       final item = Map<String, dynamic>.from(e);
@@ -84,7 +81,7 @@ mixin _AnimeApi on _ApiClientBase {
 
   /// 动漫首页
   Future<AnimeHome> getAnimeHome() async {
-    final data = await _get('/api/v3/h5/homeIndex/cartoonsfree', host: _hostSd);
+    final data = await _get('/api/v3/h5/homeIndex/cartoonsfree');
     return AnimeHome.fromJson(data);
   }
 
@@ -96,7 +93,6 @@ mixin _AnimeApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/recs',
       params: {'pos': pos, 'limit': limit, 'offset': offset},
-      host: _hostSg,
     );
     final rawList = data['list'] as List? ?? const [];
     final list = rawList
@@ -115,7 +111,6 @@ mixin _AnimeApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/updates',
       params: {'date': 'weekly-cartoon-free', 'limit': limit, 'offset': offset},
-      host: _hostSd,
     );
     final rawList = data['list'] as List? ?? const [];
     final list = rawList
@@ -129,7 +124,6 @@ mixin _AnimeApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/cartoon2/$pathWord',
       params: {'platform': 3, '_update': true},
-      host: _hostSg,
     );
     return Anime.fromDetailJson(data);
   }
@@ -138,7 +132,6 @@ mixin _AnimeApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/cartoon2/$pathWord/query',
       params: {'platform': 3, '_update': true},
-      host: _hostSg,
     );
     return AnimeQuery.fromJson(data);
   }
@@ -151,7 +144,6 @@ mixin _AnimeApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/cartoon/$pathWord/chapters2',
       params: {'limit': limit, 'offset': offset, '_update': true},
-      host: _hostSd,
     );
     final rawList = data['list'] as List? ?? const [];
     final list = rawList
@@ -166,7 +158,7 @@ mixin _AnimeApi on _ApiClientBase {
     required bool collect,
   }) async {
     await _dio.post(
-      _url('/api/v3/member/collect/cartoon', _hostSg),
+      _url('/api/v3/member/collect/cartoon'),
       data: 'cartoon_id=$cartoonId&is_collect=${collect ? 1 : 0}',
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );
@@ -200,7 +192,6 @@ mixin _AnimeApi on _ApiClientBase {
     final data = await _get(
       '/api/v3/cartoon/$pathWord/chapter/$chapterUuid',
       params: {'platform': 3, 'line': line},
-      host: _hostSg,
     );
     final playback = AnimePlayback.fromJson(data);
     if (_resolveAnimeVideoUrl(playback.chapter).isNotEmpty) {
