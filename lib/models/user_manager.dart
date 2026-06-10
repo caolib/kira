@@ -77,6 +77,7 @@ class UserManager extends ChangeNotifier {
     'bookshelf',
     'profile',
   ];
+  static const defaultUpdateMirrorPrefix = 'https://raw.ihtw.moe/';
 
   static const _keyToken = 'user_token';
   static const _keyUsername = 'user_username';
@@ -118,6 +119,7 @@ class UserManager extends ChangeNotifier {
   static const _keyCommentAutoLoadAll = 'comment_auto_load_all';
   static const _keyAutoCheckUpdate = 'auto_check_update';
   static const _keySkippedUpdateVersion = 'skipped_update_version';
+  static const _keyUpdateMirrorPrefix = 'update_mirror_prefix';
   static const _keyAutoLogin = 'auto_login';
   static const _keyDisclaimerAccepted = 'disclaimer_accepted';
   static const _keyLoginSource = 'login_source';
@@ -175,6 +177,7 @@ class UserManager extends ChangeNotifier {
   bool _commentAutoLoadAll = false;
   bool _autoCheckUpdate = true;
   String? _skippedUpdateVersion;
+  String _updateMirrorPrefix = defaultUpdateMirrorPrefix;
   bool _autoLogin = false;
   bool _disclaimerAccepted = false;
   String _loginSource = 'hotmanga';
@@ -246,6 +249,7 @@ class UserManager extends ChangeNotifier {
   bool get commentAutoLoadAll => _commentAutoLoadAll;
   bool get autoCheckUpdate => _autoCheckUpdate;
   String? get skippedUpdateVersion => _skippedUpdateVersion;
+  String get updateMirrorPrefix => _updateMirrorPrefix;
   bool get autoLogin => _autoLogin;
   bool get disclaimerAccepted => _disclaimerAccepted;
   String get loginSource => _loginSource;
@@ -264,6 +268,21 @@ class UserManager extends ChangeNotifier {
   bool get danmakuHideBottom => _danmakuHideBottom;
   List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
+
+  static String normalizeUpdateMirrorPrefix(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return defaultUpdateMirrorPrefix;
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null ||
+        !uri.hasScheme ||
+        !uri.hasAuthority ||
+        (uri.scheme != 'http' && uri.scheme != 'https')) {
+      return defaultUpdateMirrorPrefix;
+    }
+
+    return trimmed.endsWith('/') ? trimmed : '$trimmed/';
+  }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -358,6 +377,9 @@ class UserManager extends ChangeNotifier {
     _commentAutoLoadAll = prefs.getBool(_keyCommentAutoLoadAll) ?? false;
     _autoCheckUpdate = prefs.getBool(_keyAutoCheckUpdate) ?? true;
     _skippedUpdateVersion = prefs.getString(_keySkippedUpdateVersion);
+    _updateMirrorPrefix = normalizeUpdateMirrorPrefix(
+      prefs.getString(_keyUpdateMirrorPrefix),
+    );
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
     _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
     _loginSource = prefs.getString(_keyLoginSource) ?? 'hotmanga';
@@ -773,6 +795,16 @@ class UserManager extends ChangeNotifier {
     } else {
       await prefs.setString(_keySkippedUpdateVersion, version);
     }
+    notifyListeners();
+  }
+
+  Future<void> setUpdateMirrorPrefix(String value) async {
+    final normalized = normalizeUpdateMirrorPrefix(value);
+    if (_updateMirrorPrefix == normalized) return;
+
+    _updateMirrorPrefix = normalized;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUpdateMirrorPrefix, normalized);
     notifyListeners();
   }
 

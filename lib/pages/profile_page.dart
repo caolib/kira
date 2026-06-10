@@ -1626,6 +1626,97 @@ class _AboutPageState extends State<AboutPage> {
     if (mounted) setState(() {});
   }
 
+  bool _isValidUpdateMirrorPrefix(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null &&
+        uri.hasScheme &&
+        uri.hasAuthority &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
+  Future<void> _editUpdateMirrorPrefix() async {
+    final controller = TextEditingController(text: _user.updateMirrorPrefix);
+    final formKey = GlobalKey<FormState>();
+
+    try {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          final cs = Theme.of(dialogContext).colorScheme;
+          final tt = Theme.of(dialogContext).textTheme;
+
+          return AlertDialog(
+            title: const Text('更新镜像源'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '用于更新弹窗中的镜像下载链接，会拼接在 GitHub 下载地址前。',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: controller,
+                    autofocus: true,
+                    keyboardType: TextInputType.url,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: '镜像源地址',
+                      hintText: UserManager.defaultUpdateMirrorPrefix,
+                      helperText: '留空将恢复默认镜像源',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      final trimmed = value?.trim() ?? '';
+                      if (trimmed.isEmpty) return null;
+                      if (!_isValidUpdateMirrorPrefix(trimmed)) {
+                        return '请输入有效的 http(s) 地址';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(
+                  dialogContext,
+                  UserManager.defaultUpdateMirrorPrefix,
+                ),
+                child: const Text('恢复默认'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.pop(dialogContext, controller.text);
+                  }
+                },
+                child: const Text('保存'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (result == null) return;
+      await _user.setUpdateMirrorPrefix(result);
+      if (!mounted) return;
+      showToast(context, '镜像源已保存');
+    } finally {
+      controller.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -1682,6 +1773,18 @@ class _AboutPageState extends State<AboutPage> {
                       title: const Text('启动时检查更新'),
                       value: _user.autoCheckUpdate,
                       onChanged: _user.setAutoCheckUpdate,
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.public),
+                      title: const Text('更新镜像源'),
+                      subtitle: Text(
+                        _user.updateMirrorPrefix,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _editUpdateMirrorPrefix,
                     ),
                     const Divider(height: 1),
                     ListTile(

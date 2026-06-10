@@ -72,7 +72,6 @@ class AppUpdateInfo {
 class AppUpdateService {
   static const _latestReleaseUrl =
       'https://api.github.com/repos/caolib/kira/releases/latest';
-  static const _mirrorPrefix = 'https://ghproxy.net/';
   static final Dio _dio = Dio(
     BaseOptions(
       headers: {
@@ -113,7 +112,7 @@ class AppUpdateService {
         ReleaseAsset(
           name: name,
           downloadUrl: url,
-          mirrorUrl: '$_mirrorPrefix$url',
+          mirrorUrl: '${user.updateMirrorPrefix}$url',
           size: (asset['size'] as num?)?.toInt() ?? 0,
           platform: _detectPlatform(name),
         ),
