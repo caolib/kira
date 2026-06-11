@@ -61,4 +61,26 @@ void main() {
     expect(defaultRecord?.chapterUuid, 'chapter-2');
     expect(otherRecord, isNull);
   });
+
+  test('latestForComic returns the most recently saved group record', () async {
+    await ReadingHistory.save(
+      pathWord: 'comic-c',
+      group: ReadingHistory.defaultGroup,
+      chapterUuid: 'chapter-1',
+      chapterName: '第1话',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    await ReadingHistory.save(
+      pathWord: 'comic-c',
+      group: 'tankobon',
+      chapterUuid: 'volume-1',
+      chapterName: '第1卷',
+    );
+
+    final latest = await ReadingHistory.latestForComic('comic-c');
+
+    expect(latest?.chapterUuid, 'volume-1');
+    expect(latest?.group, 'tankobon');
+    expect(latest?.updatedAt, isNotNull);
+  });
 }

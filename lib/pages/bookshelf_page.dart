@@ -12,6 +12,7 @@ import '../utils/cover_brightness_filter.dart';
 import '../utils/comic_hero_tags.dart';
 import '../utils/comic_card_skeleton.dart';
 import '../utils/data_cache.dart';
+import '../utils/reading_history.dart';
 import '../utils/toast.dart';
 import 'anime_detail_page.dart';
 import 'comic_detail_page.dart';
@@ -773,16 +774,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
               ComicCard(
                 comic: item.comic,
                 heroTagBase: heroTagBase,
-                onTap: () => Navigator.push(
-                  context,
-                  ComicDetailPage.route(
-                    pathWord: item.comic.pathWord,
-                    initialComic: item.comic,
-                    heroTagBase: heroTagBase,
-                    lastBrowseId: item.lastBrowseId,
-                    lastBrowseName: item.lastBrowseName,
-                  ),
-                ).then((_) => _refreshLoaded()),
+                onTap: () => _openComicDetail(item, heroTagBase),
               ),
               if (item.hasUpdate) const _UpdateBadge(),
             ],
@@ -796,6 +788,79 @@ class _BookshelfPageState extends State<BookshelfPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _openComicDetail(BookshelfItem item, String heroTagBase) async {
+    final pathWord = item.comic.pathWord;
+    final before = await ReadingHistory.latestForComic(pathWord);
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      ComicDetailPage.route(
+        pathWord: pathWord,
+        initialComic: item.comic,
+        heroTagBase: heroTagBase,
+        lastBrowseId: item.lastBrowseId,
+        lastBrowseName: item.lastBrowseName,
+      ),
+    );
+    if (!mounted) return;
+
+    await _refreshLoaded();
+    if (!mounted) return;
+    await _applyLocalBrowseToComicItem(pathWord, before);
+  }
+
+  Future<void> _applyLocalBrowseToComicItem(
+    String pathWord,
+    ReadingRecord? before,
+  ) async {
+    final record = await ReadingHistory.latestForComic(pathWord);
+    if (!mounted || record == null || record.chapterUuid.isEmpty) return;
+
+    final changedDuringNavigation = _readingRecordChanged(before, record);
+    var changed = false;
+    final nextItems = _items.map((item) {
+      if (item.comic.pathWord != pathWord) return item;
+      final alreadyCurrent =
+          item.lastBrowseId == record.chapterUuid &&
+          item.lastBrowseName == record.chapterName;
+      if (alreadyCurrent) return item;
+
+      final localRecordClearsUpdate =
+          item.comic.lastChapterId != null &&
+          item.comic.lastChapterId == record.chapterUuid;
+      if (!changedDuringNavigation && !localRecordClearsUpdate) return item;
+
+      changed = true;
+      return BookshelfItem(
+        comic: item.comic,
+        lastBrowseId: record.chapterUuid,
+        lastBrowseName: record.chapterName,
+      );
+    }).toList();
+
+    if (!changed || !mounted) return;
+    setState(() => _items = nextItems);
+    unawaited(
+      _saveComicCache(
+        nextItems,
+        _comicTotal > 0 ? _comicTotal : _total,
+        _comicCacheTime ?? DateTime.now(),
+      ),
+    );
+  }
+
+  bool _readingRecordChanged(ReadingRecord? before, ReadingRecord after) {
+    if (before == null) return true;
+    final beforeUpdatedAt = before.updatedAt;
+    final afterUpdatedAt = after.updatedAt;
+    if (beforeUpdatedAt != null && afterUpdatedAt != null) {
+      return afterUpdatedAt.isAfter(beforeUpdatedAt);
+    }
+    return before.chapterUuid != after.chapterUuid ||
+        before.chapterName != after.chapterName;
   }
 
   Widget _buildAnimeGrid(BuildContext context, double hp) {

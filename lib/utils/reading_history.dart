@@ -46,6 +46,7 @@ class ReadingHistory {
       'chapterListPage': ?chapterListPage,
       'page': page,
       'totalPage': totalPage,
+      'updatedAt': DateTime.now().toIso8601String(),
       if (readChapterUuids.isNotEmpty) 'readChapterUuids': readChapterUuids,
     });
     if (normalizedGroup == null || normalizedGroup.isEmpty) {
@@ -71,6 +72,40 @@ class ReadingHistory {
       group: group,
       fallbackToLegacy: fallbackToLegacy,
     );
+  }
+
+  /// 获取这部漫画最近更新过的本地阅读记录，跨分组查询。
+  static Future<ReadingRecord?> latestForComic(String pathWord) async {
+    final prefs = await SharedPreferences.getInstance();
+    final legacyKey = _legacyKey(pathWord);
+    final groupPrefix = '${legacyKey}_group_';
+    final groupKeys =
+        prefs.getKeys().where((key) => key.startsWith(groupPrefix)).toList()
+          ..sort();
+    final keys = [legacyKey, ...groupKeys];
+
+    ReadingRecord? latest;
+    for (final key in keys) {
+      final raw = prefs.getString(key);
+      if (raw == null) continue;
+      final record = _decode(raw);
+      if (record == null) continue;
+      if (latest == null || _isRecordNewer(record, latest)) {
+        latest = record;
+      }
+    }
+    return latest;
+  }
+
+  static bool _isRecordNewer(ReadingRecord candidate, ReadingRecord current) {
+    final candidateUpdatedAt = candidate.updatedAt;
+    final currentUpdatedAt = current.updatedAt;
+    if (candidateUpdatedAt != null && currentUpdatedAt != null) {
+      return candidateUpdatedAt.isAfter(currentUpdatedAt);
+    }
+    if (candidateUpdatedAt != null) return true;
+    if (currentUpdatedAt != null) return false;
+    return false;
   }
 
   static ReadingRecord? _readFromPrefs(
@@ -105,6 +140,7 @@ class ReadingHistory {
         totalPage: _readInt(map['totalPage']) ?? 0,
         readChapterUuids: readChapterUuids,
         group: map['group']?.toString(),
+        updatedAt: _readDateTime(map['updatedAt'] ?? map['updated_at']),
       );
     } catch (_) {
       return null;
@@ -115,6 +151,12 @@ class ReadingHistory {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static DateTime? _readDateTime(Object? value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
     return null;
   }
 
@@ -146,6 +188,7 @@ class ReadingRecord {
   final int totalPage;
   final Set<String> readChapterUuids;
   final String? group;
+  final DateTime? updatedAt;
 
   const ReadingRecord({
     required this.chapterUuid,
@@ -155,5 +198,6 @@ class ReadingRecord {
     this.totalPage = 0,
     this.readChapterUuids = const <String>{},
     this.group,
+    this.updatedAt,
   });
 }
