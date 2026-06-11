@@ -43,8 +43,6 @@ class NetworkProxy {
         return _systemProxy?.label ?? '系统代理：未检测到';
       case NetworkProxyMode.manual:
         return _manualProxy?.label ?? '手动代理：未配置';
-      case NetworkProxyMode.direct:
-        return '直连';
     }
   }
 
@@ -89,8 +87,6 @@ class NetworkProxy {
             'DIRECT';
       case NetworkProxyMode.manual:
         return _manualProxy?.findProxyRule ?? 'DIRECT';
-      case NetworkProxyMode.direct:
-        return 'DIRECT';
     }
   }
 

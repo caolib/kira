@@ -20,8 +20,14 @@ mixin _NetworkApi on _ApiClientBase {
       _extraApiHostLabels[host] ?? '固定接口';
 
   /// 测试指定线路所有 host 的延迟，返回 {host: 毫秒数，超时为 null}
-  Future<Map<String, int?>> testRouteLatency(int routeIndex) async {
-    final results = await _testHostsLatency(getRouteHosts(routeIndex));
+  Future<Map<String, int?>> testRouteLatency(
+    int routeIndex, {
+    void Function(String host, int? latency)? onHostResult,
+  }) async {
+    final results = await _testHostsLatency(
+      getRouteHosts(routeIndex),
+      onHostResult: onHostResult,
+    );
 
     for (final entry in results.entries) {
       if (entry.value == null || entry.value! <= 0) {
@@ -35,14 +41,23 @@ mixin _NetworkApi on _ApiClientBase {
   }
 
   /// 测试固定 API / Web host 的延迟，仅用于诊断展示，不参与线路权重。
-  Future<Map<String, int?>> testExtraApiLatency() {
-    return _testHostsLatency(getExtraApiHosts());
+  Future<Map<String, int?>> testExtraApiLatency({
+    void Function(String host, int? latency)? onHostResult,
+  }) {
+    return _testHostsLatency(
+      getExtraApiHosts(),
+      onHostResult: onHostResult,
+    );
   }
 
-  Future<Map<String, int?>> _testHostsLatency(List<String> hosts) async {
+  Future<Map<String, int?>> _testHostsLatency(
+    List<String> hosts, {
+    void Function(String host, int? latency)? onHostResult,
+  }) async {
     final results = <String, int?>{};
     await Future.wait(
       hosts.map((host) async {
+        int? latency;
         try {
           final sw = Stopwatch()..start();
           await SecureSocket.connect(
@@ -51,10 +66,12 @@ mixin _NetworkApi on _ApiClientBase {
             timeout: const Duration(seconds: 3),
           );
           sw.stop();
-          results[host] = sw.elapsedMilliseconds;
+          latency = sw.elapsedMilliseconds;
         } catch (_) {
-          results[host] = null;
+          latency = null;
         }
+        results[host] = latency;
+        onHostResult?.call(host, latency);
       }),
     );
 

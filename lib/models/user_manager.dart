@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme_option.dart';
 import '../api/api_client.dart';
 
-enum NetworkProxyMode { system, manual, direct }
+enum NetworkProxyMode { system, manual }
 
 enum NetworkProxyType { http, socks }
 

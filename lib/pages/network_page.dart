@@ -14,6 +14,8 @@ class NetworkPage extends StatefulWidget {
 }
 
 class _NetworkPageState extends State<NetworkPage> {
+  static const _googleConnectivityTimeout = Duration(seconds: 3);
+
   final _user = UserManager();
   final _proxyAddressController = TextEditingController();
   bool _testingLatency = false;
@@ -22,6 +24,7 @@ class _NetworkPageState extends State<NetworkPage> {
   bool _latencyExpanded = true;
   NetworkProxyType _manualProxyType = NetworkProxyType.http;
   Map<int, Map<String, int?>> _latencyResults = {};
+  Set<String> _pendingLatencyHosts = {};
   bool? _googleConnectivityOk;
   int? _googleConnectivityLatencyMs;
   String? _googleConnectivityMessage;
@@ -242,6 +245,12 @@ class _NetworkPageState extends State<NetworkPage> {
     return bestRoute;
   }
 
+  String _latencyHostKey(int index, String host) => '$index|$host';
+
+  bool _isLatencyPending(int index, String host) {
+    return _pendingLatencyHosts.contains(_latencyHostKey(index, host));
+  }
+
   Widget _buildLatencyTrailingIcon(ColorScheme cs) {
     if (_latencyResults.isEmpty) {
       return Icon(Icons.chevron_right, color: cs.onSurfaceVariant);
@@ -322,10 +331,6 @@ class _NetworkPageState extends State<NetworkPage> {
                       value: NetworkProxyMode.manual,
                       label: Text('手动'),
                     ),
-                    ButtonSegment(
-                      value: NetworkProxyMode.direct,
-                      label: Text('直连'),
-                    ),
                   ],
                   selected: {_user.networkProxyMode},
                   onSelectionChanged: (value) => _setProxyMode(value.first),
@@ -334,16 +339,8 @@ class _NetworkPageState extends State<NetworkPage> {
               const SizedBox(height: 12),
               _buildProxyStatusRow(
                 icon: Icons.route_outlined,
-                label: '当前应用请求',
+                label: '当前代理',
                 value: NetworkProxy.activeProxyDescription,
-                tt: tt,
-                cs: cs,
-              ),
-              const SizedBox(height: 8),
-              _buildProxyStatusRow(
-                icon: Icons.computer_outlined,
-                label: '系统代理',
-                value: NetworkProxy.systemProxyDescription,
                 tt: tt,
                 cs: cs,
               ),
@@ -518,6 +515,19 @@ class _NetworkPageState extends State<NetworkPage> {
         final hosts = entry.value;
         final hostEntries = hosts.entries.toList();
         final average = index < 0 ? null : _averageLatency(hosts);
+        final hasPending = hostEntries.any(
+          (entry) => _isLatencyPending(index, entry.key),
+        );
+        final averageLabel = average == null
+            ? (hasPending ? '平均：检测中' : '平均：超时')
+            : '平均：${average.round()} ms';
+        final averageColor = average == null
+            ? (hasPending ? cs.onSurfaceVariant : cs.error)
+            : average <= 800
+            ? Colors.green
+            : average <= 2000
+            ? Colors.orange
+            : cs.error;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
@@ -526,35 +536,21 @@ class _NetworkPageState extends State<NetworkPage> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    index < 0
-                        ? Icons.cloud_queue_outlined
-                        : index == 0
-                        ? Icons.alt_route
-                        : Icons.route,
-                    size: 18,
-                    color: cs.primary,
-                  ),
-                  const SizedBox(width: 6),
                   Text(
                     _latencyGroupLabel(index),
-                    style: tt.titleSmall?.copyWith(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w700,
+                    style: tt.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.82),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0,
                     ),
                   ),
                   if (index >= 0) ...[
                     const Spacer(),
                     Text(
-                      average == null ? '平均：超时' : '平均：${average.round()} ms',
+                      averageLabel,
                       style: tt.labelMedium?.copyWith(
-                        color: average == null
-                            ? cs.error
-                            : average <= 800
-                            ? Colors.green
-                            : average <= 2000
-                            ? Colors.orange
-                            : cs.error,
+                        color: averageColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -575,9 +571,15 @@ class _NetworkPageState extends State<NetworkPage> {
                           ? ApiClient().getExtraApiHostLabel(hostEntries[i].key)
                           : '节点 ${i + 1}';
                       final latency = hostEntries[i].value;
+                      final isPending = _isLatencyPending(
+                        index,
+                        hostEntries[i].key,
+                      );
 
                       Color statusColor;
-                      if (latency == null) {
+                      if (isPending) {
+                        statusColor = cs.onSurfaceVariant;
+                      } else if (latency == null) {
                         statusColor = cs.error;
                       } else if (latency <= 800) {
                         statusColor = Colors.green;
@@ -601,7 +603,11 @@ class _NetworkPageState extends State<NetworkPage> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: statusColor.withValues(
-                                alpha: latency != null ? 0.3 : 0.1,
+                                alpha: latency != null
+                                    ? 0.3
+                                    : isPending
+                                    ? 0.16
+                                    : 0.1,
                               ),
                               width: 1.2,
                             ),
@@ -621,7 +627,11 @@ class _NetworkPageState extends State<NetworkPage> {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  latency != null ? '$latency ms' : '超时',
+                                  isPending
+                                      ? '检测中'
+                                      : latency != null
+                                      ? '$latency ms'
+                                      : '超时',
                                   style: tt.labelMedium?.copyWith(
                                     color: statusColor,
                                     fontWeight: FontWeight.bold,
@@ -644,16 +654,58 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Future<void> _testLatency() async {
+    final api = ApiClient();
+    final pendingResults = <int, Map<String, int?>>{};
+    final pendingHosts = <String>{};
+    for (var i = 0; i < ApiClient.routeLabels.length; i++) {
+      pendingResults[i] = {for (final host in api.getRouteHosts(i)) host: null};
+      pendingHosts.addAll(
+        api.getRouteHosts(i).map((host) => _latencyHostKey(i, host)),
+      );
+    }
+    pendingResults[-1] = {
+      for (final host in api.getExtraApiHosts()) host: null,
+    };
+    pendingHosts.addAll(
+      api.getExtraApiHosts().map((host) => _latencyHostKey(-1, host)),
+    );
+
+    void updateHostLatency(int index, String host, int? latency) {
+      if (!mounted) return;
+      setState(() {
+        _latencyResults[index]?[host] = latency;
+        _pendingLatencyHosts.remove(_latencyHostKey(index, host));
+      });
+    }
+
     setState(() {
       _testingLatency = true;
-      _latencyResults.clear();
+      _latencyExpanded = true;
+      _latencyResults = pendingResults;
+      _pendingLatencyHosts = pendingHosts;
     });
-    final api = ApiClient();
     try {
       final results = await Future.wait([
-        api.testRouteLatency(0).then((r) => MapEntry(0, r)),
-        api.testRouteLatency(1).then((r) => MapEntry(1, r)),
-        api.testExtraApiLatency().then((r) => MapEntry(-1, r)),
+        api
+            .testRouteLatency(
+              0,
+              onHostResult: (host, latency) =>
+                  updateHostLatency(0, host, latency),
+            )
+            .then((r) => MapEntry(0, r)),
+        api
+            .testRouteLatency(
+              1,
+              onHostResult: (host, latency) =>
+                  updateHostLatency(1, host, latency),
+            )
+            .then((r) => MapEntry(1, r)),
+        api
+            .testExtraApiLatency(
+              onHostResult: (host, latency) =>
+                  updateHostLatency(-1, host, latency),
+            )
+            .then((r) => MapEntry(-1, r)),
       ]);
       final latencyResults = Map<int, Map<String, int?>>.fromEntries(results);
       final bestRoute = _bestLatencyRoute(latencyResults);
@@ -664,10 +716,14 @@ class _NetworkPageState extends State<NetworkPage> {
       setState(() {
         _testingLatency = false;
         _latencyResults = latencyResults;
+        _pendingLatencyHosts = {};
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _testingLatency = false);
+      setState(() {
+        _testingLatency = false;
+        _pendingLatencyHosts = {};
+      });
     }
   }
 
@@ -736,17 +792,17 @@ class _NetworkPageState extends State<NetworkPage> {
     final proxyRule = NetworkProxy.findProxy(uri);
     final stopwatch = Stopwatch()..start();
     final client = NetworkProxy.createHttpClient(
-      connectionTimeout: const Duration(seconds: 5),
+      connectionTimeout: _googleConnectivityTimeout,
     );
 
     try {
       final request = await client
           .getUrl(uri)
-          .timeout(const Duration(seconds: 5));
+          .timeout(_googleConnectivityTimeout);
       request.followRedirects = false;
 
       final response = await request.close().timeout(
-        const Duration(seconds: 5),
+        _googleConnectivityTimeout,
       );
       await response.drain<void>();
       stopwatch.stop();

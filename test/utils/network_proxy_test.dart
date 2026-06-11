@@ -40,4 +40,13 @@ void main() {
       'PROXY 127.0.0.1:7890',
     );
   });
+
+  test('legacy direct proxy mode falls back to system proxy mode', () async {
+    SharedPreferences.setMockInitialValues({'network_proxy_mode': 2});
+
+    final user = UserManager();
+    await user.init();
+
+    expect(user.networkProxyMode, NetworkProxyMode.system);
+  });
 }
