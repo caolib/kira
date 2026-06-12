@@ -1,0 +1,66 @@
+name: Bug 报告
+description: 报告可复现的问题
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请尽量详细描述问题，并提供稳定的复现步骤。最好附上截图、录屏，方便快速定位。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请详细说明你遇到的问题，以及它对使用流程的影响。
+      placeholder: 例如：点击某个按钮后应用崩溃，或页面显示结果与预期不一致。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 请按步骤描述如何复现这个 bug。步骤越具体，越容易验证和修复。
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 请说明正常情况下你期望发生什么。
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 请说明实际发生了什么，包括错误提示、异常状态或崩溃现象。
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: 请提供设备、系统版本、应用版本等信息。
+      value: |
+        - 设备：
+        - 系统版本：
+        - 应用版本：
+    validations:
+      required: false
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: 截图、录屏
+      description: 建议提交截图、视频。可以直接拖拽文件到输入框上传。
+    validations:
+      required: false
