@@ -18,11 +18,11 @@ class _AppearancePageState extends State<AppearancePage> {
   final _user = UserManager();
 
   static const _navMeta = {
-    'comic': (Icons.menu_book_outlined, '漫画'),
-    'anime': (Icons.movie_outlined, '动漫'),
-    'search': (Icons.search_outlined, '搜索'),
-    'bookshelf': (Icons.bookmark_border, '书架'),
-    'profile': (Icons.person_outline, '我的'),
+    'comic': (Icons.menu_book_outlined, Icons.menu_book, '漫画'),
+    'anime': (Icons.movie_outlined, Icons.movie, '动漫'),
+    'search': (Icons.search_outlined, Icons.search, '搜索'),
+    'bookshelf': (Icons.bookmark_border, Icons.bookmark, '书架'),
+    'profile': (Icons.person_outline, Icons.person, '我的'),
   };
 
   @override
@@ -90,53 +90,11 @@ class _AppearancePageState extends State<AppearancePage> {
     }
   }
 
-  Brightness _previewBrightness(BuildContext context) {
-    switch (_user.themeMode) {
-      case ThemeMode.light:
-        return Brightness.light;
-      case ThemeMode.dark:
-        return Brightness.dark;
-      case ThemeMode.system:
-        return MediaQuery.platformBrightnessOf(context);
-    }
-  }
-
-  ThemeData _buildPreviewTheme(Brightness brightness) {
-    final seedColor = _user.themeOption.seedColor;
-    var colorScheme = ColorScheme.fromSeed(
-      seedColor: seedColor,
-      brightness: brightness,
-      dynamicSchemeVariant: _user.themeVariant,
-    );
-
-    if (_user.themeVariant == DynamicSchemeVariant.rainbow) {
-      final standardScheme = ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: brightness,
-      );
-      colorScheme = colorScheme.copyWith(
-        surface: standardScheme.surface,
-        surfaceDim: standardScheme.surfaceDim,
-        surfaceBright: standardScheme.surfaceBright,
-        surfaceContainerLowest: standardScheme.surfaceContainerLowest,
-        surfaceContainerLow: standardScheme.surfaceContainerLow,
-        surfaceContainer: standardScheme.surfaceContainer,
-        surfaceContainerHigh: standardScheme.surfaceContainerHigh,
-        surfaceContainerHighest: standardScheme.surfaceContainerHighest,
-        onSurface: standardScheme.onSurface,
-        onSurfaceVariant: standardScheme.onSurfaceVariant,
-      );
-    }
-
-    return ThemeData(colorScheme: colorScheme, useMaterial3: true);
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final selectedVariant = _user.themeVariantOption;
-    final previewTheme = _buildPreviewTheme(_previewBrightness(context));
     final coverBrightnessPercent = (_user.darkModeCoverBrightness * 100)
         .round();
 
@@ -173,35 +131,51 @@ class _AppearancePageState extends State<AppearancePage> {
                     ],
                   ),
                 ),
-                ReorderableListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _user.navOrder.length,
-                  onReorder: (oldIndex, newIndex) {
-                    if (newIndex > oldIndex) newIndex--;
-                    final order = List<String>.of(_user.navOrder);
-                    final item = order.removeAt(oldIndex);
-                    order.insert(newIndex, item);
-                    _user.setNavOrder(order);
-                  },
-                  itemBuilder: (context, index) {
-                    final key = _user.navOrder[index];
-                    final meta = _navMeta[key]!;
-                    return ListTile(
-                      key: ValueKey(key),
-                      leading: Icon(meta.$1, color: cs.onSurfaceVariant),
-                      title: Text(meta.$2),
-                      trailing: ReorderableDragStartListener(
-                        index: index,
-                        child: Icon(
-                          Icons.drag_handle,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  },
+                SizedBox(
+                  height: _user.bottomNavShowLabels ? 80 : 64,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final itemCount = _user.navOrder.length;
+                      final itemWidth = constraints.maxWidth / itemCount;
+                      final constrainedItemWidth = itemWidth < 56
+                          ? 56.0
+                          : itemWidth;
+
+                      return ReorderableListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        buildDefaultDragHandles: false,
+                        padding: EdgeInsets.zero,
+                        itemCount: itemCount,
+                        onReorder: (oldIndex, newIndex) {
+                          if (newIndex > oldIndex) newIndex--;
+                          final order = List<String>.of(_user.navOrder);
+                          final item = order.removeAt(oldIndex);
+                          order.insert(newIndex, item);
+                          _user.setNavOrder(order);
+                        },
+                        itemBuilder: (context, index) {
+                          final key = _user.navOrder[index];
+                          final meta = _navMeta[key]!;
+                          return SizedBox(
+                            key: ValueKey(key),
+                            width: constrainedItemWidth,
+                            child: ReorderableDragStartListener(
+                              index: index,
+                              child: _NavOrderDestination(
+                                icon: meta.$1,
+                                selectedIcon: meta.$2,
+                                label: meta.$3,
+                                selected: key == _user.lastNavKey,
+                                showLabel: _user.bottomNavShowLabels,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -264,18 +238,9 @@ class _AppearancePageState extends State<AppearancePage> {
                       onSelectionChanged: (v) => _user.setThemeMode(v.first),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            color: cs.surfaceContainerLow,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Icon(
@@ -393,19 +358,72 @@ class _AppearancePageState extends State<AppearancePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '主题预览',
-                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  const SizedBox(height: 12),
-                  Theme(data: previewTheme, child: const _ThemePreviewCard()),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NavOrderDestination extends StatelessWidget {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final bool showLabel;
+
+  const _NavOrderDestination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.showLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final foreground = selected ? cs.onSecondaryContainer : cs.onSurfaceVariant;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.grab,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 64,
+              height: 32,
+              decoration: BoxDecoration(
+                color: selected ? cs.secondaryContainer : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                selected ? selectedIcon : icon,
+                color: foreground,
+                size: 24,
+              ),
+            ),
+            if (showLabel) ...[
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tt.labelMedium?.copyWith(
+                  color: foreground,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -629,169 +647,6 @@ class _ThemeColorTile extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemePreviewCard extends StatelessWidget {
-  const _ThemePreviewCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: cs.primary,
-                  child: Icon(
-                    Icons.auto_awesome,
-                    color: cs.onPrimary,
-                    size: 16,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Kira 主题预览',
-                        style: tt.titleSmall?.copyWith(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        '按钮、卡片、标签会随主题自动换色',
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onPrimaryContainer.withValues(alpha: 0.78),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.palette_outlined, color: cs.onPrimaryContainer),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _PreviewBadge(
-                label: '主色',
-                backgroundColor: cs.primary,
-                foregroundColor: cs.onPrimary,
-              ),
-              _PreviewBadge(
-                label: '次级',
-                backgroundColor: cs.secondaryContainer,
-                foregroundColor: cs.onSecondaryContainer,
-              ),
-              _PreviewBadge(
-                label: '强调',
-                backgroundColor: cs.tertiaryContainer,
-                foregroundColor: cs.onTertiaryContainer,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          IgnorePointer(
-            child: Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.bookmark_add_outlined),
-                    label: const Text('加入书架'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.download_outlined),
-                    label: const Text('下载'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, size: 18, color: cs.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '同一主题色切换不同风格后，整套页面的主色、容器色和标签色都会一起变化。',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewBadge extends StatelessWidget {
-  final String label;
-  final Color backgroundColor;
-  final Color foregroundColor;
-
-  const _PreviewBadge({
-    required this.label,
-    required this.backgroundColor,
-    required this.foregroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: foregroundColor,
-            fontWeight: FontWeight.w700,
           ),
         ),
       ),

@@ -44,10 +44,7 @@ mixin _NetworkApi on _ApiClientBase {
   Future<Map<String, int?>> testExtraApiLatency({
     void Function(String host, int? latency)? onHostResult,
   }) {
-    return _testHostsLatency(
-      getExtraApiHosts(),
-      onHostResult: onHostResult,
-    );
+    return _testHostsLatency(getExtraApiHosts(), onHostResult: onHostResult);
   }
 
   Future<Map<String, int?>> _testHostsLatency(

@@ -573,16 +573,15 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: models.contains(selectedModel) ? selectedModel : null,
+                  initialValue: models.contains(selectedModel)
+                      ? selectedModel
+                      : null,
                   decoration: const InputDecoration(
                     labelText: '默认模型',
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('未选择'),
-                    ),
+                    const DropdownMenuItem(value: null, child: Text('未选择')),
                     ...models.map(
                       (model) =>
                           DropdownMenuItem(value: model, child: Text(model)),
@@ -611,7 +610,9 @@ class _AiConfigPageState extends State<AiConfigPage> {
                                 .where((item) => item != model)
                                 .toList();
                             if (selectedModel == model) {
-                              selectedModel = models.isEmpty ? '' : models.first;
+                              selectedModel = models.isEmpty
+                                  ? ''
+                                  : models.first;
                             }
                           }),
                         ),
@@ -630,10 +631,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                       ),
                       if (models.isNotEmpty)
                         ActionChip(
-                          avatar: const Icon(
-                            Icons.clear_all,
-                            size: 18,
-                          ),
+                          avatar: const Icon(Icons.clear_all, size: 18),
                           label: const Text('清空'),
                           onPressed: () => setLocal(() {
                             models = [];
@@ -686,8 +684,8 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 final name = providerPreset == zhipuPreset
                     ? '智谱清言'
                     : nameCtrl.text.trim().isEmpty
-                        ? (isNew ? '自定义供应商' : editing.name)
-                        : nameCtrl.text.trim();
+                    ? (isNew ? '自定义供应商' : editing.name)
+                    : nameCtrl.text.trim();
                 Navigator.pop(
                   ctx,
                   AiProviderConfig(
