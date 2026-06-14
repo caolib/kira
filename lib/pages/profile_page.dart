@@ -93,7 +93,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
     );
-    if (result == true) setState(() {});
+    if (result == true && mounted) setState(() {});
   }
 
   void _switchAccount() async {
