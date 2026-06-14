@@ -17,12 +17,21 @@ void main() {
   });
 
   testWidgets('reset app requires exact confirmation text', (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     await UserManager().init();
 
     await tester.pumpWidget(const MaterialApp(home: GeneralPage()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('重置应用').last);
+    final resetButton = find.widgetWithText(FilledButton, '重置应用');
+    await tester.scrollUntilVisible(resetButton, 100);
+    await tester.tap(resetButton);
     await tester.pumpAndSettle();
 
     FilledButton button() =>

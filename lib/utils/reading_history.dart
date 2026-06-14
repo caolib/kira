@@ -129,7 +129,7 @@ class ReadingHistory {
     try {
       final map = jsonDecode(raw) as Map<String, dynamic>;
       final chapterUuid = map['chapterUuid']?.toString() ?? '';
-      final readChapterUuids = _readStringSet(map['readChapterUuids'])
+      final readChapterUuids = _readStringSet(map['readChapterUuids']).toSet()
         ..add(chapterUuid);
       readChapterUuids.remove('');
       return ReadingRecord(

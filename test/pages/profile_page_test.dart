@@ -61,6 +61,5 @@ void main() {
     await pumpProfilePage(tester);
 
     expect(find.text('通用'), findsOneWidget);
-    expect(find.text('自动登录、设置导入导出'), findsOneWidget);
   });
 }

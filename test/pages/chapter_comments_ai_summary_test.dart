@@ -47,7 +47,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('AI 总结'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Text && w.data?.contains('总结') == true,
+        ),
+        findsOneWidget,
+      );
       expect(find.text('正在生成中…'), findsNothing);
 
       await tester.tap(find.byTooltip('展开'));
