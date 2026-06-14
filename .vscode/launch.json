@@ -9,7 +9,7 @@
             "request": "launch",
             "type": "dart",
             "deviceId": "emulator",
-            "preLaunchTask": "launch emulator", // ← 加这一行
+            "preLaunchTask": "launch emulator",
             "toolArgs": [
                 "--dart-define-from-file=.env"
             ]
@@ -28,6 +28,38 @@
             "name": "Debug - Windows",
             "request": "launch",
             "type": "dart",
+            "deviceId": "win",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ]
+        },
+        {
+            "name": "Profile - Emulator",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "deviceId": "emulator",
+            "preLaunchTask": "launch emulator",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ]
+        },
+        {
+            "name": "Profile - MuMu",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "deviceId": "127",
+            "preLaunchTask": "adb connect MuMu",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ]
+        },
+        {
+            "name": "Profile - Windows",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
             "deviceId": "win",
             "toolArgs": [
                 "--dart-define-from-file=.env"

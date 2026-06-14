@@ -16,6 +16,7 @@ import java.util.zip.GZIPInputStream
 class MainActivity : FlutterActivity() {
     private var volumeChannel: MethodChannel? = null
     private var hlsChannel: MethodChannel? = null
+    private var displayModeChannel: MethodChannel? = null
     private var interceptVolume = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,6 +102,31 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+
+        displayModeChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "io.github.caolib.kira/display_mode"
+        )
+        displayModeChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setPreferredRefreshRate" -> {
+                    val refreshRate = call.argument<Number>("refreshRate")?.toFloat() ?: 0f
+                    setWindowPreferredRefreshRate(refreshRate)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    private fun setWindowPreferredRefreshRate(refreshRate: Float) {
+        val nextRefreshRate = if (refreshRate > 0f) refreshRate else 0f
+        window.attributes = window.attributes.apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                preferredDisplayModeId = 0
+            }
+            preferredRefreshRate = nextRefreshRate
         }
     }
 

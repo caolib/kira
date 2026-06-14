@@ -82,6 +82,7 @@ class UserManager extends ChangeNotifier {
     'profile',
   ];
   static const defaultUpdateMirrorPrefix = 'https://raw.ihtw.moe/';
+  static const defaultDisplayModeRefreshRate = 0;
 
   static const _keyToken = 'user_token';
   static const _keyUsername = 'user_username';
@@ -100,6 +101,7 @@ class UserManager extends ChangeNotifier {
   static const _keyNavOrder = 'nav_order';
   static const _keyLastNavKey = 'last_nav_key';
   static const _keyDesktopFontFamily = 'desktop_font_family';
+  static const _keyDisplayModeRefreshRate = 'pref_display_mode_refresh_rate';
   static const _keyBookshelfOrdering = 'bookshelf_ordering';
   static const _keyReaderMode = 'reader_mode';
   static const _keyReaderScrollDirection = 'reader_scroll_direction';
@@ -164,6 +166,7 @@ class UserManager extends ChangeNotifier {
   List<String> _navOrder = defaultNavOrder;
   String _lastNavKey = defaultNavKey;
   String _desktopFontFamily = '';
+  int _displayModeRefreshRate = defaultDisplayModeRefreshRate;
   String _bookshelfOrdering = '-datetime_updated';
   int _readerMode = 0;
   int _readerScrollDirection = 2;
@@ -226,6 +229,7 @@ class UserManager extends ChangeNotifier {
   List<String> get navOrder => _navOrder;
   String get lastNavKey => _lastNavKey;
   String get desktopFontFamily => _desktopFontFamily;
+  int get displayModeRefreshRate => _displayModeRefreshRate;
   AppThemeOption get themeOption {
     if (_themeColor == customThemeOptionId) {
       return AppThemeOption(
@@ -371,6 +375,9 @@ class UserManager extends ChangeNotifier {
       await prefs.setString(_keyLastNavKey, _lastNavKey);
     }
     _desktopFontFamily = prefs.getString(_keyDesktopFontFamily) ?? '';
+    _displayModeRefreshRate = _normalizeDisplayModeRefreshRate(
+      prefs.getInt(_keyDisplayModeRefreshRate),
+    );
     _bookshelfOrdering =
         prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
     _readerMode = prefs.getInt(_keyReaderMode) ?? 0;
@@ -670,6 +677,16 @@ class UserManager extends ChangeNotifier {
     } else {
       await prefs.setString(_keyDesktopFontFamily, fontFamily);
     }
+    notifyListeners();
+  }
+
+  Future<void> setDisplayModeRefreshRate(int refreshRate) async {
+    final nextRate = _normalizeDisplayModeRefreshRate(refreshRate);
+    if (_displayModeRefreshRate == nextRate) return;
+
+    _displayModeRefreshRate = nextRate;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyDisplayModeRefreshRate, nextRate);
     notifyListeners();
   }
 
@@ -1063,5 +1080,12 @@ class UserManager extends ChangeNotifier {
 
   static int _normalizeProxyPort(int? port) {
     return isValidProxyPort(port) ? port! : 0;
+  }
+
+  static int _normalizeDisplayModeRefreshRate(int? refreshRate) {
+    if (refreshRate == null || refreshRate < 0) {
+      return defaultDisplayModeRefreshRate;
+    }
+    return refreshRate;
   }
 }

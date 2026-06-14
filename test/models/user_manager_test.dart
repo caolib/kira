@@ -123,4 +123,33 @@ void main() {
       UserManager.minDarkModeCoverBrightness,
     );
   });
+
+  test('display mode refresh rate defaults to auto and persists', () async {
+    final user = UserManager();
+    await user.init();
+
+    expect(
+      user.displayModeRefreshRate,
+      UserManager.defaultDisplayModeRefreshRate,
+    );
+
+    await user.setDisplayModeRefreshRate(120);
+    await user.init();
+
+    expect(user.displayModeRefreshRate, 120);
+  });
+
+  test('display mode refresh rate falls back to auto when invalid', () async {
+    SharedPreferences.setMockInitialValues({
+      'pref_display_mode_refresh_rate': -1,
+    });
+
+    final user = UserManager();
+    await user.init();
+
+    expect(
+      user.displayModeRefreshRate,
+      UserManager.defaultDisplayModeRefreshRate,
+    );
+  });
 }

@@ -4,6 +4,7 @@ import 'package:system_fonts/system_fonts.dart';
 import '../main.dart' show isDesktop;
 import '../models/app_theme_option.dart';
 import '../models/user_manager.dart';
+import '../utils/display_mode_preference.dart';
 import '../utils/toast.dart';
 
 class AppearancePage extends StatefulWidget {
@@ -38,6 +39,15 @@ class _AppearancePageState extends State<AppearancePage> {
 
   void _onChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _showDisplayModeSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _DisplayModeSheet(user: _user),
+    );
   }
 
   Future<void> _pickCustomThemeColor() async {
@@ -198,6 +208,21 @@ class _AppearancePageState extends State<AppearancePage> {
           if (isDesktop) ...[
             const SizedBox(height: 8),
             _DesktopFontCard(user: _user),
+          ],
+          if (DisplayModePreference.isSupportedPlatform) ...[
+            const SizedBox(height: 8),
+            Card(
+              color: cs.surfaceContainerLow,
+              child: ListTile(
+                leading: Icon(
+                  Icons.monitor_heart_outlined,
+                  color: cs.onSurfaceVariant,
+                ),
+                title: const Text('屏幕刷新率'),
+                trailing: Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+                onTap: _showDisplayModeSheet,
+              ),
+            ),
           ],
           const SizedBox(height: 8),
           Card(
@@ -381,6 +406,168 @@ class _AppearancePageState extends State<AppearancePage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DisplayModeSheet extends StatefulWidget {
+  final UserManager user;
+
+  const _DisplayModeSheet({required this.user});
+
+  @override
+  State<_DisplayModeSheet> createState() => _DisplayModeSheetState();
+}
+
+class _DisplayModeSheetState extends State<_DisplayModeSheet> {
+  late Future<DisplayModeData> _future;
+  int? _applyingRate;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = DisplayModePreference.load();
+  }
+
+  Future<void> _selectRefreshRate(int refreshRate, DisplayModeData data) async {
+    if (_applyingRate != null) return;
+
+    setState(() => _applyingRate = refreshRate);
+    await widget.user.setDisplayModeRefreshRate(refreshRate);
+    final applied = await DisplayModePreference.applyRefreshRate(
+      refreshRate,
+      modes: data.modes,
+      active: data.active,
+    );
+
+    if (!mounted) return;
+    setState(() => _applyingRate = null);
+    showToast(
+      context,
+      applied ? '已请求刷新率 ${_formatRefreshRate(refreshRate)}' : '刷新率偏好已保存',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return SafeArea(
+      top: false,
+      child: FutureBuilder<DisplayModeData>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox(
+              height: 220,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasError || snapshot.data == null) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '屏幕刷新率',
+                    style: tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '获取设备刷新率失败：${snapshot.error ?? '未知错误'}',
+                    style: tt.bodyMedium?.copyWith(color: cs.error),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final data = snapshot.data!;
+          final currentRate = widget.user.displayModeRefreshRate;
+          final activeRate = data.active.refreshRate.round();
+          final rates = DisplayModePreference.refreshRates(data.modes);
+          final isApplying = _applyingRate != null;
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '屏幕刷新率',
+                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                  ),
+                  child: SingleChildScrollView(
+                    child: RadioGroup<int>(
+                      groupValue: currentRate,
+                      onChanged: (value) {
+                        if (isApplying || value == null) return;
+                        _selectRefreshRate(value, data);
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          RadioListTile<int>(
+                            contentPadding: EdgeInsets.zero,
+                            value: UserManager.defaultDisplayModeRefreshRate,
+                            title: const Text('自动（跟随系统）'),
+                          ),
+                          for (final rate in rates)
+                            RadioListTile<int>(
+                              contentPadding: EdgeInsets.zero,
+                              value: rate,
+                              title: Text(
+                                rate == activeRate
+                                    ? '${rate}Hz（当前）'
+                                    : '${rate}Hz',
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (isApplying) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '正在应用 ${_formatRefreshRate(_applyingRate!)}',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Text(
+                  '实际生效取决于系统和屏幕，部分设备可能需要重启应用后完全生效。',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -615,6 +802,12 @@ class _PreviewBadge extends StatelessWidget {
 String _colorToHex(Color color) {
   final rgb = color.toARGB32() & 0xFFFFFF;
   return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+}
+
+String _formatRefreshRate(int refreshRate) {
+  return refreshRate == UserManager.defaultDisplayModeRefreshRate
+      ? '自动（跟随系统）'
+      : '${refreshRate}Hz';
 }
 
 class _DesktopFontCard extends StatefulWidget {

@@ -15,6 +15,7 @@ import 'pages/search_page.dart';
 import 'pages/bookshelf_page.dart';
 import 'pages/profile_page.dart';
 import 'utils/app_update.dart';
+import 'utils/display_mode_preference.dart';
 import 'utils/network_proxy.dart';
 
 bool get isDesktop =>
@@ -76,6 +77,9 @@ class _KiraAppState extends State<KiraApp> {
   void initState() {
     super.initState();
     _user.addListener(_onChanged);
+    unawaited(
+      DisplayModePreference.applyRefreshRate(_user.displayModeRefreshRate),
+    );
   }
 
   @override
