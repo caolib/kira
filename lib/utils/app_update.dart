@@ -7,7 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/user_manager.dart';
-import 'network_error.dart';
+import 'app_dio.dart';
 import 'toast.dart';
 
 enum AssetPlatform {
@@ -72,8 +72,9 @@ class AppUpdateInfo {
 class AppUpdateService {
   static const _latestReleaseUrl =
       'https://api.github.com/repos/caolib/kira/releases/latest';
-  static final Dio _dio = Dio(
-    BaseOptions(
+  static final Dio _dio = AppDio.create(
+    source: 'app_update',
+    options: BaseOptions(
       headers: {
         'Accept': 'application/vnd.github+json',
         'User-Agent': 'Kira-App',
@@ -81,7 +82,7 @@ class AppUpdateService {
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
     ),
-  )..interceptors.add(NetworkError.rateLimitInterceptor());
+  );
 
   static Future<AppUpdateInfo?> checkForUpdate({
     bool respectSkippedVersion = true,

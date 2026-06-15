@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
+import '../utils/app_logger.dart';
 import '../utils/settings_backup.dart';
 import '../utils/toast.dart';
 import 'cache_management_page.dart';
@@ -155,6 +156,7 @@ class _GeneralPageState extends State<GeneralPage> {
 
     try {
       final removedCount = await _settingsBackup.clearAllPreferences();
+      await AppLogger.instance.clear();
       ApiClient().clearAuthState();
       await _user.init();
       if (mounted) {

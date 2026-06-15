@@ -1,17 +1,18 @@
 import 'package:dio/dio.dart';
 
-import 'network_error.dart';
+import 'app_dio.dart';
 
 class ChineseConverter {
-  static final Dio _dio = Dio(
-    BaseOptions(
+  static final Dio _dio = AppDio.create(
+    source: 'chinese_converter',
+    options: BaseOptions(
       baseUrl: 'https://api.zhconvert.org',
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 8),
       sendTimeout: const Duration(seconds: 8),
       responseType: ResponseType.json,
     ),
-  )..interceptors.add(NetworkError.rateLimitInterceptor());
+  );
 
   static final Map<String, String> _cache = {};
 

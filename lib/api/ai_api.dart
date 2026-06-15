@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../utils/network_error.dart';
+import '../utils/app_dio.dart';
 
 /// 提示词预设条目。
 class PromptPreset {
@@ -834,12 +834,13 @@ class AiStreamChunk {
 }
 
 class AiApi {
-  final Dio _dio = Dio(
-    BaseOptions(
+  final Dio _dio = AppDio.create(
+    source: 'ai_api',
+    options: BaseOptions(
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(minutes: 5),
     ),
-  )..interceptors.add(NetworkError.rateLimitInterceptor());
+  );
 
   /// 获取 OpenAI 兼容供应商暴露的模型列表。
   Future<List<String>> fetchModels({

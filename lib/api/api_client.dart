@@ -10,6 +10,7 @@ import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/comic_comment.dart';
 import '../models/user_manager.dart';
+import '../utils/app_dio.dart';
 import '../utils/data_cache.dart';
 import '../utils/network_error.dart';
 
@@ -55,9 +56,10 @@ abstract class _ApiClientBase {
   Future<Map<String, dynamic>> copyLogin(String username, String password);
 
   _ApiClientBase() {
-    _dio = Dio()..interceptors.add(NetworkError.rateLimitInterceptor());
-    _commentDio = Dio(
-      BaseOptions(
+    _dio = AppDio.create(source: 'api', enableErrorLog: false);
+    _commentDio = AppDio.create(
+      source: 'api_comment',
+      options: BaseOptions(
         headers: {
           'accept': 'application/json, text/plain, */*',
           'accept-language':
@@ -78,7 +80,7 @@ abstract class _ApiClientBase {
           'Connection': 'keep-alive',
         },
       ),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    );
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -200,6 +202,11 @@ abstract class _ApiClientBase {
           handler.next(error);
         },
       ),
+    );
+    AppDio.attachCommonInterceptors(
+      _dio,
+      source: 'api',
+      enableRateLimit: false,
     );
   }
 

@@ -27,8 +27,9 @@ mixin _UserApi on _ApiClientBase {
   ) async {
     final salt = Random().nextInt(900000) + 100000;
     final encoded = base64Encode(utf8.encode('$password-$salt'));
-    final dio = Dio(
-      BaseOptions(
+    final dio = AppDio.create(
+      source: 'copy_login',
+      options: BaseOptions(
         validateStatus: (_) => true,
         headers: {
           'accept': 'application/json, text/plain, */*',
@@ -50,7 +51,7 @@ mixin _UserApi on _ApiClientBase {
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
         },
       ),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    );
 
     final resp = await dio.post(
       'https://$_hostCopy/api/kb/web/login',
@@ -74,12 +75,10 @@ mixin _UserApi on _ApiClientBase {
     final message = data is Map
         ? (data['message']?.toString() ?? '登录失败')
         : '登录失败';
-    throw DioException(
-      requestOptions: resp.requestOptions,
+    NetworkError.throwBadResponse(
       response: resp,
       message: message,
-      error: message,
-      type: DioExceptionType.badResponse,
+      source: 'copy_login',
     );
   }
 
@@ -136,8 +135,9 @@ mixin _UserApi on _ApiClientBase {
           '注册失败';
     }
 
-    final dio = Dio(
-      BaseOptions(
+    final dio = AppDio.create(
+      source: 'register',
+      options: BaseOptions(
         validateStatus: (_) => true,
         headers: {
           'accept': 'application/json, text/plain, */*',
@@ -162,7 +162,7 @@ mixin _UserApi on _ApiClientBase {
           'Cookie': _buildRegisterCookie(),
         },
       ),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    );
 
     final resp = await dio.post(
       'https://$_hostWeb/api/v2/register',
@@ -188,12 +188,10 @@ mixin _UserApi on _ApiClientBase {
     }
 
     final message = resolveMessage(data, resp);
-    throw DioException(
-      requestOptions: resp.requestOptions,
+    NetworkError.throwBadResponse(
       response: resp,
       message: message,
-      error: message,
-      type: DioExceptionType.badResponse,
+      source: 'register',
     );
   }
 

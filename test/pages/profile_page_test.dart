@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/profile_page.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -61,5 +62,23 @@ void main() {
     await pumpProfilePage(tester);
 
     expect(find.text('通用'), findsOneWidget);
+  });
+
+  testWidgets('about page shows error log entry', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    PackageInfo.setMockInitialValues(
+      appName: 'Kira',
+      packageName: 'com.example.kira',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+    await UserManager().init();
+
+    await tester.pumpWidget(const MaterialApp(home: AboutPage()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('错误日志'), findsOneWidget);
+    expect(find.byIcon(Icons.bug_report_outlined), findsOneWidget);
   });
 }

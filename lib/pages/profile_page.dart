@@ -10,6 +10,7 @@ import '../models/user_manager.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
 import 'acknowledgement_page.dart';
+import 'app_log_page.dart';
 import 'appearance_page.dart';
 import 'browse_history_page.dart';
 import 'download_center_page.dart';
@@ -1806,6 +1807,16 @@ class _AboutPageState extends State<AboutPage> {
                         MaterialPageRoute(
                           builder: (_) => const DisclaimerPage(),
                         ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.bug_report_outlined),
+                      title: const Text('错误日志'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AppLogPage()),
                       ),
                     ),
                     const Divider(height: 1),

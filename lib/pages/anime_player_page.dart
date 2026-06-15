@@ -16,6 +16,8 @@ import '../models/anime.dart';
 import '../models/user_manager.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/anime_playback_history.dart';
+import '../utils/app_dio.dart';
+import '../utils/app_logger.dart';
 import '../utils/chinese_converter.dart';
 import '../utils/network_error.dart';
 import 'profile_page.dart';
@@ -154,6 +156,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     _player.stream.log.listen(_rememberPlayerLog);
     _player.stream.error.listen((error) {
       if (!mounted) return;
+      _recordPlayerError(error);
       setState(() {
         _error = _formatPlayerError(error);
         _rawError = _buildPlayerDebugReport(error);
@@ -376,18 +379,23 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       return const _MediaOpenDiagnosis(manifestError: '视频地址不是合法 URI');
     }
 
-    final dio = Dio(
-      BaseOptions(
+    final dio = AppDio.create(
+      source: 'anime_player',
+      options: BaseOptions(
         headers: _videoHttpHeaders,
         responseType: ResponseType.plain,
         sendTimeout: const Duration(seconds: 8),
         receiveTimeout: const Duration(seconds: 8),
         validateStatus: (status) => status != null && status < 600,
       ),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    );
 
     try {
       final manifestResponse = await dio.getUri<String>(uri);
+      await _recordPlaybackHttpFailureIfNeeded(
+        manifestResponse,
+        message: '视频诊断请求失败',
+      );
       final manifestText = manifestResponse.data ?? '';
       final manifestLooksLikeHls = manifestText.contains('#EXTM3U');
       final firstSegment = manifestLooksLikeHls
@@ -411,6 +419,10 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           final segmentResponse = await dio.getUri<List<int>>(
             segmentUri,
             options: Options(responseType: ResponseType.bytes),
+          );
+          await _recordPlaybackHttpFailureIfNeeded(
+            segmentResponse,
+            message: '视频分片诊断请求失败',
           );
           segmentStatus = segmentResponse.statusCode;
           segmentBytes = segmentResponse.data?.length;
@@ -448,10 +460,48 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   }) async {
     final diagnosis = await _diagnoseMediaOpen(videoUrl);
     if (!mounted || serial != _openMediaSerial) return;
+    _recordPlayerError(rawMessage, diagnosis: diagnosis);
     setState(() {
       _error = _formatPlayerError(rawMessage, diagnosis: diagnosis);
       _rawError = _buildPlayerDebugReport(rawMessage, diagnosis: diagnosis);
     });
+  }
+
+  Future<void> _recordPlaybackHttpFailureIfNeeded(
+    Response<dynamic> response, {
+    required String message,
+  }) async {
+    if (response.statusCode == 200) return;
+    await NetworkError.recordDioResponse(
+      response,
+      source: 'anime_player',
+      level: _httpLogLevel(response.statusCode),
+      message: message,
+    );
+  }
+
+  AppLogLevel _httpLogLevel(int? statusCode) {
+    if (statusCode != null && statusCode >= 500) return AppLogLevel.error;
+    return AppLogLevel.warning;
+  }
+
+  void _recordPlayerError(String message, {_MediaOpenDiagnosis? diagnosis}) {
+    unawaited(
+      AppLogger.instance.recordError(
+        message,
+        source: 'anime_player',
+        context: {
+          'pathWord': widget.pathWord,
+          'chapterUuid': _currentChapterUuid,
+          'chapterName': _currentChapterName,
+          'line': _line,
+          if (_videoUrl != null && _videoUrl!.isNotEmpty) 'videoUrl': _videoUrl,
+          if (_recentPlayerLogs.isNotEmpty)
+            'playerLogs': _recentPlayerLogs.join('\n'),
+          if (diagnosis != null) 'diagnosis': diagnosis.toDebugString(),
+        },
+      ),
+    );
   }
 
   Future<void> _goLogin() async {

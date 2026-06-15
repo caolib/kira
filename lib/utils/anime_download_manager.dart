@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../api/api_client.dart';
 import '../models/anime.dart';
-import 'network_error.dart';
+import 'app_dio.dart';
 
 enum DownloadTaskStatus { pending, downloading, paused, failed }
 
@@ -441,20 +441,22 @@ class AnimeDownloadManager extends ChangeNotifier {
   }
 
   Future<bool> _isHlsStream(String url) async {
+    final dio = AppDio.create(
+      source: 'anime_download_probe',
+      options: BaseOptions(
+        responseType: ResponseType.plain,
+        sendTimeout: _timeout,
+        receiveTimeout: _timeout,
+      ),
+    );
     try {
-      final dio = Dio(
-        BaseOptions(
-          responseType: ResponseType.plain,
-          sendTimeout: _timeout,
-          receiveTimeout: _timeout,
-        ),
-      )..interceptors.add(NetworkError.rateLimitInterceptor());
       final response = await dio.get(url);
-      dio.close(force: true);
       final text = response.data?.toString() ?? '';
       return text.trim().startsWith('#EXTM3U');
     } catch (_) {
       return false;
+    } finally {
+      dio.close(force: true);
     }
   }
 
@@ -462,21 +464,23 @@ class AnimeDownloadManager extends ChangeNotifier {
     _activeCancelToken = CancelToken();
     final cancelToken = _activeCancelToken!;
 
-    final dio = Dio(
-      BaseOptions(
+    final dio = AppDio.create(
+      source: 'anime_download_playlist',
+      options: BaseOptions(
         responseType: ResponseType.plain,
         sendTimeout: _timeout,
         receiveTimeout: _timeout,
       ),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    );
 
-    final segmentDio = Dio(
-      BaseOptions(
+    final segmentDio = AppDio.create(
+      source: 'anime_download_segment',
+      options: BaseOptions(
         responseType: ResponseType.bytes,
         sendTimeout: _timeout,
         receiveTimeout: const Duration(minutes: 5),
       ),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    );
 
     try {
       final resolved = await _resolveMediaPlaylist(
@@ -710,40 +714,43 @@ class AnimeDownloadManager extends ChangeNotifier {
 
     _updateProgress(task: null, completed: 0, total: 1);
 
-    final dio = Dio(
-      BaseOptions(
+    final dio = AppDio.create(
+      source: 'anime_download_video',
+      options: BaseOptions(
         responseType: ResponseType.bytes,
         sendTimeout: _timeout,
         receiveTimeout: const Duration(hours: 2),
       ),
     );
 
-    await dio.download(
-      videoUrl,
-      videoFile.path,
-      cancelToken: cancelToken,
-      onReceiveProgress: (received, total) {
-        if (total > 0) {
-          _updateProgress(
-            task: null,
-            completed: 0,
-            total: 1,
-            estimatedTotalBytes: total,
-          );
-        }
-      },
-    );
+    try {
+      await dio.download(
+        videoUrl,
+        videoFile.path,
+        cancelToken: cancelToken,
+        onReceiveProgress: (received, total) {
+          if (total > 0) {
+            _updateProgress(
+              task: null,
+              completed: 0,
+              total: 1,
+              estimatedTotalBytes: total,
+            );
+          }
+        },
+      );
 
-    final finalSize = await _fileSizeOrZero(videoFile.path);
-    _updateProgress(
-      task: null,
-      completed: 1,
-      total: 1,
-      estimatedTotalBytes: finalSize > 0 ? finalSize : null,
-    );
-
-    dio.close(force: true);
-    _activeCancelToken = null;
+      final finalSize = await _fileSizeOrZero(videoFile.path);
+      _updateProgress(
+        task: null,
+        completed: 1,
+        total: 1,
+        estimatedTotalBytes: finalSize > 0 ? finalSize : null,
+      );
+    } finally {
+      dio.close(force: true);
+      _activeCancelToken = null;
+    }
   }
 
   void _updateProgress({
@@ -874,8 +881,9 @@ class AnimeDownloadManager extends ChangeNotifier {
     if (coverUrl.isEmpty) return null;
     final animeDir = _animeDirectory(pathWord);
     await animeDir.create(recursive: true);
-    final dio = Dio(
-      BaseOptions(
+    final dio = AppDio.create(
+      source: 'anime_download_cover',
+      options: BaseOptions(
         responseType: ResponseType.bytes,
         sendTimeout: _timeout,
         receiveTimeout: _timeout,
@@ -883,9 +891,12 @@ class AnimeDownloadManager extends ChangeNotifier {
     );
     final extension = _resolveExtension(Uri.parse(coverUrl));
     final file = File(_joinPath([animeDir.path, '$_coverFileName$extension']));
-    await dio.download(coverUrl, file.path);
-    dio.close(force: true);
-    return file;
+    try {
+      await dio.download(coverUrl, file.path);
+      return file;
+    } finally {
+      dio.close(force: true);
+    }
   }
 
   Future<void> _touchLocalAnime(String pathWord) async {

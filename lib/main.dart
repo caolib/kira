@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:ui' show PlatformDispatcher;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show FlutterError, kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,7 @@ import 'pages/home_page.dart';
 import 'pages/search_page.dart';
 import 'pages/bookshelf_page.dart';
 import 'pages/profile_page.dart';
+import 'utils/app_logger.dart';
 import 'utils/app_update.dart';
 import 'utils/display_mode_preference.dart';
 import 'utils/network_proxy.dart';
@@ -21,30 +23,69 @@ import 'utils/network_proxy.dart';
 bool get isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
-  await UserManager().init();
-  await NetworkProxy.init();
-  if (isDesktop) {
-    final font = UserManager().desktopFontFamily;
-    if (font.isNotEmpty) {
-      try {
-        await SystemFonts().loadFont(font);
-      } catch (_) {}
-    }
-  }
-  SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.manual,
-    overlays: SystemUiOverlay.values,
+void main() {
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await AppLogger.instance.init();
+
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        unawaited(AppLogger.instance.recordFlutterError(details));
+      };
+
+      PlatformDispatcher.instance.onError = (error, stack) {
+        unawaited(
+          AppLogger.instance.recordError(
+            error,
+            stackTrace: stack,
+            source: 'platform_dispatcher',
+          ),
+        );
+        return true;
+      };
+
+      MediaKit.ensureInitialized();
+      await UserManager().init();
+      await NetworkProxy.init();
+      if (isDesktop) {
+        final font = UserManager().desktopFontFamily;
+        if (font.isNotEmpty) {
+          try {
+            await SystemFonts().loadFont(font);
+          } catch (e, stack) {
+            unawaited(
+              AppLogger.instance.recordError(
+                e,
+                stackTrace: stack,
+                source: 'desktop_font',
+              ),
+            );
+          }
+        }
+      }
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          systemStatusBarContrastEnforced: false,
+        ),
+      );
+      runApp(const KiraApp());
+    },
+    (error, stack) {
+      unawaited(
+        AppLogger.instance.recordError(
+          error,
+          stackTrace: stack,
+          source: 'zone',
+        ),
+      );
+    },
   );
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      systemStatusBarContrastEnforced: false,
-    ),
-  );
-  runApp(const KiraApp());
 }
 
 /// 允许鼠标拖拽触发滚动和下拉刷新（桌面端适配）

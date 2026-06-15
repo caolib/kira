@@ -3,8 +3,8 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../utils/app_dio.dart';
 import '../utils/data_cache.dart';
-import '../utils/network_error.dart';
 
 class _CacheEntry {
   final dynamic data;
@@ -304,30 +304,32 @@ class DandanplayApi {
   }
 
   DandanplayApi._() {
-    _dio = Dio(BaseOptions(baseUrl: _baseUrl));
-    _dio.interceptors.add(NetworkError.rateLimitInterceptor());
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          if (appId.isNotEmpty && appSecret.isNotEmpty) {
-            final path = options.path.split('?').first;
-            final timestamp =
-                (DateTime.now().toUtc().millisecondsSinceEpoch / 1000)
-                    .floor()
-                    .toString();
+    _dio = AppDio.create(
+      source: 'dandanplay',
+      options: BaseOptions(baseUrl: _baseUrl),
+      interceptors: [
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (appId.isNotEmpty && appSecret.isNotEmpty) {
+              final path = options.path.split('?').first;
+              final timestamp =
+                  (DateTime.now().toUtc().millisecondsSinceEpoch / 1000)
+                      .floor()
+                      .toString();
 
-            final data = appId + timestamp + path + appSecret;
-            final signature = base64Encode(
-              sha256.convert(utf8.encode(data)).bytes,
-            );
+              final data = appId + timestamp + path + appSecret;
+              final signature = base64Encode(
+                sha256.convert(utf8.encode(data)).bytes,
+              );
 
-            options.headers['X-AppId'] = appId;
-            options.headers['X-Timestamp'] = timestamp;
-            options.headers['X-Signature'] = signature;
-          }
-          handler.next(options);
-        },
-      ),
+              options.headers['X-AppId'] = appId;
+              options.headers['X-Timestamp'] = timestamp;
+              options.headers['X-Signature'] = signature;
+            }
+            handler.next(options);
+          },
+        ),
+      ],
     );
   }
 

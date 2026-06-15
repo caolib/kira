@@ -105,12 +105,10 @@ mixin _MangaApi on _ApiClientBase {
     final message = data is Map
         ? (data['message']?.toString() ?? '获取 COPY 版本号失败')
         : '获取 COPY 版本号失败';
-    throw DioException(
-      requestOptions: resp.requestOptions,
+    NetworkError.throwBadResponse(
       response: resp,
       message: message,
-      error: message,
-      type: DioExceptionType.badResponse,
+      source: 'copy_api',
     );
   }
 
@@ -126,8 +124,9 @@ mixin _MangaApi on _ApiClientBase {
   }
 
   Dio _copyDio() {
-    return Dio(
-      BaseOptions(
+    return AppDio.create(
+      source: 'copy_api',
+      options: BaseOptions(
         validateStatus: (_) => true,
         headers: {
           ..._copyBasicHeaders(),
@@ -136,13 +135,17 @@ mixin _MangaApi on _ApiClientBase {
           'webp': '1',
         },
       ),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    );
   }
 
   Dio _copyMinimalDio() {
-    return Dio(
-      BaseOptions(validateStatus: (_) => true, headers: _copyBasicHeaders()),
-    )..interceptors.add(NetworkError.rateLimitInterceptor());
+    return AppDio.create(
+      source: 'copy_api',
+      options: BaseOptions(
+        validateStatus: (_) => true,
+        headers: _copyBasicHeaders(),
+      ),
+    );
   }
 
   Future<Map<String, dynamic>> _copyGet(
@@ -163,12 +166,10 @@ mixin _MangaApi on _ApiClientBase {
     final message = data is Map
         ? (data['message']?.toString() ?? errorMessage)
         : errorMessage;
-    throw DioException(
-      requestOptions: resp.requestOptions,
+    NetworkError.throwBadResponse(
       response: resp,
       message: message,
-      error: message,
-      type: DioExceptionType.badResponse,
+      source: 'copy_api',
     );
   }
 
@@ -451,12 +452,10 @@ mixin _MangaApi on _ApiClientBase {
       final code = data['code'];
       if (code != null && code != 200) {
         final message = data['message']?.toString() ?? '发表评论失败';
-        throw DioException(
-          requestOptions: resp.requestOptions,
+        NetworkError.throwBadResponse(
           response: resp,
           message: message,
-          error: message,
-          type: DioExceptionType.badResponse,
+          source: 'api_comment',
         );
       }
     }
