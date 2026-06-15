@@ -14,7 +14,84 @@ mixin _MangaApi on _ApiClientBase {
 
   /// COPY 漫画主页
   Future<CopyMangaHome> getCopyMangaHome() async {
-    final dio = Dio(
+    final data = await _copyGet(
+      '/api/v3/h5/homeIndex2',
+      params: {'platform': 3},
+      errorMessage: '加载 COPY 首页失败',
+    );
+    return CopyMangaHome.fromJson(data);
+  }
+
+  /// COPY 推荐更多
+  Future<({List<Comic> list, int total})> getCopyRecommendations({
+    int limit = 21,
+    int offset = 0,
+  }) async {
+    final data = await _copyGet(
+      '/api/v3/recs',
+      params: {'pos': 3200102, 'limit': limit, 'offset': offset, 'platform': 3},
+      errorMessage: '加载 COPY 推荐失败',
+    );
+    return _parseCopyNestedComicResult(data);
+  }
+
+  /// COPY 全新上架更多
+  Future<({List<Comic> list, int total})> getCopyNewestComics({
+    int limit = 21,
+    int offset = 0,
+  }) async {
+    final data = await _copyGet(
+      '/api/v3/update/newest',
+      params: {'date': '', 'limit': limit, 'offset': offset, 'platform': 3},
+      errorMessage: '加载 COPY 全新上架失败',
+    );
+    return _parseCopyNestedComicResult(data);
+  }
+
+  /// COPY 已完结更多
+  Future<({List<Comic> list, int total})> getCopyFinishedComics({
+    int limit = 21,
+    int offset = 0,
+  }) async {
+    final data = await _copyGet(
+      '/api/v3/comics',
+      params: {
+        'limit': limit,
+        'offset': offset,
+        'top': 'finish',
+        'ordering': '-datetime_updated',
+        'free_type': 1,
+        'platform': 3,
+      },
+      errorMessage: '加载 COPY 已完结失败',
+    );
+    return _parseCopyDirectComicResult(data);
+  }
+
+  /// COPY 排行榜更多
+  Future<({List<Comic> list, int total})> getCopyRankComics({
+    String dateType = 'day',
+    String audienceType = 'male',
+    int limit = 21,
+    int offset = 0,
+  }) async {
+    final data = await _copyGet(
+      '/api/v3/ranks',
+      params: {
+        'type': 1,
+        'date_type': dateType,
+        'limit': limit,
+        'offset': offset,
+        'audience_type': audienceType,
+        'platform': 3,
+      },
+      errorMessage: '加载 COPY 排行榜失败',
+    );
+    return _parseCopyNestedComicResult(data);
+  }
+
+  Dio _copyDio() {
+    return Dio(
       BaseOptions(
         validateStatus: (_) => true,
         headers: {
@@ -29,22 +106,26 @@ mixin _MangaApi on _ApiClientBase {
         },
       ),
     )..interceptors.add(NetworkError.rateLimitInterceptor());
+  }
 
-    final resp = await dio.get(
-      'https://$_hostComment/api/v3/h5/homeIndex2',
-      queryParameters: {'platform': 3},
+  Future<Map<String, dynamic>> _copyGet(
+    String path, {
+    Map<String, dynamic>? params,
+    required String errorMessage,
+  }) async {
+    final resp = await _copyDio().get(
+      'https://$_hostComment$path',
+      queryParameters: params,
     );
 
     final data = resp.data;
-    if (data is Map && data['code'] == 200) {
-      return CopyMangaHome.fromJson(
-        Map<String, dynamic>.from(data['results'] as Map),
-      );
+    if (data is Map && data['code'] == 200 && data['results'] is Map) {
+      return Map<String, dynamic>.from(data['results'] as Map);
     }
 
     final message = data is Map
-        ? (data['message']?.toString() ?? '加载 COPY 首页失败')
-        : '加载 COPY 首页失败';
+        ? (data['message']?.toString() ?? errorMessage)
+        : errorMessage;
     throw DioException(
       requestOptions: resp.requestOptions,
       response: resp,
@@ -52,6 +133,42 @@ mixin _MangaApi on _ApiClientBase {
       error: message,
       type: DioExceptionType.badResponse,
     );
+  }
+
+  ({List<Comic> list, int total}) _parseCopyNestedComicResult(
+    Map<String, dynamic> data,
+  ) {
+    final rawList = data['list'];
+    final list = rawList is List
+        ? rawList
+              .where((e) => e is Map && e['comic'] is Map)
+              .map(
+                (e) => Comic.fromJson(
+                  Map<String, dynamic>.from((e as Map)['comic'] as Map),
+                ),
+              )
+              .toList()
+        : <Comic>[];
+    return (list: list, total: _copyTotal(data, list.length));
+  }
+
+  ({List<Comic> list, int total}) _parseCopyDirectComicResult(
+    Map<String, dynamic> data,
+  ) {
+    final rawList = data['list'];
+    final list = rawList is List
+        ? rawList
+              .whereType<Map>()
+              .map((e) => Comic.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+        : <Comic>[];
+    return (list: list, total: _copyTotal(data, list.length));
+  }
+
+  int _copyTotal(Map<String, dynamic> data, int fallback) {
+    final total = data['total'];
+    if (total is int) return total;
+    return int.tryParse(total?.toString() ?? '') ?? fallback;
   }
 
   // 1. 热门搜索关键词

@@ -137,6 +137,7 @@ class UserManager extends ChangeNotifier {
   static const _keyAnimeFeatureEnabled = 'anime_feature_enabled';
   static const _keyBannerVisible = 'banner_visible';
   static const _keyMangaHomeSource = 'manga_home_source';
+  static const _keyCopyHomeSectionCollapsed = 'copy_home_section_collapsed';
   static const _keyAnimeHomeBannerCollapsed = 'anime_home_banner_collapsed';
   static const _keyAnimeSkipSeconds = 'anime_skip_seconds';
   static const _keyAnimePlaybackProgressEnabled =
@@ -201,6 +202,7 @@ class UserManager extends ChangeNotifier {
   bool _animeFeatureEnabled = true;
   bool _bannerVisible = true;
   String _mangaHomeSource = 'hot';
+  Map<String, bool> _copyHomeSectionCollapsed = {};
   bool _animeHomeBannerCollapsed = false;
   int _animeSkipSeconds = 86;
   bool _animePlaybackProgressEnabled = true;
@@ -281,6 +283,8 @@ class UserManager extends ChangeNotifier {
   bool get animeFeatureEnabled => _animeFeatureEnabled;
   bool get bannerVisible => _bannerVisible;
   String get mangaHomeSource => _mangaHomeSource;
+  bool isCopyHomeSectionCollapsed(String key) =>
+      _copyHomeSectionCollapsed[key] ?? false;
   bool get animeHomeBannerCollapsed => _animeHomeBannerCollapsed;
   int get animeSkipSeconds => _animeSkipSeconds;
   bool get animePlaybackProgressEnabled => _animePlaybackProgressEnabled;
@@ -311,6 +315,19 @@ class UserManager extends ChangeNotifier {
 
   static bool isValidProxyPort(int? port) =>
       port != null && port > 0 && port <= 65535;
+
+  static Map<String, bool> _decodeBoolMap(String? raw) {
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return {};
+      return decoded.map(
+        (key, value) => MapEntry(key.toString(), value == true),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -426,6 +443,9 @@ class UserManager extends ChangeNotifier {
     _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? true;
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;
     _mangaHomeSource = prefs.getString(_keyMangaHomeSource) ?? 'hot';
+    _copyHomeSectionCollapsed = _decodeBoolMap(
+      prefs.getString(_keyCopyHomeSectionCollapsed),
+    );
     _animeHomeBannerCollapsed =
         prefs.getBool(_keyAnimeHomeBannerCollapsed) ?? false;
     _animeSkipSeconds = prefs.getInt(_keyAnimeSkipSeconds) ?? 86;
@@ -950,6 +970,16 @@ class UserManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyMangaHomeSource, source);
     notifyListeners();
+  }
+
+  Future<void> setCopyHomeSectionCollapsed(String key, bool collapsed) async {
+    if (_copyHomeSectionCollapsed[key] == collapsed) return;
+    _copyHomeSectionCollapsed = {..._copyHomeSectionCollapsed, key: collapsed};
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _keyCopyHomeSectionCollapsed,
+      jsonEncode(_copyHomeSectionCollapsed),
+    );
   }
 
   Future<void> setAnimeHomeBannerCollapsed(bool collapsed) async {

@@ -11,6 +11,7 @@ import '../utils/cover_brightness_filter.dart';
 import '../utils/comic_hero_tags.dart';
 import '../utils/data_cache.dart';
 import 'comic_detail_page.dart';
+import 'copy_manga_list_page.dart';
 import 'recommend_page.dart';
 import 'ranking_page.dart';
 
@@ -25,16 +26,32 @@ const _mangaHomeCardWidth = 112.0;
 const _mangaHomeCardAspectRatio = 0.55;
 const _mangaHomeCardSpacing = 12.0;
 
-double _mangaHomeGridCardWidth(double crossAxisExtent) {
-  final crossAxisCount = math.max(
+int _mangaHomeGridColumnCount(double crossAxisExtent) {
+  return math.max(
     1,
     (crossAxisExtent / (_mangaHomeCardWidth + _mangaHomeCardSpacing)).ceil(),
   );
+}
+
+double _mangaHomeGridCardWidth(double crossAxisExtent) {
+  final crossAxisCount = _mangaHomeGridColumnCount(crossAxisExtent);
   final usableCrossAxisExtent = math.max(
     0.0,
     crossAxisExtent - _mangaHomeCardSpacing * (crossAxisCount - 1),
   );
   return usableCrossAxisExtent / crossAxisCount;
+}
+
+double _copySectionContentWidth(
+  BuildContext context,
+  BoxConstraints constraints,
+) {
+  if (constraints.maxWidth.isFinite && constraints.maxWidth > 0) {
+    return constraints.maxWidth;
+  }
+  final screenWidth = MediaQuery.of(context).size.width;
+  final contentWidth = screenWidth.clamp(0.0, 900.0).toDouble();
+  return math.max(1.0, contentWidth - 56);
 }
 
 class _HomePageState extends State<HomePage> {
@@ -374,39 +391,97 @@ class _HomePageState extends State<HomePage> {
       IconData icon,
       List<Comic> list, {
       required String scope,
+      bool twoRowGrid = false,
+      VoidCallback? onMore,
+      double topPadding = 0,
     }) {
       if (list.isEmpty) return;
       slivers.add(
-        _MangaSection(
+        _CopyCollapsibleSection(
+          storageKey: scope,
           title: title,
           icon: icon,
           hp: hp,
-          child: _MangaHorizontalList(
-            items: list,
-            onTap: _openComic,
-            scope: scope,
-          ),
+          onMore: onMore,
+          topPadding: topPadding,
+          child: twoRowGrid
+              ? _CopyTwoRowComicGrid(
+                  items: list,
+                  onTap: _openComic,
+                  scope: scope,
+                )
+              : _CopyHorizontalComicList(
+                  items: list,
+                  onTap: _openComic,
+                  scope: scope,
+                ),
         ),
       );
     }
 
-    addSection('热门推荐', Icons.auto_awesome, home.recComics, scope: 'copy-rec');
-    addSection('日榜', Icons.today, home.rankDayComics, scope: 'copy-day');
-    addSection('周榜', Icons.date_range, home.rankWeekComics, scope: 'copy-week');
     addSection(
-      '月榜',
-      Icons.calendar_month,
-      home.rankMonthComics,
-      scope: 'copy-month',
+      '推荐',
+      Icons.auto_awesome,
+      home.recComics,
+      scope: 'copy-rec',
+      topPadding: 8,
+      onMore: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const CopyMangaListPage.recommendations(),
+        ),
+      ),
     );
+    if (home.rankDayComics.isNotEmpty ||
+        home.rankWeekComics.isNotEmpty ||
+        home.rankMonthComics.isNotEmpty) {
+      slivers.add(
+        _CopyCollapsibleSection(
+          storageKey: 'copy-ranking',
+          title: '排行榜',
+          icon: Icons.leaderboard,
+          hp: hp,
+          onMore: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const CopyMangaListPage.ranking(),
+            ),
+          ),
+          child: _CopyRankingTabs(
+            dayItems: home.rankDayComics,
+            weekItems: home.rankWeekComics,
+            monthItems: home.rankMonthComics,
+            onTap: _openComic,
+          ),
+        ),
+      );
+    }
     addSection(
-      '热门',
+      '热门更新',
       Icons.local_fire_department,
       home.hotComics,
       scope: 'copy-hot',
     );
-    addSection('最新', Icons.fiber_new, home.newComics, scope: 'copy-new');
-    addSection('已完结', Icons.done_all, home.finishComics, scope: 'copy-finish');
+    addSection(
+      '全新上架',
+      Icons.fiber_new,
+      home.newComics,
+      scope: 'copy-new',
+      onMore: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CopyMangaListPage.newest()),
+      ),
+    );
+    addSection(
+      '已完结',
+      Icons.done_all,
+      home.finishComics,
+      scope: 'copy-finish',
+      onMore: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CopyMangaListPage.finished()),
+      ),
+    );
 
     return slivers;
   }
@@ -723,16 +798,368 @@ class _MangaSection extends StatelessWidget {
   }
 }
 
-class _MangaHorizontalList extends StatelessWidget {
+class _CopyCollapsibleSection extends StatefulWidget {
+  final String storageKey;
+  final String title;
+  final IconData icon;
+  final double hp;
+  final Widget child;
+  final VoidCallback? onMore;
+  final double topPadding;
+
+  const _CopyCollapsibleSection({
+    required this.storageKey,
+    required this.title,
+    required this.icon,
+    required this.hp,
+    required this.child,
+    this.onMore,
+    this.topPadding = 0,
+  });
+
+  @override
+  State<_CopyCollapsibleSection> createState() =>
+      _CopyCollapsibleSectionState();
+}
+
+class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = !UserManager().isCopyHomeSectionCollapsed(widget.storageKey);
+  }
+
+  void _toggleExpanded() {
+    final expanded = !_expanded;
+    setState(() => _expanded = expanded);
+    unawaited(
+      UserManager().setCopyHomeSectionCollapsed(widget.storageKey, !expanded),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          widget.hp,
+          widget.topPadding,
+          widget.hp,
+          12,
+        ),
+        child: Material(
+          color: cs.surfaceContainerLow,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.72)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                onTap: _toggleExpanded,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                  child: Row(
+                    children: [
+                      Icon(widget.icon, size: 20, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (widget.onMore != null)
+                        TextButton(
+                          onPressed: widget.onMore,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('更多', style: TextStyle(color: cs.primary)),
+                              Icon(
+                                Icons.chevron_right,
+                                size: 18,
+                                color: cs.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        child: Icon(
+                          Icons.expand_more,
+                          size: 22,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              ClipRect(
+                child: AnimatedAlign(
+                  alignment: Alignment.topCenter,
+                  heightFactor: _expanded ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: widget.child,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CopyHorizontalComicList extends StatelessWidget {
   final List<Comic> items;
   final void Function(Comic, String) onTap;
   final String scope;
 
-  const _MangaHorizontalList({
+  const _CopyHorizontalComicList({
     required this.items,
     required this.onTap,
-    this.scope = 'home-recommend',
+    required this.scope,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const _CopyEmptySectionMessage();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentWidth = math.max(
+          1.0,
+          _copySectionContentWidth(context, constraints),
+        );
+        final cardWidth = _mangaHomeGridCardWidth(contentWidth);
+        final cardHeight = cardWidth / _mangaHomeCardAspectRatio;
+
+        return SizedBox(
+          height: cardHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final comic = items[i];
+              final heroTagBase = ComicHeroTags.base(
+                scope: scope,
+                pathWord: comic.pathWord,
+                index: i,
+              );
+              return _MangaCard(
+                comic: comic,
+                width: cardWidth,
+                heroTagBase: heroTagBase,
+                onTap: () => onTap(comic, heroTagBase),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CopyTwoRowComicGrid extends StatelessWidget {
+  final List<Comic> items;
+  final void Function(Comic, String) onTap;
+  final String scope;
+
+  const _CopyTwoRowComicGrid({
+    required this.items,
+    required this.onTap,
+    required this.scope,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const _CopyEmptySectionMessage();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentWidth = math.max(
+          1.0,
+          _copySectionContentWidth(context, constraints),
+        );
+        final cardWidth = _mangaHomeGridCardWidth(contentWidth);
+        final cardHeight = cardWidth / _mangaHomeCardAspectRatio;
+        final visibleRows = math.min(2, items.length);
+        final gridHeight =
+            cardHeight * visibleRows +
+            _mangaHomeCardSpacing * (visibleRows - 1);
+
+        return SizedBox(
+          height: gridHeight,
+          child: GridView.builder(
+            primary: false,
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
+            physics: const ClampingScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: visibleRows,
+              childAspectRatio: 1 / _mangaHomeCardAspectRatio,
+              mainAxisSpacing: _mangaHomeCardSpacing,
+              crossAxisSpacing: _mangaHomeCardSpacing,
+            ),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final comic = items[i];
+              final heroTagBase = ComicHeroTags.base(
+                scope: scope,
+                pathWord: comic.pathWord,
+                index: i,
+              );
+              return ComicCard(
+                comic: comic,
+                heroTagBase: heroTagBase,
+                onTap: () => onTap(comic, heroTagBase),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CopyRankingTabs extends StatefulWidget {
+  final List<Comic> dayItems;
+  final List<Comic> weekItems;
+  final List<Comic> monthItems;
+  final void Function(Comic, String) onTap;
+
+  const _CopyRankingTabs({
+    required this.dayItems,
+    required this.weekItems,
+    required this.monthItems,
+    required this.onTap,
+  });
+
+  @override
+  State<_CopyRankingTabs> createState() => _CopyRankingTabsState();
+}
+
+class _CopyRankingTabsState extends State<_CopyRankingTabs>
+    with SingleTickerProviderStateMixin {
+  late final TabController _controller;
+  int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  List<Comic> _itemsForIndex(int index) {
+    if (index == 0) return widget.dayItems;
+    if (index == 1) return widget.weekItems;
+    return widget.monthItems;
+  }
+
+  String _scopeForIndex(int index) {
+    if (index == 0) return 'copy-rank-day';
+    if (index == 1) return 'copy-rank-week';
+    return 'copy-rank-month';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final items = _itemsForIndex(_selectedIndex);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.44),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TabBar(
+            controller: _controller,
+            onTap: (index) => setState(() => _selectedIndex = index),
+            dividerColor: Colors.transparent,
+            indicator: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            indicatorPadding: const EdgeInsets.all(4),
+            indicatorSize: TabBarIndicatorSize.tab,
+            labelColor: cs.onPrimaryContainer,
+            unselectedLabelColor: cs.onSurfaceVariant,
+            labelStyle: tt.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+            unselectedLabelStyle: tt.labelMedium,
+            splashBorderRadius: BorderRadius.circular(8),
+            tabs: const [
+              Tab(text: '日榜'),
+              Tab(text: '周榜'),
+              Tab(text: '月榜'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _CopyTwoRowComicGrid(
+          items: items,
+          onTap: widget.onTap,
+          scope: _scopeForIndex(_selectedIndex),
+        ),
+      ],
+    );
+  }
+}
+
+class _CopyEmptySectionMessage extends StatelessWidget {
+  const _CopyEmptySectionMessage();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return SizedBox(
+      height: 96,
+      child: Center(
+        child: Text(
+          '暂无内容',
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+}
+
+class _MangaHorizontalList extends StatelessWidget {
+  final List<Comic> items;
+  final void Function(Comic, String) onTap;
+
+  const _MangaHorizontalList({required this.items, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -751,7 +1178,7 @@ class _MangaHorizontalList extends StatelessWidget {
         itemBuilder: (_, i) {
           final comic = items[i];
           final heroTagBase = ComicHeroTags.base(
-            scope: scope,
+            scope: 'home-recommend',
             pathWord: comic.pathWord,
             index: i,
           );
