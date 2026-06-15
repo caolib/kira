@@ -136,6 +136,7 @@ class UserManager extends ChangeNotifier {
   static const _keyNetworkProxyPort = 'network_proxy_port';
   static const _keyAnimeFeatureEnabled = 'anime_feature_enabled';
   static const _keyBannerVisible = 'banner_visible';
+  static const _keyMangaHomeSource = 'manga_home_source';
   static const _keyAnimeHomeBannerCollapsed = 'anime_home_banner_collapsed';
   static const _keyAnimeSkipSeconds = 'anime_skip_seconds';
   static const _keyAnimePlaybackProgressEnabled =
@@ -199,6 +200,7 @@ class UserManager extends ChangeNotifier {
   int _networkProxyPort = 0;
   bool _animeFeatureEnabled = true;
   bool _bannerVisible = true;
+  String _mangaHomeSource = 'hot';
   bool _animeHomeBannerCollapsed = false;
   int _animeSkipSeconds = 86;
   bool _animePlaybackProgressEnabled = true;
@@ -278,6 +280,7 @@ class UserManager extends ChangeNotifier {
       _networkProxyHost.isNotEmpty && _networkProxyPort > 0;
   bool get animeFeatureEnabled => _animeFeatureEnabled;
   bool get bannerVisible => _bannerVisible;
+  String get mangaHomeSource => _mangaHomeSource;
   bool get animeHomeBannerCollapsed => _animeHomeBannerCollapsed;
   int get animeSkipSeconds => _animeSkipSeconds;
   bool get animePlaybackProgressEnabled => _animePlaybackProgressEnabled;
@@ -422,6 +425,7 @@ class UserManager extends ChangeNotifier {
     _networkProxyPort = _normalizeProxyPort(prefs.getInt(_keyNetworkProxyPort));
     _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? true;
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;
+    _mangaHomeSource = prefs.getString(_keyMangaHomeSource) ?? 'hot';
     _animeHomeBannerCollapsed =
         prefs.getBool(_keyAnimeHomeBannerCollapsed) ?? false;
     _animeSkipSeconds = prefs.getInt(_keyAnimeSkipSeconds) ?? 86;
@@ -937,6 +941,14 @@ class UserManager extends ChangeNotifier {
     _bannerVisible = visible;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyBannerVisible, visible);
+    notifyListeners();
+  }
+
+  Future<void> setMangaHomeSource(String source) async {
+    if (_mangaHomeSource == source) return;
+    _mangaHomeSource = source;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMangaHomeSource, source);
     notifyListeners();
   }
 

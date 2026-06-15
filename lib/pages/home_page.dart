@@ -39,12 +39,15 @@ double _mangaHomeGridCardWidth(double crossAxisExtent) {
 
 class _HomePageState extends State<HomePage> {
   static const _cacheKey = 'manga_home_v1';
+  static const _copyCacheKey = 'manga_home_copy_v1';
   static const _rankingOrdering = '-datetime_updated';
 
   final _api = ApiClient();
   final _cache = DataCache();
   final _user = UserManager();
   MangaHome? _home;
+  CopyMangaHome? _copyHome;
+  String? _activeSource; // 当前已加载的数据源
   List<Comic> _rankingPreview = [];
   bool _loading = true;
   bool _refreshing = false;
@@ -54,6 +57,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _user.addListener(_onUserChanged);
+    _activeSource = _user.mangaHomeSource;
     _loadFromCache();
     _load();
   }
@@ -65,10 +69,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onUserChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // 数据源切换时重新加载对应数据
+    if (_activeSource != _user.mangaHomeSource) {
+      _activeSource = _user.mangaHomeSource;
+      _loading = true;
+      _error = null;
+      _home = null;
+      _copyHome = null;
+      _loadFromCache();
+      _load();
+    }
+    setState(() {});
   }
 
+  bool get _isCopySource => _user.mangaHomeSource == 'copy';
+
   Future<void> _loadFromCache() async {
+    if (_isCopySource) {
+      final cached = await _cache.get(_copyCacheKey);
+      if (!mounted || cached == null || !_loading) return;
+      setState(() {
+        _copyHome = CopyMangaHome.fromJson(
+          Map<String, dynamic>.from(cached['home']),
+        );
+        _loading = false;
+      });
+      return;
+    }
     final cached = await _cache.get(_cacheKey);
     if (!mounted || cached == null || !_loading) return;
     setState(() {
@@ -83,6 +111,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _load() async {
+    if (_isCopySource) return _loadCopy();
     final hasData = _home != null;
     if (!hasData) {
       setState(() {
@@ -122,6 +151,36 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _loadCopy() async {
+    final hasData = _copyHome != null;
+    if (!hasData) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    } else {
+      setState(() => _refreshing = true);
+    }
+    try {
+      final home = await _api.getCopyMangaHome();
+      if (!mounted) return;
+      setState(() {
+        _copyHome = home;
+        _loading = false;
+        _refreshing = false;
+      });
+      _cache.put(_copyCacheKey, {'home': home.toJson()});
+    } catch (e) {
+      debugPrint('HomePage copy load error: $e');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _refreshing = false;
+        _error = e.toString();
+      });
+    }
+  }
+
   void _openComic(Comic comic, String heroTagBase) {
     Navigator.push(
       context,
@@ -141,109 +200,215 @@ class _HomePageState extends State<HomePage> {
     final contentWidth = screenWidth.clamp(0.0, 900.0);
     final hp = (screenWidth - contentWidth) / 2 + 16;
     final home = _home;
-    final bannerItems = home == null
-        ? const <_MangaBannerItem>[]
-        : home.banners
-              .map(_MangaBannerItem.fromBanner)
-              .where((item) => item.cover.isNotEmpty)
-              .toList();
+    final copyHome = _copyHome;
+    final isCopy = _isCopySource;
 
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return Scaffold(
+        floatingActionButton: _buildSourceFab(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    if (_error != null && home == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
-            const SizedBox(height: 16),
-            Text('加载失败', style: tt.titleMedium),
-            const SizedBox(height: 8),
-            FilledButton.tonal(onPressed: _load, child: const Text('重试')),
-          ],
+    final hasData = isCopy ? copyHome != null : home != null;
+    if (_error != null && !hasData) {
+      return Scaffold(
+        floatingActionButton: _buildSourceFab(),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
+              const SizedBox(height: 16),
+              Text('加载失败', style: tt.titleMedium),
+              const SizedBox(height: 8),
+              FilledButton.tonal(onPressed: _load, child: const Text('重试')),
+            ],
+          ),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: CustomScrollView(
-        slivers: [
+    final slivers = <Widget>[
+      SliverToBoxAdapter(
+        child: SizedBox(height: MediaQuery.of(context).padding.top),
+      ),
+      if (_refreshing)
+        const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
+    ];
+
+    if (isCopy && copyHome != null) {
+      slivers.addAll(_buildCopySlivers(copyHome, hp));
+    } else if (home != null) {
+      final bannerItems = home.banners
+          .map(_MangaBannerItem.fromBanner)
+          .where((item) => item.cover.isNotEmpty)
+          .toList();
+      if (bannerItems.isNotEmpty && _user.bannerVisible) {
+        slivers.add(
           SliverToBoxAdapter(
-            child: SizedBox(height: MediaQuery.of(context).padding.top),
+            child: _MangaBannerCarousel(
+              items: bannerItems,
+              hp: hp,
+              onTap: (comic) => _openComic(
+                comic,
+                ComicHeroTags.base(
+                  scope: 'home-banner',
+                  pathWord: comic.pathWord,
+                  index: 0,
+                ),
+              ),
+            ),
           ),
-          if (_refreshing)
-            const SliverToBoxAdapter(
-              child: LinearProgressIndicator(minHeight: 2),
+        );
+      }
+      if (home.recommendations.isNotEmpty) {
+        slivers.add(
+          _MangaSection(
+            title: '热门推荐',
+            icon: Icons.auto_awesome,
+            hp: hp,
+            onMore: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RecommendPage()),
             ),
-          if (bannerItems.isNotEmpty && _user.bannerVisible)
-            SliverToBoxAdapter(
-              child: _MangaBannerCarousel(
-                items: bannerItems,
-                hp: hp,
-                onTap: (comic) => _openComic(
-                  comic,
-                  ComicHeroTags.base(
-                    scope: 'home-banner',
-                    pathWord: comic.pathWord,
-                    index: 0,
-                  ),
-                ),
+            child: _MangaHorizontalList(
+              items: home.recommendations,
+              onTap: _openComic,
+            ),
+          ),
+        );
+      }
+      if (_rankingPreview.isNotEmpty) {
+        slivers.add(
+          _SectionTitle(
+            title: '漫画排行',
+            icon: Icons.leaderboard,
+            hp: hp,
+            onMore: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RankingPage()),
+            ),
+          ),
+        );
+        slivers.add(
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: hp),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate((_, i) {
+                final comic = _rankingPreview[i];
+                final heroTagBase = ComicHeroTags.base(
+                  scope: 'home-ranking',
+                  pathWord: comic.pathWord,
+                  index: i,
+                );
+                return ComicCard(
+                  comic: comic,
+                  heroTagBase: heroTagBase,
+                  onTap: () => _openComic(comic, heroTagBase),
+                );
+              }, childCount: _rankingPreview.length),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: _mangaHomeCardWidth,
+                childAspectRatio: _mangaHomeCardAspectRatio,
+                mainAxisSpacing: _mangaHomeCardSpacing,
+                crossAxisSpacing: _mangaHomeCardSpacing,
               ),
             ),
-          if (home != null && home.recommendations.isNotEmpty)
-            _MangaSection(
-              title: '热门推荐',
-              icon: Icons.auto_awesome,
-              hp: hp,
-              onMore: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RecommendPage()),
-              ),
-              child: _MangaHorizontalList(
-                items: home.recommendations,
-                onTap: _openComic,
-              ),
-            ),
-          if (_rankingPreview.isNotEmpty) ...[
-            _SectionTitle(
-              title: '漫画排行',
-              icon: Icons.leaderboard,
-              hp: hp,
-              onMore: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RankingPage()),
-              ),
-            ),
-            SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: hp),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate((_, i) {
-                  final comic = _rankingPreview[i];
-                  final heroTagBase = ComicHeroTags.base(
-                    scope: 'home-ranking',
-                    pathWord: comic.pathWord,
-                    index: i,
-                  );
-                  return ComicCard(
-                    comic: comic,
-                    heroTagBase: heroTagBase,
-                    onTap: () => _openComic(comic, heroTagBase),
-                  );
-                }, childCount: _rankingPreview.length),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: _mangaHomeCardWidth,
-                  childAspectRatio: _mangaHomeCardAspectRatio,
-                  mainAxisSpacing: _mangaHomeCardSpacing,
-                  crossAxisSpacing: _mangaHomeCardSpacing,
-                ),
-              ),
-            ),
-          ],
-          const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
-        ],
+          ),
+        );
+      }
+    }
+
+    slivers.add(const SliverPadding(padding: EdgeInsets.only(bottom: 88)));
+
+    return Scaffold(
+      floatingActionButton: _buildSourceFab(),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: CustomScrollView(slivers: slivers),
       ),
     );
+  }
+
+  /// 右下角切换 hot / copy 首页数据源的悬浮按钮
+  Widget _buildSourceFab() {
+    final isCopy = _isCopySource;
+    return FloatingActionButton.small(
+      heroTag: 'home-source-switch',
+      tooltip: isCopy ? '切换到 HOT 首页' : '切换到 COPY 首页',
+      onPressed: () => _user.setMangaHomeSource(isCopy ? 'hot' : 'copy'),
+      child: const Icon(Icons.swap_horiz),
+    );
+  }
+
+  /// COPY 首页各板块
+  List<Widget> _buildCopySlivers(CopyMangaHome home, double hp) {
+    final slivers = <Widget>[];
+
+    final bannerItems = home.banners
+        .map(_MangaBannerItem.fromBanner)
+        .where((item) => item.cover.isNotEmpty)
+        .toList();
+    if (bannerItems.isNotEmpty && _user.bannerVisible) {
+      slivers.add(
+        SliverToBoxAdapter(
+          child: _MangaBannerCarousel(
+            items: bannerItems,
+            hp: hp,
+            onTap: (comic) => _openComic(
+              comic,
+              ComicHeroTags.base(
+                scope: 'copy-banner',
+                pathWord: comic.pathWord,
+                index: 0,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    void addSection(
+      String title,
+      IconData icon,
+      List<Comic> list, {
+      required String scope,
+    }) {
+      if (list.isEmpty) return;
+      slivers.add(
+        _MangaSection(
+          title: title,
+          icon: icon,
+          hp: hp,
+          child: _MangaHorizontalList(
+            items: list,
+            onTap: _openComic,
+            scope: scope,
+          ),
+        ),
+      );
+    }
+
+    addSection('热门推荐', Icons.auto_awesome, home.recComics, scope: 'copy-rec');
+    addSection('日榜', Icons.today, home.rankDayComics, scope: 'copy-day');
+    addSection('周榜', Icons.date_range, home.rankWeekComics, scope: 'copy-week');
+    addSection(
+      '月榜',
+      Icons.calendar_month,
+      home.rankMonthComics,
+      scope: 'copy-month',
+    );
+    addSection(
+      '热门',
+      Icons.local_fire_department,
+      home.hotComics,
+      scope: 'copy-hot',
+    );
+    addSection('最新', Icons.fiber_new, home.newComics, scope: 'copy-new');
+    addSection('已完结', Icons.done_all, home.finishComics, scope: 'copy-finish');
+
+    return slivers;
   }
 }
 
@@ -428,7 +593,6 @@ class _MangaBannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
     return GestureDetector(
@@ -487,7 +651,9 @@ class _MangaBannerCard extends StatelessWidget {
                       item.brief,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: tt.bodySmall?.copyWith(color: cs.surface),
+                      style: tt.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
                     ),
                   ],
                 ],
@@ -560,8 +726,13 @@ class _MangaSection extends StatelessWidget {
 class _MangaHorizontalList extends StatelessWidget {
   final List<Comic> items;
   final void Function(Comic, String) onTap;
+  final String scope;
 
-  const _MangaHorizontalList({required this.items, required this.onTap});
+  const _MangaHorizontalList({
+    required this.items,
+    required this.onTap,
+    this.scope = 'home-recommend',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -580,7 +751,7 @@ class _MangaHorizontalList extends StatelessWidget {
         itemBuilder: (_, i) {
           final comic = items[i];
           final heroTagBase = ComicHeroTags.base(
-            scope: 'home-recommend',
+            scope: scope,
             pathWord: comic.pathWord,
             index: i,
           );

@@ -12,6 +12,48 @@ mixin _MangaApi on _ApiClientBase {
     return MangaHome.fromJson(data);
   }
 
+  /// COPY 漫画主页
+  Future<CopyMangaHome> getCopyMangaHome() async {
+    final dio = Dio(
+      BaseOptions(
+        validateStatus: (_) => true,
+        headers: {
+          'User-Agent': 'COPY/$copyAppVersion',
+          'Connection': 'keep-alive',
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip',
+          'source': 'copyApp',
+          'webp': '1',
+          'platform': '3',
+          'version': copyAppVersion,
+        },
+      ),
+    )..interceptors.add(NetworkError.rateLimitInterceptor());
+
+    final resp = await dio.get(
+      'https://$_hostComment/api/v3/h5/homeIndex2',
+      queryParameters: {'platform': 3},
+    );
+
+    final data = resp.data;
+    if (data is Map && data['code'] == 200) {
+      return CopyMangaHome.fromJson(
+        Map<String, dynamic>.from(data['results'] as Map),
+      );
+    }
+
+    final message = data is Map
+        ? (data['message']?.toString() ?? '加载 COPY 首页失败')
+        : '加载 COPY 首页失败';
+    throw DioException(
+      requestOptions: resp.requestOptions,
+      response: resp,
+      message: message,
+      error: message,
+      type: DioExceptionType.badResponse,
+    );
+  }
+
   // 1. 热门搜索关键词
   Future<List<String>> getHotKeywords() async {
     final data = await _get(

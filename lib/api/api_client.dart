@@ -22,6 +22,9 @@ const _hostComment = 'api.copy2000.online';
 const _hostCopy = 'www.mangacopy.com';
 const _hostWeb = 'www.manga2026.xyz';
 
+/// COPY App 版本号，用于 copy 接口请求头（User-Agent / version）。
+const copyAppVersion = '3.0.8';
+
 const _extraApiHosts = [_hostComment, _hostCopy, _hostWeb];
 const _extraApiHostLabels = {
   _hostComment: '评论',
