@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
@@ -18,10 +19,14 @@ class _NetworkPageState extends State<NetworkPage> {
 
   final _user = UserManager();
   final _proxyAddressController = TextEditingController();
+  final _copyApiHostController = TextEditingController();
+  final _copyAppVersionController = TextEditingController();
   bool _testingLatency = false;
   bool _testingGoogleConnectivity = false;
   bool _refreshingSystemProxy = false;
   bool _latencyExpanded = true;
+  bool _advancedSettingsExpanded = false;
+  bool _fetchingCopyAppVersion = false;
   NetworkProxyType _manualProxyType = NetworkProxyType.http;
   Map<int, Map<String, int?>> _latencyResults = {};
   Set<String> _pendingLatencyHosts = {};
@@ -33,6 +38,8 @@ class _NetworkPageState extends State<NetworkPage> {
   void initState() {
     super.initState();
     _proxyAddressController.text = _manualProxyAddress;
+    _copyApiHostController.text = _user.copyApiHost;
+    _copyAppVersionController.text = _user.copyAppVersion;
     _manualProxyType = _user.networkProxyType;
     _user.addListener(_onChanged);
   }
@@ -41,6 +48,8 @@ class _NetworkPageState extends State<NetworkPage> {
   void dispose() {
     _user.removeListener(_onChanged);
     _proxyAddressController.dispose();
+    _copyApiHostController.dispose();
+    _copyAppVersionController.dispose();
     super.dispose();
   }
 
@@ -211,6 +220,7 @@ class _NetworkPageState extends State<NetworkPage> {
                 ),
               ),
             ),
+          _buildAdvancedSettingsCard(tt, cs),
         ],
       ),
     );
@@ -506,6 +516,198 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
+  Widget _buildAdvancedSettingsCard(TextTheme tt, ColorScheme cs) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 16),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: cs.outlineVariant, width: 1),
+        ),
+        color: cs.surfaceContainerLow,
+        child: Column(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  setState(
+                    () =>
+                        _advancedSettingsExpanded = !_advancedSettingsExpanded,
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.tune, color: cs.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '高级设置',
+                              style: tt.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'COPY API：${_user.copyApiHost} · 版本：${_user.copyAppVersion}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        _advancedSettingsExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (_advancedSettingsExpanded) ...[
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildAdvancedSettingsNotice(tt, cs),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _copyApiHostController,
+                      decoration: const InputDecoration(
+                        labelText: 'COPY API 地址',
+                        hintText: defaultCopyApiHost,
+                        helperText: '可填写 host 或完整 URL，保存时会自动取 host',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.http_outlined),
+                      ),
+                      keyboardType: TextInputType.url,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _copyAppVersionController,
+                      decoration: const InputDecoration(
+                        labelText: 'COPY 请求版本号',
+                        hintText: defaultCopyAppVersion,
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.numbers_outlined),
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _saveCopyAdvancedSettings(),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildAdvancedSettingsActions(cs),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdvancedSettingsNotice(TextTheme tt, ColorScheme cs) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: cs.errorContainer.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            size: 20,
+            color: cs.onErrorContainer,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '如果你不了解配置，不要随意修改',
+              style: tt.bodySmall?.copyWith(
+                color: cs.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdvancedSettingsActions(ColorScheme cs) {
+    final fetchButton = OutlinedButton.icon(
+      onPressed: _fetchingCopyAppVersion ? null : _fetchAndUpdateCopyAppVersion,
+      icon: _fetchingCopyAppVersion
+          ? SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: cs.primary,
+              ),
+            )
+          : const Icon(Icons.cloud_download_outlined),
+      label: const Text('自动获取版本号'),
+    );
+    final resetButton = OutlinedButton.icon(
+      onPressed: _fetchingCopyAppVersion ? null : _resetCopyAdvancedSettings,
+      icon: const Icon(Icons.restart_alt),
+      label: const Text('重置'),
+    );
+    final saveButton = FilledButton.icon(
+      onPressed: _saveCopyAdvancedSettings,
+      icon: const Icon(Icons.save_outlined),
+      label: const Text('保存'),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              fetchButton,
+              const SizedBox(height: 8),
+              resetButton,
+              const SizedBox(height: 8),
+              saveButton,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: fetchButton),
+            const SizedBox(width: 12),
+            Expanded(child: resetButton),
+            const SizedBox(width: 12),
+            Expanded(child: saveButton),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildLatencyDetail(TextTheme tt, ColorScheme cs) {
     if (_latencyResults.isEmpty) return const SizedBox.shrink();
 
@@ -739,6 +941,94 @@ class _NetworkPageState extends State<NetworkPage> {
     await _user.setNetworkProxyMode(mode);
     if (!mounted) return;
     setState(_clearGoogleConnectivityResult);
+  }
+
+  Future<void> _saveCopyAdvancedSettings() async {
+    final host = UserManager.normalizeCopyApiHost(_copyApiHostController.text);
+    final version = UserManager.normalizeCopyAppVersion(
+      _copyAppVersionController.text,
+    );
+    final hostChanged = host != _user.copyApiHost;
+
+    _copyApiHostController.text = host;
+    _copyAppVersionController.text = version;
+
+    await _user.setCopyApiHost(host);
+    await _user.setCopyAppVersion(version);
+    if (!mounted) return;
+
+    if (hostChanged) {
+      setState(() {
+        _latencyResults = {};
+        _pendingLatencyHosts = {};
+      });
+    }
+    _showSnackBar('已保存 COPY 高级设置');
+  }
+
+  Future<void> _resetCopyAdvancedSettings() async {
+    final hostChanged = _user.copyApiHost != defaultCopyApiHost;
+    _copyApiHostController.text = defaultCopyApiHost;
+    _copyAppVersionController.text = defaultCopyAppVersion;
+
+    await _user.setCopyApiHost(defaultCopyApiHost);
+    await _user.setCopyAppVersion(defaultCopyAppVersion);
+    if (!mounted) return;
+
+    if (hostChanged) {
+      setState(() {
+        _latencyResults = {};
+        _pendingLatencyHosts = {};
+      });
+    }
+    _showSnackBar('已重置 COPY 高级设置');
+  }
+
+  Future<void> _fetchAndUpdateCopyAppVersion() async {
+    if (_fetchingCopyAppVersion) return;
+
+    final host = UserManager.normalizeCopyApiHost(_copyApiHostController.text);
+    final hostChanged = host != _user.copyApiHost;
+    _copyApiHostController.text = host;
+    await _user.setCopyApiHost(host);
+    if (!mounted) return;
+
+    setState(() {
+      _fetchingCopyAppVersion = true;
+      if (hostChanged) {
+        _latencyResults = {};
+        _pendingLatencyHosts = {};
+      }
+    });
+
+    try {
+      final version = await ApiClient().fetchCopyLatestAppVersion();
+      await _user.setCopyAppVersion(version);
+      if (!mounted) return;
+      _copyAppVersionController.text = version;
+      _showSnackBar('已更新 COPY 版本号：$version');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('获取 COPY 版本号失败：${_errorMessage(e)}');
+    } finally {
+      if (mounted) {
+        setState(() => _fetchingCopyAppVersion = false);
+      }
+    }
+  }
+
+  String _errorMessage(Object error) {
+    if (error is DioException) {
+      final message = error.message;
+      if (message != null && message.isNotEmpty) return message;
+
+      final statusCode = error.response?.statusCode;
+      if (statusCode != null) return 'HTTP $statusCode';
+
+      final rawError = error.error?.toString();
+      if (rawError != null && rawError.isNotEmpty) return rawError;
+    }
+    return error.toString();
   }
 
   void _clearGoogleConnectivityResult() {

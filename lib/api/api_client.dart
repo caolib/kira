@@ -18,16 +18,19 @@ part 'manga/manga_api.dart';
 part 'network/network_api.dart';
 part 'user/user_api.dart';
 
-const _hostComment = 'api.copy2000.online';
+const defaultCopyApiHost = 'api.copy2000.online';
+const defaultCopyAppVersion = '3.0.8';
+
+const _hostComment = defaultCopyApiHost;
 const _hostCopy = 'www.mangacopy.com';
 const _hostWeb = 'www.manga2026.xyz';
 
-/// COPY App 版本号，用于 copy 接口请求头（User-Agent / version）。
-const copyAppVersion = '3.0.8';
+/// 默认 COPY App 版本号，用于 copy 接口请求头（User-Agent / version）。
+const copyAppVersion = defaultCopyAppVersion;
 
-const _extraApiHosts = [_hostComment, _hostCopy, _hostWeb];
+const _extraApiHosts = [_hostCopy, _hostWeb];
 const _extraApiHostLabels = {
-  _hostComment: '评论',
+  _hostComment: 'COPY API',
   _hostCopy: '拷贝登录',
   _hostWeb: '热辣登录',
 };
@@ -72,7 +75,6 @@ abstract class _ApiClientBase {
           'sec-fetch-site': 'same-site',
           'user-agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0',
-          'Host': _hostComment,
           'Connection': 'keep-alive',
         },
       ),

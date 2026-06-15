@@ -9,15 +9,19 @@ mixin _NetworkApi on _ApiClientBase {
   /// 获取线路以外的固定 API / Web host，去重后用于延迟测试展示。
   List<String> getExtraApiHosts() {
     final hosts = <String>[];
-    for (final host in _extraApiHosts) {
+    for (final host in <String>[_user.copyApiHost, ..._extraApiHosts]) {
       if (!hosts.contains(host)) hosts.add(host);
     }
     return hosts;
   }
 
   /// 获取固定 API / Web host 在诊断结果中的展示名称。
-  String getExtraApiHostLabel(String host) =>
-      _extraApiHostLabels[host] ?? '固定接口';
+  String getExtraApiHostLabel(String host) {
+    if (host == _user.copyApiHost || host == defaultCopyApiHost) {
+      return 'COPY API';
+    }
+    return _extraApiHostLabels[host] ?? '固定接口';
+  }
 
   /// 测试指定线路所有 host 的延迟，返回 {host: 毫秒数，超时为 null}
   Future<Map<String, int?>> testRouteLatency(
@@ -56,10 +60,15 @@ mixin _NetworkApi on _ApiClientBase {
       hosts.map((host) async {
         int? latency;
         try {
+          final uri = Uri.tryParse('https://$host');
+          final socketHost = uri != null && uri.host.isNotEmpty
+              ? uri.host
+              : host;
+          final port = uri != null && uri.hasPort ? uri.port : 443;
           final sw = Stopwatch()..start();
           await SecureSocket.connect(
-            host,
-            443,
+            socketHost,
+            port,
             timeout: const Duration(seconds: 3),
           );
           sw.stop();

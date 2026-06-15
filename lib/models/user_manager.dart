@@ -137,6 +137,8 @@ class UserManager extends ChangeNotifier {
   static const _keyAnimeFeatureEnabled = 'anime_feature_enabled';
   static const _keyBannerVisible = 'banner_visible';
   static const _keyMangaHomeSource = 'manga_home_source';
+  static const _keyCopyApiHost = 'copy_api_host';
+  static const _keyCopyAppVersion = 'copy_app_version';
   static const _keyCopyHomeSectionCollapsed = 'copy_home_section_collapsed';
   static const _keyAnimeHomeBannerCollapsed = 'anime_home_banner_collapsed';
   static const _keyAnimeSkipSeconds = 'anime_skip_seconds';
@@ -202,6 +204,8 @@ class UserManager extends ChangeNotifier {
   bool _animeFeatureEnabled = true;
   bool _bannerVisible = true;
   String _mangaHomeSource = 'hot';
+  String _copyApiHost = defaultCopyApiHost;
+  String _copyAppVersion = defaultCopyAppVersion;
   Map<String, bool> _copyHomeSectionCollapsed = {};
   bool _animeHomeBannerCollapsed = false;
   int _animeSkipSeconds = 86;
@@ -283,6 +287,8 @@ class UserManager extends ChangeNotifier {
   bool get animeFeatureEnabled => _animeFeatureEnabled;
   bool get bannerVisible => _bannerVisible;
   String get mangaHomeSource => _mangaHomeSource;
+  String get copyApiHost => _copyApiHost;
+  String get copyAppVersion => _copyAppVersion;
   bool isCopyHomeSectionCollapsed(String key) =>
       _copyHomeSectionCollapsed[key] ?? false;
   bool get animeHomeBannerCollapsed => _animeHomeBannerCollapsed;
@@ -311,6 +317,28 @@ class UserManager extends ChangeNotifier {
     }
 
     return trimmed.endsWith('/') ? trimmed : '$trimmed/';
+  }
+
+  static String normalizeCopyApiHost(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return defaultCopyApiHost;
+
+    final rawUri = trimmed.contains('://') ? trimmed : 'https://$trimmed';
+    final uri = Uri.tryParse(rawUri);
+    if (uri == null || uri.host.isEmpty) return defaultCopyApiHost;
+
+    final host = uri.host.trim().toLowerCase();
+    if (host.isEmpty || host.contains(' ')) return defaultCopyApiHost;
+
+    final authorityHost = host.contains(':') && !host.startsWith('[')
+        ? '[$host]'
+        : host;
+    return uri.hasPort ? '$authorityHost:${uri.port}' : authorityHost;
+  }
+
+  static String normalizeCopyAppVersion(String? value) {
+    final version = value?.trim() ?? '';
+    return version.isEmpty ? defaultCopyAppVersion : version;
   }
 
   static bool isValidProxyPort(int? port) =>
@@ -443,6 +471,10 @@ class UserManager extends ChangeNotifier {
     _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? true;
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;
     _mangaHomeSource = prefs.getString(_keyMangaHomeSource) ?? 'hot';
+    _copyApiHost = normalizeCopyApiHost(prefs.getString(_keyCopyApiHost));
+    _copyAppVersion = normalizeCopyAppVersion(
+      prefs.getString(_keyCopyAppVersion),
+    );
     _copyHomeSectionCollapsed = _decodeBoolMap(
       prefs.getString(_keyCopyHomeSectionCollapsed),
     );
@@ -969,6 +1001,26 @@ class UserManager extends ChangeNotifier {
     _mangaHomeSource = source;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyMangaHomeSource, source);
+    notifyListeners();
+  }
+
+  Future<void> setCopyApiHost(String value) async {
+    final normalized = normalizeCopyApiHost(value);
+    if (_copyApiHost == normalized) return;
+
+    _copyApiHost = normalized;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCopyApiHost, normalized);
+    notifyListeners();
+  }
+
+  Future<void> setCopyAppVersion(String value) async {
+    final normalized = normalizeCopyAppVersion(value);
+    if (_copyAppVersion == normalized) return;
+
+    _copyAppVersion = normalized;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCopyAppVersion, normalized);
     notifyListeners();
   }
 

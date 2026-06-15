@@ -90,21 +90,58 @@ mixin _MangaApi on _ApiClientBase {
     return _parseCopyNestedComicResult(data);
   }
 
+  /// 自动获取 COPY App 最新版本号。
+  Future<String> fetchCopyLatestAppVersion() async {
+    final resp = await _copyMinimalDio().get(
+      'https://${_user.copyApiHost}/api/v3/system/appVersion/last',
+      queryParameters: {'platform': 3},
+    );
+    final data = _decodeCopyResponse(resp.data);
+    final version = _copyAppVersionFromResponse(data);
+    if (resp.statusCode == 200 && version != null) {
+      return version;
+    }
+
+    final message = data is Map
+        ? (data['message']?.toString() ?? '获取 COPY 版本号失败')
+        : '获取 COPY 版本号失败';
+    throw DioException(
+      requestOptions: resp.requestOptions,
+      response: resp,
+      message: message,
+      error: message,
+      type: DioExceptionType.badResponse,
+    );
+  }
+
+  Map<String, String> _copyBasicHeaders() {
+    final version = _user.copyAppVersion;
+    return {
+      'User-Agent': 'COPY/$version',
+      'Accept': 'application/json',
+      'source': 'copyApp',
+      'platform': '3',
+      'version': version,
+    };
+  }
+
   Dio _copyDio() {
     return Dio(
       BaseOptions(
         validateStatus: (_) => true,
         headers: {
-          'User-Agent': 'COPY/$copyAppVersion',
+          ..._copyBasicHeaders(),
           'Connection': 'keep-alive',
-          'Accept': 'application/json',
           'Accept-Encoding': 'gzip',
-          'source': 'copyApp',
           'webp': '1',
-          'platform': '3',
-          'version': copyAppVersion,
         },
       ),
+    )..interceptors.add(NetworkError.rateLimitInterceptor());
+  }
+
+  Dio _copyMinimalDio() {
+    return Dio(
+      BaseOptions(validateStatus: (_) => true, headers: _copyBasicHeaders()),
     )..interceptors.add(NetworkError.rateLimitInterceptor());
   }
 
@@ -114,7 +151,7 @@ mixin _MangaApi on _ApiClientBase {
     required String errorMessage,
   }) async {
     final resp = await _copyDio().get(
-      'https://$_hostComment$path',
+      'https://${_user.copyApiHost}$path',
       queryParameters: params,
     );
 
@@ -133,6 +170,48 @@ mixin _MangaApi on _ApiClientBase {
       error: message,
       type: DioExceptionType.badResponse,
     );
+  }
+
+  dynamic _decodeCopyResponse(dynamic data) {
+    if (data is String && data.isNotEmpty) {
+      try {
+        return jsonDecode(data);
+      } catch (_) {
+        return data;
+      }
+    }
+    return data;
+  }
+
+  String? _copyAppVersionFromResponse(dynamic data) {
+    if (data is! Map) return null;
+    final code = data['code'];
+    if (code != 200 && code?.toString() != '200') return null;
+
+    final results = data['results'];
+    if (results is! Map) return null;
+
+    final android = results['android'];
+    final androidVersion = android is Map
+        ? _nonEmptyCopyVersion(android['version'])
+        : null;
+    if (androidVersion != null) return androidVersion;
+
+    final directVersion = _nonEmptyCopyVersion(results['version']);
+    if (directVersion != null) return directVersion;
+
+    for (final value in results.values) {
+      if (value is Map) {
+        final version = _nonEmptyCopyVersion(value['version']);
+        if (version != null) return version;
+      }
+    }
+    return null;
+  }
+
+  String? _nonEmptyCopyVersion(dynamic value) {
+    final version = value?.toString().trim() ?? '';
+    return version.isEmpty ? null : version;
   }
 
   ({List<Comic> list, int total}) _parseCopyNestedComicResult(
@@ -325,15 +404,16 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 30,
     int offset = 0,
   }) async {
+    final host = _user.copyApiHost;
     final resp = await _commentDio.get(
-      'https://$_hostComment/api/v3/roasts',
+      'https://$host/api/v3/roasts',
       queryParameters: {
         'chapter_id': chapterId,
         'limit': limit,
         'offset': offset,
         '_update': true,
       },
-      options: _browserRequestOptions(_hostComment),
+      options: _browserRequestOptions(host),
     );
     final results = resp.data['results'] as Map<String, dynamic>;
     final list = (results['list'] as List)
@@ -355,11 +435,12 @@ mixin _MangaApi on _ApiClientBase {
       throw const HttpException('请先登录后再发表评论');
     }
 
+    final host = _user.copyApiHost;
     final resp = await _commentDio.post(
-      'https://$_hostComment/api/v3/member/roast',
+      'https://$host/api/v3/member/roast',
       data: {'chapter_id': chapterId, 'roast': trimmed, '_update': true},
       options: _browserRequestOptions(
-        _hostComment,
+        host,
         contentType: Headers.formUrlEncodedContentType,
         headers: {'Authorization': 'Token $token'},
       ),
@@ -388,8 +469,9 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 10,
     int offset = 0,
   }) async {
+    final host = _user.copyApiHost;
     final resp = await _commentDio.get(
-      'https://$_hostComment/api/v3/comments',
+      'https://$host/api/v3/comments',
       queryParameters: {
         'comic_id': comicId,
         'reply_id': replyId,
@@ -397,7 +479,7 @@ mixin _MangaApi on _ApiClientBase {
         'offset': offset,
         'platform': 3,
       },
-      options: _browserRequestOptions(_hostComment, secFetchSite: 'cross-site'),
+      options: _browserRequestOptions(host, secFetchSite: 'cross-site'),
     );
     final results = resp.data['results'] as Map<String, dynamic>;
     final list = (results['list'] as List)
