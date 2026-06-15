@@ -138,7 +138,7 @@ class AppLogger {
   static const _currentLogFileName = 'error.log';
   static const _keyLoggingEnabled = 'app_logging_enabled';
   static const _keyMinimumLevel = 'app_logging_minimum_level';
-  static const defaultLoggingEnabled = true;
+  static const defaultLoggingEnabled = false;
   static const defaultMinimumLevel = AppLogLevel.warning;
   static const _maxMessageLength = 4000;
   static const _maxStackTraceLength = 12000;

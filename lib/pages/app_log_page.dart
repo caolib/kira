@@ -22,8 +22,16 @@ class _AppLogPageState extends State<AppLogPage> {
   bool _loggingEnabled = AppLogger.defaultLoggingEnabled;
   AppLogLevel _minimumLevel = AppLogger.defaultMinimumLevel;
   AppLogLevel? _levelFilter;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   AppLogger get _logger => widget.logger ?? AppLogger.instance;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -141,6 +149,20 @@ class _AppLogPageState extends State<AppLogPage> {
     await _logger.setMinimumLevel(level);
   }
 
+  void _showSettings(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => _LogSettingsPanel(
+        loggingEnabled: _loggingEnabled,
+        minimumLevel: _minimumLevel,
+        onLoggingEnabledChanged: _setLoggingEnabled,
+        onMinimumLevelChanged: (level) {
+          _setMinimumLevel(level);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,33 +170,25 @@ class _AppLogPageState extends State<AppLogPage> {
         title: const Text('错误日志'),
         actions: [
           IconButton(
-            tooltip: '刷新',
-            onPressed: _refresh,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          IconButton(
-            tooltip: '复制日志',
-            onPressed: _copying ? null : _copyLogs,
-            icon: const Icon(Icons.copy_rounded),
-          ),
-          IconButton(
-            tooltip: '清空日志',
-            onPressed: _clearing ? null : _clearLogs,
-            icon: const Icon(Icons.delete_outline_rounded),
+            tooltip: '设置',
+            onPressed: () => _showSettings(context),
+            icon: const Icon(Icons.settings_rounded),
           ),
         ],
       ),
       body: Column(
         children: [
-          _LogSettingsPanel(
-            loggingEnabled: _loggingEnabled,
-            minimumLevel: _minimumLevel,
-            onLoggingEnabledChanged: _setLoggingEnabled,
-            onMinimumLevelChanged: _setMinimumLevel,
-          ),
-          _LevelFilterBar(
-            filter: _levelFilter,
-            onChanged: (level) => setState(() => _levelFilter = level),
+          _LogFilterPanel(
+            controller: _searchController,
+            levelFilter: _levelFilter,
+            searchQuery: _searchQuery,
+            copying: _copying,
+            clearing: _clearing,
+            onLevelChanged: (level) => setState(() => _levelFilter = level),
+            onSearchChanged: (query) => setState(() => _searchQuery = query),
+            onRefresh: _refresh,
+            onCopy: _copyLogs,
+            onClear: _clearLogs,
           ),
           Expanded(
             child: FutureBuilder<List<AppLogEntry>>(
@@ -186,11 +200,14 @@ class _AppLogPageState extends State<AppLogPage> {
                 }
 
                 final entries = snapshot.data ?? const <AppLogEntry>[];
-                final filtered = _levelFilter == null
-                    ? entries
-                    : entries
-                          .where((entry) => entry.level == _levelFilter)
-                          .toList();
+                final query = _searchQuery.trim().toLowerCase();
+                final filtered = entries.where((entry) {
+                  if (_levelFilter != null && entry.level != _levelFilter) {
+                    return false;
+                  }
+                  if (query.isEmpty) return true;
+                  return _entryMatches(entry, query);
+                }).toList();
                 if (filtered.isEmpty) {
                   return RefreshIndicator(
                     onRefresh: _refresh,
@@ -243,7 +260,7 @@ class _AppLogPageState extends State<AppLogPage> {
   }
 }
 
-class _LogSettingsPanel extends StatelessWidget {
+class _LogSettingsPanel extends StatefulWidget {
   const _LogSettingsPanel({
     required this.loggingEnabled,
     required this.minimumLevel,
@@ -257,8 +274,134 @@ class _LogSettingsPanel extends StatelessWidget {
   final ValueChanged<AppLogLevel?> onMinimumLevelChanged;
 
   @override
+  State<_LogSettingsPanel> createState() => _LogSettingsPanelState();
+}
+
+class _LogSettingsPanelState extends State<_LogSettingsPanel> {
+  late bool _loggingEnabled;
+  late AppLogLevel _minimumLevel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loggingEnabled = widget.loggingEnabled;
+    _minimumLevel = widget.minimumLevel;
+  }
+
+  @override
+  void didUpdateWidget(covariant _LogSettingsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.loggingEnabled != widget.loggingEnabled) {
+      _loggingEnabled = widget.loggingEnabled;
+    }
+    if (oldWidget.minimumLevel != widget.minimumLevel) {
+      _minimumLevel = widget.minimumLevel;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('日志设置', style: tt.titleMedium),
+            ),
+          ),
+          const Divider(height: 1),
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+            secondary: const Icon(Icons.fact_check_outlined),
+            title: const Text('记录日志'),
+            value: _loggingEnabled,
+            onChanged: (value) {
+              setState(() => _loggingEnabled = value);
+              widget.onLoggingEnabledChanged(value);
+            },
+          ),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+            leading: const Icon(Icons.tune_rounded),
+            title: const Text('日志级别'),
+            trailing: DropdownButton<AppLogLevel>(
+              value: _minimumLevel,
+              underline: const SizedBox.shrink(),
+              onChanged: (level) {
+                if (level == null || level == _minimumLevel) return;
+                setState(() => _minimumLevel = level);
+                widget.onMinimumLevelChanged(level);
+              },
+              items: [
+                for (final level in AppLogLevel.values)
+                  DropdownMenuItem(
+                    value: level,
+                    child: _FilterItem(
+                      icon: _levelIcon(level),
+                      color: _levelColor(Theme.of(context).colorScheme, level),
+                      label: level.thresholdLabel,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogFilterPanel extends StatelessWidget {
+  const _LogFilterPanel({
+    required this.controller,
+    required this.levelFilter,
+    required this.searchQuery,
+    required this.onLevelChanged,
+    required this.onSearchChanged,
+    required this.onRefresh,
+    required this.onCopy,
+    required this.onClear,
+    this.copying = false,
+    this.clearing = false,
+  });
+
+  final TextEditingController controller;
+  final AppLogLevel? levelFilter;
+  final String searchQuery;
+  final ValueChanged<AppLogLevel?> onLevelChanged;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onRefresh;
+  final VoidCallback onCopy;
+  final VoidCallback onClear;
+  final bool copying;
+  final bool clearing;
+
+  static const _allValue = #all;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final currentValue = levelFilter ?? _allValue;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -266,33 +409,85 @@ class _LogSettingsPanel extends StatelessWidget {
         border: Border(bottom: BorderSide(color: cs.outlineVariant)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(12, 4, 8, 8),
         child: Column(
           children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              secondary: const Icon(Icons.fact_check_outlined),
-              title: const Text('日志记录'),
-              value: loggingEnabled,
-              onChanged: onLoggingEnabledChanged,
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.tune_rounded),
-              title: const Text('记录级别'),
-              subtitle: Text(minimumLevel.thresholdLabel),
-              trailing: DropdownButton<AppLogLevel>(
-                value: minimumLevel,
-                underline: const SizedBox.shrink(),
-                onChanged: onMinimumLevelChanged,
-                items: [
-                  for (final level in AppLogLevel.values)
-                    DropdownMenuItem(
-                      value: level,
-                      child: Text(level.thresholdLabel),
-                    ),
-                ],
+            TextField(
+              controller: controller,
+              onChanged: onSearchChanged,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: '搜索日志（消息、来源、堆栈、上下文）',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: searchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: '清除',
+                        icon: const Icon(Icons.clear_rounded),
+                        onPressed: () {
+                          controller.clear();
+                          onSearchChanged('');
+                        },
+                      ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
+            ),
+            Row(
+              children: [
+                IconButton(
+                  tooltip: '刷新',
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+                IconButton(
+                  tooltip: '复制日志',
+                  onPressed: copying ? null : onCopy,
+                  icon: const Icon(Icons.copy_rounded),
+                ),
+                IconButton(
+                  tooltip: '清空日志',
+                  onPressed: clearing ? null : onClear,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
+                const Spacer(),
+                DropdownButton<Object>(
+                  value: currentValue,
+                  underline: const SizedBox.shrink(),
+                  onChanged: (value) {
+                    if (value == _allValue) {
+                      onLevelChanged(null);
+                    } else if (value is AppLogLevel) {
+                      onLevelChanged(value);
+                    }
+                  },
+                  items: [
+                    DropdownMenuItem<Object>(
+                      value: _allValue,
+                      child: _FilterItem(
+                        icon: Icons.layers_rounded,
+                        color: cs.onSurfaceVariant,
+                        label: '全部',
+                      ),
+                    ),
+                    for (final level in AppLogLevel.values)
+                      DropdownMenuItem<Object>(
+                        value: level,
+                        child: _FilterItem(
+                          icon: _levelIcon(level),
+                          color: _levelColor(cs, level),
+                          label: level.displayName,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -301,52 +496,26 @@ class _LogSettingsPanel extends StatelessWidget {
   }
 }
 
-class _LevelFilterBar extends StatelessWidget {
-  const _LevelFilterBar({required this.filter, required this.onChanged});
+class _FilterItem extends StatelessWidget {
+  const _FilterItem({
+    required this.icon,
+    required this.color,
+    required this.label,
+  });
 
-  final AppLogLevel? filter;
-  final ValueChanged<AppLogLevel?> onChanged;
+  final IconData icon;
+  final Color color;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(bottom: BorderSide(color: cs.outlineVariant)),
-      ),
-      child: SizedBox(
-        height: 44,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          children: [
-            _filterChip(context, '全部', null),
-            const SizedBox(width: 8),
-            for (final level in AppLogLevel.values) ...[
-              _filterChip(context, level.displayName, level),
-              const SizedBox(width: 8),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _filterChip(BuildContext context, String label, AppLogLevel? level) {
-    final cs = Theme.of(context).colorScheme;
-    final selected = filter == level;
-
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      showCheckmark: false,
-      onSelected: (_) => onChanged(selected ? null : level),
-      selectedColor: cs.primaryContainer,
-      labelStyle: TextStyle(
-        color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 8),
+        Text(label),
+      ],
     );
   }
 }
@@ -506,4 +675,21 @@ String _formatLogTime(DateTime time) {
   final minute = local.minute.toString().padLeft(2, '0');
   final second = local.second.toString().padLeft(2, '0');
   return '$year-$month-$day $hour:$minute:$second';
+}
+
+bool _entryMatches(AppLogEntry entry, String query) {
+  final lower = query.toLowerCase();
+  bool contains(String? text) =>
+      text != null && text.toLowerCase().contains(lower);
+
+  if (contains(entry.message) ||
+      contains(entry.source) ||
+      contains(entry.level.displayName) ||
+      contains(entry.stackTrace)) {
+    return true;
+  }
+  for (final item in entry.context.entries) {
+    if (contains(item.key) || contains(item.value)) return true;
+  }
+  return false;
 }

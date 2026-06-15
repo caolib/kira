@@ -1812,7 +1812,7 @@ class _AboutPageState extends State<AboutPage> {
                     const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.bug_report_outlined),
-                      title: const Text('错误日志'),
+                      title: const Text('日志'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.push(
                         context,
@@ -1830,6 +1830,18 @@ class _AboutPageState extends State<AboutPage> {
                           builder: (_) => const AcknowledgementPage(),
                         ),
                       ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.feedback_outlined),
+                      title: const Text('反馈'),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () async {
+                        await launchUrl(
+                          Uri.parse('https://github.com/caolib/kira/issues/new/choose'),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      },
                     ),
                     const Divider(height: 1),
                     ListTile(
