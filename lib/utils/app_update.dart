@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -219,6 +220,35 @@ class AppUpdateService {
   }
 }
 
+class _AlertMeta {
+  final Color color;
+  final IconData icon;
+  final String label;
+  const _AlertMeta(this.color, this.icon, this.label);
+}
+
+// GitHub 官方警告框配色
+const _alertMetas = <String, _AlertMeta>{
+  'NOTE': _AlertMeta(Color(0xFF0969DA), Icons.info_outline, 'Note'),
+  'TIP': _AlertMeta(Color(0xFF1A7F37), Icons.lightbulb_outline, 'Tip'),
+  'IMPORTANT': _AlertMeta(Color(0xFF8250DF), Icons.bolt_outlined, 'Important'),
+  'WARNING': _AlertMeta(
+    Color(0xFF9A6700),
+    Icons.warning_amber_rounded,
+    'Warning',
+  ),
+  'CAUTION': _AlertMeta(Color(0xFFCF222E), Icons.dangerous_outlined, 'Caution'),
+};
+
+final _alertStartRegex = RegExp(
+  r'^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$',
+  caseSensitive: false,
+);
+final _alertTagRegex = RegExp(
+  r'^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]$',
+  caseSensitive: false,
+);
+
 class _UpdateDialog extends StatefulWidget {
   final AppUpdateInfo updateInfo;
 
@@ -262,9 +292,37 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     final lines = notes.split('\n');
     final children = <Widget>[];
 
-    for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
+    var i = 0;
+    while (i < lines.length) {
+      final trimmed = lines[i].trim();
+      if (trimmed.isEmpty) {
+        i++;
+        continue;
+      }
+
+      // GitHub 风格警告框: > [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]
+      final alertStart = _alertStartRegex.firstMatch(trimmed);
+      if (alertStart != null) {
+        final type = alertStart.group(1)!.toUpperCase();
+        final content = <String>[];
+        i++; // 跳过标记行
+        while (i < lines.length) {
+          final t = lines[i].trim();
+          if (t.isEmpty || t == '>') {
+            i++;
+            continue;
+          }
+          if (!t.startsWith('>')) break; // 引用块结束
+          final after = t.substring(1).trim();
+          if (_alertTagRegex.hasMatch(after)) break; // 下一个警告框
+          if (after.isNotEmpty) content.add(after);
+          i++;
+        }
+        if (content.isNotEmpty) {
+          children.add(_buildAlert(type, content, cs, tt));
+        }
+        continue; // i 已指向下一行，不递增
+      }
 
       if (trimmed.startsWith('## ')) {
         if (children.isNotEmpty) children.add(const SizedBox(height: 10));
@@ -306,6 +364,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           ),
         );
       }
+      i++;
     }
 
     if (children.isEmpty) {
@@ -320,6 +379,93 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       mainAxisSize: MainAxisSize.min,
       children: children,
     );
+  }
+
+  Widget _buildAlert(
+    String type,
+    List<String> content,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    final meta = _alertMetas[type] ?? _alertMetas['NOTE']!;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: meta.color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: meta.color, width: 2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(meta.icon, size: 18, color: meta.color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  meta.label,
+                  style: tt.labelMedium?.copyWith(
+                    color: meta.color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                for (final line in content)
+                  Text.rich(
+                    TextSpan(
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurface,
+                        height: 1.5,
+                      ),
+                      children: _parseInlineSpans(line, meta.color),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 将行内 `[文本](url)` 链接解析为可点击的 TextSpan，其余按纯文本处理。
+  List<InlineSpan> _parseInlineSpans(String text, Color linkColor) {
+    final spans = <InlineSpan>[];
+    final regex = RegExp(r'\[([^\]]+)\]\(([^)\s]+)\)');
+    var lastEnd = 0;
+    for (final m in regex.allMatches(text)) {
+      if (m.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, m.start)));
+      }
+      final label = m.group(1)!;
+      final url = m.group(2)!;
+      spans.add(
+        TextSpan(
+          text: label,
+          style: TextStyle(
+            color: linkColor,
+            decoration: TextDecoration.underline,
+            decorationColor: linkColor,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            },
+        ),
+      );
+      lastEnd = m.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: text));
+    }
+    return spans;
   }
 
   Widget _buildAssetTile(ReleaseAsset asset, ColorScheme cs, TextTheme tt) {
