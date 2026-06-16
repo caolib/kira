@@ -146,8 +146,7 @@ class _AppearancePageState extends State<AppearancePage> {
                         buildDefaultDragHandles: false,
                         padding: EdgeInsets.zero,
                         itemCount: itemCount,
-                        onReorder: (oldIndex, newIndex) {
-                          if (newIndex > oldIndex) newIndex--;
+                        onReorderItem: (oldIndex, newIndex) {
                           final order = List<String>.of(_user.navOrder);
                           final item = order.removeAt(oldIndex);
                           order.insert(newIndex, item);

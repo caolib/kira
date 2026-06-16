@@ -65,7 +65,9 @@ void main() {
   });
 
   testWidgets('about page shows error log entry', (tester) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'app_logging_enabled': true,
+    });
     PackageInfo.setMockInitialValues(
       appName: 'Kira',
       packageName: 'com.example.kira',
@@ -78,7 +80,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: AboutPage()));
     await tester.pumpAndSettle();
 
-    expect(find.text('错误日志'), findsOneWidget);
+    expect(find.text('日志'), findsOneWidget);
     expect(find.byIcon(Icons.bug_report_outlined), findsOneWidget);
   });
 }

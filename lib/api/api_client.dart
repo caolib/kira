@@ -255,7 +255,7 @@ abstract class _ApiClientBase {
         'Host': host,
         'referer': 'https://www.mangacopy.com/',
         'sec-fetch-site': secFetchSite,
-        if (headers != null) ...headers,
+        ...?headers,
       },
     );
   }
