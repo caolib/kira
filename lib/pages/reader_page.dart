@@ -118,7 +118,7 @@ class _ReaderPageState extends State<ReaderPage> {
   String? _cachedCommentChapterUuid;
 
   bool get _isPageMode => _user.readerMode == 1;
-  bool get _isVerticalPageMode => _isPageMode && _user.readerPageVertical;
+  bool get _isVerticalPageMode => _isPageMode && _user.readerScrollDirection == 2;
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
   bool get _isHorizontalScrollMode =>
       !_isPageMode && _user.readerScrollDirection != 2;
@@ -1026,7 +1026,7 @@ class _ReaderPageState extends State<ReaderPage> {
     final offset = _pageModeChapterOverscroll;
     if (offset <= 0) return Offset.zero;
     if (_isVerticalPageMode) return Offset(0, -offset);
-    return Offset(_user.readerPageRTL ? offset : -offset, 0);
+    return Offset(_user.readerScrollDirection == 1 ? offset : -offset, 0);
   }
 
   bool _shouldAutoAdvancePageChapter(ScrollNotification notification) {
@@ -1370,9 +1370,9 @@ class _ReaderPageState extends State<ReaderPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final x = globalPosition.dx;
     if (x < screenWidth / 3) {
-      _user.readerPageRTL ? _nextPage() : _prevPage();
+      _user.readerScrollDirection == 1 ? _nextPage() : _prevPage();
     } else if (x > screenWidth * 2 / 3) {
-      _user.readerPageRTL ? _prevPage() : _nextPage();
+      _user.readerScrollDirection == 1 ? _prevPage() : _nextPage();
     } else {
       setState(() => _showToolbar = !_showToolbar);
     }
@@ -1394,7 +1394,7 @@ class _ReaderPageState extends State<ReaderPage> {
           scrollDirection: _isVerticalPageMode
               ? Axis.vertical
               : Axis.horizontal,
-          reverse: !_isVerticalPageMode && _user.readerPageRTL,
+          reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
           allowImplicitScrolling: true,
           itemCount: imageCount,
           onPageChanged: (index) {
@@ -1466,7 +1466,7 @@ class _ReaderPageState extends State<ReaderPage> {
 
   // ── 工具栏 ──
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(ColorScheme cs) {
     return Positioned(
       top: 0,
       left: 0,
@@ -1499,28 +1499,6 @@ class _ReaderPageState extends State<ReaderPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (!_isPageMode)
-                      IconButton(
-                        tooltip: _autoScrollEnabled
-                            ? (_autoScrollActive
-                                ? '暂停自动滚动'
-                                : '自动滚动即将恢复')
-                            : '开启自动滚动',
-                        icon: Icon(
-                          _autoScrollEnabled
-                              ? Icons.pause_circle_filled
-                              : Icons.play_circle_outline,
-                          color: _autoScrollEnabled
-                              ? (_autoScrollActive
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withValues(alpha: 0.4))
-                              : Colors.white,
-                        ),
-                        onPressed: () => _setAutoScroll(!_autoScrollEnabled),
-                      ),
                   ],
                 ),
               ),
@@ -1551,7 +1529,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 滚动条 Slider
+                    // 页码进度条（带间隔点）
                     Row(
                       children: [
                         Text(
@@ -1568,8 +1546,13 @@ class _ReaderPageState extends State<ReaderPage> {
                               thumbShape: const RoundSliderThumbShape(
                                 enabledThumbRadius: 7,
                               ),
+                              tickMarkShape: const RoundSliderTickMarkShape(
+                                tickMarkRadius: 2.5,
+                              ),
                               activeTrackColor: cs.primary,
                               inactiveTrackColor: Colors.white24,
+                              activeTickMarkColor: cs.primary,
+                              inactiveTickMarkColor: Colors.white24,
                               thumbColor: cs.primary,
                               overlayColor: cs.primary.withValues(alpha: 0.2),
                             ),
@@ -1577,6 +1560,7 @@ class _ReaderPageState extends State<ReaderPage> {
                               value: _currentPage.toDouble(),
                               min: 1,
                               max: total.toDouble(),
+                              divisions: total > 1 ? total - 1 : null,
                               onChangeStart: (_) {
                                 _isDraggingSlider = true;
                               },
@@ -1606,25 +1590,44 @@ class _ReaderPageState extends State<ReaderPage> {
                     ),
                     // 按钮行
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        TextButton.icon(
-                          onPressed: _detail!.prev != null
-                              ? () => _goChapter(_detail!.prev)
-                              : null,
-                          icon: const Icon(Icons.chevron_left),
-                          label: const Text('上一章'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: _detail!.prev != null
+                        IconButton(
+                          icon: Icon(
+                            Icons.skip_previous,
+                            color: _detail!.prev != null
                                 ? Colors.white
                                 : Colors.white38,
                           ),
+                          onPressed: _detail!.prev != null
+                              ? () => _goChapter(_detail!.prev)
+                              : null,
+                          tooltip: '上一章',
                         ),
-                        const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.list, color: Colors.white),
                           onPressed: () => Navigator.pop(context),
                           tooltip: '目录',
                         ),
+                        if (!_isPageMode)
+                          IconButton(
+                            tooltip: _autoScrollEnabled
+                                ? (_autoScrollActive
+                                    ? '暂停自动滚动'
+                                    : '自动滚动即将恢复')
+                                : '开启自动滚动',
+                            icon: Icon(
+                              _autoScrollEnabled
+                                  ? Icons.pause_circle_filled
+                                  : Icons.play_circle_outline,
+                              color: _autoScrollEnabled
+                                  ? (_autoScrollActive
+                                      ? cs.primary
+                                      : cs.primary.withValues(alpha: 0.4))
+                                  : Colors.white,
+                            ),
+                            onPressed: () => _setAutoScroll(!_autoScrollEnabled),
+                          ),
                         IconButton(
                           icon: Badge(
                             isLabelVisible: _commentCount > 0,
@@ -1647,18 +1650,17 @@ class _ReaderPageState extends State<ReaderPage> {
                           onPressed: _showSettingsPanel,
                           tooltip: '阅读设置',
                         ),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: _detail!.next != null
-                              ? () => _goChapter(_detail!.next)
-                              : null,
-                          icon: const Text('下一章'),
-                          label: const Icon(Icons.chevron_right),
-                          style: TextButton.styleFrom(
-                            foregroundColor: _detail!.next != null
+                        IconButton(
+                          icon: Icon(
+                            Icons.skip_next,
+                            color: _detail!.next != null
                                 ? Colors.white
                                 : Colors.white38,
                           ),
+                          onPressed: _detail!.next != null
+                              ? () => _goChapter(_detail!.next)
+                              : null,
+                          tooltip: '下一章',
                         ),
                       ],
                     ),
@@ -1676,12 +1678,26 @@ class _ReaderPageState extends State<ReaderPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: _showToolbar
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.light.copyWith(
+          ? SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
+              statusBarIconBrightness:
+                  isDark ? Brightness.light : Brightness.dark,
+              systemNavigationBarColor: Colors.black,
+              systemNavigationBarIconBrightness:
+                  isDark ? Brightness.light : Brightness.dark,
+            )
+          : SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness:
+                  isDark ? Brightness.light : Brightness.dark,
               systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarIconBrightness:
+                  isDark ? Brightness.light : Brightness.dark,
             ),
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -1693,7 +1709,7 @@ class _ReaderPageState extends State<ReaderPage> {
               _buildRefreshableReader(
                 _isPageMode ? _buildPageMode() : _buildScrollMode(),
               ),
-            _buildTopBar(),
+            _buildTopBar(cs),
             if (_detail != null) _buildBottomBar(cs),
           ],
         ),

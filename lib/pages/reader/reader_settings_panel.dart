@@ -30,6 +30,20 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
     if (mounted) setState(() {});
   }
 
+  Widget _buildSectionTitle(String title, TextTheme tt) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildDivider(ColorScheme cs) {
+    return Divider(height: 32, color: cs.outlineVariant.withValues(alpha: 0.5));
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -69,8 +83,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
-                Text('阅读模式', style: tt.bodyMedium),
-                const SizedBox(height: 8),
+                // 阅读模式
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<int>(
@@ -95,39 +108,38 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // 图片间距（仅滚动模式）
-                if (!isPageMode) ...[
-                  Text('滚动方向', style: tt.bodyMedium),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(
-                          value: 0,
-                          icon: Icon(Icons.arrow_forward),
-                          label: Text('左到右'),
-                        ),
-                        ButtonSegment(
-                          value: 1,
-                          icon: Icon(Icons.arrow_back),
-                          label: Text('右到左'),
-                        ),
-                        ButtonSegment(
-                          value: 2,
-                          icon: Icon(Icons.arrow_downward),
-                          label: Text('上到下'),
-                        ),
-                      ],
-                      selected: {_user.readerScrollDirection},
-                      onSelectionChanged: (v) {
-                        _user.setReaderScrollDirection(v.first);
-                        setState(() {});
-                        widget.onChanged();
-                      },
-                    ),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 0,
+                        icon: Icon(Icons.arrow_forward),
+                        label: Text('左到右'),
+                      ),
+                      ButtonSegment(
+                        value: 1,
+                        icon: Icon(Icons.arrow_back),
+                        label: Text('右到左'),
+                      ),
+                      ButtonSegment(
+                        value: 2,
+                        icon: Icon(Icons.arrow_downward),
+                        label: Text('上到下'),
+                      ),
+                    ],
+                    selected: {_user.readerScrollDirection},
+                    onSelectionChanged: (v) {
+                      _user.setReaderScrollDirection(v.first);
+                      setState(() {});
+                      widget.onChanged();
+                    },
                   ),
-                  const SizedBox(height: 16),
+                ),
+                _buildDivider(cs),
+                // 滚动设置
+                if (!isPageMode) ...[
+                  _buildSectionTitle('滚动', tt),
                   Row(
                     children: [
                       Text('图片间距', style: tt.bodyMedium),
@@ -151,7 +163,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
-                  const SizedBox(height: 8),
                   Row(
                     children: [
                       const Icon(Icons.speed, size: 18),
@@ -177,15 +188,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       setState(() {});
                     },
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '点击顶部按钮开启/关闭自动滚动（仅滚动模式）',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('自动恢复'),
-                    subtitle: const Text('操作后无动作自动恢复滚动'),
+                    subtitle: const Text('一段时间无动作后自动恢复滚动'),
                     value: _user.readerAutoScrollResume,
                     onChanged: (v) {
                       _user.setReaderAutoScrollResume(v);
@@ -212,71 +218,19 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       min: 1,
                       max: 5,
                       divisions: 8,
-                      label: '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                      label:
+                          '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
                       onChanged: (v) {
                         _user.setReaderAutoScrollResumeDelay(v);
                         setState(() {});
                       },
                     ),
                   ],
+                  _buildDivider(cs),
                 ],
-                // 翻页设置（仅翻页模式）
+                // 翻页设置
                 if (isPageMode) ...[
-                  Text('翻页轴向', style: tt.bodyMedium),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(
-                          value: false,
-                          icon: Icon(Icons.swap_horiz),
-                          label: Text('左右'),
-                        ),
-                        ButtonSegment(
-                          value: true,
-                          icon: Icon(Icons.swap_vert),
-                          label: Text('上下'),
-                        ),
-                      ],
-                      selected: {_user.readerPageVertical},
-                      onSelectionChanged: (v) {
-                        _user.setReaderPageVertical(v.first);
-                        setState(() {});
-                        widget.onChanged();
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (!_user.readerPageVertical) ...[
-                    Text('翻页方向', style: tt.bodyMedium),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: SegmentedButton<bool>(
-                        segments: const [
-                          ButtonSegment(
-                            value: false,
-                            icon: Icon(Icons.arrow_forward),
-                            label: Text('左到右'),
-                          ),
-                          ButtonSegment(
-                            value: true,
-                            icon: Icon(Icons.arrow_back),
-                            label: Text('右到左'),
-                          ),
-                        ],
-                        selected: {_user.readerPageRTL},
-                        onSelectionChanged: (v) {
-                          _user.setReaderPageRTL(v.first);
-                          setState(() {});
-                          widget.onChanged();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  // 音量键翻页
+                  _buildSectionTitle('翻页', tt),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('音量键翻页'),
@@ -288,9 +242,11 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
+                  _buildDivider(cs),
                 ],
-                // 亮度遮罩（仅深色模式）
+                // 显示
                 if (isDark) ...[
+                  _buildSectionTitle('显示', tt),
                   Row(
                     children: [
                       const Icon(Icons.brightness_low, size: 18),
@@ -320,13 +276,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
+                  _buildDivider(cs),
                 ],
-                const SizedBox(height: 8),
-                Text(
-                  '图片加载',
-                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
+                // 图片加载
+                _buildSectionTitle('图片加载', tt),
                 Row(
                   children: [
                     const Icon(Icons.timer_outlined, size: 18),
@@ -411,7 +364,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     widget.onChanged();
                   },
                 ),
-                const SizedBox(height: 8),
               ],
             ),
           ),

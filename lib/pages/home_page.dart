@@ -883,6 +883,11 @@ class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
                       if (widget.onMore != null)
                         TextButton(
                           onPressed: widget.onMore,
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

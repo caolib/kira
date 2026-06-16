@@ -450,9 +450,7 @@ class UserManager extends ChangeNotifier {
     _readerAutoScrollResume =
         prefs.getBool(_keyReaderAutoScrollResume) ?? false;
     _readerAutoScrollResumeDelay =
-        ((prefs.getInt(_keyReaderAutoScrollResumeDelay)?.toDouble()) ??
-                prefs.getDouble(_keyReaderAutoScrollResumeDelay) ??
-                2.0)
+        (prefs.getDouble(_keyReaderAutoScrollResumeDelay) ?? 2.0)
             .clamp(1.0, 5.0);
     _imageViewerAutoRotateLandscape =
         prefs.getBool(_keyImageViewerAutoRotateLandscape) ?? false;
