@@ -80,6 +80,8 @@ class _ReaderPageState extends State<ReaderPage> {
   bool _autoScrollEnabled = false;
   bool _autoScrollActive = false;
   Timer? _autoScrollResumeTimer;
+  // 每次重启/打断滚动时自增，用于丢弃在途的旧滚动回调，避免章节切换后多条链并行。
+  int _autoScrollGeneration = 0;
   bool _settingsPanelOpen = false;
   PageController _pageController = PageController();
   ChapterDetail? _detail;
@@ -194,6 +196,7 @@ class _ReaderPageState extends State<ReaderPage> {
     _itemPositionsListener.itemPositions.removeListener(
       _onItemPositionsChanged,
     );
+    _autoScrollGeneration++;
     _autoScrollResumeTimer?.cancel();
     _pageController.dispose();
     SystemChrome.setEnabledSystemUIMode(
@@ -283,8 +286,17 @@ class _ReaderPageState extends State<ReaderPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _preloadImages(startPage - 1);
-        // 章节切换会打断动画接力，列表重建后若仍开启则续滚
-        if (_autoScrollEnabled && !_isPageMode) _continueAutoScroll();
+        // 章节切换会打断动画接力；列表重建后若仍开启则续滚。
+        // 新章节首屏图片尚在加载，先等待再续滚，避免滚过未加载的空白。
+        if (_autoScrollEnabled && !_isPageMode) {
+          final gen = ++_autoScrollGeneration;
+          Future.delayed(const Duration(seconds: 3), () {
+            if (gen != _autoScrollGeneration) return;
+            if (mounted && _autoScrollEnabled && !_isPageMode) {
+              _continueAutoScroll();
+            }
+          });
+        }
       });
       if (forceRefresh && mounted) showToast(context, '图片链接已刷新');
     } catch (e) {
@@ -522,7 +534,7 @@ class _ReaderPageState extends State<ReaderPage> {
     if (_autoScrollEnabled && !_isPageMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _autoScrollEnabled && !_isPageMode) {
-          _continueAutoScroll();
+          _restartAutoScroll();
         }
       });
     }
@@ -555,13 +567,17 @@ class _ReaderPageState extends State<ReaderPage> {
 
   // ── 自动滚动（仅滚动模式） ──
 
-  static const _autoScrollStep = Duration(milliseconds: 200);
+  // 每段滚动时长：配合 easeOutCubic 实现"快速上滑后缓缓停稳"的手感。
+  static const _autoScrollSegmentDuration = Duration(milliseconds: 700);
+  // 每段滚动距离 = 视口高度 × 该系数，保证停在一个可整屏阅读的画面区域。
+  static const _autoScrollSegmentFactor = 0.8;
 
   /// 主开关：仅由顶部按钮调用。关闭时取消恢复计时器。
   void _setAutoScroll(bool enabled) {
     if (enabled == _autoScrollEnabled) return;
     _autoScrollEnabled = enabled;
     _autoScrollActive = enabled;
+    _autoScrollGeneration++;
     _cancelAutoScrollResumeTimer();
     if (enabled) _continueAutoScroll();
     if (mounted) setState(() {});
@@ -611,7 +627,7 @@ class _ReaderPageState extends State<ReaderPage> {
           return;
         }
         _autoScrollActive = true;
-        _continueAutoScroll();
+        _restartAutoScroll();
         setState(() {});
       },
     );
@@ -620,6 +636,12 @@ class _ReaderPageState extends State<ReaderPage> {
   void _cancelAutoScrollResumeTimer() {
     _autoScrollResumeTimer?.cancel();
     _autoScrollResumeTimer = null;
+  }
+
+  /// 废弃在途的滚动回调并立即重新开始一段。用于章节切换、设置变更、自动恢复等重启点。
+  void _restartAutoScroll() {
+    _autoScrollGeneration++;
+    _continueAutoScroll();
   }
 
   void _continueAutoScroll() {
@@ -647,18 +669,31 @@ class _ReaderPageState extends State<ReaderPage> {
         }
       }
     }
-    // 用多段线性动画接力，offset 取正值即沿阅读前进方向滚动（含右到左反向模式）。
-    // 避免逐帧叠加瞬时动画：那种方式每帧都会取消上一帧的动画，产生大量被取消的
-    // TickerFuture，在调试模式下会触发异常断点。
-    final stepSeconds = _autoScrollStep.inMilliseconds / 1000;
+    // 间歇式滚动：快速上滑一段距离 → 停顿阅读 → 再上滑。
+    // offset 取正值即沿阅读前进方向滚动（含右到左反向模式）。
+    // 用 easeOutCubic 让画面快速启动、缓缓停稳，避免匀速移动带来的眼部追踪疲劳。
+    // gen 用于丢弃章节切换等在途的旧回调，避免重启后多条滚动链并行。
+    final gen = _autoScrollGeneration;
+    final viewportHeight = MediaQuery.sizeOf(context).height;
     _scrollOffsetController
         .animateScroll(
-          offset: _user.readerAutoScrollSpeed * stepSeconds,
-          duration: _autoScrollStep,
-          curve: Curves.linear,
+          offset: (viewportHeight * _autoScrollSegmentFactor)
+              .clamp(80.0, 4000.0),
+          duration: _autoScrollSegmentDuration,
+          curve: Curves.easeOutCubic,
         )
         .then((_) {
-          if (_autoScrollActive) _continueAutoScroll();
+          if (gen != _autoScrollGeneration || !_autoScrollActive) return;
+          // 停顿一段时间供眼睛阅读，随后继续下一段。
+          Future.delayed(
+            Duration(
+              milliseconds: (_user.readerAutoScrollPause * 1000).round(),
+            ),
+            () {
+              if (gen != _autoScrollGeneration || !_autoScrollActive) return;
+              _continueAutoScroll();
+            },
+          );
         })
         .catchError((Object _) {
           // 用户拖动或章节切换会取消动画，链条在此自然中断
@@ -1609,7 +1644,7 @@ class _ReaderPageState extends State<ReaderPage> {
                           onPressed: () => Navigator.pop(context),
                           tooltip: '目录',
                         ),
-                        if (!_isPageMode)
+                        if (!_isPageMode && _user.readerAutoScrollEnabled)
                           IconButton(
                             tooltip: _autoScrollEnabled
                                 ? (_autoScrollActive

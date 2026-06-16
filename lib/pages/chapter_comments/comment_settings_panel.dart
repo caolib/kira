@@ -208,6 +208,32 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
     }
   }
 
+  Widget _buildSectionHeader(String title, ColorScheme cs, TextTheme tt) {
+    final line = Divider(
+      height: 1,
+      color: cs.outlineVariant.withValues(alpha: 0.5),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Row(
+        children: [
+          Expanded(child: line),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              title,
+              style: tt.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(child: line),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -251,9 +277,7 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                 '评论区设置',
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 20),
-              Text('布局', style: tt.bodyMedium),
-              const SizedBox(height: 8),
+              _buildSectionHeader('布局', cs, tt),
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<bool>(
@@ -351,7 +375,6 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                   widget.onFontScaleChanged(nextScale);
                 },
               ),
-              const Divider(height: 24),
               // AI 总结设置
               ListenableBuilder(
                 listenable: AiSettings(),
@@ -364,8 +387,7 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('AI 总结', style: tt.bodyMedium),
-                      const SizedBox(height: 8),
+                      _buildSectionHeader('AI 总结', cs, tt),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('启用 AI 总结'),

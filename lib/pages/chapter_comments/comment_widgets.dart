@@ -270,6 +270,7 @@ class _CommentCardState extends State<_CommentCard> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_commentCardCornerRadius),
         child: Stack(
+          fit: compact ? StackFit.expand : StackFit.loose,
           children: [
             Container(
               padding: EdgeInsets.fromLTRB(

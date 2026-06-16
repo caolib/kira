@@ -110,7 +110,8 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderPageRTL = 'reader_page_rtl';
   static const _keyReaderPageVertical = 'reader_page_vertical';
   static const _keyReaderDimming = 'reader_dimming';
-  static const _keyReaderAutoScrollSpeed = 'reader_auto_scroll_speed';
+  static const _keyReaderAutoScrollEnabled = 'reader_auto_scroll_enabled';
+  static const _keyReaderAutoScrollPause = 'reader_auto_scroll_pause';
   static const _keyReaderAutoScrollResume = 'reader_auto_scroll_resume';
   static const _keyReaderAutoScrollResumeDelay =
       'reader_auto_scroll_resume_delay';
@@ -183,7 +184,8 @@ class UserManager extends ChangeNotifier {
   bool _readerPageRTL = false;
   bool _readerPageVertical = false;
   double _readerDimming = 0.3;
-  double _readerAutoScrollSpeed = 80.0;
+  bool _readerAutoScrollEnabled = false;
+  double _readerAutoScrollPause = 3.0;
   bool _readerAutoScrollResume = false;
   double _readerAutoScrollResumeDelay = 2.0;
   bool _imageViewerAutoRotateLandscape = false;
@@ -267,7 +269,8 @@ class UserManager extends ChangeNotifier {
   bool get readerPageRTL => _readerPageRTL;
   bool get readerPageVertical => _readerPageVertical;
   double get readerDimming => _readerDimming;
-  double get readerAutoScrollSpeed => _readerAutoScrollSpeed;
+  bool get readerAutoScrollEnabled => _readerAutoScrollEnabled;
+  double get readerAutoScrollPause => _readerAutoScrollPause;
   bool get readerAutoScrollResume => _readerAutoScrollResume;
   double get readerAutoScrollResumeDelay => _readerAutoScrollResumeDelay;
   bool get imageViewerAutoRotateLandscape => _imageViewerAutoRotateLandscape;
@@ -445,8 +448,10 @@ class UserManager extends ChangeNotifier {
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
     _readerPageVertical = prefs.getBool(_keyReaderPageVertical) ?? false;
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
-    _readerAutoScrollSpeed =
-        prefs.getDouble(_keyReaderAutoScrollSpeed) ?? 80.0;
+    _readerAutoScrollEnabled =
+        prefs.getBool(_keyReaderAutoScrollEnabled) ?? false;
+    _readerAutoScrollPause =
+        (prefs.getDouble(_keyReaderAutoScrollPause) ?? 3.0).clamp(1.0, 8.0);
     _readerAutoScrollResume =
         prefs.getBool(_keyReaderAutoScrollResume) ?? false;
     _readerAutoScrollResumeDelay =
@@ -819,10 +824,17 @@ class UserManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setReaderAutoScrollSpeed(double value) async {
-    _readerAutoScrollSpeed = value;
+  Future<void> setReaderAutoScrollEnabled(bool enabled) async {
+    _readerAutoScrollEnabled = enabled;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_keyReaderAutoScrollSpeed, value);
+    await prefs.setBool(_keyReaderAutoScrollEnabled, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setReaderAutoScrollPause(double seconds) async {
+    _readerAutoScrollPause = seconds;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyReaderAutoScrollPause, seconds);
     notifyListeners();
   }
 

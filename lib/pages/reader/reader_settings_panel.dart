@@ -30,18 +30,30 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
     if (mounted) setState(() {});
   }
 
-  Widget _buildSectionTitle(String title, TextTheme tt) {
+  Widget _buildSectionHeader(String title, ColorScheme cs, TextTheme tt) {
+    final line = Divider(
+      height: 1,
+      color: cs.outlineVariant.withValues(alpha: 0.5),
+    );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Row(
+        children: [
+          Expanded(child: line),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              title,
+              style: tt.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(child: line),
+        ],
       ),
     );
-  }
-
-  Widget _buildDivider(ColorScheme cs) {
-    return Divider(height: 32, color: cs.outlineVariant.withValues(alpha: 0.5));
   }
 
   @override
@@ -136,10 +148,9 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     },
                   ),
                 ),
-                _buildDivider(cs),
                 // 滚动设置
                 if (!isPageMode) ...[
-                  _buildSectionTitle('滚动', tt),
+                  _buildSectionHeader('滚动', cs, tt),
                   Row(
                     children: [
                       Text('图片间距', style: tt.bodyMedium),
@@ -163,50 +174,26 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
-                  Row(
-                    children: [
-                      const Icon(Icons.speed, size: 18),
-                      const SizedBox(width: 8),
-                      Text('自动滚动速度', style: tt.bodyMedium),
-                      const Spacer(),
-                      Text(
-                        '${_user.readerAutoScrollSpeed.round()} px/秒',
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _user.readerAutoScrollSpeed,
-                    min: 30,
-                    max: 400,
-                    divisions: 37,
-                    label: '${_user.readerAutoScrollSpeed.round()} px/秒',
-                    onChanged: (v) {
-                      _user.setReaderAutoScrollSpeed(v);
-                      setState(() {});
-                    },
-                  ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('自动恢复'),
-                    subtitle: const Text('一段时间无动作后自动恢复滚动'),
-                    value: _user.readerAutoScrollResume,
+                    title: const Text('自动滚动'),
+                    subtitle: const Text('开启后在导航栏显示自动滚动按钮'),
+                    value: _user.readerAutoScrollEnabled,
                     onChanged: (v) {
-                      _user.setReaderAutoScrollResume(v);
+                      _user.setReaderAutoScrollEnabled(v);
                       setState(() {});
+                      widget.onChanged();
                     },
                   ),
-                  if (_user.readerAutoScrollResume) ...[
+                  if (_user.readerAutoScrollEnabled) ...[
                     Row(
                       children: [
-                        const Icon(Icons.timer_outlined, size: 18),
+                        const Icon(Icons.pause_circle_outline, size: 18),
                         const SizedBox(width: 8),
-                        Text('恢复延迟', style: tt.bodyMedium),
+                        Text('停顿时长', style: tt.bodyMedium),
                         const Spacer(),
                         Text(
-                          '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                          '${_user.readerAutoScrollPause.toStringAsFixed(1)} 秒',
                           style: tt.bodySmall?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
@@ -214,23 +201,60 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       ],
                     ),
                     Slider(
-                      value: _user.readerAutoScrollResumeDelay.clamp(1.0, 5.0),
+                      value: _user.readerAutoScrollPause,
                       min: 1,
-                      max: 5,
-                      divisions: 8,
+                      max: 8,
+                      divisions: 14,
                       label:
-                          '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                          '${_user.readerAutoScrollPause.toStringAsFixed(1)} 秒',
                       onChanged: (v) {
-                        _user.setReaderAutoScrollResumeDelay(v);
+                        _user.setReaderAutoScrollPause(v);
                         setState(() {});
                       },
                     ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('自动恢复'),
+                      subtitle: const Text('一段时间无动作后自动恢复滚动'),
+                      value: _user.readerAutoScrollResume,
+                      onChanged: (v) {
+                        _user.setReaderAutoScrollResume(v);
+                        setState(() {});
+                      },
+                    ),
+                    if (_user.readerAutoScrollResume) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.timer_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('恢复延迟', style: tt.bodyMedium),
+                          const Spacer(),
+                          Text(
+                            '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: _user.readerAutoScrollResumeDelay.clamp(1.0, 5.0),
+                        min: 1,
+                        max: 5,
+                        divisions: 8,
+                        label:
+                            '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                        onChanged: (v) {
+                          _user.setReaderAutoScrollResumeDelay(v);
+                          setState(() {});
+                        },
+                      ),
+                    ],
                   ],
-                  _buildDivider(cs),
                 ],
                 // 翻页设置
                 if (isPageMode) ...[
-                  _buildSectionTitle('翻页', tt),
+                  _buildSectionHeader('翻页', cs, tt),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('音量键翻页'),
@@ -242,11 +266,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
-                  _buildDivider(cs),
                 ],
                 // 显示
                 if (isDark) ...[
-                  _buildSectionTitle('显示', tt),
+                  _buildSectionHeader('显示', cs, tt),
                   Row(
                     children: [
                       const Icon(Icons.brightness_low, size: 18),
@@ -276,10 +299,9 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
-                  _buildDivider(cs),
                 ],
                 // 图片加载
-                _buildSectionTitle('图片加载', tt),
+                _buildSectionHeader('图片加载', cs, tt),
                 Row(
                   children: [
                     const Icon(Icons.timer_outlined, size: 18),
