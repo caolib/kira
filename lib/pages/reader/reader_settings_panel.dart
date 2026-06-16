@@ -151,6 +151,74 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.speed, size: 18),
+                      const SizedBox(width: 8),
+                      Text('自动滚动速度', style: tt.bodyMedium),
+                      const Spacer(),
+                      Text(
+                        '${_user.readerAutoScrollSpeed.round()} px/秒',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: _user.readerAutoScrollSpeed,
+                    min: 30,
+                    max: 400,
+                    divisions: 37,
+                    label: '${_user.readerAutoScrollSpeed.round()} px/秒',
+                    onChanged: (v) {
+                      _user.setReaderAutoScrollSpeed(v);
+                      setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '点击顶部按钮开启/关闭自动滚动（仅滚动模式）',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('自动恢复'),
+                    subtitle: const Text('操作后无动作自动恢复滚动'),
+                    value: _user.readerAutoScrollResume,
+                    onChanged: (v) {
+                      _user.setReaderAutoScrollResume(v);
+                      setState(() {});
+                    },
+                  ),
+                  if (_user.readerAutoScrollResume) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.timer_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Text('恢复延迟', style: tt.bodyMedium),
+                        const Spacer(),
+                        Text(
+                          '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _user.readerAutoScrollResumeDelay.clamp(1.0, 5.0),
+                      min: 1,
+                      max: 5,
+                      divisions: 8,
+                      label: '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                      onChanged: (v) {
+                        _user.setReaderAutoScrollResumeDelay(v);
+                        setState(() {});
+                      },
+                    ),
+                  ],
                 ],
                 // 翻页设置（仅翻页模式）
                 if (isPageMode) ...[

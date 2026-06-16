@@ -76,6 +76,11 @@ class _ReaderPageState extends State<ReaderPage> {
   final _user = UserManager();
   final _itemScrollController = ItemScrollController();
   final _itemPositionsListener = ItemPositionsListener.create();
+  final _scrollOffsetController = ScrollOffsetController();
+  bool _autoScrollEnabled = false;
+  bool _autoScrollActive = false;
+  Timer? _autoScrollResumeTimer;
+  bool _settingsPanelOpen = false;
   PageController _pageController = PageController();
   ChapterDetail? _detail;
   bool _loading = true;
@@ -189,6 +194,7 @@ class _ReaderPageState extends State<ReaderPage> {
     _itemPositionsListener.itemPositions.removeListener(
       _onItemPositionsChanged,
     );
+    _autoScrollResumeTimer?.cancel();
     _pageController.dispose();
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
@@ -275,7 +281,10 @@ class _ReaderPageState extends State<ReaderPage> {
       _saveReadingHistory();
       _preloadComments();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _preloadImages(startPage - 1);
+        if (!mounted) return;
+        _preloadImages(startPage - 1);
+        // 章节切换会打断动画接力，列表重建后若仍开启则续滚
+        if (_autoScrollEnabled && !_isPageMode) _continueAutoScroll();
       });
       if (forceRefresh && mounted) showToast(context, '图片链接已刷新');
     } catch (e) {
@@ -496,6 +505,9 @@ class _ReaderPageState extends State<ReaderPage> {
   void _onSettingsChanged() {
     final page = _currentPage;
     _updateVolumeIntercept();
+    if (_isPageMode && _autoScrollEnabled) {
+      _setAutoScroll(false);
+    }
     if (_isPageMode) {
       _pageController.dispose();
       _pageController = PageController(initialPage: page - 1);
@@ -506,9 +518,20 @@ class _ReaderPageState extends State<ReaderPage> {
       _scrollWidgetVersion++;
     }
     setState(() {});
+    // 修改滚动设置会重建列表从而打断动画，重建后若仍开启则续滚
+    if (_autoScrollEnabled && !_isPageMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _autoScrollEnabled && !_isPageMode) {
+          _continueAutoScroll();
+        }
+      });
+    }
   }
 
   void _showSettingsPanel() {
+    // 打开设置面板期间取消自动恢复计时器，避免调整设置时滚动自动恢复
+    _cancelAutoScrollResumeTimer();
+    setState(() => _settingsPanelOpen = true);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -518,7 +541,128 @@ class _ReaderPageState extends State<ReaderPage> {
         maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       ),
       builder: (_) => _ReaderSettingsPanel(onChanged: _onSettingsChanged),
+    ).whenComplete(() {
+      if (!mounted) return;
+      setState(() => _settingsPanelOpen = false);
+      // 关闭后若仍处于临时暂停且开启了自动恢复，重新开始恢复倒计时
+      if (_autoScrollEnabled &&
+          !_autoScrollActive &&
+          _user.readerAutoScrollResume) {
+        _scheduleAutoScrollResume();
+      }
+    });
+  }
+
+  // ── 自动滚动（仅滚动模式） ──
+
+  static const _autoScrollStep = Duration(milliseconds: 200);
+
+  /// 主开关：仅由顶部按钮调用。关闭时取消恢复计时器。
+  void _setAutoScroll(bool enabled) {
+    if (enabled == _autoScrollEnabled) return;
+    _autoScrollEnabled = enabled;
+    _autoScrollActive = enabled;
+    _cancelAutoScrollResumeTimer();
+    if (enabled) _continueAutoScroll();
+    if (mounted) setState(() {});
+  }
+
+  /// 触摸开始（按下）：暂停滚动。自动恢复模式下取消计时器，拖动期间不计时。
+  void _onAutoScrollTouchStart() {
+    if (!_autoScrollEnabled) return;
+    if (_user.readerAutoScrollResume) {
+      _autoScrollActive = false;
+      _cancelAutoScrollResumeTimer();
+      if (mounted) setState(() {});
+    } else {
+      _setAutoScroll(false);
+    }
+  }
+
+  /// 触摸结束（抬起/取消）：自动恢复模式下开始恢复倒计时。
+  void _onAutoScrollTouchEnd() {
+    if (!_autoScrollEnabled || !_user.readerAutoScrollResume) return;
+    if (!_autoScrollActive) _scheduleAutoScrollResume();
+  }
+
+  /// 鼠标滚轮等瞬时交互：暂停并立即开始恢复倒计时。
+  void _onAutoScrollWheel() {
+    if (!_autoScrollEnabled) return;
+    if (_user.readerAutoScrollResume) {
+      _autoScrollActive = false;
+      _scheduleAutoScrollResume();
+      if (mounted) setState(() {});
+    } else {
+      _setAutoScroll(false);
+    }
+  }
+
+  void _scheduleAutoScrollResume() {
+    _cancelAutoScrollResumeTimer();
+    _autoScrollResumeTimer = Timer(
+      Duration(milliseconds: (_user.readerAutoScrollResumeDelay * 1000).round()),
+      () {
+        _autoScrollResumeTimer = null;
+        if (!mounted ||
+            !_autoScrollEnabled ||
+            _isPageMode ||
+            _detail == null ||
+            _settingsPanelOpen) {
+          return;
+        }
+        _autoScrollActive = true;
+        _continueAutoScroll();
+        setState(() {});
+      },
     );
+  }
+
+  void _cancelAutoScrollResumeTimer() {
+    _autoScrollResumeTimer?.cancel();
+    _autoScrollResumeTimer = null;
+  }
+
+  void _continueAutoScroll() {
+    if (!_autoScrollEnabled ||
+        !_autoScrollActive ||
+        _detail == null ||
+        _isPageMode) {
+      return;
+    }
+    // 没有下一章且最后一张图已进入视口：滑到底后暂停，避免无意义滚动。
+    if (_detail!.next == null) {
+      final positions = _itemPositionsListener.itemPositions.value;
+      if (positions.isNotEmpty) {
+        final hasHeader = _detail!.prev == null;
+        final imageStart = hasHeader ? 1 : 0;
+        final imageCount = _detail!.contents.length;
+        final lastImageIndex = imageStart + imageCount - 1;
+        final isLastImageFullyVisible = positions.any((p) {
+          if (p.index != lastImageIndex) return false;
+          return p.itemLeadingEdge >= 0.0 && p.itemTrailingEdge <= 1.0;
+        });
+        if (isLastImageFullyVisible) {
+          _setAutoScroll(false);
+          return;
+        }
+      }
+    }
+    // 用多段线性动画接力，offset 取正值即沿阅读前进方向滚动（含右到左反向模式）。
+    // 避免逐帧叠加瞬时动画：那种方式每帧都会取消上一帧的动画，产生大量被取消的
+    // TickerFuture，在调试模式下会触发异常断点。
+    final stepSeconds = _autoScrollStep.inMilliseconds / 1000;
+    _scrollOffsetController
+        .animateScroll(
+          offset: _user.readerAutoScrollSpeed * stepSeconds,
+          duration: _autoScrollStep,
+          curve: Curves.linear,
+        )
+        .then((_) {
+          if (_autoScrollActive) _continueAutoScroll();
+        })
+        .catchError((Object _) {
+          // 用户拖动或章节切换会取消动画，链条在此自然中断
+        });
   }
 
   // ── 图片预加载 ──
@@ -926,59 +1070,74 @@ class _ReaderPageState extends State<ReaderPage> {
         ? Axis.horizontal
         : Axis.vertical;
     final viewportSize = MediaQuery.sizeOf(context);
-    return GestureDetector(
-      onTap: () => _toggleToolbar(),
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (n) {
-          if (_isDraggingSlider) return false;
-          if (n is ScrollUpdateNotification &&
-              _showToolbar &&
-              (n.scrollDelta ?? 0).abs() > 0) {
-            SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-            setState(() => _showToolbar = false);
-          }
-          if (_shouldAutoAdvanceScrollChapter(n)) {
-            _autoAdvanceToNextChapter();
-          }
-          return false;
-        },
-        child: ScrollablePositionedList.separated(
-          key: ValueKey('$_currentUuid-$_scrollWidgetVersion'),
-          itemScrollController: _itemScrollController,
-          itemPositionsListener: _itemPositionsListener,
-          initialScrollIndex: _scrollModeInitialIndex,
-          scrollDirection: scrollDirection,
-          reverse: _isReversedScrollMode,
-          padding: EdgeInsets.zero,
-          physics: _isHorizontalScrollMode
-              ? null
-              : const AlwaysScrollableScrollPhysics(),
-          minCacheExtent: _isHorizontalScrollMode
-              ? viewportSize.width
-              : viewportSize.height,
-          itemCount: totalItems,
-          separatorBuilder: (_, i) {
-            final imageStart = hasHeader ? 1 : 0;
-            final imageEnd = imageStart + imageCount - 1;
-            if (i >= imageStart && i < imageEnd) {
-              return _isHorizontalScrollMode
-                  ? SizedBox(width: _user.readerImageGap)
-                  : SizedBox(height: _user.readerImageGap);
+    return Listener(
+      onPointerDown: (_) => _onAutoScrollTouchStart(),
+      onPointerUp: (_) => _onAutoScrollTouchEnd(),
+      onPointerCancel: (_) => _onAutoScrollTouchEnd(),
+      child: GestureDetector(
+        onTap: () => _toggleToolbar(),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            // 鼠标滚轮等非触摸交互通过 UserScrollNotification 暂停
+            if (n is UserScrollNotification && _autoScrollEnabled) {
+              _onAutoScrollWheel();
             }
-            return const SizedBox.shrink();
+            if (_isDraggingSlider) return false;
+            if (n is ScrollUpdateNotification &&
+                _showToolbar &&
+                (n.scrollDelta ?? 0).abs() > 0) {
+              SystemChrome.setEnabledSystemUIMode(
+                SystemUiMode.immersiveSticky,
+              );
+              setState(() => _showToolbar = false);
+            }
+            if (_shouldAutoAdvanceScrollChapter(n)) {
+              _autoAdvanceToNextChapter();
+            }
+            return false;
           },
-          itemBuilder: (_, i) {
-            if (hasHeader && i == 0) return _buildFirstChapterHead();
-            final imageIndex = i - (hasHeader ? 1 : 0);
-            if (imageIndex < imageCount) {
-              final image = _buildReaderImageGesture(imageIndex);
-              if (_isHorizontalScrollMode) {
-                return SizedBox(height: viewportSize.height, child: image);
+          child: ScrollablePositionedList.separated(
+            key: ValueKey('$_currentUuid-$_scrollWidgetVersion'),
+            itemScrollController: _itemScrollController,
+            itemPositionsListener: _itemPositionsListener,
+            scrollOffsetController: _scrollOffsetController,
+            initialScrollIndex: _scrollModeInitialIndex,
+            scrollDirection: scrollDirection,
+            reverse: _isReversedScrollMode,
+            padding: EdgeInsets.zero,
+            physics: _isHorizontalScrollMode
+                ? null
+                : const AlwaysScrollableScrollPhysics(),
+            minCacheExtent: _isHorizontalScrollMode
+                ? viewportSize.width
+                : viewportSize.height,
+            itemCount: totalItems,
+            separatorBuilder: (_, i) {
+              final imageStart = hasHeader ? 1 : 0;
+              final imageEnd = imageStart + imageCount - 1;
+              if (i >= imageStart && i < imageEnd) {
+                return _isHorizontalScrollMode
+                    ? SizedBox(width: _user.readerImageGap)
+                    : SizedBox(height: _user.readerImageGap);
               }
-              return image;
-            }
-            return _buildNextChapterTail();
-          },
+              return const SizedBox.shrink();
+            },
+            itemBuilder: (_, i) {
+              if (hasHeader && i == 0) return _buildFirstChapterHead();
+              final imageIndex = i - (hasHeader ? 1 : 0);
+              if (imageIndex < imageCount) {
+                final image = _buildReaderImageGesture(imageIndex);
+                if (_isHorizontalScrollMode) {
+                  return SizedBox(
+                    height: viewportSize.height,
+                    child: image,
+                  );
+                }
+                return image;
+              }
+              return _buildNextChapterTail();
+            },
+          ),
         ),
       ),
     );
@@ -1340,6 +1499,28 @@ class _ReaderPageState extends State<ReaderPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (!_isPageMode)
+                      IconButton(
+                        tooltip: _autoScrollEnabled
+                            ? (_autoScrollActive
+                                ? '暂停自动滚动'
+                                : '自动滚动即将恢复')
+                            : '开启自动滚动',
+                        icon: Icon(
+                          _autoScrollEnabled
+                              ? Icons.pause_circle_filled
+                              : Icons.play_circle_outline,
+                          color: _autoScrollEnabled
+                              ? (_autoScrollActive
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.4))
+                              : Colors.white,
+                        ),
+                        onPressed: () => _setAutoScroll(!_autoScrollEnabled),
+                      ),
                   ],
                 ),
               ),
