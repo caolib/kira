@@ -107,6 +107,7 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderScrollDirection = 'reader_scroll_direction';
   static const _keyReaderImageGap = 'reader_image_gap';
   static const _keyReaderVolumeKey = 'reader_volume_key';
+  static const _keyReaderInstantPageTurn = 'reader_instant_page_turn';
   static const _keyReaderPageRTL = 'reader_page_rtl';
   static const _keyReaderPageVertical = 'reader_page_vertical';
   static const _keyReaderDimming = 'reader_dimming';
@@ -181,6 +182,7 @@ class UserManager extends ChangeNotifier {
   int _readerScrollDirection = 2;
   double _readerImageGap = 0.0;
   bool _readerVolumeKey = true;
+  bool _readerInstantPageTurn = false;
   bool _readerPageRTL = false;
   bool _readerPageVertical = false;
   double _readerDimming = 0.3;
@@ -266,6 +268,7 @@ class UserManager extends ChangeNotifier {
   int get readerScrollDirection => _readerScrollDirection;
   double get readerImageGap => _readerImageGap;
   bool get readerVolumeKey => _readerVolumeKey;
+  bool get readerInstantPageTurn => _readerInstantPageTurn;
   bool get readerPageRTL => _readerPageRTL;
   bool get readerPageVertical => _readerPageVertical;
   double get readerDimming => _readerDimming;
@@ -445,6 +448,8 @@ class UserManager extends ChangeNotifier {
     _readerScrollDirection = prefs.getInt(_keyReaderScrollDirection) ?? 2;
     _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
     _readerVolumeKey = prefs.getBool(_keyReaderVolumeKey) ?? true;
+    _readerInstantPageTurn =
+        prefs.getBool(_keyReaderInstantPageTurn) ?? false;
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
     _readerPageVertical = prefs.getBool(_keyReaderPageVertical) ?? false;
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
@@ -800,6 +805,13 @@ class UserManager extends ChangeNotifier {
     _readerVolumeKey = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyReaderVolumeKey, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setReaderInstantPageTurn(bool enabled) async {
+    _readerInstantPageTurn = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyReaderInstantPageTurn, enabled);
     notifyListeners();
   }
 

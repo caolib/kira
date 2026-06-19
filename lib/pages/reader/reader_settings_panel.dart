@@ -238,7 +238,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                         ],
                       ),
                       Slider(
-                        value: _user.readerAutoScrollResumeDelay.clamp(1.0, 5.0),
+                        value: _user.readerAutoScrollResumeDelay.clamp(
+                          1.0,
+                          5.0,
+                        ),
                         min: 1,
                         max: 5,
                         divisions: 8,
@@ -262,6 +265,16 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     value: _user.readerVolumeKey,
                     onChanged: (v) {
                       _user.setReaderVolumeKey(v);
+                      setState(() {});
+                      widget.onChanged();
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('无动画翻页'),
+                    value: _user.readerInstantPageTurn,
+                    onChanged: (v) {
+                      _user.setReaderInstantPageTurn(v);
                       setState(() {});
                       widget.onChanged();
                     },
