@@ -188,6 +188,32 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   if (_user.readerAutoScrollEnabled) ...[
                     Row(
                       children: [
+                        const Icon(Icons.unfold_more, size: 18),
+                        const SizedBox(width: 8),
+                        Text('滚动幅度', style: tt.bodyMedium),
+                        const Spacer(),
+                        Text(
+                          '${(_user.readerAutoScrollDistance * 100).round()}%',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _user.readerAutoScrollDistance,
+                      min: 0.2,
+                      max: 1.0,
+                      divisions: 16,
+                      label:
+                          '${(_user.readerAutoScrollDistance * 100).round()}%',
+                      onChanged: (v) {
+                        _user.setReaderAutoScrollDistance(v);
+                        setState(() {});
+                      },
+                    ),
+                    Row(
+                      children: [
                         const Icon(Icons.pause_circle_outline, size: 18),
                         const SizedBox(width: 8),
                         Text('停顿时长', style: tt.bodyMedium),
@@ -202,9 +228,9 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     ),
                     Slider(
                       value: _user.readerAutoScrollPause,
-                      min: 1,
+                      min: 0.5,
                       max: 8,
-                      divisions: 14,
+                      divisions: 15,
                       label:
                           '${_user.readerAutoScrollPause.toStringAsFixed(1)} 秒',
                       onChanged: (v) {

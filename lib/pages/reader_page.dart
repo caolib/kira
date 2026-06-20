@@ -575,8 +575,6 @@ class _ReaderPageState extends State<ReaderPage> {
 
   // 每段滚动时长：配合 easeOutCubic 实现"快速上滑后缓缓停稳"的手感。
   static const _autoScrollSegmentDuration = Duration(milliseconds: 700);
-  // 每段滚动距离 = 视口高度 × 该系数，保证停在一个可整屏阅读的画面区域。
-  static const _autoScrollSegmentFactor = 0.8;
 
   /// 主开关：仅由顶部按钮调用。关闭时取消恢复计时器。
   void _setAutoScroll(bool enabled) {
@@ -703,10 +701,13 @@ class _ReaderPageState extends State<ReaderPage> {
     // 用 easeOutCubic 让画面快速启动、缓缓停稳，避免匀速移动带来的眼部追踪疲劳。
     // gen 用于丢弃章节切换等在途的旧回调，避免重启后多条滚动链并行。
     final gen = _autoScrollGeneration;
-    final viewportHeight = MediaQuery.sizeOf(context).height;
+    // 水平滚动模式按视口宽度计算幅度，竖向按高度，避免左右滚动时单段距离不合理。
+    final viewportSize = _isHorizontalScrollMode
+        ? MediaQuery.sizeOf(context).width
+        : MediaQuery.sizeOf(context).height;
     _scrollOffsetController
         .animateScroll(
-          offset: (viewportHeight * _autoScrollSegmentFactor)
+          offset: (viewportSize * _user.readerAutoScrollDistance)
               .clamp(80.0, 4000.0),
           duration: _autoScrollSegmentDuration,
           curve: Curves.easeOutCubic,
@@ -810,6 +811,8 @@ class _ReaderPageState extends State<ReaderPage> {
     final detail = _detail;
     if (detail == null || index < 0 || index >= detail.contents.length) return;
 
+    // 打开图片查看器期间暂停自动滚动，与设置面板/评论面板保持一致
+    _pauseAutoScrollForOverlay();
     await Navigator.of(context).push(
       PageRouteBuilder<void>(
         opaque: true,
@@ -823,6 +826,7 @@ class _ReaderPageState extends State<ReaderPage> {
       ),
     );
     if (!mounted) return;
+    _resumeAutoScrollAfterOverlay();
     if (_showToolbar) {
       SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.manual,

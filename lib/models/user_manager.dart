@@ -116,6 +116,7 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderAutoScrollResume = 'reader_auto_scroll_resume';
   static const _keyReaderAutoScrollResumeDelay =
       'reader_auto_scroll_resume_delay';
+  static const _keyReaderAutoScrollDistance = 'reader_auto_scroll_distance';
   static const _keyImageViewerAutoRotateLandscape =
       'image_viewer_auto_rotate_landscape';
   static const _keyImageViewerLandscapeRotation =
@@ -190,6 +191,7 @@ class UserManager extends ChangeNotifier {
   double _readerAutoScrollPause = 3.0;
   bool _readerAutoScrollResume = false;
   double _readerAutoScrollResumeDelay = 2.0;
+  double _readerAutoScrollDistance = 0.8;
   bool _imageViewerAutoRotateLandscape = false;
   int _imageViewerLandscapeRotation = 1;
   int _imageLoadTimeout = 15; // 秒
@@ -276,6 +278,7 @@ class UserManager extends ChangeNotifier {
   double get readerAutoScrollPause => _readerAutoScrollPause;
   bool get readerAutoScrollResume => _readerAutoScrollResume;
   double get readerAutoScrollResumeDelay => _readerAutoScrollResumeDelay;
+  double get readerAutoScrollDistance => _readerAutoScrollDistance;
   bool get imageViewerAutoRotateLandscape => _imageViewerAutoRotateLandscape;
   int get imageViewerLandscapeRotation => _imageViewerLandscapeRotation;
   int get imageLoadTimeout => _imageLoadTimeout;
@@ -456,12 +459,14 @@ class UserManager extends ChangeNotifier {
     _readerAutoScrollEnabled =
         prefs.getBool(_keyReaderAutoScrollEnabled) ?? false;
     _readerAutoScrollPause =
-        (prefs.getDouble(_keyReaderAutoScrollPause) ?? 3.0).clamp(1.0, 8.0);
+        (prefs.getDouble(_keyReaderAutoScrollPause) ?? 3.0).clamp(0.5, 8.0);
     _readerAutoScrollResume =
         prefs.getBool(_keyReaderAutoScrollResume) ?? false;
     _readerAutoScrollResumeDelay =
         (prefs.getDouble(_keyReaderAutoScrollResumeDelay) ?? 2.0)
             .clamp(1.0, 5.0);
+    _readerAutoScrollDistance =
+        (prefs.getDouble(_keyReaderAutoScrollDistance) ?? 0.8).clamp(0.2, 1.0);
     _imageViewerAutoRotateLandscape =
         prefs.getBool(_keyImageViewerAutoRotateLandscape) ?? false;
     final savedImageViewerLandscapeRotation =
@@ -861,6 +866,13 @@ class UserManager extends ChangeNotifier {
     _readerAutoScrollResumeDelay = seconds;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_keyReaderAutoScrollResumeDelay, seconds);
+    notifyListeners();
+  }
+
+  Future<void> setReaderAutoScrollDistance(double factor) async {
+    _readerAutoScrollDistance = factor;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyReaderAutoScrollDistance, factor);
     notifyListeners();
   }
 
