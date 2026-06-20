@@ -10,6 +10,10 @@ on:
         description: "构建说明 (可选)"
         required: false
         default: ""
+  push:
+    branches: [main]
+    paths:
+      - 'pubspec.yaml'
 
 env:
   FLUTTER_VERSION: "3.44.0"
