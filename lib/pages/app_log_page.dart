@@ -514,7 +514,7 @@ class _FilterItem extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 18),
         const SizedBox(width: 8),
-        Text(label),
+        Text(label, style: TextStyle(color: color)),
       ],
     );
   }
@@ -570,6 +570,13 @@ class _LogEntryCardState extends State<_LogEntryCard> {
           entry.message,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color:
+                (entry.level == AppLogLevel.warning ||
+                        entry.level == AppLogLevel.error)
+                ? _levelColor(cs, entry.level)
+                : null,
+          ),
         ),
         subtitle: Text(
           '${_formatLogTime(entry.timestamp)} · ${entry.level.displayName} · ${entry.source}',
@@ -661,7 +668,7 @@ Color _levelColor(ColorScheme cs, AppLogLevel level) {
   return switch (level) {
     AppLogLevel.debug => cs.onSurfaceVariant,
     AppLogLevel.info => cs.primary,
-    AppLogLevel.warning => cs.tertiary,
+    AppLogLevel.warning => Colors.amber.shade700,
     AppLogLevel.error => cs.error,
   };
 }

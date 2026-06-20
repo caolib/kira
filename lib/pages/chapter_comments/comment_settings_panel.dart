@@ -249,11 +249,10 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
       _commentFontScale,
     ).clamp(minFontSizePx, maxFontSizePx);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    return Material(
+      color: cs.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(

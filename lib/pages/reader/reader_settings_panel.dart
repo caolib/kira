@@ -66,11 +66,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 200),
       opacity: _isDraggingBrightness ? 0 : 1.0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
+      child: Material(
+        color: cs.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        clipBehavior: Clip.antiAlias,
         child: SafeArea(
           top: false,
           child: SingleChildScrollView(

@@ -1832,36 +1832,79 @@ class _AboutPageState extends State<AboutPage> {
                       ),
                     ),
                     const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.feedback_outlined),
-                      title: const Text('反馈'),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () async {
-                        await launchUrl(
-                          Uri.parse('https://github.com/caolib/kira/issues/new/choose'),
-                          mode: LaunchMode.externalApplication,
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: SvgPicture.asset(
-                        'assets/github.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          cs.onSurfaceVariant,
-                          BlendMode.srcIn,
-                        ),
+                    IntrinsicHeight(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _LinkAction(
+                              icon: SvgPicture.asset(
+                                'assets/github.svg',
+                                width: 24,
+                                height: 24,
+                                colorFilter: ColorFilter.mode(
+                                  cs.onSurfaceVariant,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              label: '仓库',
+                              onTap: () async {
+                                await launchUrl(
+                                  Uri.parse(_repoUrl),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              },
+                            ),
+                          ),
+                          const VerticalDivider(width: 1),
+                          Expanded(
+                            child: _LinkAction(
+                              icon: const Icon(Icons.feedback_outlined),
+                              label: '反馈',
+                              onTap: () async {
+                                await launchUrl(
+                                  Uri.parse('https://github.com/caolib/kira/issues/new/choose'),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              },
+                            ),
+                          ),
+                          const VerticalDivider(width: 1),
+                          Expanded(
+                            child: _LinkAction(
+                              icon: ClipOval(
+                                child: CachedNetworkImage(
+                                  imageUrl: 'https://github.com/caolib.png',
+                                  width: 24,
+                                  height: 24,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, _) => Container(
+                                    width: 24,
+                                    height: 24,
+                                    color: cs.surfaceContainerHighest,
+                                  ),
+                                  errorWidget: (_, _, _) => Container(
+                                    width: 24,
+                                    height: 24,
+                                    color: cs.surfaceContainerHighest,
+                                    child: Icon(
+                                      Icons.person_outline_rounded,
+                                      size: 18,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              label: '作者',
+                              onTap: () async {
+                                await launchUrl(
+                                  Uri.parse('https://github.com/caolib'),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      title: const Text('源代码'),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () async {
-                        await launchUrl(
-                          Uri.parse(_repoUrl),
-                          mode: LaunchMode.externalApplication,
-                        );
-                      },
                     ),
                   ],
                 ),
@@ -1869,6 +1912,36 @@ class _AboutPageState extends State<AboutPage> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _LinkAction extends StatelessWidget {
+  const _LinkAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final Widget icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            icon,
+            const SizedBox(width: 12),
+            Text(label, style: tt.bodyLarge),
+          ],
+        ),
       ),
     );
   }

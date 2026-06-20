@@ -43,6 +43,9 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
   String _rankDateType = 'day';
   String _rankAudienceType = 'male';
 
+  final _scrollController = ScrollController();
+  bool _showBackToTop = false;
+
   String get _title {
     switch (widget.kind) {
       case CopyMangaListKind.recommendations:
@@ -73,6 +76,21 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _scrollToTop() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Future<({List<Comic> list, int total})> _fetch(int offset) {
@@ -178,61 +196,83 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text(_title)),
-      body: _loading
-          ? GridView.builder(
-              padding: EdgeInsets.symmetric(horizontal: hp, vertical: 12),
-              itemCount: _pageSize,
-              gridDelegate: gridDelegate,
-              itemBuilder: (_, _) => const ComicCardSkeleton(),
+      floatingActionButton: _showBackToTop
+          ? FloatingActionButton.small(
+              heroTag: 'copy_list_back_to_top_${widget.kind.name}',
+              onPressed: _scrollToTop,
+              tooltip: '回到顶部',
+              child: const Icon(Icons.arrow_upward_rounded),
             )
-          : _error != null && _comics.isEmpty
-          ? _CopyListError(onRetry: _load)
-          : NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                if (notification.metrics.axis == Axis.vertical &&
-                    notification.metrics.extentAfter < 300) {
-                  _loadMore();
-                }
-                return false;
-              },
-              child: CustomScrollView(
-                slivers: [
-                  if (widget.kind == CopyMangaListKind.ranking)
-                    SliverToBoxAdapter(
-                      child: _CopyRankControls(
-                        hp: hp,
-                        dateType: _rankDateType,
-                        audienceType: _rankAudienceType,
-                        onDateTypeChanged: _setRankDateType,
-                        onAudienceTypeChanged: _setRankAudienceType,
-                      ),
-                    ),
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
-                    sliver: SliverGrid(
-                      gridDelegate: gridDelegate,
-                      delegate: SliverChildBuilderDelegate((_, i) {
-                        if (i >= _comics.length) {
-                          return const ComicCardSkeleton();
-                        }
-                        final comic = _comics[i];
-                        final heroTagBase = ComicHeroTags.base(
-                          scope: _scope,
-                          pathWord: comic.pathWord,
-                          index: i,
-                        );
-                        return _CopyListComicCard(
-                          comic: comic,
-                          heroTagBase: heroTagBase,
-                          onTap: () => _openComic(comic, heroTagBase),
-                        );
-                      }, childCount: _comics.length + (_loadingMore ? 6 : 0)),
-                    ),
-                  ),
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
-                ],
+          : null,
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.axis != Axis.vertical) return false;
+          final shouldShow = notification.metrics.pixels > 400;
+          if (shouldShow != _showBackToTop) {
+            setState(() => _showBackToTop = shouldShow);
+          }
+          if (notification.metrics.extentAfter < 300) {
+            _loadMore();
+          }
+          return false;
+        },
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            if (widget.kind == CopyMangaListKind.ranking)
+              SliverToBoxAdapter(
+                child: _CopyRankControls(
+                  hp: hp,
+                  dateType: _rankDateType,
+                  audienceType: _rankAudienceType,
+                  onDateTypeChanged: _setRankDateType,
+                  onAudienceTypeChanged: _setRankAudienceType,
+                ),
               ),
-            ),
+            if (_loading)
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
+                sliver: SliverGrid(
+                  gridDelegate: gridDelegate,
+                  delegate: SliverChildBuilderDelegate(
+                    (_, _) => const ComicCardSkeleton(),
+                    childCount: _pageSize,
+                  ),
+                ),
+              )
+            else if (_error != null && _comics.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _CopyListError(onRetry: _load),
+              )
+            else ...[
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
+                sliver: SliverGrid(
+                  gridDelegate: gridDelegate,
+                  delegate: SliverChildBuilderDelegate((_, i) {
+                    if (i >= _comics.length) {
+                      return const ComicCardSkeleton();
+                    }
+                    final comic = _comics[i];
+                    final heroTagBase = ComicHeroTags.base(
+                      scope: _scope,
+                      pathWord: comic.pathWord,
+                      index: i,
+                    );
+                    return _CopyListComicCard(
+                      comic: comic,
+                      heroTagBase: heroTagBase,
+                      onTap: () => _openComic(comic, heroTagBase),
+                    );
+                  }, childCount: _comics.length + (_loadingMore ? 6 : 0)),
+                ),
+              ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

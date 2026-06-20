@@ -51,6 +51,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   _BookshelfType _type = _BookshelfType.comic;
   late String _ordering = _user.bookshelfOrdering;
   bool _showUpdateOnly = false;
+  bool _showBackToTop = false;
 
   static const _cacheTtl = Duration(minutes: 30);
   static const _comicCacheKey = 'bookshelf_comic';
@@ -86,6 +87,15 @@ class _BookshelfPageState extends State<BookshelfPage> {
     _scrollController.dispose();
     _user.removeListener(_onUserChanged);
     super.dispose();
+  }
+
+  Future<void> _scrollToTop() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _onUserChanged() {
@@ -556,13 +566,27 @@ class _BookshelfPageState extends State<BookshelfPage> {
     final hp = (screenWidth - contentWidth) / 2 + 16;
 
     return Scaffold(
+      floatingActionButton: _showBackToTop
+          ? FloatingActionButton.small(
+              heroTag: 'bookshelf_back_to_top',
+              onPressed: _scrollToTop,
+              tooltip: '回到顶部',
+              child: const Icon(Icons.arrow_upward_rounded),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: () => _load(force: true),
         child: NotificationListener<ScrollNotification>(
           onNotification: (n) {
-            if (!_loading &&
-                n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
-              _loadMore();
+            if (n.metrics.axis == Axis.vertical) {
+              final shouldShow = n.metrics.pixels > 400;
+              if (shouldShow != _showBackToTop) {
+                setState(() => _showBackToTop = shouldShow);
+              }
+              if (!_loading &&
+                  n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
+                _loadMore();
+              }
             }
             return false;
           },
