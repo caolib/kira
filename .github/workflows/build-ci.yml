@@ -1,0 +1,108 @@
+name: Build CI APK
+
+# 仅构建 APK 并上传为 Actions 产物，不创建 Release。
+# 用于在不发布版本时让其他人从 Actions 产物中下载安装包。
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: "构建说明 (可选)"
+        required: false
+        default: ""
+
+env:
+  FLUTTER_VERSION: "3.44.0"
+
+jobs:
+  build-android:
+    name: Build Android CI APK (arm64-v8a)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+
+      - name: Restore Android signing files
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+
+          cat > android/key.properties <<EOF
+          storeFile=../upload-keystore.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+
+      - name: Validate Android signing key
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          test -s android/upload-keystore.jks
+          test -s android/key.properties
+
+          keytool -list -v \
+            -keystore android/upload-keystore.jks \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            > /dev/null
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK (arm64-v8a)
+        env:
+          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
+          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
+        run: >
+          flutter build apk --release --target-platform android-arm64
+          --dart-define=DANDANPLAY_APP_ID="${DANDANPLAY_APP_ID}"
+          --dart-define=DANDANPLAY_APP_SECRET="${DANDANPLAY_APP_SECRET}"
+
+      - name: Rename APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse --short HEAD)
+          cd build/app/outputs/flutter-apk
+          mv app-release.apk "kira-ci-${SHA}-arm64-v8a.apk"
+          ls -lh kira-*.apk
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: kira-ci-apk
+          path: build/app/outputs/flutter-apk/kira-*.apk
+          retention-days: 30
+          if-no-files-found: error
