@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../api/api_client.dart';
 import '../api/ai_api.dart';
 import '../models/chapter.dart';
@@ -583,7 +584,12 @@ class _ReaderPageState extends State<ReaderPage> {
     _autoScrollActive = enabled;
     _autoScrollGeneration++;
     _cancelAutoScrollResumeTimer();
-    if (enabled) _continueAutoScroll();
+    if (enabled) {
+      _continueAutoScroll();
+      WakelockPlus.enable();
+    } else {
+      WakelockPlus.disable();
+    }
     if (mounted) setState(() {});
   }
 
