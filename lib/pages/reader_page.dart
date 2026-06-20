@@ -82,7 +82,8 @@ class _ReaderPageState extends State<ReaderPage> {
   Timer? _autoScrollResumeTimer;
   // 每次重启/打断滚动时自增，用于丢弃在途的旧滚动回调，避免章节切换后多条链并行。
   int _autoScrollGeneration = 0;
-  bool _settingsPanelOpen = false;
+  // 覆盖层（设置面板/评论面板）打开期间暂停自动滚动
+  bool _autoScrollPausedForOverlay = false;
   PageController _pageController = PageController();
   ChapterDetail? _detail;
   bool _loading = true;
@@ -553,9 +554,8 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   void _showSettingsPanel() {
-    // 打开设置面板期间取消自动恢复计时器，避免调整设置时滚动自动恢复
-    _cancelAutoScrollResumeTimer();
-    setState(() => _settingsPanelOpen = true);
+    // 打开设置面板期间暂停自动滚动，避免调整设置时画面继续滚动
+    _pauseAutoScrollForOverlay();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -567,13 +567,7 @@ class _ReaderPageState extends State<ReaderPage> {
       builder: (_) => _ReaderSettingsPanel(onChanged: _onSettingsChanged),
     ).whenComplete(() {
       if (!mounted) return;
-      setState(() => _settingsPanelOpen = false);
-      // 关闭后若仍处于临时暂停且开启了自动恢复，重新开始恢复倒计时
-      if (_autoScrollEnabled &&
-          !_autoScrollActive &&
-          _user.readerAutoScrollResume) {
-        _scheduleAutoScrollResume();
-      }
+      _resumeAutoScrollAfterOverlay();
     });
   }
 
@@ -635,7 +629,7 @@ class _ReaderPageState extends State<ReaderPage> {
             !_autoScrollEnabled ||
             _isPageMode ||
             _detail == null ||
-            _settingsPanelOpen) {
+            _autoScrollPausedForOverlay) {
           return;
         }
         _autoScrollActive = true;
@@ -648,6 +642,29 @@ class _ReaderPageState extends State<ReaderPage> {
   void _cancelAutoScrollResumeTimer() {
     _autoScrollResumeTimer?.cancel();
     _autoScrollResumeTimer = null;
+  }
+
+  /// 打开覆盖层（设置面板、评论面板）时暂停自动滚动：
+  /// 废弃在途的滚动回调并标记为非活跃，避免覆盖层打开期间画面继续滚动或自动恢复。
+  void _pauseAutoScrollForOverlay() {
+    _autoScrollGeneration++;
+    _autoScrollPausedForOverlay = true;
+    _autoScrollActive = false;
+    _cancelAutoScrollResumeTimer();
+    if (mounted) setState(() {});
+  }
+
+  /// 覆盖层关闭后按设置恢复自动滚动。仅当自动滚动仍开启时生效。
+  void _resumeAutoScrollAfterOverlay() {
+    _autoScrollPausedForOverlay = false;
+    if (!_autoScrollEnabled || _isPageMode || _detail == null) return;
+    if (_user.readerAutoScrollResume) {
+      _scheduleAutoScrollResume();
+    } else {
+      _autoScrollActive = true;
+      _restartAutoScroll();
+      if (mounted) setState(() {});
+    }
   }
 
   /// 废弃在途的滚动回调并立即重新开始一段。用于章节切换、设置变更、自动恢复等重启点。
@@ -1353,6 +1370,8 @@ class _ReaderPageState extends State<ReaderPage> {
     final detail = _detail;
     if (detail == null) return;
 
+    // 打开评论面板期间暂停自动滚动，与设置面板保持一致
+    _pauseAutoScrollForOverlay();
     final useCachedComments = _hasCommentCacheFor(detail.uuid);
     final initialComments = detail.isDownloaded
         ? detail.comments
@@ -1393,9 +1412,12 @@ class _ReaderPageState extends State<ReaderPage> {
       ),
     );
 
-    if (action == 'back_to_catalog' && mounted) {
-      Navigator.of(context).maybePop();
+    if (action == 'back_to_catalog') {
+      // 返回目录会退出阅读页，无需恢复自动滚动
+      if (mounted) Navigator.of(context).maybePop();
+      return;
     }
+    if (mounted) _resumeAutoScrollAfterOverlay();
   }
 
   // ── 翻页模式 ──
