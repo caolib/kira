@@ -125,7 +125,8 @@ class _ReaderPageState extends State<ReaderPage> {
   String? _cachedCommentChapterUuid;
 
   bool get _isPageMode => _user.readerMode == 1;
-  bool get _isVerticalPageMode => _isPageMode && _user.readerScrollDirection == 2;
+  bool get _isVerticalPageMode =>
+      _isPageMode && _user.readerScrollDirection == 2;
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
   bool get _isHorizontalScrollMode =>
       !_isPageMode && _user.readerScrollDirection != 2;
@@ -626,7 +627,9 @@ class _ReaderPageState extends State<ReaderPage> {
   void _scheduleAutoScrollResume() {
     _cancelAutoScrollResumeTimer();
     _autoScrollResumeTimer = Timer(
-      Duration(milliseconds: (_user.readerAutoScrollResumeDelay * 1000).round()),
+      Duration(
+        milliseconds: (_user.readerAutoScrollResumeDelay * 1000).round(),
+      ),
       () {
         _autoScrollResumeTimer = null;
         if (!mounted ||
@@ -713,8 +716,10 @@ class _ReaderPageState extends State<ReaderPage> {
         : MediaQuery.sizeOf(context).height;
     _scrollOffsetController
         .animateScroll(
-          offset: (viewportSize * _user.readerAutoScrollDistance)
-              .clamp(80.0, 4000.0),
+          offset: (viewportSize * _user.readerAutoScrollDistance).clamp(
+            80.0,
+            4000.0,
+          ),
           duration: _autoScrollSegmentDuration,
           curve: Curves.easeOutCubic,
         )
@@ -1160,9 +1165,7 @@ class _ReaderPageState extends State<ReaderPage> {
             if (n is ScrollUpdateNotification &&
                 _showToolbar &&
                 (n.scrollDelta ?? 0).abs() > 0) {
-              SystemChrome.setEnabledSystemUIMode(
-                SystemUiMode.immersiveSticky,
-              );
+              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
               setState(() => _showToolbar = false);
             }
             if (_shouldAutoAdvanceScrollChapter(n)) {
@@ -1202,10 +1205,7 @@ class _ReaderPageState extends State<ReaderPage> {
               if (imageIndex < imageCount) {
                 final image = _buildReaderImageGesture(imageIndex);
                 if (_isHorizontalScrollMode) {
-                  return SizedBox(
-                    height: viewportSize.height,
-                    child: image,
-                  );
+                  return SizedBox(height: viewportSize.height, child: image);
                 }
                 return image;
               }
@@ -1472,8 +1472,9 @@ class _ReaderPageState extends State<ReaderPage> {
 
   void _onInstantTurnDragUpdate(DragUpdateDetails details) {
     if (_instantTurnCommitted || _detail == null) return;
-    _instantTurnDragDelta +=
-        _isVerticalPageMode ? details.delta.dy : details.delta.dx;
+    _instantTurnDragDelta += _isVerticalPageMode
+        ? details.delta.dy
+        : details.delta.dx;
     final viewport = _isVerticalPageMode
         ? MediaQuery.sizeOf(context).height
         : MediaQuery.sizeOf(context).width;
@@ -1745,9 +1746,7 @@ class _ReaderPageState extends State<ReaderPage> {
                         if (!_isPageMode && _user.readerAutoScrollEnabled)
                           IconButton(
                             tooltip: _autoScrollEnabled
-                                ? (_autoScrollActive
-                                    ? '暂停自动滚动'
-                                    : '自动滚动即将恢复')
+                                ? (_autoScrollActive ? '暂停自动滚动' : '自动滚动即将恢复')
                                 : '开启自动滚动',
                             icon: Icon(
                               _autoScrollEnabled
@@ -1755,11 +1754,12 @@ class _ReaderPageState extends State<ReaderPage> {
                                   : Icons.play_circle_outline,
                               color: _autoScrollEnabled
                                   ? (_autoScrollActive
-                                      ? cs.primary
-                                      : cs.primary.withValues(alpha: 0.4))
+                                        ? cs.primary
+                                        : cs.primary.withValues(alpha: 0.4))
                                   : Colors.white,
                             ),
-                            onPressed: () => _setAutoScroll(!_autoScrollEnabled),
+                            onPressed: () =>
+                                _setAutoScroll(!_autoScrollEnabled),
                           ),
                         IconButton(
                           icon: Badge(
@@ -1818,19 +1818,23 @@ class _ReaderPageState extends State<ReaderPage> {
       value: _showToolbar
           ? SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness:
-                  isDark ? Brightness.light : Brightness.dark,
+              statusBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
               systemNavigationBarColor: Colors.black,
-              systemNavigationBarIconBrightness:
-                  isDark ? Brightness.light : Brightness.dark,
+              systemNavigationBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
             )
           : SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness:
-                  isDark ? Brightness.light : Brightness.dark,
+              statusBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
               systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarIconBrightness:
-                  isDark ? Brightness.light : Brightness.dark,
+              systemNavigationBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
             ),
       child: Scaffold(
         backgroundColor: Colors.black,

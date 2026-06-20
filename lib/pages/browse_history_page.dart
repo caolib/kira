@@ -8,6 +8,7 @@ import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/comic_hero_tags.dart';
+import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import 'anime_detail_page.dart';
 import 'comic_detail_page.dart';
@@ -423,18 +424,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
     return n.toString();
   }
-
-  static String formatRelativeTime(String dateStr) {
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '${diff.inHours}小时前';
-    if (diff.inDays < 30) return '${diff.inDays}天前';
-    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
-    return '${(diff.inDays / 365).floor()}年前';
-  }
 }
 
 class _ComicBrowseHistoryCard extends StatelessWidget {
@@ -483,9 +472,7 @@ class _ComicBrowseHistoryCard extends StatelessWidget {
         if (comic.datetimeUpdated != null)
           _HistoryMetaChip(
             icon: Icons.schedule,
-            label: _BrowseHistoryPageState.formatRelativeTime(
-              comic.datetimeUpdated!,
-            ),
+            label: TimeFormat.relativeOf(comic.datetimeUpdated!),
           ),
       ],
     );
@@ -544,9 +531,7 @@ class _AnimeBrowseHistoryCard extends StatelessWidget {
         if (anime.datetimeUpdated != null)
           _HistoryMetaChip(
             icon: Icons.schedule,
-            label: _BrowseHistoryPageState.formatRelativeTime(
-              anime.datetimeUpdated!,
-            ),
+            label: TimeFormat.relativeOf(anime.datetimeUpdated!),
           ),
       ],
     );

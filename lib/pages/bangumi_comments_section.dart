@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../api/dandanplay_api.dart';
 import '../models/user_manager.dart';
+import '../utils/time_format.dart';
 
 typedef BangumiCommentsLoader =
     Future<DandanplayBangumiCommentsPage> Function(
@@ -166,26 +167,6 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
     }
   }
 
-  String _formatRelativeTime(String raw) {
-    if (raw.isEmpty) return '';
-
-    final normalized = raw.replaceFirst(' ', 'T');
-    final parsed = DateTime.tryParse(normalized);
-    if (parsed == null) return raw;
-
-    final now = DateTime.now();
-    final localTime = parsed.isUtc ? parsed.toLocal() : parsed;
-    final diff = now.difference(localTime);
-
-    if (diff.isNegative) return '刚刚';
-    if (diff.inSeconds < 60) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '${diff.inHours}小时前';
-    if (diff.inDays < 30) return '${diff.inDays}天前';
-    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
-    return '${(diff.inDays / 365).floor()}年前';
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -231,7 +212,7 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
         for (var i = 0; i < _comments.length; i++) ...[
           _BangumiCommentCard(
             comment: _comments[i],
-            relativeTime: _formatRelativeTime(_comments[i].updatedTime),
+            relativeTime: TimeFormat.relativeOf(_comments[i].updatedTime),
           ),
           if (i != _comments.length - 1) const SizedBox(height: 10),
         ],

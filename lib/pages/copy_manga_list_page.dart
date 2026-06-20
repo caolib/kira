@@ -6,6 +6,7 @@ import '../models/comic.dart' hide Theme;
 import '../utils/comic_card_skeleton.dart';
 import '../utils/comic_hero_tags.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/time_format.dart';
 import 'comic_detail_page.dart';
 
 enum CopyMangaListKind { recommendations, ranking, newest, finished }
@@ -441,7 +442,7 @@ class _CopyListComicCard extends StatelessWidget {
               if (comic.datetimeUpdated != null) ...[
                 const SizedBox(width: 4),
                 Text(
-                  _formatRelativeTime(comic.datetimeUpdated!),
+                  TimeFormat.relativeOf(comic.datetimeUpdated!),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontSize: 10,
@@ -459,18 +460,6 @@ class _CopyListComicCard extends StatelessWidget {
     if (n >= 100000000) return '${(n / 100000000).toStringAsFixed(1)}亿';
     if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
     return n.toString();
-  }
-
-  static String _formatRelativeTime(String dateStr) {
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '${diff.inHours}小时前';
-    if (diff.inDays < 30) return '${diff.inDays}天前';
-    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
-    return '${(diff.inDays / 365).floor()}年前';
   }
 }
 

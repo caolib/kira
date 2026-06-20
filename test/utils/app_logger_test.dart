@@ -10,9 +10,7 @@ void main() {
   late Directory tempDir;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({
-      'app_logging_enabled': true,
-    });
+    SharedPreferences.setMockInitialValues({'app_logging_enabled': true});
     tempDir = await Directory.systemTemp.createTemp('kira_app_logger_test_');
   });
 

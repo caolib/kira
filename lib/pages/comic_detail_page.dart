@@ -8,6 +8,7 @@ import '../utils/comic_hero_tags.dart';
 import '../utils/data_cache.dart';
 import '../utils/download_manager.dart';
 import '../utils/reading_history.dart';
+import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import 'comic_comments_sheet.dart';
 import 'reader_page.dart';
@@ -1182,7 +1183,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                _formatRelativeTime(comic.datetimeUpdated!),
+                                TimeFormat.relativeOf(comic.datetimeUpdated!),
                                 style: tt.bodySmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                 ),
@@ -1376,23 +1377,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     if (n >= 100000000) return '${(n / 100000000).toStringAsFixed(1)}亿';
     if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
     return n.toString();
-  }
-
-  static String _formatRelativeTime(String raw) {
-    if (raw.isEmpty) return '';
-    final normalized = raw.replaceFirst(' ', 'T');
-    final parsed = DateTime.tryParse(normalized);
-    if (parsed == null) return raw;
-    final now = DateTime.now();
-    final localTime = parsed.isUtc ? parsed.toLocal() : parsed;
-    final diff = now.difference(localTime);
-    if (diff.isNegative) return '刚刚';
-    if (diff.inSeconds < 60) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '${diff.inHours}小时前';
-    if (diff.inDays < 30) return '${diff.inDays}天前';
-    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
-    return '${(diff.inDays / 365).floor()}年前';
   }
 }
 

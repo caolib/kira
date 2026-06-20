@@ -13,6 +13,7 @@ import '../utils/comic_hero_tags.dart';
 import '../utils/comic_card_skeleton.dart';
 import '../utils/data_cache.dart';
 import '../utils/reading_history.dart';
+import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import 'anime_detail_page.dart';
 import 'comic_detail_page.dart';
@@ -528,11 +529,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
         ? _comicCacheTime
         : _animeCacheTime;
     if (cacheTime == null) return '';
-    final diff = DateTime.now().difference(cacheTime);
-    if (diff.inMinutes < 1) return '刷新于 刚刚';
-    if (diff.inMinutes < 60) return '刷新于 ${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '刷新于 ${diff.inHours}小时前';
-    return '刷新于 ${diff.inDays}天前';
+    return '刷新于 ${TimeFormat.relative(cacheTime)}';
   }
 
   void _setType(_BookshelfType type) {

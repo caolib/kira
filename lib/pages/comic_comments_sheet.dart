@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/comic_comment.dart';
 import '../models/user_manager.dart';
+import '../utils/time_format.dart';
 
 class ComicCommentsSheet extends StatefulWidget {
   final String comicId;
@@ -209,26 +210,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         );
       });
     }
-  }
-
-  String _formatRelativeTime(String raw) {
-    if (raw.isEmpty) return '';
-
-    final normalized = raw.replaceFirst(' ', 'T');
-    final parsed = DateTime.tryParse(normalized);
-    if (parsed == null) return raw;
-
-    final now = DateTime.now();
-    final localTime = parsed.isUtc ? parsed.toLocal() : parsed;
-    final diff = now.difference(localTime);
-
-    if (diff.isNegative) return '刚刚';
-    if (diff.inSeconds < 60) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '${diff.inHours}小时前';
-    if (diff.inDays < 30) return '${diff.inDays}天前';
-    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
-    return '${(diff.inDays / 365).floor()}年前';
   }
 
   @override
@@ -444,7 +425,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               ),
               if (showCommentTime) ...[
                 const SizedBox(width: 8),
-                Text(_formatRelativeTime(comment.createAt), style: timeStyle),
+                Text(TimeFormat.relativeOf(comment.createAt), style: timeStyle),
               ],
             ],
           ),
@@ -690,7 +671,10 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                   ),
                   if (showCommentTime) ...[
                     const SizedBox(width: 8),
-                    Text(_formatRelativeTime(reply.createAt), style: timeStyle),
+                    Text(
+                      TimeFormat.relativeOf(reply.createAt),
+                      style: timeStyle,
+                    ),
                   ],
                 ],
               ),

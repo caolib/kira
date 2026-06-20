@@ -13,6 +13,7 @@ import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/network_error.dart';
+import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import 'chapter_comment_display.dart';
 
@@ -587,26 +588,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _summaryError = null;
       _spoilerIds = const {};
     });
-  }
-
-  String _formatRelativeTime(String raw) {
-    if (raw.isEmpty) return '';
-
-    final normalized = raw.replaceFirst(' ', 'T');
-    final parsed = DateTime.tryParse(normalized);
-    if (parsed == null) return raw;
-
-    final now = DateTime.now();
-    final localTime = parsed.isUtc ? parsed.toLocal() : parsed;
-    final diff = now.difference(localTime);
-
-    if (diff.isNegative) return '刚刚';
-    if (diff.inSeconds < 60) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '${diff.inHours}小时前';
-    if (diff.inDays < 30) return '${diff.inDays}天前';
-    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}个月前';
-    return '${(diff.inDays / 365).floor()}年前';
   }
 
   int _commentTextLength(String text) => text.trim().runes.length;
@@ -1437,7 +1418,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             final entry = entries[dataIndex];
             return _CommentCard(
               entry: entry,
-              relativeTime: _formatRelativeTime(entry.createAt),
+              relativeTime: TimeFormat.relativeOf(entry.createAt),
               compact: false,
               showAvatar: _showUserAvatar,
               showUserName: _showUserName,
@@ -1493,7 +1474,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                         width: row.items[i].width,
                         child: _CommentCard(
                           entry: row.items[i].entry,
-                          relativeTime: _formatRelativeTime(
+                          relativeTime: TimeFormat.relativeOf(
                             row.items[i].entry.createAt,
                           ),
                           compact: true,
@@ -2073,7 +2054,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
     if (_showCommentTime) {
       width += _measureTextWidth(
-        _formatRelativeTime(entry.createAt),
+        TimeFormat.relativeOf(entry.createAt),
         textTheme.labelSmall,
         textScaler,
         maxWidth,

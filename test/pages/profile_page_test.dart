@@ -65,9 +65,7 @@ void main() {
   });
 
   testWidgets('about page shows error log entry', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'app_logging_enabled': true,
-    });
+    SharedPreferences.setMockInitialValues({'app_logging_enabled': true});
     PackageInfo.setMockInitialValues(
       appName: 'Kira',
       packageName: 'com.example.kira',

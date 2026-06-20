@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/user_manager.dart';
 import 'app_dio.dart';
+import 'time_format.dart';
 import 'toast.dart';
 
 enum AssetPlatform {
@@ -57,18 +58,8 @@ class ReleaseAsset {
     return '$size B';
   }
 
-  /// 构建时间的相对描述（如"3 小时前"），超过 30 天回退为绝对日期。
-  String get createdLabel {
-    final diff = DateTime.now().difference(createdAt.toLocal());
-    if (diff.isNegative || diff.inSeconds < 60) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} 分钟前';
-    if (diff.inHours < 24) return '${diff.inHours} 小时前';
-    if (diff.inDays < 30) return '${diff.inDays} 天前';
-    final y = createdAt.year.toString();
-    final m = createdAt.month.toString().padLeft(2, '0');
-    final d = createdAt.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
+  /// 构建时间的相对描述（如"3 小时前"）。
+  String get createdLabel => TimeFormat.relative(createdAt);
 }
 
 class AppUpdateInfo {

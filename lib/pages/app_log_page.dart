@@ -573,7 +573,7 @@ class _LogEntryCardState extends State<_LogEntryCard> {
           style: TextStyle(
             color:
                 (entry.level == AppLogLevel.warning ||
-                        entry.level == AppLogLevel.error)
+                    entry.level == AppLogLevel.error)
                 ? _levelColor(cs, entry.level)
                 : null,
           ),

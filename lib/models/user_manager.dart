@@ -458,20 +458,21 @@ class UserManager extends ChangeNotifier {
     _readerScrollDirection = prefs.getInt(_keyReaderScrollDirection) ?? 2;
     _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
     _readerVolumeKey = prefs.getBool(_keyReaderVolumeKey) ?? true;
-    _readerInstantPageTurn =
-        prefs.getBool(_keyReaderInstantPageTurn) ?? false;
+    _readerInstantPageTurn = prefs.getBool(_keyReaderInstantPageTurn) ?? false;
     _readerPageRTL = prefs.getBool(_keyReaderPageRTL) ?? false;
     _readerPageVertical = prefs.getBool(_keyReaderPageVertical) ?? false;
     _readerDimming = prefs.getDouble(_keyReaderDimming) ?? 0.3;
     _readerAutoScrollEnabled =
         prefs.getBool(_keyReaderAutoScrollEnabled) ?? false;
-    _readerAutoScrollPause =
-        (prefs.getDouble(_keyReaderAutoScrollPause) ?? 3.0).clamp(0.5, 8.0);
+    _readerAutoScrollPause = (prefs.getDouble(_keyReaderAutoScrollPause) ?? 3.0)
+        .clamp(0.5, 8.0);
     _readerAutoScrollResume =
         prefs.getBool(_keyReaderAutoScrollResume) ?? false;
     _readerAutoScrollResumeDelay =
-        (prefs.getDouble(_keyReaderAutoScrollResumeDelay) ?? 2.0)
-            .clamp(1.0, 5.0);
+        (prefs.getDouble(_keyReaderAutoScrollResumeDelay) ?? 2.0).clamp(
+          1.0,
+          5.0,
+        );
     _readerAutoScrollDistance =
         (prefs.getDouble(_keyReaderAutoScrollDistance) ?? 0.8).clamp(0.2, 1.0);
     _imageViewerAutoRotateLandscape =
