@@ -31,6 +31,10 @@ class ReleaseAsset {
   final String mirrorUrl;
   final int size;
   final AssetPlatform platform;
+  final DateTime createdAt;
+  // 从文件名解析出的版本号 [major, minor, patch, build]，如 1.1.3+205 -> [1,1,3,205]。
+  // 无法解析时为空列表，排序时回退到构建时间。
+  final List<int> versionParts;
 
   const ReleaseAsset({
     required this.name,
@@ -38,6 +42,8 @@ class ReleaseAsset {
     required this.mirrorUrl,
     required this.size,
     required this.platform,
+    required this.createdAt,
+    this.versionParts = const [],
   });
 
   String get sizeLabel {
@@ -50,6 +56,19 @@ class ReleaseAsset {
     if (size >= kb) return '${(size / kb).toStringAsFixed(1)} KB';
     return '$size B';
   }
+
+  /// 构建时间的相对描述（如"3 小时前"），超过 30 天回退为绝对日期。
+  String get createdLabel {
+    final diff = DateTime.now().difference(createdAt.toLocal());
+    if (diff.isNegative || diff.inSeconds < 60) return '刚刚';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} 分钟前';
+    if (diff.inHours < 24) return '${diff.inHours} 小时前';
+    if (diff.inDays < 30) return '${diff.inDays} 天前';
+    final y = createdAt.year.toString();
+    final m = createdAt.month.toString().padLeft(2, '0');
+    final d = createdAt.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
 }
 
 class AppUpdateInfo {
@@ -59,6 +78,7 @@ class AppUpdateInfo {
   final String releaseNotes;
   final String releasePageUrl;
   final List<ReleaseAsset> assets;
+  final bool isBetaChannel;
 
   const AppUpdateInfo({
     required this.currentVersion,
@@ -67,12 +87,15 @@ class AppUpdateInfo {
     required this.releaseNotes,
     required this.releasePageUrl,
     required this.assets,
+    this.isBetaChannel = false,
   });
 }
 
 class AppUpdateService {
   static const _latestReleaseUrl =
       'https://api.github.com/repos/caolib/kira/releases/latest';
+  static const _ciReleaseUrl =
+      'https://api.github.com/repos/caolib/kira/releases/tags/CI';
   static final Dio _dio = AppDio.create(
     source: 'app_update',
     options: BaseOptions(
@@ -90,39 +113,45 @@ class AppUpdateService {
   }) async {
     final packageInfo = await PackageInfo.fromPlatform();
     final currentVersion = packageInfo.version;
-    final response = await _dio.get(_latestReleaseUrl);
+    final user = UserManager();
+    final isBeta = user.isBetaUpdateChannel;
+    final url = isBeta ? _ciReleaseUrl : _latestReleaseUrl;
+    final response = await _dio.get(url);
     final data = Map<String, dynamic>.from(response.data as Map);
+
     final tagName = data['tag_name']?.toString() ?? '';
+    final releaseName = data['name']?.toString().trim() ?? '';
+    final releaseNotes = data['body']?.toString().trim() ?? '';
+    final releasePageUrl = data['html_url']?.toString() ?? '';
+
+    final assets = _parseAssets(data['assets'] as List? ?? const []);
+    if (assets.isEmpty) return null;
+
+    final currentPlatform = _currentPlatform();
+
+    if (isBeta) {
+      return _buildBetaUpdateInfo(
+        user: user,
+        currentVersion: currentVersion,
+        currentBuildNumber: packageInfo.buildNumber,
+        tagName: tagName,
+        releaseName: releaseName,
+        releaseNotes: releaseNotes,
+        releasePageUrl: releasePageUrl,
+        assets: assets,
+        currentPlatform: currentPlatform,
+        autoCheck: respectSkippedVersion,
+      );
+    }
+
     final latestVersion = _normalizeVersion(tagName);
     if (latestVersion.isEmpty) return null;
     if (_compareVersions(latestVersion, currentVersion) <= 0) return null;
 
-    final user = UserManager();
     if (respectSkippedVersion && user.skippedUpdateVersion == latestVersion) {
       return null;
     }
 
-    final rawAssets = (data['assets'] as List?) ?? const [];
-    final assets = <ReleaseAsset>[];
-    for (final item in rawAssets) {
-      if (item is! Map) continue;
-      final asset = Map<String, dynamic>.from(item);
-      final name = asset['name']?.toString() ?? '';
-      final url = asset['browser_download_url']?.toString() ?? '';
-      if (name.isEmpty || url.isEmpty) continue;
-      assets.add(
-        ReleaseAsset(
-          name: name,
-          downloadUrl: url,
-          mirrorUrl: '${user.updateMirrorPrefix}$url',
-          size: (asset['size'] as num?)?.toInt() ?? 0,
-          platform: _detectPlatform(name),
-        ),
-      );
-    }
-    if (assets.isEmpty) return null;
-
-    final currentPlatform = _currentPlatform();
     assets.sort((a, b) {
       final aMatch = a.platform == currentPlatform ? 0 : 1;
       final bMatch = b.platform == currentPlatform ? 0 : 1;
@@ -133,11 +162,123 @@ class AppUpdateService {
     return AppUpdateInfo(
       currentVersion: currentVersion,
       latestVersion: latestVersion,
-      releaseName: data['name']?.toString() ?? '发现新版本',
-      releaseNotes: data['body']?.toString().trim() ?? '',
-      releasePageUrl: data['html_url']?.toString() ?? '',
+      releaseName: releaseName.isNotEmpty ? releaseName : '发现新版本',
+      releaseNotes: releaseNotes,
+      releasePageUrl: releasePageUrl,
       assets: assets,
     );
+  }
+
+  /// beta 渠道固定指向 CI tag，tag 不变。每次 CI 触发都会追加一个安装包，
+  /// 按内部版本号（如 1.1.3+205 中的 build 号）倒序排列，版本号无法解析时
+  /// 回退到构建时间。
+  /// 更新判断依据内部 build 号对比：当前 build 号 >= 最新 build 号则无更新。
+  /// 自动检查时（autoCheck=true）还在此基础上用最新构建名去重，避免重复弹窗。
+  static AppUpdateInfo? _buildBetaUpdateInfo({
+    required UserManager user,
+    required String currentVersion,
+    required String currentBuildNumber,
+    required String tagName,
+    required String releaseName,
+    required String releaseNotes,
+    required String releasePageUrl,
+    required List<ReleaseAsset> assets,
+    required AssetPlatform currentPlatform,
+    required bool autoCheck,
+  }) {
+    // 版本号最大的即最新构建，用于 build 号对比和自动检查去重。
+    final newest = _maxByVersion(assets);
+
+    // 按内部 build 号对比：当前 >= 最新则无更新（无需弹窗）。
+    if (newest.versionParts.isNotEmpty) {
+      final latestBuild = newest.versionParts.last;
+      final currentBuild = int.tryParse(currentBuildNumber) ?? 0;
+      if (currentBuild >= latestBuild) return null;
+    }
+
+    if (autoCheck && user.lastBetaAssetName == newest.name) {
+      return null;
+    }
+
+    assets.sort((a, b) {
+      final aMatch = a.platform == currentPlatform ? 0 : 1;
+      final bMatch = b.platform == currentPlatform ? 0 : 1;
+      if (aMatch != bMatch) return aMatch - bMatch;
+      return _compareByVersionDesc(a, b);
+    });
+
+    return AppUpdateInfo(
+      currentVersion: currentVersion,
+      latestVersion: tagName.isNotEmpty ? tagName : 'CI',
+      releaseName: releaseName.isNotEmpty ? releaseName : 'CI 构建版本',
+      releaseNotes: releaseNotes,
+      releasePageUrl: releasePageUrl,
+      assets: assets,
+      isBetaChannel: true,
+    );
+  }
+
+  /// 从文件名解析形如 `1.1.3+205` 的内部版本号，返回 [major, minor, patch, build]。
+  static List<int> _parseVersionFromName(String name) {
+    final match = RegExp(r'(\d+)\.(\d+)\.(\d+)\+(\d+)').firstMatch(name);
+    if (match == null) return const [];
+    return [
+      int.tryParse(match.group(1)!) ?? 0,
+      int.tryParse(match.group(2)!) ?? 0,
+      int.tryParse(match.group(3)!) ?? 0,
+      int.tryParse(match.group(4)!) ?? 0,
+    ];
+  }
+
+  /// 按内部版本号倒序比较；版本号无法解析时回退到构建时间倒序。
+  static int _compareByVersionDesc(ReleaseAsset a, ReleaseAsset b) {
+    if (a.versionParts.isEmpty && b.versionParts.isEmpty) {
+      return b.createdAt.compareTo(a.createdAt);
+    }
+    if (a.versionParts.isEmpty) return 1;
+    if (b.versionParts.isEmpty) return -1;
+    final length = a.versionParts.length > b.versionParts.length
+        ? a.versionParts.length
+        : b.versionParts.length;
+    for (var i = 0; i < length; i++) {
+      final av = i < a.versionParts.length ? a.versionParts[i] : 0;
+      final bv = i < b.versionParts.length ? b.versionParts[i] : 0;
+      if (av != bv) return bv.compareTo(av); // 倒序
+    }
+    return 0;
+  }
+
+  /// 取版本号最大（最新）的资产，回退到构建时间最新。
+  static ReleaseAsset _maxByVersion(List<ReleaseAsset> assets) {
+    return assets.reduce((a, b) => _compareByVersionDesc(a, b) <= 0 ? a : b);
+  }
+
+  static List<ReleaseAsset> _parseAssets(List rawAssets) {
+    final user = UserManager();
+    final assets = <ReleaseAsset>[];
+    for (final item in rawAssets) {
+      if (item is! Map) continue;
+      final asset = Map<String, dynamic>.from(item);
+      final name = asset['name']?.toString() ?? '';
+      final url = asset['browser_download_url']?.toString() ?? '';
+      if (name.isEmpty || url.isEmpty) continue;
+      final createdAtStr = asset['created_at']?.toString() ?? '';
+      final createdAt =
+          DateTime.tryParse(createdAtStr) ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+      assets.add(
+        ReleaseAsset(
+          name: name,
+          downloadUrl: url,
+          mirrorUrl: '${user.updateMirrorPrefix}$url',
+          size: (asset['size'] as num?)?.toInt() ?? 0,
+          platform: _detectPlatform(name),
+          versionParts: _parseVersionFromName(name),
+          createdAt: createdAt,
+        ),
+      );
+    }
+    return assets;
   }
 
   static Future<void> checkAndPrompt(
@@ -155,6 +296,12 @@ class AppUpdateService {
         return;
       }
 
+      // beta 渠道记录最新构建，自动检查时据此去重。
+      if (updateInfo.isBetaChannel && updateInfo.assets.isNotEmpty) {
+        await UserManager().setLastBetaAssetName(updateInfo.assets.first.name);
+      }
+
+      if (!context.mounted) return;
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => _UpdateDialog(updateInfo: updateInfo),
@@ -260,6 +407,7 @@ class _UpdateDialog extends StatefulWidget {
 
 class _UpdateDialogState extends State<_UpdateDialog> {
   bool _submitting = false;
+  bool _betaAssetsExpanded = false;
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
@@ -468,7 +616,17 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     return spans;
   }
 
-  Widget _buildAssetTile(ReleaseAsset asset, ColorScheme cs, TextTheme tt) {
+  Widget _buildAssetTile(
+    ReleaseAsset asset,
+    ColorScheme cs,
+    TextTheme tt, {
+    bool showCreated = false,
+    String? badge,
+  }) {
+    final subtitleParts = <String>[asset.platform.label];
+    if (asset.sizeLabel.isNotEmpty) subtitleParts.add(asset.sizeLabel);
+    if (showCreated) subtitleParts.add(asset.createdLabel);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
@@ -486,15 +644,45 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  asset.name,
-                  style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        asset.name,
+                        style: tt.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badge,
+                          style: tt.labelSmall?.copyWith(
+                            color: cs.onPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (asset.sizeLabel.isNotEmpty)
+                if (subtitleParts.isNotEmpty)
                   Text(
-                    '${asset.platform.label} · ${asset.sizeLabel}',
+                    subtitleParts.join(' · '),
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
               ],
@@ -523,12 +711,69 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     );
   }
 
+  /// beta 渠道：最新构建置顶并标注「最新」，其余构建默认折叠。
+  List<Widget> _buildBetaAssetWidgets(
+    List<ReleaseAsset> assets,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    final widgets = <Widget>[];
+    if (assets.isEmpty) return widgets;
+    widgets.add(
+      _buildAssetTile(assets.first, cs, tt, showCreated: true, badge: '最新'),
+    );
+    if (assets.length > 1) {
+      widgets.add(_buildBetaExpandToggle(cs, tt, assets.length - 1));
+      if (_betaAssetsExpanded) {
+        for (final asset in assets.skip(1)) {
+          widgets.add(_buildAssetTile(asset, cs, tt, showCreated: true));
+        }
+      }
+    }
+    return widgets;
+  }
+
+  Widget _buildBetaExpandToggle(ColorScheme cs, TextTheme tt, int count) {
+    return InkWell(
+      onTap: _submitting
+          ? null
+          : () => setState(() => _betaAssetsExpanded = !_betaAssetsExpanded),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _betaAssetsExpanded ? Icons.expand_less : Icons.expand_more,
+              size: 18,
+              color: cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              _betaAssetsExpanded ? '收起其他版本' : '查看更多版本 ($count)',
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final isBeta = widget.updateInfo.isBetaChannel;
     final notes = widget.updateInfo.releaseNotes.isEmpty
-        ? '暂无更新说明'
+        ? (isBeta ? 'CI 自动构建版本，不保证稳定性。' : '暂无更新说明')
         : widget.updateInfo.releaseNotes;
 
     return AlertDialog(
@@ -564,7 +809,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             Row(
               children: [
                 Text(
-                  '安装包',
+                  isBeta ? '安装包（按版本号倒序）' : '安装包',
                   style: tt.labelLarge?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -584,10 +829,12 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final asset in widget.updateInfo.assets)
-                      _buildAssetTile(asset, cs, tt),
-                  ],
+                  children: isBeta
+                      ? _buildBetaAssetWidgets(widget.updateInfo.assets, cs, tt)
+                      : [
+                          for (final asset in widget.updateInfo.assets)
+                            _buildAssetTile(asset, cs, tt),
+                        ],
                 ),
               ),
             ),
@@ -597,10 +844,11 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               runSpacing: 8,
               alignment: WrapAlignment.end,
               children: [
-                TextButton(
-                  onPressed: _submitting ? null : _skipVersion,
-                  child: const Text('跳过此版本'),
-                ),
+                if (!isBeta)
+                  TextButton(
+                    onPressed: _submitting ? null : _skipVersion,
+                    child: const Text('跳过此版本'),
+                  ),
                 TextButton(
                   onPressed: _submitting ? null : _disableAutoCheck,
                   child: const Text('取消自动检查更新'),

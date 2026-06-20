@@ -133,6 +133,8 @@ class UserManager extends ChangeNotifier {
   static const _keyAutoCheckUpdate = 'auto_check_update';
   static const _keySkippedUpdateVersion = 'skipped_update_version';
   static const _keyUpdateMirrorPrefix = 'update_mirror_prefix';
+  static const _keyUpdateChannel = 'update_channel'; // stable | beta
+  static const _keyLastBetaAssetName = 'last_beta_asset_name';
   static const _keyAutoLogin = 'auto_login';
   static const _keyDisclaimerAccepted = 'disclaimer_accepted';
   static const _keyLoginSource = 'login_source';
@@ -206,6 +208,8 @@ class UserManager extends ChangeNotifier {
   bool _autoCheckUpdate = true;
   String? _skippedUpdateVersion;
   String _updateMirrorPrefix = defaultUpdateMirrorPrefix;
+  String _updateChannel = 'stable'; // stable | beta
+  String? _lastBetaAssetName;
   bool _autoLogin = false;
   bool _disclaimerAccepted = false;
   String _loginSource = 'hotmanga';
@@ -293,6 +297,9 @@ class UserManager extends ChangeNotifier {
   bool get autoCheckUpdate => _autoCheckUpdate;
   String? get skippedUpdateVersion => _skippedUpdateVersion;
   String get updateMirrorPrefix => _updateMirrorPrefix;
+  String get updateChannel => _updateChannel;
+  bool get isBetaUpdateChannel => _updateChannel == 'beta';
+  String? get lastBetaAssetName => _lastBetaAssetName;
   bool get autoLogin => _autoLogin;
   bool get disclaimerAccepted => _disclaimerAccepted;
   String get loginSource => _loginSource;
@@ -488,6 +495,10 @@ class UserManager extends ChangeNotifier {
     _updateMirrorPrefix = normalizeUpdateMirrorPrefix(
       prefs.getString(_keyUpdateMirrorPrefix),
     );
+    _updateChannel = prefs.getString(_keyUpdateChannel) == 'beta'
+        ? 'beta'
+        : 'stable';
+    _lastBetaAssetName = prefs.getString(_keyLastBetaAssetName);
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
     _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
     _loginSource = prefs.getString(_keyLoginSource) ?? 'hotmanga';
@@ -981,6 +992,27 @@ class UserManager extends ChangeNotifier {
     _updateMirrorPrefix = normalized;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUpdateMirrorPrefix, normalized);
+    notifyListeners();
+  }
+
+  Future<void> setUpdateChannel(String value) async {
+    final next = value == 'beta' ? 'beta' : 'stable';
+    if (_updateChannel == next) return;
+    _updateChannel = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUpdateChannel, next);
+    notifyListeners();
+  }
+
+  Future<void> setLastBetaAssetName(String? name) async {
+    if (_lastBetaAssetName == name) return;
+    _lastBetaAssetName = name;
+    final prefs = await SharedPreferences.getInstance();
+    if (name == null || name.isEmpty) {
+      await prefs.remove(_keyLastBetaAssetName);
+    } else {
+      await prefs.setString(_keyLastBetaAssetName, name);
+    }
     notifyListeners();
   }
 

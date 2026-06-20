@@ -1736,6 +1736,120 @@ class _AboutPageState extends State<AboutPage> {
     }
   }
 
+  Widget _buildUpdateChannelChip(ColorScheme cs) {
+    final isBeta = _user.isBetaUpdateChannel;
+    final fg = isBeta ? cs.primary : cs.onSurfaceVariant;
+    return InkWell(
+      onTap: _showUpdateChannelDialog,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isBeta
+              ? cs.primary.withValues(alpha: 0.14)
+              : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isBeta ? cs.primary : cs.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isBeta ? Icons.science_outlined : Icons.flag_outlined,
+              size: 14,
+              color: fg,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isBeta ? 'Beta' : '稳定版',
+              style: TextStyle(
+                color: fg,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showUpdateChannelDialog() async {
+    var selected = _user.updateChannel;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const Text('更新渠道'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioGroup<String>(
+                    groupValue: selected,
+                    onChanged: (value) {
+                      if (value != null) setState(() => selected = value);
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RadioListTile<String>(
+                          contentPadding: EdgeInsets.zero,
+                          value: 'stable',
+                          title: const Text('稳定版 (Stable)'),
+                          subtitle: const Text('仅检查正式发布版本'),
+                        ),
+                        RadioListTile<String>(
+                          contentPadding: EdgeInsets.zero,
+                          value: 'beta',
+                          title: const Text('预览版（Beta）'),
+                          subtitle: const Text('从最新提交构建的版本，可能不稳定'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, selected),
+                  child: const Text('确定'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null && result != _user.updateChannel) {
+      await _user.setUpdateChannel(result);
+      if (!mounted) return;
+      if (result == 'beta') {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('已切换到预览版'),
+            content: const Text('预览版一般用于测试新功能或修复问题，可能存在更多问题。'),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('知道了'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showToast(context, '已切换到稳定版');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -1864,7 +1978,14 @@ class _AboutPageState extends State<AboutPage> {
                     ListTile(
                       leading: const Icon(Icons.system_update_alt),
                       title: const Text('检查更新'),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildUpdateChannelChip(cs),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
                       onTap: () => AppUpdateService.checkAndPrompt(context),
                     ),
                     Divider(
