@@ -1,7 +1,7 @@
 name: Build CI APK
 
-# 仅构建 APK 并上传为 Actions 产物，不创建 Release。
-# 用于在不发布版本时让其他人从 Actions 产物中下载安装包。
+# Actions 产物从网页下载时会被 GitHub 打包成 zip。
+# 因此这里同时上传到固定的 CI 预发布，把 APK 作为 Release asset 提供，方便手机直接下载。
 
 on:
   workflow_dispatch:
@@ -18,6 +18,8 @@ jobs:
   build-android:
     name: Build Android CI APK (arm64-v8a)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
 
@@ -94,9 +96,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SHA=$(git rev-parse --short HEAD)
+          APP_VERSION=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          test -n "$APP_VERSION"
+
           cd build/app/outputs/flutter-apk
-          mv app-release.apk "kira-ci-${SHA}-arm64-v8a.apk"
+          mv app-release.apk "kira-ci-${APP_VERSION}-run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}-arm64-v8a.apk"
           ls -lh kira-*.apk
 
       - name: Upload APK artifacts
@@ -106,3 +110,53 @@ jobs:
           path: build/app/outputs/flutter-apk/kira-*.apk
           retention-days: 30
           if-no-files-found: error
+
+      - name: Upload to CI pre-release for direct APK download
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTE: ${{ github.event.inputs.note }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          APP_VERSION=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          TAG="CI"
+          TITLE="CI APK"
+          APK=$(find build/app/outputs/flutter-apk -maxdepth 1 -name 'kira-*.apk' -print -quit)
+
+          test -n "$APP_VERSION"
+          test -n "$APK"
+
+          {
+            echo "集中 CI APK 测试包。"
+            echo
+            echo "最新上传版本: ${APP_VERSION}"
+            echo "Actions 运行: ${GITHUB_RUN_ID}, 第 ${GITHUB_RUN_ATTEMPT} 次尝试"
+            echo "提交: ${GITHUB_SHA}"
+            echo "工作流: ${RUN_URL}"
+            if [ -n "$NOTE" ]; then
+              echo
+              echo "$NOTE"
+            fi
+          } > release-notes.md
+
+          if gh release view "$TAG" --repo="$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="$TITLE" \
+              --notes-file release-notes.md \
+              --prerelease \
+              --latest=false
+
+            gh release upload "$TAG" "$APK" \
+              --repo="$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$APK" \
+              --repo="$GITHUB_REPOSITORY" \
+              --target="$GITHUB_SHA" \
+              --title="$TITLE" \
+              --notes-file release-notes.md \
+              --prerelease \
+              --latest=false
+          fi
