@@ -15,18 +15,21 @@ import 'appearance_page.dart';
 import 'browse_history_page.dart';
 import 'download_center_page.dart';
 import 'general_page.dart';
+import 'license_page.dart';
 import 'network_page.dart';
 import 'ai_config_page.dart';
 
 const _appDisclaimerItems = [
-  '本应用为非官方第三方客户端，仅基于第三方平台提供的接口或公开可访问资源进行内容展示与访问。',
-  '本应用不生产、上传、编辑、修改或预先审查具体展示内容，相关内容均来源于第三方返回结果，开发者无法对其进行完全控制。',
-  '本应用展示的内容中，可能包含成人内容或其他不适宜未成年人浏览的信息；如您未满 18 周岁，或您所在地法律法规禁止访问相关内容，请立即停止使用本应用。',
-  '用户应自行判断相关内容是否适合浏览，并确保其使用行为符合所在地法律法规。',
-  '如第三方内容存在侵权、违法、违规或其他不当情形，相关责任原则上由内容提供方承担；开发者将在收到有效通知后，根据实际情况采取必要处理措施。',
+  '本应用（以下简称"本软件"）系独立开发的非官方第三方客户端，与任何内容平台、出版商或权利人均无隶属、合作或代理关系。',
+  '本软件不生产、上传、存储、编辑、修改、推荐或预先审查任何具体内容。所有内容均来源于第三方平台公开接口或可访问资源，其合法性、准确性、完整性及合规性由相应内容提供方独立负责。',
+  '本软件所展示的内容可能包含成人向、暴力、恐怖或其他不适宜未成年人浏览的信息。您确认您已年满 18 周岁，且您所在地法律法规允许您访问此类内容。如您不符合前述条件，请立即停止使用并卸载本软件。',
+  '您应自行判断所浏览内容是否适合，并确保您的使用行为完全符合您所在地现行有效的法律法规。因您使用本软件而产生的一切法律后果由您自行承担。',
+  '如任何第三方内容涉嫌侵犯他人合法权益或违反法律法规，权利人可通过本软件提供的联系方式向开发者发送有效通知，开发者将在合理期限内核实并采取必要措施。',
+  '本软件按"现状"提供，开发者不对其功能性、可用性、准确性或可靠性作出任何明示或默示的保证。在任何情况下，开发者均不对因使用或无法使用本软件而产生的任何直接、间接、附带、特殊或后果性损害承担责任。',
 ];
 
-const _appDisclaimerFooter = '继续使用本应用，即表示您已阅读、理解并同意上述说明；如您不同意，请立即停止使用并卸载本应用。';
+const _appDisclaimerFooter =
+    '继续使用本软件，即表示您已仔细阅读、充分理解并同意接受上述全部条款的约束。如您不同意任一条款，请立即停止使用并卸载本软件。';
 
 List<BoxShadow> _profileCardShadow(ColorScheme cs) => [
   BoxShadow(
@@ -130,7 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.all(16),
               child: Text('切换账号', style: Theme.of(ctx).textTheme.titleMedium),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
             ...otherAccounts.map((cred) {
               final displayName = cred.nickname ?? cred.username;
               final showUsername =
@@ -1662,7 +1665,7 @@ class _AboutPageState extends State<AboutPage> {
           final tt = Theme.of(dialogContext).textTheme;
 
           return AlertDialog(
-            title: const Text('更新镜像源'),
+            title: const Text('设置镜像源'),
             content: Form(
               key: formKey,
               child: Column(
@@ -1768,6 +1771,94 @@ class _AboutPageState extends State<AboutPage> {
                 color: cs.surfaceContainerLow,
                 shadowColor: Colors.black.withValues(alpha: 0.20),
                 elevation: 8,
+                child: IntrinsicHeight(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _LinkAction(
+                          icon: SvgPicture.asset(
+                            'assets/github.svg',
+                            width: 24,
+                            height: 24,
+                            colorFilter: ColorFilter.mode(
+                              cs.onSurfaceVariant,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          label: '仓库',
+                          onTap: () async {
+                            await launchUrl(
+                              Uri.parse(_repoUrl),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                        ),
+                      ),
+                      VerticalDivider(
+                        width: 1,
+                        color: cs.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                      Expanded(
+                        child: _LinkAction(
+                          icon: const Icon(Icons.feedback_outlined),
+                          label: '反馈',
+                          onTap: () async {
+                            await launchUrl(
+                              Uri.parse(
+                                'https://github.com/caolib/kira/issues/new/choose',
+                              ),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                        ),
+                      ),
+                      VerticalDivider(
+                        width: 1,
+                        color: cs.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                      Expanded(
+                        child: _LinkAction(
+                          icon: ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: 'https://github.com/caolib.png',
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.cover,
+                              placeholder: (_, _) => Container(
+                                width: 24,
+                                height: 24,
+                                color: cs.surfaceContainerHighest,
+                              ),
+                              errorWidget: (_, _, _) => Container(
+                                width: 24,
+                                height: 24,
+                                color: cs.surfaceContainerHighest,
+                                child: Icon(
+                                  Icons.person_outline_rounded,
+                                  size: 18,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                          label: '作者',
+                          onTap: () async {
+                            await launchUrl(
+                              Uri.parse('https://github.com/caolib'),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                color: cs.surfaceContainerLow,
+                shadowColor: Colors.black.withValues(alpha: 0.20),
+                elevation: 8,
                 child: Column(
                   children: [
                     ListTile(
@@ -1776,15 +1867,23 @@ class _AboutPageState extends State<AboutPage> {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => AppUpdateService.checkAndPrompt(context),
                     ),
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
                     SwitchListTile(
                       secondary: const Icon(Icons.autorenew),
                       title: const Text('启动时检查更新'),
                       value: _user.autoCheckUpdate,
                       onChanged: _user.setAutoCheckUpdate,
                     ),
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
                     ListTile(
                       leading: const Icon(Icons.public),
-                      title: const Text('更新镜像源'),
+                      title: const Text('设置镜像源'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _editUpdateMirrorPrefix,
                     ),
@@ -1809,7 +1908,10 @@ class _AboutPageState extends State<AboutPage> {
                         ),
                       ),
                     ),
-                    const Divider(height: 1),
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
                     ListTile(
                       leading: const Icon(Icons.bug_report_outlined),
                       title: const Text('日志'),
@@ -1819,7 +1921,10 @@ class _AboutPageState extends State<AboutPage> {
                         MaterialPageRoute(builder: (_) => const AppLogPage()),
                       ),
                     ),
-                    const Divider(height: 1),
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
                     ListTile(
                       leading: const Icon(Icons.favorite_outline),
                       title: const Text('致谢'),
@@ -1831,79 +1936,19 @@ class _AboutPageState extends State<AboutPage> {
                         ),
                       ),
                     ),
-                    const Divider(height: 1),
-                    IntrinsicHeight(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _LinkAction(
-                              icon: SvgPicture.asset(
-                                'assets/github.svg',
-                                width: 24,
-                                height: 24,
-                                colorFilter: ColorFilter.mode(
-                                  cs.onSurfaceVariant,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              label: '仓库',
-                              onTap: () async {
-                                await launchUrl(
-                                  Uri.parse(_repoUrl),
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              },
-                            ),
-                          ),
-                          const VerticalDivider(width: 1),
-                          Expanded(
-                            child: _LinkAction(
-                              icon: const Icon(Icons.feedback_outlined),
-                              label: '反馈',
-                              onTap: () async {
-                                await launchUrl(
-                                  Uri.parse('https://github.com/caolib/kira/issues/new/choose'),
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              },
-                            ),
-                          ),
-                          const VerticalDivider(width: 1),
-                          Expanded(
-                            child: _LinkAction(
-                              icon: ClipOval(
-                                child: CachedNetworkImage(
-                                  imageUrl: 'https://github.com/caolib.png',
-                                  width: 24,
-                                  height: 24,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, _) => Container(
-                                    width: 24,
-                                    height: 24,
-                                    color: cs.surfaceContainerHighest,
-                                  ),
-                                  errorWidget: (_, _, _) => Container(
-                                    width: 24,
-                                    height: 24,
-                                    color: cs.surfaceContainerHighest,
-                                    child: Icon(
-                                      Icons.person_outline_rounded,
-                                      size: 18,
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              label: '作者',
-                              onTap: () async {
-                                await launchUrl(
-                                  Uri.parse('https://github.com/caolib'),
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.copyright_outlined),
+                      title: const Text('许可证'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ProjectLicensePage(),
+                        ),
                       ),
                     ),
                   ],

@@ -54,3 +54,5 @@ ref/
 .codex
 # Environment Variables
 .env
+
+.claude
