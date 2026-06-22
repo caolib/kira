@@ -289,6 +289,10 @@ class _ReaderPageState extends State<ReaderPage> {
       _autoAdvancingChapter = false;
       _saveReadingHistory();
       _preloadComments();
+      // 缓存命中且当前无下一话时，后台静默刷新章节导航，用于发现新增的下一话。
+      if (!forceRefresh && !detail.isDownloaded && detail.next == null) {
+        _refreshChapterMetadata(detail);
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _preloadImages(startPage - 1);
@@ -326,6 +330,29 @@ class _ReaderPageState extends State<ReaderPage> {
     }
     _resetPageModeChapterOverscroll();
     await _loadChapter(forceRefresh: true);
+  }
+
+  /// 缓存命中后，后台静默刷新章节导航字段（next/prev），用于发现新增的下一话。
+  ///
+  /// 缓存保存的是上次打开该话时的整份响应，其中 `next` 可能因之后新话上架
+  /// 而变得过时（例如曾经没有下一话，如今已有）。这里发一次请求取最新导航：
+  /// 仅当 next/prev 发生变化时更新 UI 并刷新缓存，避免无谓重绘打断阅读。
+  /// 仅在缓存命中且当前无下一话时触发，已有下一话时导航链完整，无需刷新。
+  void _refreshChapterMetadata(ChapterDetail cached) {
+    final chapterUuid = cached.uuid;
+    _api
+        .getChapterDetail(widget.pathWord, chapterUuid, forceRefresh: true)
+        .then((fresh) {
+          if (!mounted || _currentUuid != chapterUuid || _detail == null) return;
+          // 仅当导航字段变化才更新；contents 变化留给手动刷新。
+          if (fresh.next == cached.next && fresh.prev == cached.prev) return;
+          setState(() {
+            _detail = _detail!.copyWith(next: fresh.next, prev: fresh.prev);
+          });
+        })
+        .catchError((Object _) {
+          // 后台刷新失败不影响正常阅读流程
+        });
   }
 
   void _saveReadingHistory() {
