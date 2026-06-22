@@ -343,9 +343,13 @@ class _ReaderPageState extends State<ReaderPage> {
     _api
         .getChapterDetail(widget.pathWord, chapterUuid, forceRefresh: true)
         .then((fresh) {
-          if (!mounted || _currentUuid != chapterUuid || _detail == null) return;
+          if (!mounted || _currentUuid != chapterUuid || _detail == null) {
+            return;
+          }
           // 仅当导航字段变化才更新；contents 变化留给手动刷新。
-          if (fresh.next == cached.next && fresh.prev == cached.prev) return;
+          if (fresh.next == cached.next && fresh.prev == cached.prev) {
+            return;
+          }
           setState(() {
             _detail = _detail!.copyWith(next: fresh.next, prev: fresh.prev);
           });
@@ -1158,7 +1162,8 @@ class _ReaderPageState extends State<ReaderPage> {
 
     if (notification is! OverscrollNotification) return false;
 
-    final triggerThreshold = notification.metrics.viewportDimension / 3;
+    // 阈值与无动画翻页(viewport * 0.2)统一，让跨章触发和普通翻页一样轻松。
+    final triggerThreshold = notification.metrics.viewportDimension * 0.2;
     _setPageModeChapterOverscroll(
       (_pageModeChapterOverscroll + notification.overscroll.abs()).clamp(
         0.0,
@@ -1485,9 +1490,9 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   /// 拖动位移是否代表"向下一页前进"。
-  /// 左到右: 向左拖前进; 右到左: 向右拖前进; 上下: 向下拖前进。
+  /// 左到右: 向左拖前进; 右到左: 向右拖前进; 垂直: 向上拖前进（与 PageView 一致）。
   bool _instantTurnForward(double delta) {
-    if (_isVerticalPageMode) return delta > 0;
+    if (_isVerticalPageMode) return delta < 0;
     final rtl = _user.readerScrollDirection == 1;
     return rtl ? delta > 0 : delta < 0;
   }
@@ -1529,8 +1534,12 @@ class _ReaderPageState extends State<ReaderPage> {
   Widget _buildPageMode() {
     final imageCount = _detail!.contents.length;
     final instantTurn = _user.readerInstantPageTurn;
-    final horizontalDrag = instantTurn && !_isVerticalPageMode;
-    final verticalDrag = instantTurn && _isVerticalPageMode;
+    final isSinglePage = imageCount <= 1;
+    // 无动画翻页：始终启用手势；单页章节：也需要手势来触发跨章翻页。
+    // 单页时 PageView 只有一页，滑动手势由外层 GestureDetector 代劳。
+    final horizontalDrag =
+        (instantTurn || isSinglePage) && !_isVerticalPageMode;
+    final verticalDrag = (instantTurn || isSinglePage) && _isVerticalPageMode;
     return GestureDetector(
       onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
       onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
@@ -1549,14 +1558,19 @@ class _ReaderPageState extends State<ReaderPage> {
           return false;
         },
         child: PageView.builder(
+          // 章节切换时整体重建，确保新 PageController 的 initialPage 生效
+          key: ValueKey('page-$_currentUuid'),
           controller: _pageController,
           scrollDirection: _isVerticalPageMode
               ? Axis.vertical
               : Axis.horizontal,
           reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
           allowImplicitScrolling: true,
-          // 无动画翻页：禁用 PageView 自带手势，改由上方 drag 回调在越过阈值后瞬时切页。
-          physics: instantTurn ? const NeverScrollableScrollPhysics() : null,
+          // 无动画翻页或单页章节：禁用 PageView 自带手势，改由外层 drag 回调处理。
+          // 单页时 PageView 无法翻页所以不响应滑动，如果不禁用会吞掉手势导致外层收不到。
+          physics: (instantTurn || isSinglePage)
+              ? const NeverScrollableScrollPhysics()
+              : null,
           itemCount: imageCount,
           onPageChanged: (index) {
             setState(() {
