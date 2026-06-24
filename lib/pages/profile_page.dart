@@ -1628,6 +1628,118 @@ class _AboutPageState extends State<AboutPage> {
   final _user = UserManager();
 
   static const _repoUrl = 'https://github.com/caolib/kira';
+  static const _qqGroupUrl = 'https://qm.qq.com/q/rezw7xWuK4';
+  static const _qqGroupNumber = '1025321453';
+
+  void _showQQGroupDialog(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(
+                'assets/qq.svg',
+                width: 64,
+                height: 64,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF1EBAFC),
+                  BlendMode.srcIn,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'QQ交流群',
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              InkWell(
+                onTap: () async {
+                  await launchUrl(
+                    Uri.parse(_qqGroupUrl),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.open_in_new, size: 18, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        '加入群聊',
+                        style: tt.bodyLarge?.copyWith(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () async {
+                  await Clipboard.setData(
+                    const ClipboardData(text: _qqGroupNumber),
+                  );
+                  if (dialogContext.mounted) {
+                    showToast(dialogContext, '已复制群号');
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _qqGroupNumber,
+                        style: tt.titleMedium?.copyWith(
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.copy_rounded,
+                        size: 18,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('关闭'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -1932,36 +2044,17 @@ class _AboutPageState extends State<AboutPage> {
                       ),
                       Expanded(
                         child: _LinkAction(
-                          icon: ClipOval(
-                            child: CachedNetworkImage(
-                              imageUrl: 'https://github.com/caolib.png',
-                              width: 24,
-                              height: 24,
-                              fit: BoxFit.cover,
-                              placeholder: (_, _) => Container(
-                                width: 24,
-                                height: 24,
-                                color: cs.surfaceContainerHighest,
-                              ),
-                              errorWidget: (_, _, _) => Container(
-                                width: 24,
-                                height: 24,
-                                color: cs.surfaceContainerHighest,
-                                child: Icon(
-                                  Icons.person_outline_rounded,
-                                  size: 18,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
+                          icon: SvgPicture.asset(
+                            'assets/qq.svg',
+                            width: 24,
+                            height: 24,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFF1EBAFC),
+                              BlendMode.srcIn,
                             ),
                           ),
-                          label: '作者',
-                          onTap: () async {
-                            await launchUrl(
-                              Uri.parse('https://github.com/caolib'),
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
+                          label: '交流群',
+                          onTap: () => _showQQGroupDialog(context),
                         ),
                       ),
                     ],
