@@ -362,6 +362,8 @@ class _HomePageState extends State<HomePage> {
 
   /// COPY 首页各板块
   List<Widget> _buildCopySlivers(CopyMangaHome home, double hp) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final slivers = <Widget>[];
 
     final bannerItems = home.banners
@@ -483,6 +485,28 @@ class _HomePageState extends State<HomePage> {
         MaterialPageRoute(builder: (_) => const CopyMangaListPage.finished()),
       ),
     );
+
+    if (slivers.isEmpty) {
+      slivers.add(
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 64,
+                  color: cs.onSurfaceVariant,
+                ),
+                const SizedBox(height: 16),
+                Text('暂无内容', style: tt.titleMedium),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return slivers;
   }
