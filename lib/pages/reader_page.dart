@@ -109,7 +109,6 @@ class _ReaderPageState extends State<ReaderPage> {
   int _currentPage = 1;
   bool _isDraggingSlider = false;
   bool _autoAdvancingChapter = false;
-  double _pageModeChapterOverscroll = 0;
   // 无动画翻页：拖动过程中的累计位移与是否已翻页标记。
   double _instantTurnDragDelta = 0;
   bool _instantTurnCommitted = false;
@@ -275,7 +274,6 @@ class _ReaderPageState extends State<ReaderPage> {
         _loading = false;
         _refreshingChapter = false;
         _currentPage = startPage;
-        _pageModeChapterOverscroll = 0;
         _scrollModeInitialIndex = (hasHeader ? 1 : 0) + (startPage - 1);
         _scrollWidgetVersion++;
         _imageReloadVersions.clear();
@@ -284,7 +282,7 @@ class _ReaderPageState extends State<ReaderPage> {
       });
       if (_isPageMode) {
         _pageController.dispose();
-        _pageController = PageController(initialPage: startPage - 1);
+        _pageController = PageController(initialPage: startPage);
       }
       _autoAdvancingChapter = false;
       _saveReadingHistory();
@@ -328,7 +326,6 @@ class _ReaderPageState extends State<ReaderPage> {
       showToast(context, '本地章节无需刷新');
       return;
     }
-    _resetPageModeChapterOverscroll();
     await _loadChapter(forceRefresh: true);
   }
 
@@ -524,37 +521,31 @@ class _ReaderPageState extends State<ReaderPage> {
     } else if (_detail!.prev != null) {
       _goChapter(_detail!.prev);
     } else {
-      showToast(context, '已经是第一页了');
+      showToast(context, '当前已无上一话');
     }
   }
 
   void _nextPage() {
     if (_detail == null) return;
     final imageCount = _detail!.contents.length;
-    final pageIndex = _pageController.page?.round() ?? 0;
-    if (pageIndex >= imageCount - 1) {
-      // 当前在最后一张图，继续翻页时跳转下一章。
-      if (_detail!.next != null) {
-        _goChapter(_detail!.next);
-      } else {
-        showToast(context, '已经是最后一章了');
-      }
-    } else {
-      // 正常翻页。
+    if (_currentPage < imageCount) {
       _goToPage(_currentPage + 1);
+    } else if (_detail!.next != null) {
+      _goChapter(_detail!.next);
+    } else {
+      showToast(context, '当前已无下一话');
     }
   }
 
   /// 翻到指定页码（1-based）。开启「无动画翻页」时瞬时切换，否则带过渡动画。
   void _goToPage(int page) {
     if (!_pageController.hasClients) return;
-    final index = page - 1;
     if (_user.readerInstantPageTurn) {
-      _pageController.jumpToPage(index);
+      _pageController.jumpToPage(page);
       return;
     }
     _pageController.animateToPage(
-      index,
+      page,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
@@ -568,7 +559,7 @@ class _ReaderPageState extends State<ReaderPage> {
     }
     if (_isPageMode) {
       _pageController.dispose();
-      _pageController = PageController(initialPage: page - 1);
+      _pageController = PageController(initialPage: _currentPage);
     } else {
       // 滚动模式:让 ScrollablePositionedList 带新 initialScrollIndex 重建,保持当前页
       final hasHeader = _detail?.prev == null;
@@ -1112,65 +1103,29 @@ class _ReaderPageState extends State<ReaderPage> {
   void _autoAdvanceToNextChapter() {
     final nextUuid = _detail?.next;
     if (nextUuid == null || _autoAdvancingChapter) return;
-
-    _setPageModeChapterOverscroll(0);
     _autoAdvancingChapter = true;
     _goChapter(nextUuid);
   }
 
-  void _setPageModeChapterOverscroll(double value) {
-    final nextValue = value < 0 ? 0.0 : value;
-    if ((_pageModeChapterOverscroll - nextValue).abs() < 0.5) return;
-    if (!mounted) {
-      _pageModeChapterOverscroll = nextValue;
-      return;
+  /// 翻页模式：用户滑到开头/结尾空白页时，执行跨章跳转。
+  void _handlePageModeBlankPage(bool isEndBlank) {
+    if (_detail == null || _autoAdvancingChapter) return;
+    _autoAdvancingChapter = true;
+    if (isEndBlank) {
+      if (_detail!.next != null) {
+        _goChapter(_detail!.next);
+      } else {
+        showToast(context, '当前已无下一话');
+        Navigator.pop(context);
+      }
+    } else {
+      if (_detail!.prev != null) {
+        _goChapter(_detail!.prev);
+      } else {
+        showToast(context, '当前已无上一话');
+        Navigator.pop(context);
+      }
     }
-    setState(() => _pageModeChapterOverscroll = nextValue);
-  }
-
-  void _resetPageModeChapterOverscroll() {
-    _setPageModeChapterOverscroll(0);
-  }
-
-  Offset _pageModeChapterTranslation() {
-    final offset = _pageModeChapterOverscroll;
-    if (offset <= 0) return Offset.zero;
-    if (_isVerticalPageMode) return Offset(0, -offset);
-    return Offset(_user.readerScrollDirection == 1 ? offset : -offset, 0);
-  }
-
-  bool _shouldAutoAdvancePageChapter(ScrollNotification notification) {
-    if (_detail?.next == null || _loading || _autoAdvancingChapter) {
-      _resetPageModeChapterOverscroll();
-      return false;
-    }
-
-    final imageCount = _detail?.contents.length ?? 0;
-    final currentIndex = (_pageController.page ?? (_currentPage - 1).toDouble())
-        .round();
-    final isLastPage = imageCount > 0 && currentIndex >= imageCount - 1;
-    if (!isLastPage) {
-      _resetPageModeChapterOverscroll();
-      return false;
-    }
-
-    if (notification is ScrollStartNotification ||
-        notification is ScrollEndNotification) {
-      _resetPageModeChapterOverscroll();
-      return false;
-    }
-
-    if (notification is! OverscrollNotification) return false;
-
-    // 阈值与无动画翻页(viewport * 0.2)统一，让跨章触发和普通翻页一样轻松。
-    final triggerThreshold = notification.metrics.viewportDimension * 0.2;
-    _setPageModeChapterOverscroll(
-      (_pageModeChapterOverscroll + notification.overscroll.abs()).clamp(
-        0.0,
-        triggerThreshold,
-      ),
-    );
-    return _pageModeChapterOverscroll >= triggerThreshold;
   }
 
   Widget _buildScrollMode() {
@@ -1534,12 +1489,8 @@ class _ReaderPageState extends State<ReaderPage> {
   Widget _buildPageMode() {
     final imageCount = _detail!.contents.length;
     final instantTurn = _user.readerInstantPageTurn;
-    final isSinglePage = imageCount <= 1;
-    // 无动画翻页：始终启用手势；单页章节：也需要手势来触发跨章翻页。
-    // 单页时 PageView 只有一页，滑动手势由外层 GestureDetector 代劳。
-    final horizontalDrag =
-        (instantTurn || isSinglePage) && !_isVerticalPageMode;
-    final verticalDrag = (instantTurn || isSinglePage) && _isVerticalPageMode;
+    final horizontalDrag = instantTurn && !_isVerticalPageMode;
+    final verticalDrag = instantTurn && _isVerticalPageMode;
     return GestureDetector(
       onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
       onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
@@ -1550,67 +1501,48 @@ class _ReaderPageState extends State<ReaderPage> {
       onVerticalDragUpdate: verticalDrag ? _onInstantTurnDragUpdate : null,
       onVerticalDragEnd: verticalDrag ? _onInstantTurnDragEnd : null,
       onVerticalDragCancel: verticalDrag ? _onInstantTurnDragCancel : null,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          if (_shouldAutoAdvancePageChapter(notification)) {
-            _autoAdvanceToNextChapter();
+      child: PageView.builder(
+        key: ValueKey('page-$_currentUuid'),
+        controller: _pageController,
+        scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
+        reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
+        allowImplicitScrolling: true,
+        physics: instantTurn ? const NeverScrollableScrollPhysics() : null,
+        itemCount: imageCount + 2,
+        onPageChanged: (index) {
+          if (index == 0) {
+            _handlePageModeBlankPage(false);
+            return;
           }
-          return false;
-        },
-        child: PageView.builder(
-          // 章节切换时整体重建，确保新 PageController 的 initialPage 生效
-          key: ValueKey('page-$_currentUuid'),
-          controller: _pageController,
-          scrollDirection: _isVerticalPageMode
-              ? Axis.vertical
-              : Axis.horizontal,
-          reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
-          allowImplicitScrolling: true,
-          // 无动画翻页或单页章节：禁用 PageView 自带手势，改由外层 drag 回调处理。
-          // 单页时 PageView 无法翻页所以不响应滑动，如果不禁用会吞掉手势导致外层收不到。
-          physics: (instantTurn || isSinglePage)
-              ? const NeverScrollableScrollPhysics()
-              : null,
-          itemCount: imageCount,
-          onPageChanged: (index) {
-            setState(() {
-              _currentPage = index + 1;
-              if (!_isDraggingSlider) {
-                _showToolbar = false;
-                SystemChrome.setEnabledSystemUIMode(
-                  SystemUiMode.immersiveSticky,
-                );
-              }
-            });
-            _resetPageModeChapterOverscroll();
-            _saveReadingHistory();
-            _preloadImages(index);
-          },
-          itemBuilder: (_, i) {
-            if (i < imageCount - 1) {
-              return Center(child: _buildReaderImageGesture(i));
+          if (index == imageCount + 1) {
+            _handlePageModeBlankPage(true);
+            return;
+          }
+          setState(() {
+            _currentPage = index;
+            if (!_isDraggingSlider) {
+              _showToolbar = false;
+              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
             }
-
-            final translation = _pageModeChapterTranslation();
-            return AnimatedContainer(
-              duration: _pageModeChapterOverscroll == 0
-                  ? const Duration(milliseconds: 180)
-                  : Duration.zero,
-              curve: Curves.easeOutCubic,
-              transform: Matrix4.translationValues(
-                translation.dx,
-                translation.dy,
-                0,
-              ),
-              child: Stack(
-                children: [
-                  Center(child: _buildReaderImageGesture(i)),
-                  _buildPageModeEndActions(),
-                ],
-              ),
-            );
-          },
-        ),
+          });
+          _saveReadingHistory();
+          _preloadImages(index - 1);
+        },
+        itemBuilder: (_, i) {
+          if (i == 0 || i == imageCount + 1) {
+            return const SizedBox.expand();
+          }
+          final imageIndex = i - 1;
+          if (imageIndex < imageCount - 1) {
+            return Center(child: _buildReaderImageGesture(imageIndex));
+          }
+          return Stack(
+            children: [
+              Center(child: _buildReaderImageGesture(imageIndex)),
+              _buildPageModeEndActions(),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1746,7 +1678,7 @@ class _ReaderPageState extends State<ReaderPage> {
                                 final page = v.round();
                                 setState(() => _currentPage = page);
                                 if (_isPageMode) {
-                                  _pageController.jumpToPage(page - 1);
+                                  _pageController.jumpToPage(page);
                                 } else {
                                   _jumpToScrollPage(page, totalPages: total);
                                 }
