@@ -7,6 +7,7 @@ import '../models/anime.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/network_error.dart';
 import '../utils/comic_hero_tags.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
@@ -86,6 +87,41 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     _animeItems = [];
     _offset = 0;
     _total = 0;
+  }
+
+  Future<void> _clearHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('清空浏览记录'),
+        content: Text('确定要清空所有$_modeLabel浏览记录吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      if (_isAnimeMode) {
+        await _api.clearAnimeBrowseHistory();
+      } else {
+        await _api.clearBrowseHistory();
+      }
+      if (!mounted) return;
+      showToast(context, '已清空$_modeLabel浏览记录');
+      setState(_clearItems);
+    } catch (e) {
+      if (!mounted) return;
+      showToast(context, '清空失败：${NetworkError.message(e)}', isError: true);
+    }
   }
 
   Future<void> _load({bool silent = false, bool force = false}) async {
@@ -261,7 +297,17 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     final hp = (screenWidth - contentWidth) / 2 + 16;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('浏览记录')),
+      appBar: AppBar(
+        title: const Text('浏览记录'),
+        actions: [
+          if (_user.isLoggedIn && !_currentItemsEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: '清空浏览记录',
+              onPressed: _clearHistory,
+            ),
+        ],
+      ),
       body: !_user.isLoggedIn
           ? Center(
               child: Padding(

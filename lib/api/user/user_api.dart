@@ -220,4 +220,88 @@ mixin _UserApi on _ApiClientBase {
     }).toList();
     return (list: list, total: data['total'] as int? ?? list.length);
   }
+
+  Future<void> clearBrowseHistory() async {
+    if (_user.loginSource == 'copy') {
+      final dio = AppDio.create(
+        source: 'copy_api',
+        options: BaseOptions(
+          validateStatus: (_) => true,
+          headers: {
+            'User-Agent': 'COPY/${_user.copyAppVersion}',
+            'Accept': 'application/json',
+            'source': 'copyApp',
+            'platform': '3',
+            'version': _user.copyAppVersion,
+            'Connection': 'keep-alive',
+            'Accept-Encoding': 'gzip',
+            'webp': '1',
+            'Authorization': 'Token ${_user.token}',
+          },
+        ),
+      );
+      final resp = await dio.delete(
+        'https://${_user.copyApiHost}/api/v3/member/browse/comics',
+        queryParameters: {'platform': 3},
+        options: Options(contentType: 'application/x-www-form-urlencoded'),
+      );
+      final data = resp.data;
+      if (data is Map && data['code'] == 200) return;
+      final message = data is Map
+          ? (data['message']?.toString() ?? '清空浏览记录失败')
+          : '清空浏览记录失败';
+      NetworkError.throwBadResponse(
+        response: resp,
+        message: message,
+        source: 'copy_api',
+      );
+    } else {
+      await _dio.delete(
+        _url('/api/v3/member/browse/comics'),
+        options: Options(contentType: 'application/x-www-form-urlencoded'),
+      );
+    }
+  }
+
+  Future<void> clearAnimeBrowseHistory() async {
+    if (_user.loginSource == 'copy') {
+      final dio = AppDio.create(
+        source: 'copy_api',
+        options: BaseOptions(
+          validateStatus: (_) => true,
+          headers: {
+            'User-Agent': 'COPY/${_user.copyAppVersion}',
+            'Accept': 'application/json',
+            'source': 'copyApp',
+            'platform': '3',
+            'version': _user.copyAppVersion,
+            'Connection': 'keep-alive',
+            'Accept-Encoding': 'gzip',
+            'webp': '1',
+            'Authorization': 'Token ${_user.token}',
+          },
+        ),
+      );
+      final resp = await dio.delete(
+        'https://${_user.copyApiHost}/api/v3/member/browse/cartoons',
+        queryParameters: {'platform': 3},
+        options: Options(contentType: 'application/x-www-form-urlencoded'),
+      );
+      final data = resp.data;
+      if (data is Map && data['code'] == 200) return;
+      final message = data is Map
+          ? (data['message']?.toString() ?? '清空浏览记录失败')
+          : '清空浏览记录失败';
+      NetworkError.throwBadResponse(
+        response: resp,
+        message: message,
+        source: 'copy_api',
+      );
+    } else {
+      await _dio.delete(
+        _url('/api/v3/member/browse/cartoons'),
+        options: Options(contentType: 'application/x-www-form-urlencoded'),
+      );
+    }
+  }
 }
