@@ -76,13 +76,10 @@ try {
 
     # 打开编辑器
     Write-Host "`n正在打开 CHANGELOG.md 供编辑..." -ForegroundColor Yellow
-    try { Start-Process zed -ArgumentList 'docs/CHANGELOG.md' -ErrorAction Stop }
+    try { Start-Process explorer.exe -ArgumentList 'docs\CHANGELOG.md' -ErrorAction Stop }
     catch {
-        try { Start-Process code -ArgumentList 'docs/CHANGELOG.md' -ErrorAction Stop }
-        catch {
-            Write-Host "无法打开编辑器: $_" -ForegroundColor Red
-            Write-Host "请手动编辑 docs/CHANGELOG.md"
-        }
+        Write-Host "无法打开文件: $_" -ForegroundColor Red
+        Write-Host "请手动编辑 docs/CHANGELOG.md"
     }
     Read-Host "`n编辑完成后按回车继续"
 
