@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/github/stars/caolib/kira" alt="Stars"/>
   <img src="https://img.shields.io/github/downloads/caolib/kira/latest/total" alt="Latest Downloads"/>
   <a href="https://qm.qq.com/q/rezw7xWuK4"><img src="https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E7%BE%A4-white?logo=QQ" alt="QQ Group"/></a>
-  
+
 </p>
 
 ## 简介
@@ -21,14 +21,15 @@
 
 <table>
   <tr>
-    <td><img src="https://files.seeusercontent.com/2026/05/14/pOx4/PixPin_2026-05-14_16-09-53.png"/></td>
-    <td><img src="https://files.seeusercontent.com/2026/05/14/d8mZ/PixPin_2026-05-14_16-10-40.png"/></td>
+    <td><img src="https://files.seeusercontent.com/2026/06/24/9Dus/image-20260624215216838.png"/></td>
+    <td><img src="https://files.seeusercontent.com/2026/06/25/p8Bl/image-20260625153000227.png"/></td>
   </tr> 
   <tr>
-    <td><img src="https://files.seeusercontent.com/2026/05/14/S7ir/PixPin_2026-05-14_16-04-18.png"/></td>
-    <td><img src="https://files.seeusercontent.com/2026/05/14/5Fik/PixPin_2026-05-14_16-04-34.png"/></td>
+    <td><img src="https://files.seeusercontent.com/2026/06/25/dMh5/20260625153111865.png"/></td>
+    <td><img src="https://files.seeusercontent.com/2026/06/25/lL6u/20260625153045529.png"/></td>
   </tr>
 </table>
+
 
 <details>
 <summary>查看更多截图</summary>
