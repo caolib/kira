@@ -1,10 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../api/api_client.dart';
 import '../models/comic_comment.dart';
 import '../models/user_manager.dart';
+import '../utils/network_error.dart';
 import '../utils/time_format.dart';
+import '../utils/toast.dart';
 
 class ComicCommentsSheet extends StatefulWidget {
   final String comicId;
@@ -24,10 +27,13 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   static const _pageSize = 10;
   static const _replyPageSize = 3;
   static const _loadMoreThreshold = 240.0;
-  static const _listBottomPadding = 32.0;
+  static const _listBottomPadding = 80.0;
 
   final _api = ApiClient();
   final _scrollController = ScrollController();
+  final _user = UserManager();
+  final ValueNotifier<bool> _showFloatingButtons = ValueNotifier(true);
+  double _lastScrollOffset = 0;
 
   List<ComicComment> _comments = [];
   bool _loading = true;
@@ -39,12 +45,24 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_handleScrollDirection);
     _loadComments();
+  }
+
+  void _handleScrollDirection() {
+    final offset = _scrollController.offset;
+    if (offset > _lastScrollOffset + 2 && _showFloatingButtons.value) {
+      _showFloatingButtons.value = false;
+    } else if (offset < _lastScrollOffset - 2 && !_showFloatingButtons.value) {
+      _showFloatingButtons.value = true;
+    }
+    _lastScrollOffset = offset;
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _showFloatingButtons.dispose();
     super.dispose();
   }
 
@@ -224,73 +242,122 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       child: SizedBox(
         width: width,
         height: height,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
+        child: Stack(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 12, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '漫画评论',
-                              style: tt.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 12, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '漫画评论',
+                                  style: tt.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.comicName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tt.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.comicName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: tt.bodySmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
+                          ),
+                          Text(
+                            _total > 0
+                                ? (_comments.length >= _total
+                                      ? '$_total 条'
+                                      : '${_comments.length}/$_total')
+                                : '',
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
                             ),
-                          ],
-                        ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            tooltip: '关闭',
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
                       ),
-                      Text(
-                        _total > 0
-                            ? (_comments.length >= _total
-                                  ? '$_total 条'
-                                  : '${_comments.length}/$_total')
-                            : '',
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        tooltip: '关闭',
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Divider(height: 1, color: cs.outlineVariant),
+                    Expanded(child: _buildBody(context, cs, tt)),
+                  ],
                 ),
-                Divider(height: 1, color: cs.outlineVariant),
-                Expanded(child: _buildBody(context, cs, tt)),
-              ],
+              ),
             ),
-          ),
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _showFloatingButtons,
+                builder: (context, showFloatingButtons, child) {
+                  return AnimatedSlide(
+                    offset: showFloatingButtons
+                        ? Offset.zero
+                        : const Offset(0, 1.2),
+                    curve: Curves.easeInOutCubic,
+                    duration: const Duration(milliseconds: 260),
+                    child: AnimatedOpacity(
+                      opacity: showFloatingButtons ? 1.0 : 0.0,
+                      curve: Curves.easeInOutCubic,
+                      duration: const Duration(milliseconds: 260),
+                      child: SafeArea(
+                        top: false,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: cs.primaryContainer,
+                            foregroundColor: cs.onPrimaryContainer,
+                            elevation: 6,
+                            shadowColor: Colors.black.withValues(alpha: 0.22),
+                            minimumSize: const Size(0, 52),
+                            maximumSize: const Size.fromHeight(52),
+                            fixedSize: const Size.fromHeight(52),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: _showPostCommentDialog,
+                          icon: const Icon(Icons.comment_outlined),
+                          label: const Text('评论'),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -382,6 +449,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   }
 
   Widget _buildCommentCard(ColorScheme cs, TextTheme tt, ComicComment comment) {
+    final brightness = Theme.of(context).brightness;
     final replyState = _replyStateOf(comment.id);
     final canExpandReplies = comment.replyCount > 0;
     final user = UserManager();
@@ -400,48 +468,67 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       fontWeight: FontWeight.w500,
     );
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (showAvatar) ...[
-                _ComicCommentAvatar(imageUrl: comment.userAvatar, size: 28),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  comment.userName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: userStyle,
-                ),
+    return GestureDetector(
+      onTap: () => _showPostCommentDialog(replyTo: comment),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(
+              alpha: brightness == Brightness.dark ? 0.22 : 0.45,
+            ),
+            width: 0.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: brightness == Brightness.dark ? 0.30 : 0.14,
               ),
-              if (showCommentTime) ...[
-                const SizedBox(width: 8),
-                Text(TimeFormat.relativeOf(comment.createAt), style: timeStyle),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildCommentText(
-            comment,
-            bodyStyle: bodyStyle,
-            backgroundColor: cs.surfaceContainerLow,
-          ),
-          if (canExpandReplies) ...[
-            const SizedBox(height: 10),
-            _buildCommentActions(cs, tt, comment, replyState),
+              blurRadius: brightness == Brightness.dark ? 12 : 14,
+              spreadRadius: brightness == Brightness.dark ? 0 : -1,
+              offset: const Offset(0, 4),
+            ),
           ],
-          if (canExpandReplies && replyState.expanded)
-            _buildReplySection(cs, tt, comment, replyState),
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (showAvatar) ...[
+                  _ComicCommentAvatar(imageUrl: comment.userAvatar, size: 28),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    comment.userName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: userStyle,
+                  ),
+                ),
+                if (showCommentTime) ...[
+                  const SizedBox(width: 8),
+                  Text(TimeFormat.relativeOf(comment.createAt), style: timeStyle),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildCommentText(
+              comment,
+              bodyStyle: bodyStyle,
+              backgroundColor: cs.surfaceContainerLow,
+            ),
+            if (canExpandReplies) ...[
+              const SizedBox(height: 10),
+              _buildCommentActions(cs, tt, comment, replyState),
+            ],
+            if (canExpandReplies && replyState.expanded)
+              _buildReplySection(cs, tt, comment, replyState),
+          ],
+        ),
       ),
     );
   }
@@ -543,9 +630,25 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
           for (var i = 0; i < replies.length; i++)
             Padding(
               padding: EdgeInsets.only(
-                bottom: i == replies.length - 1 ? 0 : 12,
+                bottom: i == replies.length - 1 ? 0 : 0,
               ),
-              child: _buildReplyItem(cs, tt, replies[i], comment),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: _buildReplyItem(cs, tt, replies[i], comment),
+                  ),
+                  if (i < replies.length - 1)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Divider(
+                        height: 24,
+                        thickness: 0.5,
+                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                    ),
+                ],
+              ),
             ),
           if (replyState.error != null && replies.isNotEmpty)
             Padding(
@@ -625,7 +728,9 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       fontWeight: FontWeight.w500,
     );
 
-    return Row(
+    return GestureDetector(
+      onTap: () => _showPostCommentDialog(replyTo: reply),
+      child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showAvatar) ...[
@@ -688,6 +793,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
           ),
         ),
       ],
+    ),
     );
   }
 
@@ -703,6 +809,172 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       return replyParentUserName == opUserName;
     }
     return false;
+  }
+
+  int _commentTextLength(String text) => text.trim().runes.length;
+
+  Future<void> _showPostCommentDialog({ComicComment? replyTo}) async {
+    if (!_user.isLoggedIn) {
+      showToast(context, '请先登录后再发表评论', isError: true);
+      return;
+    }
+
+    final controller = TextEditingController();
+    var submitting = false;
+    String? errorText;
+
+    final isReply = replyTo != null;
+    final title = isReply ? '回复 ${replyTo.userName}' : '发表评论';
+    final hintText = isReply ? '回复 ${replyTo.userName}...' : '说点什么...';
+
+    Future<void> submit(
+      BuildContext dialogContext,
+      StateSetter setLocal,
+    ) async {
+      final content = controller.text.trim();
+      final length = _commentTextLength(content);
+      if (length < 3 || length > 200) {
+        setLocal(() => errorText = '评论字数需在 3-200 之间');
+        return;
+      }
+
+      setLocal(() {
+        submitting = true;
+        errorText = null;
+      });
+
+      try {
+        await _api.postComicComment(
+          widget.comicId,
+          content,
+          replyId: isReply ? replyTo.id : null,
+        );
+        if (!mounted) return;
+        if (dialogContext.mounted) {
+          Navigator.of(dialogContext).pop();
+        }
+        showToast(context, isReply ? '回复已发布' : '评论已发布');
+        if (isReply) {
+          final index = _comments.indexWhere((c) => c.id == replyTo.id);
+          if (index >= 0) {
+            _comments[index] = ComicComment(
+              id: replyTo.id,
+              createAt: replyTo.createAt,
+              userId: replyTo.userId,
+              userName: replyTo.userName,
+              userAvatar: replyTo.userAvatar,
+              comment: replyTo.comment,
+              replyCount: replyTo.replyCount + 1,
+              parentId: replyTo.parentId,
+              parentUserId: replyTo.parentUserId,
+              parentUserName: replyTo.parentUserName,
+            );
+          }
+          final currentState = _replyStateOf(replyTo.id);
+          setState(() {
+            _replyStates[replyTo.id] = currentState.copyWith(
+              expanded: true,
+              total: currentState.total > 0 ? currentState.total + 1 : 0,
+            );
+          });
+          _loadReplies(_comments.firstWhere(
+            (c) => c.id == replyTo.id,
+            orElse: () => replyTo,
+          ));
+        } else {
+          _loadComments();
+        }
+      } catch (e) {
+        if (!dialogContext.mounted) return;
+        setLocal(() {
+          submitting = false;
+          errorText = NetworkError.message(e);
+        });
+      }
+    }
+
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (dialogContext, setLocal) {
+              final length = _commentTextLength(controller.text);
+              final canSubmit = !submitting && length >= 3 && length <= 200;
+              return AlertDialog(
+                title: Text(title),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (isReply) ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            replyTo.comment,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      TextField(
+                        controller: controller,
+                        autofocus: true,
+                        enabled: !submitting,
+                        minLines: 3,
+                        maxLines: 6,
+                        maxLength: 200,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(200),
+                        ],
+                        textInputAction: TextInputAction.newline,
+                        decoration: InputDecoration(
+                          hintText: hintText,
+                          helperText: '评论字数 3-200',
+                          errorText: errorText,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setLocal(() => errorText = null),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: submitting
+                        ? null
+                        : () => Navigator.of(dialogContext).pop(),
+                    child: const Text('取消'),
+                  ),
+                  FilledButton(
+                    onPressed: canSubmit
+                        ? () => submit(dialogContext, setLocal)
+                        : null,
+                    child: submitting
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(isReply ? '回复' : '发布'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Widget _buildCommentText(

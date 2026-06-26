@@ -461,7 +461,58 @@ mixin _MangaApi on _ApiClientBase {
     }
   }
 
-  // 9.3 漫画评论 / 评论回复
+  // 9.3 发表漫画评论 / 回复漫画评论
+  Future<void> postComicComment(
+    String comicId,
+    String content, {
+    int? replyId,
+  }) async {
+    final trimmed = content.trim();
+    final length = trimmed.runes.length;
+    if (length < 3 || length > 200) {
+      throw ArgumentError('评论字数需在 3-200 之间');
+    }
+
+    final token = _user.token;
+    if (token == null || token.isEmpty) {
+      throw const HttpException('请先登录后再发表评论');
+    }
+
+    final host = _user.copyApiHost;
+    final data = <String, dynamic>{
+      'comic_id': comicId,
+      'comment': trimmed,
+    };
+    if (replyId != null) {
+      data['reply_id'] = replyId.toString();
+    }
+
+    final resp = await _commentDio.post(
+      'https://$host/api/v3/member/comment',
+      data: data,
+      queryParameters: {'platform': 3},
+      options: _browserRequestOptions(
+        host,
+        contentType: Headers.formUrlEncodedContentType,
+        headers: {'Authorization': 'Token $token'},
+      ),
+    );
+
+    final body = resp.data;
+    if (body is Map) {
+      final code = body['code'];
+      if (code != null && code != 200) {
+        final message = body['message']?.toString() ?? '发表评论失败';
+        NetworkError.throwBadResponse(
+          response: resp,
+          message: message,
+          source: 'api_comment',
+        );
+      }
+    }
+  }
+
+  // 9.4 漫画评论 / 评论回复
   Future<({List<ComicComment> list, int total})> getComicComments(
     String comicId, {
     String replyId = '',
