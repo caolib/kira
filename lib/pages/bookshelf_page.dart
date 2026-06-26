@@ -515,7 +515,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     Navigator.pop(context);
     setState(() => _ordering = ordering);
     _user.setBookshelfOrdering(ordering);
-    _load(silent: true);
+    _load(silent: true, force: true);
   }
 
   bool get _currentItemsEmpty =>
