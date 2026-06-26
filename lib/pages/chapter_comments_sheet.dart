@@ -63,6 +63,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   final _aiSettings = AiSettings();
   final _aiApi = AiApi();
   final _scrollController = ScrollController();
+  final _reasoningScrollController = ScrollController();
 
   List<ChapterComment> _comments = [];
   bool _loading = true;
@@ -133,6 +134,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _summaryProgress.removeListener(_onSummaryProgressChanged);
     _aiSettings.removeListener(_onAiChanged);
     _scrollController.dispose();
+    _reasoningScrollController.dispose();
     _showFloatingButtons.dispose();
     super.dispose();
   }
@@ -206,6 +208,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _spoilerIds = _parseSpoilerIds(_summaryProgress.content);
       }
       _aiSummaryReasoning = _summaryProgress.reasoningContent;
+      if (_summarizing) _scrollReasoningToBottom();
       if (_summaryProgress.error != null) {
         _summaryError = _summaryProgress.error;
       } else if (_summaryProgress.isGenerating ||
@@ -401,6 +404,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _spoilerIds = const {};
       _applySummaryDefaultExpansion();
     });
+    if (_reasoningScrollController.hasClients) {
+      _reasoningScrollController.jumpTo(0);
+    }
     ChapterSummaryCache.startProgress(widget.chapterUuid);
 
     final snippets = _buildCommentSnippets();
@@ -440,6 +446,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           _aiSummary = buffer.toString();
           _aiSummaryReasoning = reasoningText;
         });
+        _scrollReasoningToBottom();
         ChapterSummaryCache.updateProgress(
           widget.chapterUuid,
           buffer.toString(),
@@ -573,6 +580,16 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
   void _stopSummarize() {
     _summaryCancelToken?.cancel('user_stop');
+  }
+
+  void _scrollReasoningToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final c = _reasoningScrollController;
+      if (!c.hasClients) return;
+      final max = c.position.maxScrollExtent;
+      if (max > 0) c.jumpTo(max);
+    });
   }
 
   Future<void> _clearSummary() async {
@@ -1884,7 +1901,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             ),
             if (expanded) ...[
               const SizedBox(height: 6),
-              Text(reasoning, style: textStyle),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  controller: _reasoningScrollController,
+                  child: Text(reasoning, style: textStyle),
+                ),
+              ),
             ],
           ],
         ),
