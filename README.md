@@ -1,6 +1,7 @@
 <h1 align="center">
-<img src="https://files.seeusercontent.com/2026/04/09/hOy5/logo.png"/>
+	<img src="assets\ic_launcher.png" style="zoom: 33%;" />
 </h1>
+
 
 <p align="center">
   <img src="https://skills.syvixor.com/api/icons?perline=15&i=flutter,dart,materialdesign"/>

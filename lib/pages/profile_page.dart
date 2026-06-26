@@ -1988,7 +1988,7 @@ class _AboutPageState extends State<AboutPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                '版本 $version',
+                version,
                 textAlign: TextAlign.center,
                 style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
@@ -2053,7 +2053,7 @@ class _AboutPageState extends State<AboutPage> {
                               BlendMode.srcIn,
                             ),
                           ),
-                          label: '交流群',
+                          label: '交流',
                           onTap: () => _showQQGroupDialog(context),
                         ),
                       ),
