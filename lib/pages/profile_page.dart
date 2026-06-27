@@ -1057,7 +1057,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Image.asset('assets/ic_launcher.png', width: 64, height: 64),
+            Image.asset(_user.appLogoPath, width: 64, height: 64),
             const SizedBox(height: 16),
             Text(
               'Kira',
@@ -1979,7 +1979,7 @@ class _AboutPageState extends State<AboutPage> {
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
             children: [
-              Image.asset('assets/ic_launcher.png', width: 80, height: 80),
+              Image.asset(_user.appLogoPath, width: 80, height: 80),
               const SizedBox(height: 16),
               Text(
                 'Kira',

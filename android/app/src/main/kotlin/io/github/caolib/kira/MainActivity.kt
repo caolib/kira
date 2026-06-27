@@ -1,5 +1,7 @@
 package io.github.caolib.kira
 
+import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -17,7 +19,15 @@ class MainActivity : FlutterActivity() {
     private var volumeChannel: MethodChannel? = null
     private var hlsChannel: MethodChannel? = null
     private var displayModeChannel: MethodChannel? = null
+    private var iconChannel: MethodChannel? = null
     private var interceptVolume = false
+
+    companion object {
+        private val LAUNCHER_ALIASES = listOf(
+            ".LauncherDefault",
+            ".LauncherAlt1",
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,6 +128,25 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        iconChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "io.github.caolib.kira/app_icon"
+        )
+        iconChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setAppIcon" -> {
+                    val index = call.argument<Int>("index") ?: 0
+                    setAppIcon(index)
+                    result.success(null)
+                }
+                "getAppIconIndex" -> {
+                    val index = getCurrentIconIndex()
+                    result.success(index)
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     private fun setWindowPreferredRefreshRate(refreshRate: Float) {
@@ -128,6 +157,41 @@ class MainActivity : FlutterActivity() {
             }
             preferredRefreshRate = nextRefreshRate
         }
+    }
+
+    private fun setAppIcon(index: Int) {
+        val pm = packageManager
+        val packageName = packageName
+        val clamped = index.coerceIn(0, LAUNCHER_ALIASES.size - 1)
+        for ((i, alias) in LAUNCHER_ALIASES.withIndex()) {
+            val fullName = "$packageName$alias"
+            val newState = if (i == clamped)
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            else
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            pm.setComponentEnabledSetting(
+                ComponentName(packageName, fullName),
+                newState,
+                PackageManager.DONT_KILL_APP,
+            )
+        }
+    }
+
+    private fun getCurrentIconIndex(): Int {
+        val pm = packageManager
+        val packageName = packageName
+        for ((i, alias) in LAUNCHER_ALIASES.withIndex()) {
+            val fullName = "$packageName$alias"
+            val state = pm.getComponentEnabledSetting(
+                ComponentName(packageName, fullName)
+            )
+            if (state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                || state == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+            ) {
+                return i
+            }
+        }
+        return 0
     }
 
     private fun fetchHlsWithRetry(

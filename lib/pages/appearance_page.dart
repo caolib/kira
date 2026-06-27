@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:system_fonts/system_fonts.dart';
 import '../main.dart' show isDesktop;
@@ -39,6 +40,15 @@ class _AppearancePageState extends State<AppearancePage> {
 
   void _onChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _switchLogo(int index) async {
+    if (_user.logoIndex == index) return;
+    await _user.setLogoIndex(index);
+    if (!mounted) return;
+    if (Platform.isAndroid || Platform.isIOS) {
+      showToast(context, '桌面图标已更换，可能需要重启应用后生效');
+    }
   }
 
   Future<void> _showDisplayModeSheet() async {
@@ -182,6 +192,46 @@ class _AppearancePageState extends State<AppearancePage> {
             const SizedBox(height: 8),
             _DesktopFontCard(user: _user),
           ],
+          const SizedBox(height: 8),
+          Card(
+            color: cs.surfaceContainerLow,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.switch_account_outlined,
+                        color: cs.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 16),
+                      const Text('应用图标'),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '更换后重启应用生效',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
+                    children: [
+                      for (var i = 0; i < UserManager.appLogoPaths.length; i++)
+                        _LogoOptionTile(
+                          assetPath: UserManager.appLogoPaths[i],
+                          selected: _user.logoIndex == i,
+                          onTap: () => _switchLogo(i),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
           if (DisplayModePreference.isSupportedPlatform) ...[
             const SizedBox(height: 8),
             Card(
@@ -930,6 +980,52 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                   },
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoOptionTile extends StatelessWidget {
+  final String assetPath;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LogoOptionTile({
+    required this.assetPath,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected ? cs.primary.withValues(alpha: 0.12) : cs.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: selected ? cs.primary : cs.outlineVariant,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Stack(
+            children: [
+              Image.asset(assetPath, width: 48, height: 48),
+              if (selected)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Icon(Icons.check_circle, size: 14, color: cs.primary),
+                ),
             ],
           ),
         ),

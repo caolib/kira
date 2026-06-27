@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme_option.dart';
 import '../api/api_client.dart';
+import '../utils/app_icon_switcher.dart';
 
 enum NetworkProxyMode { system, manual }
 
@@ -161,6 +163,12 @@ class UserManager extends ChangeNotifier {
   static const _keyDanmakuHideTop = 'danmaku_hide_top';
   static const _keyDanmakuHideBottom = 'danmaku_hide_bottom';
   static const _keyDanmakuBlocklist = 'danmaku_blocklist';
+  static const _keyLogoIndex = 'logo_index';
+
+  static const appLogoPaths = [
+    'assets/ic_launcher.png',
+    'assets/ic_launcher_1.png',
+  ];
 
   String? _token;
   String? _username;
@@ -235,6 +243,7 @@ class UserManager extends ChangeNotifier {
   bool _danmakuHideTop = false;
   bool _danmakuHideBottom = false;
   List<String> _danmakuBlocklist = [];
+  int _logoIndex = 1;
 
   String? get token => _token;
   String? get username => _username;
@@ -328,6 +337,8 @@ class UserManager extends ChangeNotifier {
   bool get danmakuHideTop => _danmakuHideTop;
   bool get danmakuHideBottom => _danmakuHideBottom;
   List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
+  int get logoIndex => _logoIndex;
+  String get appLogoPath => appLogoPaths[_logoIndex.clamp(0, appLogoPaths.length - 1)];
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   static String normalizeUpdateMirrorPrefix(String? value) {
@@ -535,6 +546,13 @@ class UserManager extends ChangeNotifier {
     _danmakuHideTop = prefs.getBool(_keyDanmakuHideTop) ?? false;
     _danmakuHideBottom = prefs.getBool(_keyDanmakuHideBottom) ?? false;
     _danmakuBlocklist = prefs.getStringList(_keyDanmakuBlocklist) ?? [];
+    _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(0, appLogoPaths.length - 1);
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        final platformIndex = await AppIconSwitcher.getAppIconIndex();
+        _logoIndex = platformIndex.clamp(0, appLogoPaths.length - 1);
+      } catch (_) {}
+    }
     notifyListeners();
   }
 
@@ -1226,6 +1244,20 @@ class UserManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_keyDanmakuBlocklist, list);
     notifyListeners();
+  }
+
+  Future<void> setLogoIndex(int index) async {
+    final next = index.clamp(0, appLogoPaths.length - 1);
+    if (_logoIndex == next) return;
+    _logoIndex = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyLogoIndex, next);
+    notifyListeners();
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        await AppIconSwitcher.setAppIcon(next);
+      } catch (_) {}
+    }
   }
 
   Future<void> refreshUserInfo() async {
