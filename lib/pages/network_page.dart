@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
 import '../utils/network_proxy.dart';
+import '../utils/toast.dart';
 
 class NetworkPage extends StatefulWidget {
   const NetworkPage({super.key});
@@ -26,7 +27,7 @@ class _NetworkPageState extends State<NetworkPage> {
   bool _refreshingSystemProxy = false;
   bool _latencyExpanded = true;
   bool _advancedSettingsExpanded = false;
-  bool _fetchingCopyAppVersion = false;
+  bool _autoFillingCopySettings = false;
   NetworkProxyType _manualProxyType = NetworkProxyType.http;
   Map<int, Map<String, int?>> _latencyResults = {};
   Set<String> _pendingLatencyHosts = {};
@@ -400,6 +401,13 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
+  bool get _hasActiveProxy {
+    if (_user.networkProxyMode == NetworkProxyMode.manual) {
+      return _user.hasManualProxy;
+    }
+    return NetworkProxy.systemProxy != null;
+  }
+
   Widget _buildProxyStatusRow({
     required IconData icon,
     required String label,
@@ -407,19 +415,37 @@ class _NetworkPageState extends State<NetworkPage> {
     required TextTheme tt,
     required ColorScheme cs,
   }) {
+    final hasProxy = _hasActiveProxy;
     return Row(
       children: [
         Icon(icon, size: 18, color: cs.onSurfaceVariant),
         const SizedBox(width: 8),
         Text('$label：', style: tt.bodySmall),
-        Expanded(
-          child: Text(
+        const Spacer(),
+        if (hasProxy)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.green.shade800,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: tt.bodySmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
+        else
+          Text(
             value,
             textAlign: TextAlign.end,
             overflow: TextOverflow.ellipsis,
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
-        ),
       ],
     );
   }
@@ -434,7 +460,7 @@ class _NetworkPageState extends State<NetworkPage> {
         : cs.onSurfaceVariant;
     final subtitle = _testingGoogleConnectivity
         ? '正在通过 ${NetworkProxy.activeProxyDescription} 访问 Google ...'
-        : _googleConnectivityMessage ?? '点击测试当前应用能否访问 Google';
+        : _googleConnectivityMessage;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
@@ -469,22 +495,21 @@ class _NetworkPageState extends State<NetworkPage> {
                         ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Google 连通性', style: tt.bodyLarge),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: tt.bodySmall?.copyWith(
-                            color: hasResult || _testingGoogleConnectivity
-                                ? statusColor
-                                : cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: Text('Google 连通性', style: tt.bodyLarge),
                   ),
+                  if (subtitle != null)
+                    Flexible(
+                      child: Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.bodySmall?.copyWith(
+                          color: hasResult || _testingGoogleConnectivity
+                              ? statusColor
+                              : cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   if (_googleConnectivityLatencyMs != null &&
                       !_testingGoogleConnectivity)
                     Container(
@@ -548,25 +573,11 @@ class _NetworkPageState extends State<NetworkPage> {
                       Icon(Icons.tune, color: cs.primary),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '高级设置',
-                              style: tt.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'COPY API：${_user.copyApiHost} · 版本：${_user.copyAppVersion}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: tt.bodySmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          '高级设置',
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       Icon(
@@ -586,16 +597,12 @@ class _NetworkPageState extends State<NetworkPage> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _buildAdvancedSettingsNotice(tt, cs),
-                    const SizedBox(height: 12),
                     TextField(
                       controller: _copyApiHostController,
                       decoration: const InputDecoration(
                         labelText: 'COPY API 地址',
                         hintText: defaultCopyApiHost,
-                        helperText: '可填写 host 或完整 URL，保存时会自动取 host',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.http_outlined),
                       ),
                       keyboardType: TextInputType.url,
                       textInputAction: TextInputAction.next,
@@ -607,7 +614,6 @@ class _NetworkPageState extends State<NetworkPage> {
                         labelText: 'COPY 请求版本号',
                         hintText: defaultCopyAppVersion,
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.numbers_outlined),
                       ),
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _saveCopyAdvancedSettings(),
@@ -624,87 +630,39 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
-  Widget _buildAdvancedSettingsNotice(TextTheme tt, ColorScheme cs) {
-    return Container(
+  Widget _buildAdvancedSettingsActions(ColorScheme cs) {
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.errorContainer.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
+      child: _ConnectedButtonGroup(
         children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            size: 20,
-            color: cs.onErrorContainer,
+          _ConnectedButtonGroupItem(
+            onPressed: _autoFillingCopySettings ? null : _autoFillCopySettings,
+            loadingWidget: _autoFillingCopySettings
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: cs.primary,
+                    ),
+                  )
+                : null,
+            icon: _autoFillingCopySettings ? null : Icons.auto_fix_high,
+            label: '填充',
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '如果你不了解配置，不要随意修改',
-              style: tt.bodySmall?.copyWith(
-                color: cs.onErrorContainer,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          _ConnectedButtonGroupItem(
+            onPressed: _autoFillingCopySettings ? null : _resetCopyAdvancedSettings,
+            icon: Icons.restart_alt,
+            label: '重置',
+          ),
+          _ConnectedButtonGroupItem(
+            onPressed: _saveCopyAdvancedSettings,
+            icon: Icons.save_outlined,
+            label: '保存',
+            isPrimary: true,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAdvancedSettingsActions(ColorScheme cs) {
-    final fetchButton = OutlinedButton.icon(
-      onPressed: _fetchingCopyAppVersion ? null : _fetchAndUpdateCopyAppVersion,
-      icon: _fetchingCopyAppVersion
-          ? SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: cs.primary,
-              ),
-            )
-          : const Icon(Icons.cloud_download_outlined),
-      label: const Text('自动获取版本号'),
-    );
-    final resetButton = OutlinedButton.icon(
-      onPressed: _fetchingCopyAppVersion ? null : _resetCopyAdvancedSettings,
-      icon: const Icon(Icons.restart_alt),
-      label: const Text('重置'),
-    );
-    final saveButton = FilledButton.icon(
-      onPressed: _saveCopyAdvancedSettings,
-      icon: const Icon(Icons.save_outlined),
-      label: const Text('保存'),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 520) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              fetchButton,
-              const SizedBox(height: 8),
-              resetButton,
-              const SizedBox(height: 8),
-              saveButton,
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(child: fetchButton),
-            const SizedBox(width: 12),
-            Expanded(child: resetButton),
-            const SizedBox(width: 12),
-            Expanded(child: saveButton),
-          ],
-        );
-      },
     );
   }
 
@@ -934,7 +892,7 @@ class _NetworkPageState extends State<NetworkPage> {
     final proxy = await NetworkProxy.refreshSystemProxy();
     if (!mounted) return;
     setState(() => _refreshingSystemProxy = false);
-    _showSnackBar(proxy == null ? '未检测到系统代理' : '已检测到 ${proxy.label}');
+    _showToast(proxy == null ? '未检测到系统代理' : '已检测到 ${proxy.label}');
   }
 
   Future<void> _setProxyMode(NetworkProxyMode mode) async {
@@ -963,7 +921,7 @@ class _NetworkPageState extends State<NetworkPage> {
         _pendingLatencyHosts = {};
       });
     }
-    _showSnackBar('已保存 COPY 高级设置');
+    _showToast('已保存 COPY 高级设置');
   }
 
   Future<void> _resetCopyAdvancedSettings() async {
@@ -981,38 +939,27 @@ class _NetworkPageState extends State<NetworkPage> {
         _pendingLatencyHosts = {};
       });
     }
-    _showSnackBar('已重置 COPY 高级设置');
+    _showToast('已重置 COPY 高级设置');
   }
 
-  Future<void> _fetchAndUpdateCopyAppVersion() async {
-    if (_fetchingCopyAppVersion) return;
+  Future<void> _autoFillCopySettings() async {
+    if (_autoFillingCopySettings) return;
 
-    final host = UserManager.normalizeCopyApiHost(_copyApiHostController.text);
-    final hostChanged = host != _user.copyApiHost;
-    _copyApiHostController.text = host;
-    await _user.setCopyApiHost(host);
-    if (!mounted) return;
-
-    setState(() {
-      _fetchingCopyAppVersion = true;
-      if (hostChanged) {
-        _latencyResults = {};
-        _pendingLatencyHosts = {};
-      }
-    });
+    setState(() => _autoFillingCopySettings = true);
 
     try {
+      final apiHost = await ApiClient().fetchCopyApiHost();
       final version = await ApiClient().fetchCopyLatestAppVersion();
-      await _user.setCopyAppVersion(version);
       if (!mounted) return;
+      _copyApiHostController.text = apiHost;
       _copyAppVersionController.text = version;
-      _showSnackBar('已更新 COPY 版本号：$version');
+      _showToast('已自动填充 COPY API 地址：$apiHost，版本号：$version');
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('获取 COPY 版本号失败：${_errorMessage(e)}');
+      _showToast('自动填充失败：${_errorMessage(e)}', isError: true);
     } finally {
       if (mounted) {
-        setState(() => _fetchingCopyAppVersion = false);
+        setState(() => _autoFillingCopySettings = false);
       }
     }
   }
@@ -1044,7 +991,7 @@ class _NetworkPageState extends State<NetworkPage> {
       type: _manualProxyType,
     );
     if (proxy == null) {
-      _showSnackBar('请输入有效的代理地址，例如 127.0.0.1:7890');
+      _showToast('请输入有效的代理地址，例如 127.0.0.1:7890', isError: true);
       return;
     }
 
@@ -1060,14 +1007,12 @@ class _NetworkPageState extends State<NetworkPage> {
     );
     if (!mounted) return;
     setState(_clearGoogleConnectivityResult);
-    _showSnackBar('已启用 ${proxy.label}');
+    _showToast('已启用 ${proxy.label}');
   }
 
-  void _showSnackBar(String message) {
+  void _showToast(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showToast(context, message, isError: isError);
   }
 
   Future<void> _testGoogleConnectivity() async {
@@ -1138,5 +1083,114 @@ class _NetworkPageState extends State<NetworkPage> {
     } finally {
       client.close(force: true);
     }
+  }
+}
+
+class _ConnectedButtonGroupItem {
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final Widget? loadingWidget;
+  final String label;
+  final bool isPrimary;
+
+  const _ConnectedButtonGroupItem({
+    this.onPressed,
+    this.icon,
+    this.loadingWidget,
+    required this.label,
+    this.isPrimary = false,
+  });
+}
+
+class _ConnectedButtonGroup extends StatelessWidget {
+  final List<_ConnectedButtonGroupItem> children;
+
+  const _ConnectedButtonGroup({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final border = BorderSide(color: cs.outline, width: 1);
+
+    return IntrinsicHeight(
+      child: Row(
+        children: List.generate(children.length, (i) {
+          final item = children[i];
+          final isFirst = i == 0;
+          final isLast = i == children.length - 1;
+
+          final shape = RoundedRectangleBorder(
+            borderRadius: BorderRadius.horizontal(
+              left: isFirst ? const Radius.circular(8) : Radius.zero,
+              right: isLast ? const Radius.circular(8) : Radius.zero,
+            ),
+        );
+
+          final leftBorder = isFirst ? border : BorderSide.none;
+          final rightBorder = isLast ? border : BorderSide.none;
+
+          final effectiveBorder = Border(
+            left: leftBorder,
+            right: rightBorder,
+            top: border,
+            bottom: border,
+          );
+
+          final buttonWidget = TextButton(
+            onPressed: item.onPressed,
+            style: ButtonStyle(
+              padding: WidgetStateProperty.all(
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              shape: WidgetStateProperty.all(shape),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (item.isPrimary) return cs.primary;
+                if (states.contains(WidgetState.disabled)) {
+                  return cs.onSurface.withValues(alpha: 0.12);
+                }
+                return Colors.transparent;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (item.isPrimary) return cs.onPrimary;
+                if (states.contains(WidgetState.disabled)) {
+                  return cs.onSurface.withValues(alpha: 0.38);
+                }
+                return cs.onSurface;
+              }),
+              overlayColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) {
+                  return cs.onSurface.withValues(alpha: 0.12);
+                }
+                if (states.contains(WidgetState.hovered)) {
+                  return cs.onSurface.withValues(alpha: 0.08);
+                }
+                return null;
+              }),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (item.loadingWidget != null)
+                  item.loadingWidget!
+                else if (item.icon != null)
+                  Icon(item.icon, size: 18),
+                const SizedBox(width: 6),
+                Text(item.label),
+              ],
+            ),
+          );
+
+          return Expanded(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: effectiveBorder,
+                borderRadius: shape.borderRadius,
+              ),
+              child: buttonWidget,
+            ),
+          );
+        }),
+      ),
+    );
   }
 }

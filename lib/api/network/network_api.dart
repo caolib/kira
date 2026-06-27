@@ -51,6 +51,56 @@ mixin _NetworkApi on _ApiClientBase {
     return _testHostsLatency(getExtraApiHosts(), onHostResult: onHostResult);
   }
 
+  /// 从 network2 接口获取当前 COPY API 地址（取路由 0 的第一个 host）。
+  Future<String> fetchCopyApiHost() async {
+    final version = _user.copyAppVersion;
+    final dio = AppDio.create(
+      source: 'copy_api',
+      options: BaseOptions(
+        validateStatus: (_) => true,
+        headers: {
+          'User-Agent': 'COPY/$version',
+          'Accept': 'application/json',
+          'source': 'copyApp',
+          'platform': '3',
+          'version': version,
+        },
+      ),
+    );
+    try {
+      final resp = await dio.get(
+        'https://${_user.copyApiHost}/api/v3/system/network2',
+        queryParameters: {'platform': 3},
+      );
+      final data = resp.data is String && (resp.data as String).isNotEmpty
+          ? (jsonDecode(resp.data as String) as Map<String, dynamic>)
+          : resp.data;
+      if (data is Map && data['code'] == 200) {
+        final results = data['results'];
+        if (results is Map) {
+          final api = results['api'];
+          if (api is List && api.isNotEmpty) {
+            final firstRoute = api[0];
+            if (firstRoute is List && firstRoute.isNotEmpty) {
+              final host = firstRoute[0]?.toString().trim() ?? '';
+              if (host.isNotEmpty) return host;
+            }
+          }
+        }
+      }
+      final message = data is Map
+          ? (data['message']?.toString() ?? '获取 COPY API 地址失败')
+          : '获取 COPY API 地址失败';
+      NetworkError.throwBadResponse(
+        response: resp,
+        message: message,
+        source: 'copy_api',
+      );
+    } finally {
+      dio.close();
+    }
+  }
+
   Future<Map<String, int?>> _testHostsLatency(
     List<String> hosts, {
     void Function(String host, int? latency)? onHostResult,
