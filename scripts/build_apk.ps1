@@ -10,6 +10,7 @@ try {
     $pubspec = Get-Content 'pubspec.yaml' -Raw
     if ($pubspec -match '(?m)^version:\s*(\S+)') {
         $version = $Matches[1].Split('+')[0]
+        $versionFull = $Matches[1] -replace '\+', '-'
     } else {
         throw '无法从 pubspec.yaml 解析版本号'
     }
@@ -38,7 +39,7 @@ try {
     }
 
     # 重命名
-    $newName = "kira-v$version-arm64.apk"
+    $newName = "kira-v$versionFull-arm64.apk"
     $destApk = Join-Path $apkDir $newName
     if (Test-Path $destApk) { Remove-Item $destApk -Force }
     Move-Item -Path $srcApk -Destination $destApk -Force
