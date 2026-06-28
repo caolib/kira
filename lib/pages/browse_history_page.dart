@@ -346,7 +346,43 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
               ),
             )
           : _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                if (_animeFeatureEnabled)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
+                      child: SegmentedButton<_HistoryMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: _HistoryMode.comic,
+                            label: Text('漫画'),
+                            icon: Icon(Icons.menu_book_outlined),
+                          ),
+                          ButtonSegment(
+                            value: _HistoryMode.anime,
+                            label: Text('动漫'),
+                            icon: Icon(Icons.movie_outlined),
+                          ),
+                        ],
+                        selected: {_mode},
+                        onSelectionChanged: (v) => _setMode(v.first),
+                      ),
+                    ),
+                  ),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(hp, 0, hp, 24),
+                  sliver: SliverList.builder(
+                    itemCount: 20,
+                    itemBuilder: (_, _) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: const _HistoryCardSkeleton(),
+                    ),
+                  ),
+                ),
+              ],
+            )
           : RefreshIndicator(
               onRefresh: _load,
               child: NotificationListener<ScrollNotification>(
@@ -759,6 +795,120 @@ class _HistoryMetaChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HistoryCardSkeleton extends StatefulWidget {
+  const _HistoryCardSkeleton();
+
+  @override
+  State<_HistoryCardSkeleton> createState() => _HistoryCardSkeletonState();
+}
+
+class _HistoryCardSkeletonState extends State<_HistoryCardSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final alpha = 0.15 + 0.15 * _controller.value;
+        final color = cs.onSurfaceVariant.withValues(alpha: alpha);
+        return Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 84,
+                  child: AspectRatio(
+                    aspectRatio: 0.72,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 120,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: 160,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 60,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

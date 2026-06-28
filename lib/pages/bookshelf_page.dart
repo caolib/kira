@@ -602,8 +602,20 @@ class _BookshelfPageState extends State<BookshelfPage> {
                 ),
               SliverToBoxAdapter(child: _buildToolbar(context, hp)),
               if (_loading)
-                const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: hp),
+                  sliver: SliverGrid(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, _) => const ComicCardSkeleton(),
+                      childCount: _type == _BookshelfType.comic ? 12 : 30,
+                    ),
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 130,
+                      childAspectRatio: 0.55,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                    ),
+                  ),
                 )
               else if (_currentItemsEmpty)
                 SliverFillRemaining(child: _buildEmptyState(context))

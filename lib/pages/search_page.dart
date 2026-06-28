@@ -377,7 +377,7 @@ class _SearchPageState extends State<SearchPage> {
               sliver: SliverGrid(
                 delegate: SliverChildBuilderDelegate(
                   (_, _) => const ComicCardSkeleton(),
-                  childCount: 21,
+                  childCount: 20,
                 ),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 130,
