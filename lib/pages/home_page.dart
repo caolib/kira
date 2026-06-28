@@ -58,6 +58,7 @@ double _copySectionContentWidth(
 class _HomePageState extends State<HomePage> {
   static const _cacheKey = 'manga_home_v1';
   static const _copyCacheKey = 'manga_home_copy_v1';
+  static const _cacheTtl = Duration(hours: 1);
   static const _rankingOrdering = '-datetime_updated';
 
   final _api = ApiClient();
@@ -128,8 +129,8 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> _load() async {
-    if (_isCopySource) return _loadCopy();
+  Future<void> _load({bool forceRefresh = false}) async {
+    if (_isCopySource) return _loadCopy(forceRefresh: forceRefresh);
     final hasData = _home != null;
     if (!hasData) {
       setState(() {
@@ -157,7 +158,7 @@ class _HomePageState extends State<HomePage> {
       _cache.put(_cacheKey, {
         'home': home.toJson(),
         'ranking': ranking.list.map((c) => c.toJson()).toList(),
-      });
+      }, ttl: _cacheTtl);
     } catch (e) {
       debugPrint('HomePage load error: $e');
       if (!mounted) return;
@@ -169,7 +170,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _loadCopy() async {
+  Future<void> _loadCopy({bool forceRefresh = false}) async {
     final hasData = _copyHome != null;
     if (!hasData) {
       setState(() {
@@ -187,7 +188,7 @@ class _HomePageState extends State<HomePage> {
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_copyCacheKey, {'home': home.toJson()});
+      _cache.put(_copyCacheKey, {'home': home.toJson()}, ttl: _cacheTtl);
     } catch (e) {
       debugPrint('HomePage copy load error: $e');
       if (!mounted) return;
@@ -343,7 +344,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       floatingActionButton: _buildSourceFab(),
       body: RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () => _load(forceRefresh: true),
         child: CustomScrollView(slivers: slivers),
       ),
     );
