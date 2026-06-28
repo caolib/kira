@@ -12,6 +12,7 @@ import '../utils/comic_hero_tags.dart';
 import '../utils/data_cache.dart';
 import 'anime_detail_page.dart';
 import 'comic_detail_page.dart';
+import 'home_page.dart' show ComicCard;
 
 enum _SearchMode { comic, anime }
 
@@ -24,8 +25,9 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   static const _searchInitCacheKey = 'search_init_v2';
-  static const _searchInitCacheTtl = Duration(days: 3);
+  static const _searchInitCacheTtl = Duration(hours: 1);
   static const _tagSpacing = 8.0;
+  bool _refreshing = false;
 
   final _api = ApiClient();
   final _cache = DataCache();
@@ -56,6 +58,7 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     _user.addListener(_onUserChanged);
+    _loadFromCache();
     _loadInit();
   }
 
@@ -75,23 +78,27 @@ class _SearchPageState extends State<SearchPage> {
     setState(() {});
   }
 
-  Future<void> _loadInit() async {
-    try {
-      final cached = await _cache.get(_searchInitCacheKey);
-      if (cached != null) {
-        if (!mounted) return;
-        setState(() {
-          _keywords = List<String>.from(cached['keywords'] ?? []);
-          _tags =
-              (cached['tags'] as List?)
-                  ?.map((t) => m.Theme.fromJson(t))
-                  .toList() ??
-              [];
-          _loading = false;
-        });
-        return;
-      }
+  Future<void> _loadFromCache() async {
+    final cached = await _cache.get(_searchInitCacheKey);
+    if (!mounted || cached == null || !_loading) return;
+    setState(() {
+      _keywords = List<String>.from(cached['keywords'] ?? []);
+      _tags =
+          (cached['tags'] as List?)
+              ?.map((t) => m.Theme.fromJson(t))
+              .toList() ??
+          [];
+      _loading = false;
+    });
+  }
 
+  Future<void> _loadInit({bool forceRefresh = false}) async {
+    if (!forceRefresh && (_keywords.isNotEmpty || _tags.isNotEmpty)) {
+      setState(() => _refreshing = true);
+    } else if (forceRefresh) {
+      setState(() => _refreshing = true);
+    }
+    try {
       final keywordsFuture = _api.getHotKeywords();
       final tagsFuture = _api.getComicTags();
       final keywords = await keywordsFuture;
@@ -101,6 +108,7 @@ class _SearchPageState extends State<SearchPage> {
         _keywords = keywords;
         _tags = tags;
         _loading = false;
+        _refreshing = false;
       });
       _cache.put(_searchInitCacheKey, {
         'keywords': keywords,
@@ -108,7 +116,7 @@ class _SearchPageState extends State<SearchPage> {
       }, ttl: _searchInitCacheTtl);
     } catch (e) {
       debugPrint('SearchPage loadInit error: $e');
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _refreshing = false; });
     }
   }
 
@@ -162,6 +170,7 @@ class _SearchPageState extends State<SearchPage> {
         _comics = [];
         _animes = [];
         _searchQuery = null;
+        if (_selectedTag != null) _searching = true;
       });
     }
     try {
@@ -179,9 +188,11 @@ class _SearchPageState extends State<SearchPage> {
         }
         _total = result.total;
         _offset = _comics.length;
+        _searching = false;
       });
     } catch (e) {
       debugPrint('SearchPage loadComics error: $e');
+      if (mounted) setState(() => _searching = false);
     }
   }
 
@@ -251,6 +262,7 @@ class _SearchPageState extends State<SearchPage> {
       _mode = _SearchMode.comic;
       _selectedTag = next;
       _searchQuery = null;
+      _searching = next != null;
       _offset = 0;
       _total = 0;
       _comics = [];
@@ -299,18 +311,22 @@ class _SearchPageState extends State<SearchPage> {
 
     if (_loading) return const Center(child: CircularProgressIndicator());
 
-    return NotificationListener<ScrollNotification>(
-      onNotification: (n) {
-        if (_hasResults && n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
-          _loadMore();
-        }
-        return false;
-      },
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: SizedBox(height: MediaQuery.of(context).padding.top),
-          ),
+    return RefreshIndicator(
+      onRefresh: () => _loadInit(forceRefresh: true),
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (_hasResults && n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
+            _loadMore();
+          }
+          return false;
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: SizedBox(height: MediaQuery.of(context).padding.top),
+            ),
+            if (_refreshing)
+              const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
@@ -355,11 +371,23 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ),
             ),
-          if (_searching)
-            const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
+          if (_searching && _selectedTag == null)
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: hp),
+              sliver: SliverGrid(
+                delegate: SliverChildBuilderDelegate(
+                  (_, _) => const ComicCardSkeleton(),
+                  childCount: 21,
+                ),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 130,
+                  childAspectRatio: 0.55,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                ),
+              ),
             ),
-          if (_keywords.isNotEmpty && !_hasResults && !_searching)
+          if (_keywords.isNotEmpty && _selectedTag == null && !_hasResults && !_searching)
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(hp, 8, hp, 4),
@@ -408,7 +436,7 @@ class _SearchPageState extends State<SearchPage> {
           if (!_isAnimeMode &&
               _tags.isNotEmpty &&
               _searchQuery == null &&
-              !_searching)
+              (_selectedTag != null || !_searching))
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
@@ -452,30 +480,55 @@ class _SearchPageState extends State<SearchPage> {
                             ),
                       ],
                     ),
-                    if (_comics.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(
-                            value: '-popular',
-                            label: Text('热度'),
-                            icon: Icon(Icons.whatshot),
-                          ),
-                          ButtonSegment(
-                            value: '-datetime_updated',
-                            label: Text('更新'),
-                            icon: Icon(Icons.schedule),
-                          ),
-                        ],
-                        selected: {_ordering},
-                        onSelectionChanged: (v) {
-                          setState(() => _ordering = v.first);
-                          _loadComics();
-                        },
-                      ),
-                    ],
                     const SizedBox(height: 12),
                   ],
+                ),
+              ),
+            ),
+          if (!_isAnimeMode && _selectedTag != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: '-popular',
+                          label: Text('热度'),
+                          icon: Icon(Icons.whatshot),
+                        ),
+                        ButtonSegment(
+                          value: '-datetime_updated',
+                          label: Text('更新'),
+                          icon: Icon(Icons.schedule),
+                        ),
+                      ],
+                      selected: {_ordering},
+                      onSelectionChanged: (v) {
+                        setState(() => _ordering = v.first);
+                        _loadComics();
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+          if (_searching && _selectedTag != null)
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: hp),
+              sliver: SliverGrid(
+                delegate: SliverChildBuilderDelegate(
+                  (_, _) => const ComicCardSkeleton(),
+                  childCount: 21,
+                ),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 130,
+                  childAspectRatio: 0.55,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
                 ),
               ),
             ),
@@ -513,6 +566,7 @@ class _SearchPageState extends State<SearchPage> {
           const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
         ],
       ),
+      ),
     );
   }
 }
@@ -545,7 +599,7 @@ class _ComicGrid extends StatelessWidget {
             pathWord: comic.pathWord,
             index: i,
           );
-          return _ComicGridItem(
+          return ComicCard(
             comic: comic,
             heroTagBase: heroTagBase,
             onTap: () => onOpen(comic, heroTagBase),
@@ -662,93 +716,4 @@ class _AnimeGridItem extends StatelessWidget {
   }
 }
 
-class _ComicGridItem extends StatelessWidget {
-  final Comic comic;
-  final String? heroTagBase;
-  final VoidCallback onTap;
 
-  const _ComicGridItem({
-    required this.comic,
-    this.heroTagBase,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _hero(
-              ComicHeroTags.cover,
-              Card(
-                clipBehavior: Clip.antiAlias,
-                margin: EdgeInsets.zero,
-                child: CoverBrightnessFilter(
-                  child: CachedNetworkImage(
-                    imageUrl: comic.cover,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    fadeInDuration: Duration.zero,
-                    fadeOutDuration: Duration.zero,
-                    placeholder: (_, _) => Container(
-                      color: cs.surfaceContainerHighest,
-                      child: Center(
-                        child: Icon(
-                          Icons.image,
-                          color: cs.onSurfaceVariant,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (_, _, _) => Container(
-                      color: cs.surfaceContainerHighest,
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          color: cs.onSurfaceVariant,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            comic.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _hero(String Function(String base) tagOf, Widget child) {
-    final base = heroTagBase;
-    if (base == null) return child;
-    return Hero(
-      tag: tagOf(base),
-      createRectTween: ComicHeroTags.createRectTween,
-      placeholderBuilder: _buildHeroPlaceholder,
-      child: child,
-    );
-  }
-
-  Widget _buildHeroPlaceholder(
-    BuildContext context,
-    Size heroSize,
-    Widget child,
-  ) {
-    return SizedBox(width: heroSize.width, height: heroSize.height);
-  }
-}
