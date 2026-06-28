@@ -1100,6 +1100,54 @@ class _ReaderPageState extends State<ReaderPage> {
     return false;
   }
 
+  /// 滚动模式：已无上/下一话时，继续同方向滚动则返回详情页。
+  bool _shouldScrollBackToDetail(ScrollNotification notification) {
+    if (_detail == null || _loading || _autoAdvancingChapter) return false;
+
+    final hasHeader = _detail!.prev == null;
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return false;
+
+    // 已无下一话：tail 已完全可见且继续向下/向右滚动
+    if (_detail!.next == null) {
+      final tailIndex = (hasHeader ? 1 : 0) + _detail!.contents.length;
+      var tailFullyVisible = false;
+      for (final p in positions) {
+        if (p.index != tailIndex) continue;
+        tailFullyVisible =
+            p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
+        break;
+      }
+      if (!tailFullyVisible) return false;
+      if (notification is ScrollUpdateNotification) {
+        return (notification.scrollDelta ?? 0) > 0;
+      }
+      if (notification is OverscrollNotification) {
+        return notification.overscroll > 0;
+      }
+    }
+
+    // 已无上一话：header 已完全可见且继续向上/向左滚动
+    if (hasHeader) {
+      var headFullyVisible = false;
+      for (final p in positions) {
+        if (p.index != 0) continue;
+        headFullyVisible =
+            p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
+        break;
+      }
+      if (!headFullyVisible) return false;
+      if (notification is ScrollUpdateNotification) {
+        return (notification.scrollDelta ?? 0) < 0;
+      }
+      if (notification is OverscrollNotification) {
+        return notification.overscroll < 0;
+      }
+    }
+
+    return false;
+  }
+
   void _autoAdvanceToNextChapter() {
     final nextUuid = _detail?.next;
     if (nextUuid == null || _autoAdvancingChapter) return;
@@ -1157,6 +1205,9 @@ class _ReaderPageState extends State<ReaderPage> {
             }
             if (_shouldAutoAdvanceScrollChapter(n)) {
               _autoAdvanceToNextChapter();
+            }
+            if (_shouldScrollBackToDetail(n)) {
+              Navigator.pop(context);
             }
             return false;
           },
