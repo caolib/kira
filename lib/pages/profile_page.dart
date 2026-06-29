@@ -1850,7 +1850,7 @@ class _AboutPageState extends State<AboutPage> {
 
   Widget _buildUpdateChannelChip(ColorScheme cs) {
     final isBeta = _user.isBetaUpdateChannel;
-    final fg = isBeta ? cs.primary : cs.onSurfaceVariant;
+    final fg = isBeta ? Colors.amber.shade900 : cs.onSurfaceVariant;
     return InkWell(
       onTap: _showUpdateChannelDialog,
       borderRadius: BorderRadius.circular(20),
@@ -1858,10 +1858,10 @@ class _AboutPageState extends State<AboutPage> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isBeta
-              ? cs.primary.withValues(alpha: 0.14)
+              ? Colors.amber.withValues(alpha: 0.14)
               : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isBeta ? cs.primary : cs.outlineVariant),
+          border: Border.all(color: isBeta ? Colors.amber : cs.outlineVariant),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

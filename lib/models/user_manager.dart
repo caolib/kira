@@ -84,7 +84,7 @@ class UserManager extends ChangeNotifier {
     'bookshelf',
     'profile',
   ];
-  static const defaultUpdateMirrorPrefix = 'https://raw.ihtw.moe/';
+  static const defaultUpdateMirrorPrefix = 'https://ghproxy.net/';
   static const defaultDisplayModeRefreshRate = 0;
 
   static const _keyToken = 'user_token';
