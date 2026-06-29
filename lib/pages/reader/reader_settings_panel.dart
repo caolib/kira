@@ -147,6 +147,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     },
                   ),
                 ),
+                const SizedBox(height: 8),
                 // 滚动设置
                 if (!isPageMode) ...[
                   _buildSectionHeader('滚动', cs, tt),
@@ -169,6 +170,17 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     divisions: 20,
                     onChanged: (v) {
                       _user.setReaderImageGap(v);
+                      setState(() {});
+                      widget.onChanged();
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('连续阅读'),
+                    subtitle: const Text('到末页后直接拼接下一话，不重新加载'),
+                    value: _user.readerContinuousReading,
+                    onChanged: (v) {
+                      _user.setReaderContinuousReading(v);
                       setState(() {});
                       widget.onChanged();
                     },

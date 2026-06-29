@@ -120,6 +120,7 @@ class UserManager extends ChangeNotifier {
   static const _keyReaderAutoScrollResumeDelay =
       'reader_auto_scroll_resume_delay';
   static const _keyReaderAutoScrollDistance = 'reader_auto_scroll_distance';
+  static const _keyReaderContinuousReading = 'reader_continuous_reading';
   static const _keyImageViewerAutoRotateLandscape =
       'image_viewer_auto_rotate_landscape';
   static const _keyImageViewerLandscapeRotation =
@@ -203,6 +204,7 @@ class UserManager extends ChangeNotifier {
   bool _readerAutoScrollResume = false;
   double _readerAutoScrollResumeDelay = 2.0;
   double _readerAutoScrollDistance = 0.8;
+  bool _readerContinuousReading = true;
   bool _imageViewerAutoRotateLandscape = false;
   int _imageViewerLandscapeRotation = 1;
   int _imageLoadTimeout = 15; // 秒
@@ -293,6 +295,7 @@ class UserManager extends ChangeNotifier {
   bool get readerAutoScrollResume => _readerAutoScrollResume;
   double get readerAutoScrollResumeDelay => _readerAutoScrollResumeDelay;
   double get readerAutoScrollDistance => _readerAutoScrollDistance;
+  bool get readerContinuousReading => _readerContinuousReading;
   bool get imageViewerAutoRotateLandscape => _imageViewerAutoRotateLandscape;
   int get imageViewerLandscapeRotation => _imageViewerLandscapeRotation;
   int get imageLoadTimeout => _imageLoadTimeout;
@@ -488,6 +491,8 @@ class UserManager extends ChangeNotifier {
         );
     _readerAutoScrollDistance =
         (prefs.getDouble(_keyReaderAutoScrollDistance) ?? 0.8).clamp(0.2, 1.0);
+    _readerContinuousReading =
+        prefs.getBool(_keyReaderContinuousReading) ?? true;
     _imageViewerAutoRotateLandscape =
         prefs.getBool(_keyImageViewerAutoRotateLandscape) ?? false;
     final savedImageViewerLandscapeRotation =
@@ -908,6 +913,13 @@ class UserManager extends ChangeNotifier {
     _readerAutoScrollDistance = factor;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_keyReaderAutoScrollDistance, factor);
+    notifyListeners();
+  }
+
+  Future<void> setReaderContinuousReading(bool enabled) async {
+    _readerContinuousReading = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyReaderContinuousReading, enabled);
     notifyListeners();
   }
 

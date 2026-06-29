@@ -115,13 +115,21 @@ class _ReaderPageState extends State<ReaderPage> {
   bool _volumeChannelAvailable = true;
   int _scrollModeInitialIndex = 0;
   int _scrollWidgetVersion = 0;
+
+  // 连续阅读：按阅读顺序拼接的章节链。首项为用户进入时打开的章节。
+  // _chainIndex 指向当前"所在章节"（用于导航栏显示与历史记录）。
+  // 加载下一话时追加到链尾，不重建视图，从而避免闪屏与状态丢失。
+  final List<ChapterDetail> _chain = [];
+  int _chainIndex = 0;
+  bool _loadingNextChainChapter = false;
   final Map<int, int> _imageReloadVersions = {};
   final Map<int, int> _imageRetryCounts = {};
   final Map<int, String> _imageRetryTokens = {};
 
-  List<ChapterComment>? _cachedComments;
-  int _cachedCommentTotal = 0;
-  String? _cachedCommentChapterUuid;
+  // 评论缓存按章节 uuid 存放，连续阅读链中各章均可独立缓存，
+  // 供分隔区评论按钮显示数量并避免重复打开时重新加载。
+  final Map<String, List<ChapterComment>> _commentCache = {};
+  final Map<String, int> _commentTotalCache = {};
 
   bool get _isPageMode => _user.readerMode == 1;
   bool get _isVerticalPageMode =>
@@ -132,15 +140,71 @@ class _ReaderPageState extends State<ReaderPage> {
   bool get _isReversedScrollMode =>
       !_isPageMode && _user.readerScrollDirection == 1;
 
+  bool get _continuousReading => _isPageMode || _user.readerContinuousReading;
+
+  /// 链中所有章节图片的累计数量（用于渲染 PageView / 滚动列表的总条目数）。
+  int get _chainImageCount =>
+      _chain.fold(0, (sum, c) => sum + c.contents.length);
+
+  /// 全局图片索引 -> (章节索引, 章节内图片索引)。
+  (int chapterIndex, int imageIndex) _resolveChainImage(int globalIndex) {
+    var remaining = globalIndex;
+    for (var i = 0; i < _chain.length; i++) {
+      final count = _chain[i].contents.length;
+      if (remaining < count) return (i, remaining);
+      remaining -= count;
+    }
+    return (_chain.length - 1, _chain.last.contents.length - 1);
+  }
+
+  /// 章节索引在链中的起始全局图片索引。
+  int _chainChapterStart(int chapterIndex) {
+    var start = 0;
+    for (var i = 0; i < chapterIndex; i++) {
+      start += _chain[i].contents.length;
+    }
+    return start;
+  }
+
+  /// 当前滚动列表的总条目数（仅在 _buildScrollMode 中使用，用于判断是否到达 loadMore）。
+  /// 计算：header(可选) + 每章(分隔+图片) + 末尾(tail/loadMore)。
+  int get _scrollItemCount {
+    final firstChapter = _chain.first;
+    final hasHeader = firstChapter.prev == null;
+    var count = hasHeader ? 1 : 0;
+    for (final chapter in _chain) {
+      // 连续阅读每章都有一个分隔；非连续阅读仅单章且无分隔
+      count += _continuousReading
+          ? 1 + chapter.contents.length
+          : chapter.contents.length;
+    }
+    if (_continuousReading) {
+      count += _chain.last.next == null ? 1 : 1; // tail 或 loadMore
+    } else {
+      count += 1; // tail
+    }
+    return count;
+  }
+
   int get _commentCount {
     if (_detail == null) return 0;
-    if (_detail!.isDownloaded) return _detail!.commentTotal;
-    if (_hasCommentCacheFor(_detail!.uuid)) return _cachedCommentTotal;
-    return 0;
+    return _commentCountFor(_detail!);
   }
 
   bool _hasCommentCacheFor(String chapterUuid) =>
-      _cachedCommentChapterUuid == chapterUuid && _cachedComments != null;
+      _commentCache.containsKey(chapterUuid);
+
+  List<ChapterComment>? _cachedCommentsFor(String chapterUuid) =>
+      _commentCache[chapterUuid];
+
+  int _cachedCommentTotalFor(String chapterUuid) =>
+      _commentTotalCache[chapterUuid] ?? 0;
+
+  /// 获取指定章节的评论数：下载章用本地计数；在线章用命中的缓存，否则 0。
+  int _commentCountFor(ChapterDetail chapter) {
+    if (chapter.isDownloaded) return chapter.commentTotal;
+    return _cachedCommentTotalFor(chapter.uuid);
+  }
 
   void _updateCommentCache(
     String chapterUuid,
@@ -151,19 +215,18 @@ class _ReaderPageState extends State<ReaderPage> {
     var nextComments = List<ChapterComment>.from(comments);
     var nextTotal = total < nextComments.length ? nextComments.length : total;
 
-    if (_cachedCommentChapterUuid == chapterUuid && _cachedComments != null) {
-      if (_cachedComments!.length > nextComments.length) {
-        nextComments = List<ChapterComment>.from(_cachedComments!);
-      }
-      if (_cachedCommentTotal > nextTotal) {
-        nextTotal = _cachedCommentTotal;
-      }
+    final existing = _commentCache[chapterUuid];
+    if (existing != null && existing.length > nextComments.length) {
+      nextComments = List<ChapterComment>.from(existing);
+    }
+    final existingTotal = _commentTotalCache[chapterUuid];
+    if (existingTotal != null && existingTotal > nextTotal) {
+      nextTotal = existingTotal;
     }
 
     void apply() {
-      _cachedComments = nextComments;
-      _cachedCommentTotal = nextTotal;
-      _cachedCommentChapterUuid = chapterUuid;
+      _commentCache[chapterUuid] = nextComments;
+      _commentTotalCache[chapterUuid] = nextTotal;
     }
 
     if (rebuild && mounted) {
@@ -174,9 +237,8 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   void _clearCommentCache() {
-    _cachedComments = null;
-    _cachedCommentTotal = 0;
-    _cachedCommentChapterUuid = null;
+    _commentCache.clear();
+    _commentTotalCache.clear();
   }
 
   bool _isFirstLoad = true;
@@ -274,15 +336,26 @@ class _ReaderPageState extends State<ReaderPage> {
         _loading = false;
         _refreshingChapter = false;
         _currentPage = startPage;
-        _scrollModeInitialIndex = (hasHeader ? 1 : 0) + (startPage - 1);
+        _scrollModeInitialIndex = _scrollItemIndexFor(
+          chainIndex: 0,
+          page: startPage,
+          hasHeader: hasHeader,
+        );
         _scrollWidgetVersion++;
         _imageReloadVersions.clear();
         _imageRetryCounts.clear();
         _imageRetryTokens.clear();
+        // 重置连续阅读链：首项即当前章节。
+        _chain
+          ..clear()
+          ..add(detail);
+        _chainIndex = 0;
+        _loadingNextChainChapter = false;
       });
       if (_isPageMode) {
         _pageController.dispose();
-        _pageController = PageController(initialPage: startPage);
+        final initialIndex = _chainChapterStart(_chainIndex) + (startPage - 1);
+        _pageController = PageController(initialPage: initialIndex);
       }
       _autoAdvancingChapter = false;
       _saveReadingHistory();
@@ -348,7 +421,15 @@ class _ReaderPageState extends State<ReaderPage> {
             return;
           }
           setState(() {
-            _detail = _detail!.copyWith(next: fresh.next, prev: fresh.prev);
+            final updated = _detail!.copyWith(
+              next: fresh.next,
+              prev: fresh.prev,
+            );
+            _detail = updated;
+            // 同步链中对应章节，保证连续阅读追加判断使用最新导航
+            if (_chainIndex < _chain.length) {
+              _chain[_chainIndex] = updated;
+            }
           });
         })
         .catchError((Object _) {
@@ -368,18 +449,19 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Future<void> _preloadComments() async {
+  Future<void> _preloadComments({ChapterDetail? chapter}) async {
     if (!_user.commentPreload) return;
-    final detail = _detail;
+    final detail = chapter ?? _detail;
     if (detail == null || detail.isDownloaded) return;
-    if (_hasCommentCacheFor(_currentUuid)) return;
+    final uuid = detail.uuid;
+    if (_hasCommentCacheFor(uuid)) return;
 
-    final chapterUuid = _currentUuid;
+    final chapterUuid = uuid;
     final chapterName = detail.name;
 
     try {
       final data = await _api.getChapterComments(chapterUuid, limit: 100);
-      if (!mounted || _currentUuid != chapterUuid) return;
+      if (!mounted) return;
       _updateCommentCache(chapterUuid, data.list, data.total, rebuild: true);
       await _maybeAutoSummaryAfterPreload(
         chapterUuid: chapterUuid,
@@ -514,14 +596,90 @@ class _ReaderPageState extends State<ReaderPage> {
     _loadChapter();
   }
 
+  /// 连续阅读：在链尾追加下一话。仅滚动/翻页构建逻辑需要在末尾追加更多内容时调用。
+  /// 加载完成后触发 setState，由 PageView/ScrollablePositionedList 增量渲染新页。
+  Future<void> _appendNextChapterToChain() async {
+    if (_loadingNextChainChapter) return;
+    final lastChapter = _chain.last;
+    final nextUuid = lastChapter.next;
+    if (nextUuid == null) return;
+    _loadingNextChainChapter = true;
+    try {
+      final next =
+          (await _downloads.getDownloadedChapterDetail(
+            widget.pathWord,
+            nextUuid,
+          )) ??
+          await _api.getChapterDetail(
+            widget.pathWord,
+            nextUuid,
+            forceRefresh: false,
+          );
+      if (next.contents.isEmpty) {
+        throw StateError('Chapter has no readable pages');
+      }
+      if (!mounted) return;
+      setState(() {
+        _chain.add(next);
+        _loadingNextChainChapter = false;
+      });
+      // 追加后立即预加载该话评论，使分隔区评论按钮能显示数量
+      if (_user.commentPreload) _preloadComments(chapter: next);
+    } catch (_) {
+      _loadingNextChainChapter = false;
+      // 追加失败保持链不变，用户可手动重试（继续翻页会再次触发）
+    }
+  }
+
+  /// 根据全局图片位置更新当前所在章节，用于导航栏显示与历史记录。
+  /// 返回章节是否发生变化（需要刷新评论缓存等）。
+  bool _syncActiveChapterFromGlobal(int chapterIndex) {
+    if (chapterIndex < 0 || chapterIndex >= _chain.length) return false;
+    if (chapterIndex == _chainIndex) return false;
+    final newDetail = _chain[chapterIndex];
+    _chainIndex = chapterIndex;
+    _detail = newDetail;
+    _currentUuid = newDetail.uuid;
+    return true;
+  }
+
   void _prevPage() {
     if (_detail == null) return;
-    if (_currentPage > 1) {
+    if (_currentPage > 1 || _chainIndex > 0) {
+      // 连续阅读：已到当前章首页但前面还有拼接的章节 -> 回到上一章末页
+      if (_currentPage == 1 && _chainIndex > 0 && _continuousReading) {
+        final prevChapter = _chain[_chainIndex - 1];
+        final prevChapterStart = _chainChapterStart(_chainIndex - 1);
+        final targetGlobal = prevChapterStart + prevChapter.contents.length - 1;
+        _syncActiveChapterFromGlobal(_chainIndex - 1);
+        _currentPage = prevChapter.contents.length;
+        _jumpPageControllerTo(targetGlobal);
+        setState(() {});
+        _saveReadingHistory();
+        return;
+      }
       _goToPage(_currentPage - 1);
-    } else if (_detail!.prev != null) {
+    } else if (_detail!.prev != null && !_continuousReading) {
+      _goChapter(_detail!.prev);
+    } else if (_detail!.prev != null && _continuousReading) {
+      // 链首之前还有上一话：降级为整章跳转（重新加载）
       _goChapter(_detail!.prev);
     } else {
       showToast(context, '当前已无上一话');
+    }
+  }
+
+  /// 翻页模式辅助：按设置跳转到全局页索引（无动画/带动画），无 client 时静默跳过。
+  void _jumpPageControllerTo(int globalIndex) {
+    if (!_isPageMode || !_pageController.hasClients) return;
+    if (_user.readerInstantPageTurn) {
+      _pageController.jumpToPage(globalIndex);
+    } else {
+      _pageController.animateToPage(
+        globalIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -530,22 +688,68 @@ class _ReaderPageState extends State<ReaderPage> {
     final imageCount = _detail!.contents.length;
     if (_currentPage < imageCount) {
       _goToPage(_currentPage + 1);
-    } else if (_detail!.next != null) {
+      return;
+    }
+    // 已到当前章末页
+    if (_continuousReading) {
+      // 链中后续章节已拼接 -> 直接进入下一章首页
+      if (_chainIndex < _chain.length - 1) {
+        final nextChapterStart = _chainChapterStart(_chainIndex + 1);
+        _syncActiveChapterFromGlobal(_chainIndex + 1);
+        _currentPage = 1;
+        if (_isPageMode) {
+          _jumpPageControllerTo(nextChapterStart);
+        }
+        setState(() {});
+        _saveReadingHistory();
+        return;
+      }
+      // 链尾且还有下一话 -> 追加后跳到新章首页
+      final nextUuid = _chain.last.next;
+      if (nextUuid != null && !_loadingNextChainChapter) {
+        _appendNextChapterToChain().then((_) {
+          if (!mounted) return;
+          final newChapterIdx = _chain.length - 1;
+          final newStart = _chainChapterStart(newChapterIdx);
+          _syncActiveChapterFromGlobal(newChapterIdx);
+          _currentPage = 1;
+          if (_isPageMode) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _jumpPageControllerTo(newStart);
+            });
+          }
+          setState(() {});
+          _saveReadingHistory();
+        });
+        return;
+      }
+      if (_loadingNextChainChapter) {
+        showToast(context, '正在加载下一话…');
+        return;
+      }
+      showToast(context, '当前已无下一话');
+      return;
+    }
+    if (_detail!.next != null) {
       _goChapter(_detail!.next);
     } else {
       showToast(context, '当前已无下一话');
     }
   }
 
-  /// 翻到指定页码（1-based）。开启「无动画翻页」时瞬时切换，否则带过渡动画。
+  /// 翻到指定页码（1-based，当前章内页码）。开启「无动画翻页」时瞬时切换，否则带过渡动画。
   void _goToPage(int page) {
     if (!_pageController.hasClients) return;
+    final globalIndex = _continuousReading
+        ? _chainChapterStart(_chainIndex) + (page - 1)
+        : page;
     if (_user.readerInstantPageTurn) {
-      _pageController.jumpToPage(page);
+      _pageController.jumpToPage(globalIndex);
       return;
     }
     _pageController.animateToPage(
-      page,
+      globalIndex,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
@@ -557,13 +761,25 @@ class _ReaderPageState extends State<ReaderPage> {
     if (_isPageMode && _autoScrollEnabled) {
       _setAutoScroll(false);
     }
+    // 关闭连续阅读时丢弃已拼接的后续章节，仅保留当前章。
+    if (!_continuousReading && _chain.length > 1) {
+      _chain
+        ..clear()
+        ..add(_detail!);
+      _chainIndex = 0;
+    }
     if (_isPageMode) {
       _pageController.dispose();
-      _pageController = PageController(initialPage: _currentPage);
+      final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
+      _pageController = PageController(initialPage: initialIndex);
     } else {
       // 滚动模式:让 ScrollablePositionedList 带新 initialScrollIndex 重建,保持当前页
-      final hasHeader = _detail?.prev == null;
-      _scrollModeInitialIndex = (hasHeader ? 1 : 0) + (page - 1);
+      final hasHeader = _chain.first.prev == null;
+      _scrollModeInitialIndex = _scrollItemIndexFor(
+        chainIndex: _chainIndex,
+        page: page,
+        hasHeader: hasHeader,
+      );
       _scrollWidgetVersion++;
     }
     setState(() {});
@@ -710,13 +926,19 @@ class _ReaderPageState extends State<ReaderPage> {
       return;
     }
     // 没有下一章且最后一张图已进入视口：滑到底后暂停，避免无意义滚动。
-    if (_detail!.next == null) {
+    final lastChapter = _chain.last;
+    if (lastChapter.next == null) {
       final positions = _itemPositionsListener.itemPositions.value;
       if (positions.isNotEmpty) {
-        final hasHeader = _detail!.prev == null;
-        final imageStart = hasHeader ? 1 : 0;
-        final imageCount = _detail!.contents.length;
-        final lastImageIndex = imageStart + imageCount - 1;
+        // 计算链中最后一张图片的列表索引
+        final hasHeader = _chain.first.prev == null;
+        final lastImageIndex = _continuousReading
+            ? _scrollItemIndexFor(
+                chainIndex: _chain.length - 1,
+                page: lastChapter.contents.length,
+                hasHeader: hasHeader,
+              )
+            : (hasHeader ? 1 : 0) + (_detail!.contents.length - 1);
         final isLastImageFullyVisible = positions.any((p) {
           if (p.index != lastImageIndex) return false;
           return p.itemLeadingEdge >= 0.0 && p.itemTrailingEdge <= 1.0;
@@ -782,67 +1004,101 @@ class _ReaderPageState extends State<ReaderPage> {
     }
   }
 
-  // ── 公共图片组件 ──
+  /// 连续阅读预加载：以 (章节索引, 章节内索引) 为中心，预加载相邻图片（跨章）。
+  void _preloadChainImages(int chapterIndex, int localIndex, {int range = 2}) {
+    if (_chain.isEmpty) return;
+    final chapter = _chain[chapterIndex.clamp(0, _chain.length - 1)];
+    if (chapter.isDownloaded) return;
+    for (int offset = -range; offset <= range; offset++) {
+      var ci = chapterIndex;
+      var li = localIndex + offset;
+      // 处理跨章回溯/前进
+      while (li < 0 && ci > 0) {
+        ci--;
+        li += _chain[ci].contents.length;
+      }
+      while (li >= _chain[ci].contents.length && ci < _chain.length - 1) {
+        li -= _chain[ci].contents.length;
+        ci++;
+      }
+      if (li < 0 || li >= _chain[ci].contents.length) continue;
+      final chap = _chain[ci];
+      if (chap.isDownloaded) continue;
+      precacheImage(
+        CachedNetworkImageProvider(
+          chap.contents[li],
+          cacheManager: _readerImageCacheManager,
+        ),
+        context,
+        onError: (_, _) {},
+      );
+    }
+  }
 
-  void _retryImage(int index) {
+  // ── 公共图片组件 ──
+  //
+  // 为支持连续阅读拼接多章图片，图片构建方法以 (chapter, localIndex) 定位图片，
+  // 以 retryKey（非连续时等于 localIndex，连续时为全局索引）作为重试/版本状态键，
+  // 避免不同章节的同名索引互相覆盖重试状态。
+
+  void _retryImage(ChapterDetail chapter, int localIndex, int retryKey) {
     setState(() {
-      _imageRetryCounts.remove(index);
-      _imageRetryTokens.remove(index);
-      _imageReloadVersions[index] = (_imageReloadVersions[index] ?? 0) + 1;
+      _imageRetryCounts.remove(retryKey);
+      _imageRetryTokens.remove(retryKey);
+      _imageReloadVersions[retryKey] =
+          (_imageReloadVersions[retryKey] ?? 0) + 1;
     });
   }
 
-  void _clearImageRetryState(int index) {
-    if (!_imageRetryCounts.containsKey(index) &&
-        !_imageRetryTokens.containsKey(index)) {
+  void _clearImageRetryState(int retryKey) {
+    if (!_imageRetryCounts.containsKey(retryKey) &&
+        !_imageRetryTokens.containsKey(retryKey)) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() {
-        _imageRetryCounts.remove(index);
-        _imageRetryTokens.remove(index);
+        _imageRetryCounts.remove(retryKey);
+        _imageRetryTokens.remove(retryKey);
       });
     });
   }
 
-  void _scheduleImageRetry(int index) {
-    final attempts = _imageRetryCounts[index] ?? 0;
+  void _scheduleImageRetry(int retryKey) {
+    final attempts = _imageRetryCounts[retryKey] ?? 0;
     final retryLimit = _user.imageRetryCount;
     if (attempts >= retryLimit) return;
 
-    final version = _imageReloadVersions[index] ?? 0;
+    final version = _imageReloadVersions[retryKey] ?? 0;
     final token = '$version-$attempts';
-    if (_imageRetryTokens[index] == token) return;
-    _imageRetryTokens[index] = token;
+    if (_imageRetryTokens[retryKey] == token) return;
+    _imageRetryTokens[retryKey] = token;
 
     Future<void>.delayed(const Duration(milliseconds: 200), () {
       if (!mounted) return;
-      final currentVersion = _imageReloadVersions[index] ?? 0;
+      final currentVersion = _imageReloadVersions[retryKey] ?? 0;
       if (currentVersion != version) return;
 
       setState(() {
-        _imageRetryCounts[index] = attempts + 1;
-        _imageRetryTokens.remove(index);
-        _imageReloadVersions[index] = currentVersion + 1;
+        _imageRetryCounts[retryKey] = attempts + 1;
+        _imageRetryTokens.remove(retryKey);
+        _imageReloadVersions[retryKey] = currentVersion + 1;
       });
     });
   }
 
-  Future<void> _copyImageUrl(int index) async {
-    final imageSource = _detail?.contents[index];
+  Future<void> _copyImageUrl(ChapterDetail chapter, int localIndex) async {
+    final imageSource = localIndex < chapter.contents.length
+        ? chapter.contents[localIndex]
+        : null;
     if (imageSource == null || imageSource.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: imageSource));
     if (!mounted) return;
-    showToast(
-      context,
-      _detail?.isDownloaded == true ? '图片路径已复制到剪贴板' : '图片链接已复制到剪贴板',
-    );
+    showToast(context, chapter.isDownloaded ? '图片路径已复制到剪贴板' : '图片链接已复制到剪贴板');
   }
 
-  Future<void> _openImageViewer(int index) async {
-    final detail = _detail;
-    if (detail == null || index < 0 || index >= detail.contents.length) return;
+  Future<void> _openImageViewer(ChapterDetail chapter, int localIndex) async {
+    if (localIndex < 0 || localIndex >= chapter.contents.length) return;
 
     // 打开图片查看器期间暂停自动滚动，与设置面板/评论面板保持一致
     _pauseAutoScrollForOverlay();
@@ -850,11 +1106,11 @@ class _ReaderPageState extends State<ReaderPage> {
       PageRouteBuilder<void>(
         opaque: true,
         pageBuilder: (_, _, _) => _ReaderImageViewer(
-          imageSource: detail.contents[index],
-          isDownloaded: detail.isDownloaded,
+          imageSource: chapter.contents[localIndex],
+          isDownloaded: chapter.isDownloaded,
           cacheManager: _readerImageCacheManager,
-          pageNumber: index + 1,
-          pageCount: detail.contents.length,
+          pageNumber: localIndex + 1,
+          pageCount: chapter.contents.length,
         ),
       ),
     );
@@ -870,18 +1126,24 @@ class _ReaderPageState extends State<ReaderPage> {
     }
   }
 
-  Widget _buildReaderImageGesture(int index) {
+  Widget _buildReaderImageGesture(
+    ChapterDetail chapter,
+    int localIndex, {
+    int? retryKey,
+  }) {
+    final key = retryKey ?? localIndex;
     return _ReaderImageGesture(
-      key: ValueKey('reader-image-$_currentUuid-$index'),
+      key: ValueKey('reader-image-${chapter.uuid}-$localIndex'),
       onSingleTap: _isPageMode ? _handlePageModeTapAt : (_) => _toggleToolbar(),
-      onDoubleTap: () => _openImageViewer(index),
-      child: _buildImage(index),
+      onDoubleTap: () => _openImageViewer(chapter, localIndex),
+      child: _buildImage(chapter, localIndex, retryKey: key),
     );
   }
 
-  Widget _buildImage(int index) {
+  Widget _buildImage(ChapterDetail chapter, int localIndex, {int? retryKey}) {
     final cs = Theme.of(context).colorScheme;
-    final imageSource = _detail!.contents[index];
+    final key = retryKey ?? localIndex;
+    final imageSource = chapter.contents[localIndex];
     final useFullViewport = _isPageMode || _isHorizontalScrollMode;
     final imageFit = _isHorizontalScrollMode
         ? BoxFit.fitHeight
@@ -892,8 +1154,8 @@ class _ReaderPageState extends State<ReaderPage> {
         : (screenSize.width * MediaQuery.devicePixelRatioOf(context)).round();
     Widget image;
 
-    if (_detail!.isDownloaded) {
-      _clearImageRetryState(index);
+    if (chapter.isDownloaded) {
+      _clearImageRetryState(key);
       image = Image.file(
         File(imageSource),
         fit: imageFit,
@@ -914,7 +1176,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 ),
                 const SizedBox(height: 12),
                 FilledButton.tonalIcon(
-                  onPressed: () => _copyImageUrl(index),
+                  onPressed: () => _copyImageUrl(chapter, localIndex),
                   icon: const Icon(Icons.copy_all_outlined, size: 18),
                   label: const Text('复制图片路径'),
                 ),
@@ -926,7 +1188,7 @@ class _ReaderPageState extends State<ReaderPage> {
     } else {
       image = CachedNetworkImage(
         key: ValueKey(
-          '$_currentUuid-$index-${_imageReloadVersions[index] ?? 0}',
+          '${chapter.uuid}-$localIndex-${_imageReloadVersions[key] ?? 0}',
         ),
         imageUrl: imageSource,
         cacheManager: _readerImageCacheManager,
@@ -935,7 +1197,7 @@ class _ReaderPageState extends State<ReaderPage> {
         width: _isHorizontalScrollMode ? null : double.infinity,
         height: useFullViewport ? double.infinity : null,
         imageBuilder: (_, imageProvider) {
-          _clearImageRetryState(index);
+          _clearImageRetryState(key);
           return Image(
             image: imageProvider,
             fit: imageFit,
@@ -949,11 +1211,11 @@ class _ReaderPageState extends State<ReaderPage> {
           child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
         errorWidget: (_, _, _) {
-          final attempts = _imageRetryCounts[index] ?? 0;
+          final attempts = _imageRetryCounts[key] ?? 0;
           final retryLimit = _user.imageRetryCount;
           final canAutoRetry = attempts < retryLimit;
           if (canAutoRetry) {
-            _scheduleImageRetry(index);
+            _scheduleImageRetry(key);
           }
 
           return Container(
@@ -978,13 +1240,13 @@ class _ReaderPageState extends State<ReaderPage> {
                   if (!canAutoRetry) ...[
                     const SizedBox(height: 12),
                     FilledButton.tonalIcon(
-                      onPressed: () => _retryImage(index),
+                      onPressed: () => _retryImage(chapter, localIndex, key),
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('重新加载'),
                     ),
                     const SizedBox(height: 8),
                     FilledButton.tonalIcon(
-                      onPressed: () => _copyImageUrl(index),
+                      onPressed: () => _copyImageUrl(chapter, localIndex),
                       icon: const Icon(Icons.copy_all_outlined, size: 18),
                       label: const Text('复制图片链接'),
                     ),
@@ -1024,13 +1286,38 @@ class _ReaderPageState extends State<ReaderPage> {
     return extent < 280 ? 280 : extent;
   }
 
+  /// 计算滚动模式下某章某页对应的列表 item 索引。
+  /// 布局：header(可选) + 每章[divider + images]。
+  int _scrollItemIndexFor({
+    required int chainIndex,
+    required int page,
+    required bool hasHeader,
+  }) {
+    var idx = hasHeader ? 1 : 0;
+    for (var ci = 0; ci < chainIndex; ci++) {
+      idx += 1 + _chain[ci].contents.length;
+    }
+    idx += 1; // 当前章 divider
+    idx += (page - 1);
+    return idx;
+  }
+
   void _jumpToScrollPage(int page, {int? totalPages}) {
     if (!_itemScrollController.isAttached) return;
     final imageCount = totalPages ?? _detail?.contents.length ?? 0;
     if (imageCount <= 0) return;
-    final hasHeader = _detail?.prev == null;
     final clampedPage = page.clamp(1, imageCount);
-    final targetIndex = (hasHeader ? 1 : 0) + (clampedPage - 1);
+    int targetIndex;
+    if (_continuousReading) {
+      targetIndex = _scrollItemIndexFor(
+        chainIndex: _chainIndex,
+        page: clampedPage,
+        hasHeader: _chain.first.prev == null,
+      );
+    } else {
+      final hasHeader = _detail?.prev == null;
+      targetIndex = (hasHeader ? 1 : 0) + (clampedPage - 1);
+    }
     _itemScrollController.jumpTo(index: targetIndex);
   }
 
@@ -1040,6 +1327,11 @@ class _ReaderPageState extends State<ReaderPage> {
 
     final positions = _itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return;
+
+    if (_continuousReading) {
+      _onItemPositionsChangedContinuous(positions);
+      return;
+    }
 
     final hasHeader = _detail!.prev == null;
     final imageStart = hasHeader ? 1 : 0;
@@ -1067,6 +1359,49 @@ class _ReaderPageState extends State<ReaderPage> {
     setState(() => _currentPage = page);
     _saveReadingHistory();
     _preloadImages(page - 1);
+  }
+
+  /// 连续阅读滚动模式：根据 item 索引解析所属章节与章内页码，更新导航栏与历史。
+  void _onItemPositionsChangedContinuous(Iterable<ItemPosition> positions) {
+    // 计算各章在列表中的图片起始 item 索引
+    final firstChapter = _chain.first;
+    final hasHeader = firstChapter.prev == null;
+    var cursor = hasHeader ? 1 : 0;
+    final starts = <int>[];
+    for (final chapter in _chain) {
+      starts.add(cursor);
+      cursor += 1; // chapter divider
+      cursor += chapter.contents.length;
+    }
+    // 找到可见面积最大的图片 item
+    int? bestChapterIndex;
+    int? bestLocalIndex;
+    double bestVisible = -1;
+    for (final p in positions) {
+      for (var ci = 0; ci < _chain.length; ci++) {
+        final s = starts[ci];
+        final count = _chain[ci].contents.length;
+        if (p.index >= s + 1 && p.index < s + 1 + count) {
+          final top = p.itemLeadingEdge.clamp(0.0, 1.0);
+          final bottom = p.itemTrailingEdge.clamp(0.0, 1.0);
+          final visible = bottom - top;
+          if (visible > bestVisible) {
+            bestVisible = visible;
+            bestChapterIndex = ci;
+            bestLocalIndex = p.index - (s + 1);
+          }
+          break;
+        }
+      }
+    }
+    if (bestChapterIndex == null || bestLocalIndex == null) return;
+    final chapterChanged = _syncActiveChapterFromGlobal(bestChapterIndex);
+    final page = bestLocalIndex + 1;
+    if (page == _currentPage && !chapterChanged) return;
+    setState(() => _currentPage = page);
+    _saveReadingHistory();
+    _preloadChainImages(bestChapterIndex, bestLocalIndex);
+    if (chapterChanged) _preloadComments();
   }
 
   bool _shouldAutoAdvanceScrollChapter(ScrollNotification notification) {
@@ -1177,13 +1512,49 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildScrollMode() {
-    final imageCount = _detail!.contents.length;
-    final hasHeader = _detail!.prev == null;
-    final totalItems = (hasHeader ? 1 : 0) + imageCount + 1;
+    final firstChapter = _chain.first;
+    final hasHeader = firstChapter.prev == null;
     final scrollDirection = _isHorizontalScrollMode
         ? Axis.horizontal
         : Axis.vertical;
     final viewportSize = MediaQuery.sizeOf(context);
+
+    // 连续阅读：将链中各章图片依次拼接，章首插入章节标题分隔；仅在最后一章且
+    // 无下一话时追加 tail。否则保持列表可向下滚动并在接近末尾时异步追加下一话。
+    // 非连续阅读：沿用原有 header + 单章图片 + tail 结构。
+    final List<_ScrollItem> items = [];
+    if (hasHeader) items.add(_ScrollItem.header());
+    if (_continuousReading) {
+      for (var ci = 0; ci < _chain.length; ci++) {
+        final chapter = _chain[ci];
+        if (ci > 0 || hasHeader) {
+          items.add(_ScrollItem.chapterDivider(chapter));
+        } else if (ci == 0 && !hasHeader) {
+          // 首章且无 header：仍插入一个分隔以显示章节名（仅连续阅读）
+          items.add(_ScrollItem.chapterDivider(chapter));
+        }
+        final start = _chainChapterStart(ci);
+        for (var i = 0; i < chapter.contents.length; i++) {
+          items.add(_ScrollItem.image(chapter, i, start + i));
+        }
+      }
+      // 最后一章无下一话时显示终结 tail；否则追加加载占位（可触发拉取下一话）
+      final lastChapter = _chain.last;
+      if (lastChapter.next == null) {
+        items.add(_ScrollItem.tail());
+      } else {
+        items.add(_ScrollItem.loadMore());
+      }
+    } else {
+      final chapter = _detail!;
+      final start = 0;
+      for (var i = 0; i < chapter.contents.length; i++) {
+        items.add(_ScrollItem.image(chapter, i, start + i));
+      }
+      items.add(_ScrollItem.tail());
+    }
+    final totalItems = items.length;
+
     return Listener(
       onPointerDown: (_) => _onAutoScrollTouchStart(),
       onPointerUp: (_) => _onAutoScrollTouchEnd(),
@@ -1203,16 +1574,24 @@ class _ReaderPageState extends State<ReaderPage> {
               SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
               setState(() => _showToolbar = false);
             }
-            if (_shouldAutoAdvanceScrollChapter(n)) {
-              _autoAdvanceToNextChapter();
-            }
-            if (_shouldScrollBackToDetail(n)) {
-              Navigator.pop(context);
+            if (_continuousReading) {
+              _maybeAppendNextChainOnScroll();
+            } else {
+              if (_shouldAutoAdvanceScrollChapter(n)) {
+                _autoAdvanceToNextChapter();
+              }
+              if (_shouldScrollBackToDetail(n)) {
+                Navigator.pop(context);
+              }
             }
             return false;
           },
           child: ScrollablePositionedList.separated(
-            key: ValueKey('$_currentUuid-$_scrollWidgetVersion'),
+            key: ValueKey(
+              _continuousReading
+                  ? 'scroll-continuous-$_scrollWidgetVersion'
+                  : '$_currentUuid-$_scrollWidgetVersion',
+            ),
             itemScrollController: _itemScrollController,
             itemPositionsListener: _itemPositionsListener,
             scrollOffsetController: _scrollOffsetController,
@@ -1228,9 +1607,8 @@ class _ReaderPageState extends State<ReaderPage> {
                 : viewportSize.height,
             itemCount: totalItems,
             separatorBuilder: (_, i) {
-              final imageStart = hasHeader ? 1 : 0;
-              final imageEnd = imageStart + imageCount - 1;
-              if (i >= imageStart && i < imageEnd) {
+              final item = items[i];
+              if (item.kind == _ScrollItemKind.image) {
                 return _isHorizontalScrollMode
                     ? SizedBox(width: _user.readerImageGap)
                     : SizedBox(height: _user.readerImageGap);
@@ -1238,19 +1616,148 @@ class _ReaderPageState extends State<ReaderPage> {
               return const SizedBox.shrink();
             },
             itemBuilder: (_, i) {
-              if (hasHeader && i == 0) return _buildFirstChapterHead();
-              final imageIndex = i - (hasHeader ? 1 : 0);
-              if (imageIndex < imageCount) {
-                final image = _buildReaderImageGesture(imageIndex);
-                if (_isHorizontalScrollMode) {
-                  return SizedBox(height: viewportSize.height, child: image);
-                }
-                return image;
+              final item = items[i];
+              switch (item.kind) {
+                case _ScrollItemKind.header:
+                  return _buildFirstChapterHead();
+                case _ScrollItemKind.chapterDivider:
+                  return _buildChapterDivider(item.chapter!);
+                case _ScrollItemKind.image:
+                  final image = _buildReaderImageGesture(
+                    item.chapter!,
+                    item.localIndex!,
+                    retryKey: item.globalIndex,
+                  );
+                  if (_isHorizontalScrollMode) {
+                    return SizedBox(height: viewportSize.height, child: image);
+                  }
+                  return image;
+                case _ScrollItemKind.tail:
+                  return _buildNextChapterTail();
+                case _ScrollItemKind.loadMore:
+                  return _buildLoadMoreTail();
               }
-              return _buildNextChapterTail();
             },
           ),
         ),
+      ),
+    );
+  }
+
+  /// 连续阅读滚动模式：当链尾章节最后两张图片之一进入视口且有下一话时，
+  /// 提前异步追加下一话，使用户滑到底部时下一话图片已就绪，无需等待。
+  void _maybeAppendNextChainOnScroll() {
+    if (_loadingNextChainChapter) return;
+    final lastChapter = _chain.last;
+    if (lastChapter.next == null) return;
+    if (lastChapter.contents.length < 2) {
+      // 章节图片过少：loadMore 进入视口即触发
+      final positions = _itemPositionsListener.itemPositions.value;
+      for (final p in positions) {
+        if (p.index >= _scrollItemCount - 1 &&
+            p.itemLeadingEdge < 1.0 &&
+            p.itemTrailingEdge > 0) {
+          _appendNextChapterToChain();
+          return;
+        }
+      }
+      return;
+    }
+    // 链尾章节最后两张图片的 item 索引
+    final hasHeader = _chain.first.prev == null;
+    final lastImageIndex = _scrollItemIndexFor(
+      chainIndex: _chain.length - 1,
+      page: lastChapter.contents.length,
+      hasHeader: hasHeader,
+    );
+    final triggerIndex = lastImageIndex - 1; // 倒数第二张
+    final positions = _itemPositionsListener.itemPositions.value;
+    for (final p in positions) {
+      if ((p.index == triggerIndex || p.index == lastImageIndex) &&
+          p.itemLeadingEdge < 1.0 &&
+          p.itemTrailingEdge > 0) {
+        _appendNextChapterToChain();
+        return;
+      }
+    }
+  }
+
+  Widget _buildChapterDivider(ChapterDetail chapter) {
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [_buildChapterDividerActions(chapter)],
+      ),
+    );
+    if (_isHorizontalScrollMode) {
+      return SizedBox(width: _scrollModeTailExtent(context), child: content);
+    }
+    return ColoredBox(color: Colors.black, child: content);
+  }
+
+  /// 章节分隔区的操作按钮：目录、评论（针对该章）。
+  Widget _buildChapterDividerActions(ChapterDetail chapter) {
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
+      backgroundColor: Colors.white.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+    final commentCount = _commentCountFor(chapter);
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.list),
+          label: const Text('目录'),
+          style: buttonStyle,
+        ),
+        OutlinedButton.icon(
+          onPressed: () => _showChapterComments(chapter: chapter),
+          icon: const Icon(Icons.forum_outlined),
+          label: Text(commentCount > 0 ? '$commentCount' : '评论'),
+          style: buttonStyle,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadMoreTail() {
+    final cs = Theme.of(context).colorScheme;
+    final chapter = _chain.last;
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(32, 48, 32, 32),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_loadingNextChainChapter)
+              const CircularProgressIndicator(strokeWidth: 2)
+            else
+              Icon(Icons.expand_more, color: cs.onSurfaceVariant, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              _loadingNextChainChapter ? '正在加载下一话…' : '继续滚动加载下一话',
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            _buildChapterDividerActions(chapter),
+          ],
+        ),
+      ),
+    );
+    return ColoredBox(
+      color: Colors.black,
+      child: SizedBox(
+        width: _isHorizontalScrollMode ? _scrollModeTailExtent(context) : null,
+        height: _isHorizontalScrollMode
+            ? null
+            : _scrollModeTailExtent(context) * 0.6,
+        child: Align(alignment: Alignment.topCenter, child: content),
       ),
     );
   }
@@ -1414,8 +1921,8 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Future<void> _showChapterComments() async {
-    final detail = _detail;
+  Future<void> _showChapterComments({ChapterDetail? chapter}) async {
+    final detail = chapter ?? _detail;
     if (detail == null) return;
 
     // 打开评论面板期间暂停自动滚动，与设置面板保持一致
@@ -1423,10 +1930,10 @@ class _ReaderPageState extends State<ReaderPage> {
     final useCachedComments = _hasCommentCacheFor(detail.uuid);
     final initialComments = detail.isDownloaded
         ? detail.comments
-        : (useCachedComments ? _cachedComments : null);
+        : (useCachedComments ? _cachedCommentsFor(detail.uuid) : null);
     final initialTotal = detail.isDownloaded
         ? detail.commentTotal
-        : (useCachedComments ? _cachedCommentTotal : null);
+        : (useCachedComments ? _cachedCommentTotalFor(detail.uuid) : null);
 
     final action = await showModalBottomSheet<String>(
       context: context,
@@ -1538,10 +2045,13 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildPageMode() {
-    final imageCount = _detail!.contents.length;
     final instantTurn = _user.readerInstantPageTurn;
     final horizontalDrag = instantTurn && !_isVerticalPageMode;
     final verticalDrag = instantTurn && _isVerticalPageMode;
+    final totalChapters = _chainImageCount;
+    final isContinuous = _continuousReading;
+    final imageCount = _detail!.contents.length;
+    final itemCount = isContinuous ? totalChapters : imageCount + 2;
     return GestureDetector(
       onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
       onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
@@ -1553,20 +2063,53 @@ class _ReaderPageState extends State<ReaderPage> {
       onVerticalDragEnd: verticalDrag ? _onInstantTurnDragEnd : null,
       onVerticalDragCancel: verticalDrag ? _onInstantTurnDragCancel : null,
       child: PageView.builder(
-        key: ValueKey('page-$_currentUuid'),
+        // 连续阅读：章切换不重建 PageView，避免丢位置；用稳定 key。
+        key: ValueKey(
+          isContinuous
+              ? 'page-continuous-$_scrollWidgetVersion'
+              : 'page-$_currentUuid',
+        ),
         controller: _pageController,
         scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
         reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
         allowImplicitScrolling: true,
         physics: instantTurn ? const NeverScrollableScrollPhysics() : null,
-        itemCount: imageCount + 2,
+        itemCount: itemCount,
         onPageChanged: (index) {
-          if (index == 0) {
-            _handlePageModeBlankPage(false);
-            return;
+          if (!isContinuous) {
+            if (index == 0) {
+              _handlePageModeBlankPage(false);
+              return;
+            }
+            if (index == imageCount + 1) {
+              _handlePageModeBlankPage(true);
+              return;
+            }
           }
-          if (index == imageCount + 1) {
-            _handlePageModeBlankPage(true);
+          if (isContinuous) {
+            final (ci, li) = _resolveChainImage(index);
+            final chapterChanged = _syncActiveChapterFromGlobal(ci);
+            setState(() {
+              _currentPage = li + 1;
+              if (!_isDraggingSlider) {
+                _showToolbar = false;
+                SystemChrome.setEnabledSystemUIMode(
+                  SystemUiMode.immersiveSticky,
+                );
+              }
+            });
+            _saveReadingHistory();
+            _preloadChainImages(ci, li);
+            // 接近链尾且有下一话：预加载下一话到链中，翻页时即可无缝衔接
+            if (ci == _chain.length - 1 &&
+                li >= _chain.last.contents.length - 2 &&
+                _chain.last.next != null &&
+                !_loadingNextChainChapter) {
+              _appendNextChapterToChain();
+            }
+            if (chapterChanged) {
+              _preloadComments();
+            }
             return;
           }
           setState(() {
@@ -1580,19 +2123,35 @@ class _ReaderPageState extends State<ReaderPage> {
           _preloadImages(index - 1);
         },
         itemBuilder: (_, i) {
-          if (i == 0 || i == imageCount + 1) {
-            return const SizedBox.expand();
+          if (!isContinuous) {
+            if (i == 0 || i == imageCount + 1) {
+              return const SizedBox.expand();
+            }
+            final imageIndex = i - 1;
+            if (imageIndex < imageCount - 1) {
+              return Center(
+                child: _buildReaderImageGesture(_detail!, imageIndex),
+              );
+            }
+            return Stack(
+              children: [
+                Center(child: _buildReaderImageGesture(_detail!, imageIndex)),
+                _buildPageModeEndActions(),
+              ],
+            );
           }
-          final imageIndex = i - 1;
-          if (imageIndex < imageCount - 1) {
-            return Center(child: _buildReaderImageGesture(imageIndex));
-          }
-          return Stack(
-            children: [
-              Center(child: _buildReaderImageGesture(imageIndex)),
-              _buildPageModeEndActions(),
-            ],
+          // 连续阅读：按全局索引解析章节与章内索引
+          final (ci, li) = _resolveChainImage(i);
+          final chapter = _chain[ci];
+          // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
+          final isChapterLastPage = li == chapter.contents.length - 1;
+          final child = Center(
+            child: _buildReaderImageGesture(chapter, li, retryKey: i),
           );
+          if (isChapterLastPage) {
+            return Stack(children: [child, _buildPageModeEndActions()]);
+          }
+          return child;
         },
       ),
     );
@@ -1729,7 +2288,11 @@ class _ReaderPageState extends State<ReaderPage> {
                                 final page = v.round();
                                 setState(() => _currentPage = page);
                                 if (_isPageMode) {
-                                  _pageController.jumpToPage(page);
+                                  final globalIndex = _continuousReading
+                                      ? _chainChapterStart(_chainIndex) +
+                                            (page - 1)
+                                      : page;
+                                  _pageController.jumpToPage(globalIndex);
                                 } else {
                                   _jumpToScrollPage(page, totalPages: total);
                                 }
@@ -1877,6 +2440,37 @@ class _ReaderPageState extends State<ReaderPage> {
       ),
     );
   }
+}
+
+enum _ScrollItemKind { header, chapterDivider, image, tail, loadMore }
+
+class _ScrollItem {
+  final _ScrollItemKind kind;
+  final ChapterDetail? chapter;
+  final int? localIndex;
+  final int? globalIndex;
+
+  const _ScrollItem._({
+    required this.kind,
+    this.chapter,
+    this.localIndex,
+    this.globalIndex,
+  });
+
+  factory _ScrollItem.header() =>
+      const _ScrollItem._(kind: _ScrollItemKind.header);
+  factory _ScrollItem.chapterDivider(ChapterDetail c) =>
+      _ScrollItem._(kind: _ScrollItemKind.chapterDivider, chapter: c);
+  factory _ScrollItem.image(ChapterDetail c, int local, int global) =>
+      _ScrollItem._(
+        kind: _ScrollItemKind.image,
+        chapter: c,
+        localIndex: local,
+        globalIndex: global,
+      );
+  factory _ScrollItem.tail() => const _ScrollItem._(kind: _ScrollItemKind.tail);
+  factory _ScrollItem.loadMore() =>
+      const _ScrollItem._(kind: _ScrollItemKind.loadMore);
 }
 
 class _ReaderPullToRefresh extends StatefulWidget {
