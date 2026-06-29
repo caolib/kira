@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../models/anime.dart';
+import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/comic.dart' as m;
 import '../models/user_manager.dart';
@@ -41,7 +42,7 @@ class _SearchPageState extends State<SearchPage> {
 
   _SearchMode _mode = _SearchMode.comic;
   String? _selectedTag;
-  String _ordering = '-popular';
+  String _ordering = ApiOrdering.popular;
   bool _loading = true;
   bool _loadingMore = false;
   bool _searching = false;
@@ -84,9 +85,7 @@ class _SearchPageState extends State<SearchPage> {
     setState(() {
       _keywords = List<String>.from(cached['keywords'] ?? []);
       _tags =
-          (cached['tags'] as List?)
-              ?.map((t) => m.Theme.fromJson(t))
-              .toList() ??
+          (cached['tags'] as List?)?.map((t) => m.Theme.fromJson(t)).toList() ??
           [];
       _loading = false;
     });
@@ -116,7 +115,12 @@ class _SearchPageState extends State<SearchPage> {
       }, ttl: _searchInitCacheTtl);
     } catch (e) {
       debugPrint('SearchPage loadInit error: $e');
-      if (mounted) setState(() { _loading = false; _refreshing = false; });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _refreshing = false;
+        });
+      }
     }
   }
 
@@ -315,7 +319,8 @@ class _SearchPageState extends State<SearchPage> {
       onRefresh: () => _loadInit(forceRefresh: true),
       child: NotificationListener<ScrollNotification>(
         onNotification: (n) {
-          if (_hasResults && n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
+          if (_hasResults &&
+              n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
             _loadMore();
           }
           return false;
@@ -326,246 +331,251 @@ class _SearchPageState extends State<SearchPage> {
               child: SizedBox(height: MediaQuery.of(context).padding.top),
             ),
             if (_refreshing)
-              const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
-              child: SearchBar(
-                controller: _searchController,
-                hintText: '搜索$_modeLabel...',
-                leading: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(Icons.search),
-                ),
-                trailing: _searchQuery != null
-                    ? [
-                        IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: _clearSearch,
-                        ),
-                      ]
-                    : null,
-                onSubmitted: _doSearch,
+              const SliverToBoxAdapter(
+                child: LinearProgressIndicator(minHeight: 2),
               ),
-            ),
-          ),
-          if (_animeFeatureEnabled)
             SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(hp, 0, hp, 8),
-                child: SegmentedButton<_SearchMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: _SearchMode.comic,
-                      label: Text('漫画'),
-                      icon: Icon(Icons.menu_book_outlined),
-                    ),
-                    ButtonSegment(
-                      value: _SearchMode.anime,
-                      label: Text('动漫'),
-                      icon: Icon(Icons.movie_outlined),
-                    ),
-                  ],
-                  selected: {_mode},
-                  onSelectionChanged: (v) => _setMode(v.first),
-                ),
-              ),
-            ),
-          if (_searching && _selectedTag == null)
-            SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: hp),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (_, _) => const ComicCardSkeleton(),
-                  childCount: 20,
-                ),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 130,
-                  childAspectRatio: 0.55,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                ),
-              ),
-            ),
-          if (_keywords.isNotEmpty && _selectedTag == null && !_hasResults && !_searching)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(hp, 8, hp, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.local_fire_department,
-                          size: 20,
-                          color: cs.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '热门搜索',
-                          style: tt.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
+                padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
+                child: SearchBar(
+                  controller: _searchController,
+                  hintText: '搜索$_modeLabel...',
+                  leading: const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Icon(Icons.search),
+                  ),
+                  trailing: _searchQuery != null
+                      ? [
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: _clearSearch,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _keywords
-                          .map(
-                            (k) => ActionChip(
-                              label: Text(k),
-                              onPressed: () => _onKeywordTap(k),
-                              avatar: Icon(
-                                Icons.trending_up,
-                                size: 16,
-                                color: cs.primary,
-                              ),
+                        ]
+                      : null,
+                  onSubmitted: _doSearch,
+                ),
+              ),
+            ),
+            if (_animeFeatureEnabled)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(hp, 0, hp, 8),
+                  child: SegmentedButton<_SearchMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: _SearchMode.comic,
+                        label: Text('漫画'),
+                        icon: Icon(Icons.menu_book_outlined),
+                      ),
+                      ButtonSegment(
+                        value: _SearchMode.anime,
+                        label: Text('动漫'),
+                        icon: Icon(Icons.movie_outlined),
+                      ),
+                    ],
+                    selected: {_mode},
+                    onSelectionChanged: (v) => _setMode(v.first),
+                  ),
+                ),
+              ),
+            if (_searching && _selectedTag == null)
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: hp),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, _) => const ComicCardSkeleton(),
+                    childCount: 20,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 130,
+                    childAspectRatio: 0.55,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                  ),
+                ),
+              ),
+            if (_keywords.isNotEmpty &&
+                _selectedTag == null &&
+                !_hasResults &&
+                !_searching)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(hp, 8, hp, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.local_fire_department,
+                            size: 20,
+                            color: cs.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '热门搜索',
+                            style: tt.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-          if (!_isAnimeMode &&
-              _tags.isNotEmpty &&
-              _searchQuery == null &&
-              (_selectedTag != null || !_searching))
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.category, size: 20, color: cs.primary),
-                        const SizedBox(width: 6),
-                        Text(
-                          '全部标签',
-                          style: tt.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${_tags.length} 个',
-                          style: tt.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: _tagSpacing,
-                      runSpacing: _tagSpacing,
-                      children: [
-                        for (final t in _tags)
-                          if (_selectedTag == null ||
-                              _selectedTag == t.pathWord)
-                            FilterChip(
-                              label: Text(
-                                t.count > 0 ? '${t.name} ${t.count}' : t.name,
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _keywords
+                            .map(
+                              (k) => ActionChip(
+                                label: Text(k),
+                                onPressed: () => _onKeywordTap(k),
+                                avatar: Icon(
+                                  Icons.trending_up,
+                                  size: 16,
+                                  color: cs.primary,
+                                ),
                               ),
-                              selected: _selectedTag == t.pathWord,
-                              showCheckmark: false,
-                              onSelected: (_) => _selectTag(t.pathWord),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            if (!_isAnimeMode &&
+                _tags.isNotEmpty &&
+                _searchQuery == null &&
+                (_selectedTag != null || !_searching))
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.category, size: 20, color: cs.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            '全部标签',
+                            style: tt.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_tags.length} 个',
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: _tagSpacing,
+                        runSpacing: _tagSpacing,
+                        children: [
+                          for (final t in _tags)
+                            if (_selectedTag == null ||
+                                _selectedTag == t.pathWord)
+                              FilterChip(
+                                label: Text(
+                                  t.count > 0 ? '${t.name} ${t.count}' : t.name,
+                                ),
+                                selected: _selectedTag == t.pathWord,
+                                showCheckmark: false,
+                                onSelected: (_) => _selectTag(t.pathWord),
+                              ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          if (!_isAnimeMode && _selectedTag != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(
-                          value: '-popular',
-                          label: Text('热度'),
-                          icon: Icon(Icons.whatshot),
-                        ),
-                        ButtonSegment(
-                          value: '-datetime_updated',
-                          label: Text('更新'),
-                          icon: Icon(Icons.schedule),
-                        ),
-                      ],
-                      selected: {_ordering},
-                      onSelectionChanged: (v) {
-                        setState(() => _ordering = v.first);
-                        _loadComics();
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+            if (!_isAnimeMode && _selectedTag != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: ApiOrdering.popular,
+                            label: Text('热度'),
+                            icon: Icon(Icons.whatshot),
+                          ),
+                          ButtonSegment(
+                            value: ApiOrdering.datetimeUpdated,
+                            label: Text('更新'),
+                            icon: Icon(Icons.schedule),
+                          ),
+                        ],
+                        selected: {_ordering},
+                        onSelectionChanged: (v) {
+                          setState(() => _ordering = v.first);
+                          _loadComics();
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          if (_searching && _selectedTag != null)
-            SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: hp),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (_, _) => const ComicCardSkeleton(),
-                  childCount: 21,
-                ),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 130,
-                  childAspectRatio: 0.55,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                ),
-              ),
-            ),
-          if (_searchQuery != null && _hasResults)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(hp, 4, hp, 12),
-                child: Text(
-                  '搜索 "$_searchQuery" 找到 $_total 个$_modeLabel结果',
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            if (_searching && _selectedTag != null)
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: hp),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, _) => const ComicCardSkeleton(),
+                    childCount: 21,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 130,
+                    childAspectRatio: 0.55,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                  ),
                 ),
               ),
-            ),
-          if (!_isAnimeMode && _comics.isNotEmpty)
-            _ComicGrid(
-              comics: _comics,
-              hp: hp,
-              loadingMore: _loadingMore,
-              onOpen: (comic, heroTagBase) => Navigator.push(
-                context,
-                ComicDetailPage.route(
-                  pathWord: comic.pathWord,
-                  initialComic: comic,
-                  heroTagBase: heroTagBase,
+            if (_searchQuery != null && _hasResults)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(hp, 4, hp, 12),
+                  child: Text(
+                    '搜索 "$_searchQuery" 找到 $_total 个$_modeLabel结果',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
                 ),
               ),
-            ),
-          if (_isAnimeMode && _animes.isNotEmpty)
-            _AnimeGrid(
-              animes: _animes,
-              hp: hp,
-              loadingMore: _loadingMore,
-              onOpen: _openAnime,
-            ),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
-        ],
-      ),
+            if (!_isAnimeMode && _comics.isNotEmpty)
+              _ComicGrid(
+                comics: _comics,
+                hp: hp,
+                loadingMore: _loadingMore,
+                onOpen: (comic, heroTagBase) => Navigator.push(
+                  context,
+                  ComicDetailPage.route(
+                    pathWord: comic.pathWord,
+                    initialComic: comic,
+                    heroTagBase: heroTagBase,
+                  ),
+                ),
+              ),
+            if (_isAnimeMode && _animes.isNotEmpty)
+              _AnimeGrid(
+                animes: _animes,
+                hp: hp,
+                loadingMore: _loadingMore,
+                onOpen: _openAnime,
+              ),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+          ],
+        ),
       ),
     );
   }
@@ -715,5 +725,3 @@ class _AnimeGridItem extends StatelessWidget {
     );
   }
 }
-
-

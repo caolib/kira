@@ -511,7 +511,10 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 ),
                 if (showCommentTime) ...[
                   const SizedBox(width: 8),
-                  Text(TimeFormat.relativeOf(comment.createAt), style: timeStyle),
+                  Text(
+                    TimeFormat.relativeOf(comment.createAt),
+                    style: timeStyle,
+                  ),
                 ],
               ],
             ),
@@ -629,9 +632,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
             ),
           for (var i = 0; i < replies.length; i++)
             Padding(
-              padding: EdgeInsets.only(
-                bottom: i == replies.length - 1 ? 0 : 0,
-              ),
+              padding: EdgeInsets.only(bottom: i == replies.length - 1 ? 0 : 0),
               child: Column(
                 children: [
                   Padding(
@@ -731,69 +732,71 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     return GestureDetector(
       onTap: () => _showPostCommentDialog(replyTo: reply),
       child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showAvatar) ...[
-          _ComicCommentAvatar(imageUrl: reply.userAvatar, size: 22),
-          const SizedBox(width: 8),
-        ],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            reply.userName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: userStyle,
-                          ),
-                        ),
-                        if (showReplyTarget) ...[
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_right_alt_rounded,
-                            size: 14,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.78),
-                          ),
-                          const SizedBox(width: 4),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showAvatar) ...[
+            _ComicCommentAvatar(imageUrl: reply.userAvatar, size: 22),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
                           Flexible(
                             child: Text(
-                              parentUserName,
+                              reply.userName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: replyTargetStyle,
+                              style: userStyle,
                             ),
                           ),
+                          if (showReplyTarget) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_right_alt_rounded,
+                              size: 14,
+                              color: cs.onSurfaceVariant.withValues(
+                                alpha: 0.78,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                parentUserName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: replyTargetStyle,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  if (showCommentTime) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      TimeFormat.relativeOf(reply.createAt),
-                      style: timeStyle,
-                    ),
+                    if (showCommentTime) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        TimeFormat.relativeOf(reply.createAt),
+                        style: timeStyle,
+                      ),
+                    ],
                   ],
-                ],
-              ),
-              const SizedBox(height: 4),
-              _buildCommentText(
-                reply,
-                bodyStyle: bodyStyle,
-                backgroundColor: cs.surfaceContainerLow,
-              ),
-            ],
+                ),
+                const SizedBox(height: 4),
+                _buildCommentText(
+                  reply,
+                  bodyStyle: bodyStyle,
+                  backgroundColor: cs.surfaceContainerLow,
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
+        ],
+      ),
     );
   }
 
@@ -877,10 +880,12 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               total: currentState.total > 0 ? currentState.total + 1 : 0,
             );
           });
-          _loadReplies(_comments.firstWhere(
-            (c) => c.id == replyTo.id,
-            orElse: () => replyTo,
-          ));
+          _loadReplies(
+            _comments.firstWhere(
+              (c) => c.id == replyTo.id,
+              orElse: () => replyTo,
+            ),
+          );
         } else {
           _loadComments();
         }
@@ -912,9 +917,9 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerLow,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(

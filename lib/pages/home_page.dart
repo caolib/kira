@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -59,7 +60,7 @@ class _HomePageState extends State<HomePage> {
   static const _cacheKey = 'manga_home_v1';
   static const _copyCacheKey = 'manga_home_copy_v1';
   static const _cacheTtl = Duration(hours: 1);
-  static const _rankingOrdering = '-datetime_updated';
+  static const _rankingOrdering = ApiOrdering.datetimeUpdated;
 
   final _api = ApiClient();
   final _cache = DataCache();

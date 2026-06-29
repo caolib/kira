@@ -59,7 +59,7 @@ mixin _MangaApi on _ApiClientBase {
         'limit': limit,
         'offset': offset,
         'top': 'finish',
-        'ordering': '-datetime_updated',
+        'ordering': ApiOrdering.datetimeUpdated,
         'free_type': 1,
         'platform': 3,
       },
@@ -287,7 +287,7 @@ mixin _MangaApi on _ApiClientBase {
 
   // 4. 漫画列表
   Future<({List<Comic> list, int total})> getComicList({
-    String ordering = '-popular',
+    String ordering = ApiOrdering.popular,
     int limit = 21,
     int offset = 0,
     String? theme,
@@ -541,7 +541,7 @@ mixin _MangaApi on _ApiClientBase {
   Future<({List<BookshelfItem> list, int total})> getBookshelf({
     int limit = 12,
     int offset = 0,
-    String ordering = '-datetime_modifier',
+    String ordering = ApiOrdering.datetimeModifier,
   }) async {
     final data = await _get(
       '/api/v3/member/collect/comics',

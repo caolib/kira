@@ -494,9 +494,7 @@ class _NetworkPageState extends State<NetworkPage> {
                           color: statusColor,
                         ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Text('Google 连通性', style: tt.bodyLarge),
-                  ),
+                  Expanded(child: Text('Google 连通性', style: tt.bodyLarge)),
                   if (subtitle != null)
                     Flexible(
                       child: Text(
@@ -651,7 +649,9 @@ class _NetworkPageState extends State<NetworkPage> {
             label: '填充',
           ),
           _ConnectedButtonGroupItem(
-            onPressed: _autoFillingCopySettings ? null : _resetCopyAdvancedSettings,
+            onPressed: _autoFillingCopySettings
+                ? null
+                : _resetCopyAdvancedSettings,
             icon: Icons.restart_alt,
             label: '重置',
           ),
@@ -1124,7 +1124,7 @@ class _ConnectedButtonGroup extends StatelessWidget {
               left: isFirst ? const Radius.circular(8) : Radius.zero,
               right: isLast ? const Radius.circular(8) : Radius.zero,
             ),
-        );
+          );
 
           final leftBorder = isFirst ? border : BorderSide.none;
           final rightBorder = isLast ? border : BorderSide.none;

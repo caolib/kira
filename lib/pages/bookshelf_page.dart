@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../models/anime.dart';
+import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -500,11 +501,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
   static String _orderingLabel(String ordering) {
     switch (ordering) {
-      case '-datetime_updated':
+      case ApiOrdering.datetimeUpdated:
         return '按更新';
-      case '-datetime_modifier':
+      case ApiOrdering.datetimeModifier:
         return '按收藏';
-      case '-datetime_browse':
+      case ApiOrdering.datetimeBrowse:
         return '按阅读';
       default:
         return '排序';
@@ -609,12 +610,13 @@ class _BookshelfPageState extends State<BookshelfPage> {
                       (_, _) => const ComicCardSkeleton(),
                       childCount: _type == _BookshelfType.comic ? 12 : 30,
                     ),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 130,
-                      childAspectRatio: 0.55,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 130,
+                          childAspectRatio: 0.55,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                        ),
                   ),
                 )
               else if (_currentItemsEmpty)
@@ -708,22 +710,22 @@ class _BookshelfPageState extends State<BookshelfPage> {
               icon: Icons.update,
               title: '作品更新时间',
               subtitle: '按$_typeLabel最新章节的更新时间排序',
-              selected: _ordering == '-datetime_updated',
-              onTap: () => _setOrdering(context, '-datetime_updated'),
+              selected: _ordering == ApiOrdering.datetimeUpdated,
+              onTap: () => _setOrdering(context, ApiOrdering.datetimeUpdated),
             ),
             _OrderingTile(
               icon: Icons.bookmark_added,
               title: '收藏时间',
               subtitle: '按加入书架的时间排序',
-              selected: _ordering == '-datetime_modifier',
-              onTap: () => _setOrdering(context, '-datetime_modifier'),
+              selected: _ordering == ApiOrdering.datetimeModifier,
+              onTap: () => _setOrdering(context, ApiOrdering.datetimeModifier),
             ),
             _OrderingTile(
               icon: Icons.history,
               title: '浏览时间',
               subtitle: '按最近浏览的时间排序',
-              selected: _ordering == '-datetime_browse',
-              onTap: () => _setOrdering(context, '-datetime_browse'),
+              selected: _ordering == ApiOrdering.datetimeBrowse,
+              onTap: () => _setOrdering(context, ApiOrdering.datetimeBrowse),
             ),
             const SizedBox(height: 8),
           ],

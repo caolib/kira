@@ -51,7 +51,7 @@ mixin _AnimeApi on _ApiClientBase {
   Future<({List<AnimeBookshelfItem> list, int total})> getAnimeBookshelf({
     int limit = 30,
     int offset = 0,
-    String ordering = '-datetime_modifier',
+    String ordering = ApiOrdering.datetimeModifier,
   }) async {
     final data = await _get(
       '/api/v3/member/collect/cartoons',

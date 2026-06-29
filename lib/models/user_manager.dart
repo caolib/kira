@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme_option.dart';
+import 'api_ordering.dart';
 import '../api/api_client.dart';
 import '../utils/app_icon_switcher.dart';
 
@@ -188,7 +189,7 @@ class UserManager extends ChangeNotifier {
   String _lastNavKey = defaultNavKey;
   String _desktopFontFamily = '';
   int _displayModeRefreshRate = defaultDisplayModeRefreshRate;
-  String _bookshelfOrdering = '-datetime_updated';
+  String _bookshelfOrdering = ApiOrdering.datetimeUpdated;
   int _readerMode = 0;
   int _readerScrollDirection = 2;
   double _readerImageGap = 0.0;
@@ -338,7 +339,8 @@ class UserManager extends ChangeNotifier {
   bool get danmakuHideBottom => _danmakuHideBottom;
   List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
   int get logoIndex => _logoIndex;
-  String get appLogoPath => appLogoPaths[_logoIndex.clamp(0, appLogoPaths.length - 1)];
+  String get appLogoPath =>
+      appLogoPaths[_logoIndex.clamp(0, appLogoPaths.length - 1)];
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   static String normalizeUpdateMirrorPrefix(String? value) {
@@ -464,7 +466,7 @@ class UserManager extends ChangeNotifier {
       prefs.getInt(_keyDisplayModeRefreshRate),
     );
     _bookshelfOrdering =
-        prefs.getString(_keyBookshelfOrdering) ?? '-datetime_updated';
+        prefs.getString(_keyBookshelfOrdering) ?? ApiOrdering.datetimeUpdated;
     _readerMode = prefs.getInt(_keyReaderMode) ?? 0;
     _readerScrollDirection = prefs.getInt(_keyReaderScrollDirection) ?? 2;
     _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
@@ -546,7 +548,10 @@ class UserManager extends ChangeNotifier {
     _danmakuHideTop = prefs.getBool(_keyDanmakuHideTop) ?? false;
     _danmakuHideBottom = prefs.getBool(_keyDanmakuHideBottom) ?? false;
     _danmakuBlocklist = prefs.getStringList(_keyDanmakuBlocklist) ?? [];
-    _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(0, appLogoPaths.length - 1);
+    _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(
+      0,
+      appLogoPaths.length - 1,
+    );
     if (Platform.isAndroid || Platform.isIOS) {
       try {
         final platformIndex = await AppIconSwitcher.getAppIconIndex();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
+import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../utils/comic_hero_tags.dart';
 import '../utils/comic_card_skeleton.dart';
@@ -69,7 +70,9 @@ class _RankingPageState extends State<RankingPage> {
   @override
   void initState() {
     super.initState();
-    _ordering = _isFilteredMode ? '-popular' : '-datetime_updated';
+    _ordering = _isFilteredMode
+        ? ApiOrdering.popular
+        : ApiOrdering.datetimeUpdated;
     _load();
   }
 
@@ -146,12 +149,12 @@ class _RankingPageState extends State<RankingPage> {
             child: SegmentedButton<String>(
               segments: const [
                 ButtonSegment(
-                  value: '-popular',
+                  value: ApiOrdering.popular,
                   label: Text('热度'),
                   icon: Icon(Icons.whatshot, size: 16),
                 ),
                 ButtonSegment(
-                  value: '-datetime_updated',
+                  value: ApiOrdering.datetimeUpdated,
                   label: Text('更新'),
                   icon: Icon(Icons.schedule, size: 16),
                 ),
