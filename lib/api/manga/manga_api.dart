@@ -291,6 +291,7 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 21,
     int offset = 0,
     String? theme,
+    String? author,
   }) async {
     final params = <String, dynamic>{
       'free_type': 1,
@@ -299,6 +300,7 @@ mixin _MangaApi on _ApiClientBase {
       'ordering': ordering,
     };
     if (theme != null) params['theme'] = theme;
+    if (author != null) params['author'] = author;
     final data = await _get('/api/v3/comics', params: params);
     final list = (data['list'] as List).map((e) => Comic.fromJson(e)).toList();
     return (list: list, total: data['total'] as int);
@@ -479,10 +481,7 @@ mixin _MangaApi on _ApiClientBase {
     }
 
     final host = _user.copyApiHost;
-    final data = <String, dynamic>{
-      'comic_id': comicId,
-      'comment': trimmed,
-    };
+    final data = <String, dynamic>{'comic_id': comicId, 'comment': trimmed};
     if (replyId != null) {
       data['reply_id'] = replyId.toString();
     }

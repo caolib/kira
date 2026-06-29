@@ -11,6 +11,7 @@ import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import 'comic_comments_sheet.dart';
+import 'ranking_page.dart';
 import 'reader_page.dart';
 
 class ComicDetailPage extends StatefulWidget {
@@ -547,6 +548,27 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
   }
 
+  void _openAuthorWorks(Author author) {
+    final authorPathWord = author.pathWord.trim();
+    if (authorPathWord.isEmpty) {
+      showToast(context, '当前作者暂时无法查看作品', isError: true);
+      return;
+    }
+
+    final authorName = author.name.trim().isEmpty
+        ? authorPathWord
+        : author.name.trim();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RankingPage.author(
+          authorPathWord: authorPathWord,
+          authorName: authorName,
+        ),
+      ),
+    );
+  }
+
   bool _isChapterDownloaded(String chapterUuid) =>
       _downloads.isDownloaded(widget.pathWord, chapterUuid);
 
@@ -1049,6 +1071,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   Widget _buildBody(ColorScheme cs, TextTheme tt) {
     final comic = _comic!;
+    final authors = comic.authors
+        .where((author) => author.name.trim().isNotEmpty)
+        .toList();
     return RefreshIndicator(
       onRefresh: _refresh,
       child: CustomScrollView(
@@ -1104,21 +1129,21 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        if (comic.authors.isNotEmpty) ...[
+                        if (authors.isNotEmpty) ...[
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.person_outline,
-                                size: 16,
-                                color: cs.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
                               Expanded(
-                                child: Text(
-                                  comic.authors.map((a) => a.name).join(' / '),
-                                  style: tt.bodyMedium,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    for (final author in authors)
+                                      _AuthorChip(
+                                        author: author,
+                                        onTap: () => _openAuthorWorks(author),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1414,6 +1439,53 @@ class _InfoChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AuthorChip extends StatelessWidget {
+  final Author author;
+  final VoidCallback onTap;
+
+  const _AuthorChip({required this.author, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Material(
+      color: cs.primaryContainer,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.person_search_outlined,
+                size: 12,
+                color: cs.onPrimaryContainer,
+              ),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  author.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: cs.onPrimaryContainer,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -8,7 +8,16 @@ import 'home_page.dart';
 
 /// 漫画排行完整列表页，支持排序切换
 class RankingPage extends StatefulWidget {
-  const RankingPage({super.key});
+  final String? authorPathWord;
+  final String? authorName;
+
+  const RankingPage({super.key, this.authorPathWord, this.authorName});
+
+  const RankingPage.author({
+    super.key,
+    required this.authorPathWord,
+    required this.authorName,
+  });
 
   @override
   State<RankingPage> createState() => _RankingPageState();
@@ -23,6 +32,13 @@ class _RankingPageState extends State<RankingPage> {
   bool _loadingMore = false;
   String _ordering = '-datetime_updated';
 
+  bool get _isAuthorMode => widget.authorPathWord?.isNotEmpty == true;
+  String get _title => _isAuthorMode
+      ? (widget.authorName?.isNotEmpty == true ? widget.authorName! : '作者作品')
+      : '漫画排行';
+  String get _scope =>
+      _isAuthorMode ? 'author-${widget.authorPathWord}' : 'ranking';
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +52,11 @@ class _RankingPageState extends State<RankingPage> {
       _offset = 0;
     });
     try {
-      final data = await _api.getComicList(ordering: _ordering, limit: 21);
+      final data = await _api.getComicList(
+        ordering: _ordering,
+        limit: 21,
+        author: widget.authorPathWord,
+      );
       if (!mounted) return;
       setState(() {
         _comics = data.list;
@@ -57,6 +77,7 @@ class _RankingPageState extends State<RankingPage> {
         ordering: _ordering,
         limit: 21,
         offset: _offset,
+        author: widget.authorPathWord,
       );
       if (!mounted) return;
       setState(() {
@@ -86,7 +107,7 @@ class _RankingPageState extends State<RankingPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('漫画排行'),
+        title: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -132,35 +153,43 @@ class _RankingPageState extends State<RankingPage> {
               },
               child: CustomScrollView(
                 slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
-                    sliver: SliverGrid(
-                      gridDelegate: gridDelegate,
-                      delegate: SliverChildBuilderDelegate((_, i) {
-                        if (i >= _comics.length) {
-                          return const ComicCardSkeleton();
-                        }
-                        final comic = _comics[i];
-                        final heroTagBase = ComicHeroTags.base(
-                          scope: 'ranking',
-                          pathWord: comic.pathWord,
-                          index: i,
-                        );
-                        return ComicCard(
-                          comic: comic,
-                          heroTagBase: heroTagBase,
-                          onTap: () => Navigator.push(
-                            context,
-                            ComicDetailPage.route(
-                              pathWord: comic.pathWord,
-                              initialComic: comic,
-                              heroTagBase: heroTagBase,
+                  if (_comics.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Text(_isAuthorMode ? '暂无作者作品' : '暂无漫画'),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
+                      sliver: SliverGrid(
+                        gridDelegate: gridDelegate,
+                        delegate: SliverChildBuilderDelegate((_, i) {
+                          if (i >= _comics.length) {
+                            return const ComicCardSkeleton();
+                          }
+                          final comic = _comics[i];
+                          final heroTagBase = ComicHeroTags.base(
+                            scope: _scope,
+                            pathWord: comic.pathWord,
+                            index: i,
+                          );
+                          return ComicCard(
+                            comic: comic,
+                            heroTagBase: heroTagBase,
+                            onTap: () => Navigator.push(
+                              context,
+                              ComicDetailPage.route(
+                                pathWord: comic.pathWord,
+                                initialComic: comic,
+                                heroTagBase: heroTagBase,
+                              ),
                             ),
-                          ),
-                        );
-                      }, childCount: _comics.length + (_loadingMore ? 6 : 0)),
+                          );
+                        }, childCount: _comics.length + (_loadingMore ? 6 : 0)),
+                      ),
                     ),
-                  ),
                   const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
                 ],
               ),
