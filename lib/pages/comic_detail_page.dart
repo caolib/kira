@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
+import '../models/comic.dart' as comic_model;
 import '../models/chapter.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/comic_hero_tags.dart';
@@ -569,6 +570,27 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
   }
 
+  void _openThemeWorks(comic_model.Theme theme) {
+    final themePathWord = theme.pathWord.trim();
+    if (themePathWord.isEmpty) {
+      showToast(context, '当前主题暂时无法查看作品', isError: true);
+      return;
+    }
+
+    final themeName = theme.name.trim().isEmpty
+        ? themePathWord
+        : theme.name.trim();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RankingPage.theme(
+          themePathWord: themePathWord,
+          themeName: themeName,
+        ),
+      ),
+    );
+  }
+
   bool _isChapterDownloaded(String chapterUuid) =>
       _downloads.isDownloaded(widget.pathWord, chapterUuid);
 
@@ -1130,54 +1152,70 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         ),
                         const SizedBox(height: 8),
                         if (authors.isNotEmpty) ...[
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
                             children: [
-                              Expanded(
-                                child: Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: [
-                                    for (final author in authors)
-                                      _AuthorChip(
-                                        author: author,
-                                        onTap: () => _openAuthorWorks(author),
-                                      ),
-                                  ],
+                              for (final author in authors)
+                                _AuthorChip(
+                                  author: author,
+                                  onTap: () => _openAuthorWorks(author),
                                 ),
-                              ),
+                              if (comic.status != null)
+                                _InfoChip(
+                                  icon: Icons.timelapse,
+                                  label: comic.status!['display'] ?? '',
+                                  color: cs.primaryContainer,
+                                  textColor: cs.onPrimaryContainer,
+                                ),
+                              if (comic.region != null)
+                                _InfoChip(
+                                  icon: Icons.public,
+                                  label: comic.region!['display'] ?? '',
+                                  color: cs.secondaryContainer,
+                                  textColor: cs.onSecondaryContainer,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                        ] else if (comic.status != null ||
+                            comic.region != null) ...[
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              if (comic.status != null)
+                                _InfoChip(
+                                  icon: Icons.timelapse,
+                                  label: comic.status!['display'] ?? '',
+                                  color: cs.primaryContainer,
+                                  textColor: cs.onPrimaryContainer,
+                                ),
+                              if (comic.region != null)
+                                _InfoChip(
+                                  icon: Icons.public,
+                                  label: comic.region!['display'] ?? '',
+                                  color: cs.secondaryContainer,
+                                  textColor: cs.onSecondaryContainer,
+                                ),
                             ],
                           ),
                           const SizedBox(height: 8),
                         ],
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            if (comic.status != null)
-                              _InfoChip(
-                                icon: Icons.timelapse,
-                                label: comic.status!['display'] ?? '',
-                                color: cs.primaryContainer,
-                                textColor: cs.onPrimaryContainer,
-                              ),
-                            if (comic.region != null)
-                              _InfoChip(
-                                icon: Icons.public,
-                                label: comic.region!['display'] ?? '',
-                                color: cs.secondaryContainer,
-                                textColor: cs.onSecondaryContainer,
-                              ),
-                            ...comic.themes.map(
-                              (t) => _InfoChip(
-                                icon: Icons.label_outline,
-                                label: t.name,
-                                color: cs.tertiaryContainer,
-                                textColor: cs.onTertiaryContainer,
-                              ),
-                            ),
-                          ],
-                        ),
+                        if (comic.themes.isNotEmpty)
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              for (final theme in comic.themes)
+                                _ThemeChip(
+                                  theme: theme,
+                                  onTap: () => _openThemeWorks(theme),
+                                  color: cs.tertiaryContainer,
+                                  textColor: cs.onTertiaryContainer,
+                                ),
+                            ],
+                          ),
                         if (comic.popular > 0) ...[
                           const SizedBox(height: 10),
                           Row(
@@ -1479,6 +1517,54 @@ class _AuthorChip extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: cs.onPrimaryContainer,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeChip extends StatelessWidget {
+  final comic_model.Theme theme;
+  final VoidCallback onTap;
+  final Color color;
+  final Color textColor;
+
+  const _ThemeChip({
+    required this.theme,
+    required this.onTap,
+    required this.color,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.label_outline, size: 12, color: textColor),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  theme.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

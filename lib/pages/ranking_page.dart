@@ -10,14 +10,30 @@ import 'home_page.dart';
 class RankingPage extends StatefulWidget {
   final String? authorPathWord;
   final String? authorName;
+  final String? themePathWord;
+  final String? themeName;
 
-  const RankingPage({super.key, this.authorPathWord, this.authorName});
+  const RankingPage({
+    super.key,
+    this.authorPathWord,
+    this.authorName,
+    this.themePathWord,
+    this.themeName,
+  });
 
   const RankingPage.author({
     super.key,
     required this.authorPathWord,
     required this.authorName,
-  });
+  }) : themePathWord = null,
+       themeName = null;
+
+  const RankingPage.theme({
+    super.key,
+    required this.themePathWord,
+    required this.themeName,
+  }) : authorPathWord = null,
+       authorName = null;
 
   @override
   State<RankingPage> createState() => _RankingPageState();
@@ -30,20 +46,34 @@ class _RankingPageState extends State<RankingPage> {
   int _offset = 0;
   int _total = 0;
   bool _loadingMore = false;
-  String _ordering = '-datetime_updated';
+  late String _ordering;
 
   bool get _isAuthorMode => widget.authorPathWord?.isNotEmpty == true;
+  bool get _isThemeMode => widget.themePathWord?.isNotEmpty == true;
   String get _title => _isAuthorMode
       ? (widget.authorName?.isNotEmpty == true ? widget.authorName! : '作者作品')
+      : _isThemeMode
+      ? (widget.themeName?.isNotEmpty == true ? widget.themeName! : '主题作品')
       : '漫画排行';
-  String get _scope =>
-      _isAuthorMode ? 'author-${widget.authorPathWord}' : 'ranking';
+  String get _scope => _isAuthorMode
+      ? 'author-${widget.authorPathWord}'
+      : _isThemeMode
+      ? 'theme-${widget.themePathWord}'
+      : 'ranking';
+  String get _emptyText => _isAuthorMode
+      ? '暂无作者作品'
+      : _isThemeMode
+      ? '暂无主题作品'
+      : '暂无漫画';
 
   @override
   void initState() {
     super.initState();
+    _ordering = _isFilteredMode ? '-popular' : '-datetime_updated';
     _load();
   }
+
+  bool get _isFilteredMode => _isAuthorMode || _isThemeMode;
 
   Future<void> _load() async {
     setState(() {
@@ -56,6 +86,7 @@ class _RankingPageState extends State<RankingPage> {
         ordering: _ordering,
         limit: 21,
         author: widget.authorPathWord,
+        theme: widget.themePathWord,
       );
       if (!mounted) return;
       setState(() {
@@ -78,6 +109,7 @@ class _RankingPageState extends State<RankingPage> {
         limit: 21,
         offset: _offset,
         author: widget.authorPathWord,
+        theme: widget.themePathWord,
       );
       if (!mounted) return;
       setState(() {
@@ -156,9 +188,7 @@ class _RankingPageState extends State<RankingPage> {
                   if (_comics.isEmpty)
                     SliverFillRemaining(
                       hasScrollBody: false,
-                      child: Center(
-                        child: Text(_isAuthorMode ? '暂无作者作品' : '暂无漫画'),
-                      ),
+                      child: Center(child: Text(_emptyText)),
                     )
                   else
                     SliverPadding(
