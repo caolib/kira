@@ -98,7 +98,6 @@ class _ReaderPageState extends State<ReaderPage> {
         SystemUiMode.manual,
         overlays: SystemUiOverlay.values,
       );
-      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
@@ -1997,7 +1996,7 @@ class _ReaderPageState extends State<ReaderPage> {
     } else if (x > screenWidth * 2 / 3) {
       _user.readerScrollDirection == 1 ? _prevPage() : _nextPage();
     } else {
-      setState(() => _showToolbar = !_showToolbar);
+      _toggleToolbar();
     }
   }
 
@@ -2397,30 +2396,21 @@ class _ReaderPageState extends State<ReaderPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: _showToolbar
-          ? SystemUiOverlayStyle(
+          ? const SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness: isDark
-                  ? Brightness.light
-                  : Brightness.dark,
+              statusBarIconBrightness: Brightness.light,
+              statusBarBrightness: Brightness.dark,
               systemNavigationBarColor: Colors.black,
-              systemNavigationBarIconBrightness: isDark
-                  ? Brightness.light
-                  : Brightness.dark,
+              systemNavigationBarIconBrightness: Brightness.light,
             )
-          : SystemUiOverlayStyle(
+          : const SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness: isDark
-                  ? Brightness.light
-                  : Brightness.dark,
+              statusBarIconBrightness: Brightness.light,
+              statusBarBrightness: Brightness.dark,
               systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarIconBrightness: isDark
-                  ? Brightness.light
-                  : Brightness.dark,
+              systemNavigationBarIconBrightness: Brightness.light,
             ),
       child: Scaffold(
         backgroundColor: Colors.black,
