@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/comic.dart' as comic_model;
 import '../models/chapter.dart';
+import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/comic_hero_tags.dart';
 import '../utils/data_cache.dart';
@@ -254,7 +255,13 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       if (!mounted) return;
       setState(() => _isCollected = query['collect'] != null);
       await _saveCache();
-    } catch (_) {}
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'comic_detail.load_collect_state',
+      );
+    }
   }
 
   Future<void> _loadChapterPage(

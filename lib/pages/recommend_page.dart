@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
+import '../utils/app_logger.dart';
 import '../utils/comic_hero_tags.dart';
 import '../utils/comic_card_skeleton.dart';
 import 'comic_detail_page.dart';
@@ -51,7 +52,13 @@ class _RecommendPageState extends State<RecommendPage> {
         _comics.addAll(data);
         _offset = _comics.length;
       });
-    } catch (_) {}
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'recommend_page.load_more',
+      );
+    }
     if (mounted) {
       setState(() => _loadingMore = false);
     } else {

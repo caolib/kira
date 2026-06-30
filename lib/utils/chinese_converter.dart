@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'app_dio.dart';
+import 'app_logger.dart';
 
 class ChineseConverter {
   static final Dio _dio = AppDio.create(
@@ -41,7 +42,13 @@ class ChineseConverter {
         _cache[cacheKey] = converted;
         return converted;
       }
-    } catch (_) {}
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'chinese_converter',
+      );
+    }
 
     return text;
   }

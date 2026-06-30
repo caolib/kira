@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
+import '../utils/app_logger.dart';
 import '../utils/comic_hero_tags.dart';
 import '../utils/comic_card_skeleton.dart';
 import 'comic_detail_page.dart';
@@ -119,7 +120,13 @@ class _RankingPageState extends State<RankingPage> {
         _comics.addAll(data.list);
         _offset = _comics.length;
       });
-    } catch (_) {}
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'ranking_page.load_more',
+      );
+    }
     if (mounted) {
       setState(() => _loadingMore = false);
     } else {

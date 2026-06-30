@@ -1,7 +1,7 @@
 name: kira
 description: "A comic reader app."
 publish_to: "none"
-version: 1.1.4+240
+version: 1.1.4+241
 environment:
   sdk: ^3.11.0
 
@@ -29,6 +29,7 @@ dependencies:
   flutter_displaymode: 0.7.0
   flutter_markdown_plus: ^1.0.3
   native_flutter_proxy: ^0.3.1
+  flutter_secure_storage: ^10.3.1
 
 dev_dependencies:
   flutter_test:

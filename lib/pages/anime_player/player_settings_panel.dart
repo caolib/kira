@@ -334,7 +334,13 @@ class _DanmakuBlocklistEditorState extends State<_DanmakuBlocklistEditor> {
       } else {
         _controller.text = converted;
       }
-    } catch (_) {}
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'player_settings.convert_chinese',
+      );
+    }
   }
 
   void _removeWord(int index) {

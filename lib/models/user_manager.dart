@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme_option.dart';
 import 'api_ordering.dart';
+import 'network_proxy_types.dart';
+export 'network_proxy_types.dart';
+import 'reader_settings.dart';
+import 'danmaku_settings.dart';
+import 'comment_settings.dart';
+import 'theme_settings.dart';
+import 'network_settings.dart';
 import '../api/api_client.dart';
 import '../utils/app_icon_switcher.dart';
-
-enum NetworkProxyMode { system, manual }
-
-enum NetworkProxyType { http, socks }
+import '../utils/app_logger.dart';
 
 class SavedCredential {
   final String username;
@@ -73,19 +78,34 @@ class UserManager extends ChangeNotifier {
   factory UserManager() => _instance;
   UserManager._();
 
-  static const double minDarkModeCoverBrightness = 0.10;
-  static const double maxDarkModeCoverBrightness = 1.0;
-  static const double defaultDarkModeCoverBrightness = 0.85;
-  static const defaultNavKey = 'comic';
-  static const defaultNavOrder = [
-    'comic',
-    'anime',
-    'search',
-    'bookshelf',
-    'profile',
-  ];
+  // ── Domain-specific sub-stores ─────────────────────────────────────
+  // Each store is an independent ChangeNotifier.  Callers that only
+  // need reader / danmaku / comment / theme / network settings should
+  // import the specific store directly and skip the facade entirely.
+
+  final reader = ReaderSettings();
+  final danmaku = DanmakuSettings();
+  final comment = CommentSettings();
+  final theme = ThemeSettings();
+  final network = NetworkSettings();
+
+  // ── Backward-compat constant re-exports ────────────────────────────
+  // These delegate to the canonical definitions in each sub-store so
+  // existing callers that reference UserManager.defaultXxx keep working.
+
+  static const double minDarkModeCoverBrightness =
+      ThemeSettings.minDarkModeCoverBrightness;
+  static const double maxDarkModeCoverBrightness =
+      ThemeSettings.maxDarkModeCoverBrightness;
+  static const double defaultDarkModeCoverBrightness =
+      ThemeSettings.defaultDarkModeCoverBrightness;
+  static const defaultNavKey = ThemeSettings.defaultNavKey;
+  static const defaultNavOrder = ThemeSettings.defaultNavOrder;
+  static const defaultDisplayModeRefreshRate =
+      ThemeSettings.defaultDisplayModeRefreshRate;
   static const defaultUpdateMirrorPrefix = 'https://ghproxy.net/';
-  static const defaultDisplayModeRefreshRate = 0;
+
+  static const appLogoPaths = ThemeSettings.appLogoPaths;
 
   static const _keyToken = 'user_token';
   static const _keyUsername = 'user_username';
@@ -166,11 +186,6 @@ class UserManager extends ChangeNotifier {
   static const _keyDanmakuHideBottom = 'danmaku_hide_bottom';
   static const _keyDanmakuBlocklist = 'danmaku_blocklist';
   static const _keyLogoIndex = 'logo_index';
-
-  static const appLogoPaths = [
-    'assets/ic_launcher.png',
-    'assets/ic_launcher_1.png',
-  ];
 
   String? _token;
   String? _username;
@@ -561,9 +576,46 @@ class UserManager extends ChangeNotifier {
       try {
         final platformIndex = await AppIconSwitcher.getAppIconIndex();
         _logoIndex = platformIndex.clamp(0, appLogoPaths.length - 1);
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'user_manager.get_app_icon',
+          ),
+        );
+      }
     }
+    // Initialize domain-specific sub-stores with the same prefs instance.
+    await reader.initFromPrefs(prefs);
+    await danmaku.initFromPrefs(prefs);
+    await comment.initFromPrefs(prefs);
+    await theme.initFromPrefs(prefs);
+    await network.initFromPrefs(prefs);
+
+    // Forward sub-store notifications so legacy listeners on UserManager
+    // still rebuild when domain settings change.
+    reader.addListener(_onSubStoreChanged);
+    danmaku.addListener(_onSubStoreChanged);
+    comment.addListener(_onSubStoreChanged);
+    theme.addListener(_onSubStoreChanged);
+    network.addListener(_onSubStoreChanged);
+
     notifyListeners();
+  }
+
+  void _onSubStoreChanged() {
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    reader.removeListener(_onSubStoreChanged);
+    danmaku.removeListener(_onSubStoreChanged);
+    comment.removeListener(_onSubStoreChanged);
+    theme.removeListener(_onSubStoreChanged);
+    network.removeListener(_onSubStoreChanged);
+    super.dispose();
   }
 
   Future<void> saveLogin({
@@ -688,7 +740,15 @@ class UserManager extends ChangeNotifier {
     // 后台刷新用户信息
     try {
       await refreshUserInfo();
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'user_manager.refresh_user_info',
+        ),
+      );
+    }
     return true;
   }
 
@@ -1273,7 +1333,15 @@ class UserManager extends ChangeNotifier {
     if (Platform.isAndroid || Platform.isIOS) {
       try {
         await AppIconSwitcher.setAppIcon(next);
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'user_manager.set_app_icon',
+          ),
+        );
+      }
     }
   }
 

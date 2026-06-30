@@ -911,7 +911,13 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       animeName = await ChineseConverter.convertToSimplifiedChinese(
         widget.animeName,
       );
-    } catch (_) {}
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'anime_player.convert_anime_name',
+      );
+    }
     return animeName;
   }
 
