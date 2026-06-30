@@ -1884,6 +1884,17 @@ class _ReaderPageState extends State<ReaderPage> {
                         fontSize: 12,
                       ),
                     ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '已经是最后一话',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
               ],
             ),
