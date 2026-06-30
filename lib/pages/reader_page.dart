@@ -167,19 +167,18 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   /// 当前滚动列表的总条目数（仅在 _buildScrollMode 中使用，用于判断是否到达 loadMore）。
-  /// 计算：header(可选) + 每章(分隔+图片) + 末尾(tail/loadMore)。
+  /// 非连续：header(可选) + 图片 + tail。
+  /// 连续：header(可选) + 各章(图片+分隔) + tail/loadMore（分隔只在非末章之后）。
   int get _scrollItemCount {
     final firstChapter = _chain.first;
     final hasHeader = firstChapter.prev == null;
     var count = hasHeader ? 1 : 0;
     for (final chapter in _chain) {
-      // 连续阅读每章都有一个分隔；非连续阅读仅单章且无分隔
-      count += _continuousReading
-          ? 1 + chapter.contents.length
-          : chapter.contents.length;
+      count += chapter.contents.length;
     }
     if (_continuousReading) {
-      count += _chain.last.next == null ? 1 : 1; // tail 或 loadMore
+      // N 章之间有 N-1 个分隔 + 末尾 1 个 tail/loadMore = N
+      count += _chain.length;
     } else {
       count += 1; // tail
     }
@@ -1293,11 +1292,12 @@ class _ReaderPageState extends State<ReaderPage> {
     required int page,
     required bool hasHeader,
   }) {
+    // 布局：header(可选) + 各章[图片 + 分隔(非末章)] + tail/loadMore
+    // 目标章之前每章贡献：图片数 + 1 个分隔
     var idx = hasHeader ? 1 : 0;
     for (var ci = 0; ci < chainIndex; ci++) {
-      idx += 1 + _chain[ci].contents.length;
+      idx += _chain[ci].contents.length + 1;
     }
-    idx += 1; // 当前章 divider
     idx += (page - 1);
     return idx;
   }
@@ -1370,8 +1370,7 @@ class _ReaderPageState extends State<ReaderPage> {
     final starts = <int>[];
     for (final chapter in _chain) {
       starts.add(cursor);
-      cursor += 1; // chapter divider
-      cursor += chapter.contents.length;
+      cursor += chapter.contents.length + 1; // 图片 + 末尾分隔/tail
     }
     // 找到可见面积最大的图片 item
     int? bestChapterIndex;
@@ -1381,14 +1380,14 @@ class _ReaderPageState extends State<ReaderPage> {
       for (var ci = 0; ci < _chain.length; ci++) {
         final s = starts[ci];
         final count = _chain[ci].contents.length;
-        if (p.index >= s + 1 && p.index < s + 1 + count) {
+        if (p.index >= s && p.index < s + count) {
           final top = p.itemLeadingEdge.clamp(0.0, 1.0);
           final bottom = p.itemTrailingEdge.clamp(0.0, 1.0);
           final visible = bottom - top;
           if (visible > bestVisible) {
             bestVisible = visible;
             bestChapterIndex = ci;
-            bestLocalIndex = p.index - (s + 1);
+            bestLocalIndex = p.index - s;
           }
           break;
         }
@@ -1519,31 +1518,31 @@ class _ReaderPageState extends State<ReaderPage> {
         : Axis.vertical;
     final viewportSize = MediaQuery.sizeOf(context);
 
-    // 连续阅读：将链中各章图片依次拼接，章首插入章节标题分隔；仅在最后一章且
-    // 无下一话时追加 tail。否则保持列表可向下滚动并在接近末尾时异步追加下一话。
+    // 连续阅读：将链中各章图片依次拼接，每话末尾追加操作按钮（目录/评论）。
+    // 最后一话末尾用 tail（无下一话）或 loadMore（有下一话）替换，两者自带按钮。
     // 非连续阅读：沿用原有 header + 单章图片 + tail 结构。
     final List<_ScrollItem> items = [];
     if (hasHeader) items.add(_ScrollItem.header());
     if (_continuousReading) {
       for (var ci = 0; ci < _chain.length; ci++) {
         final chapter = _chain[ci];
-        if (ci > 0 || hasHeader) {
-          items.add(_ScrollItem.chapterDivider(chapter));
-        } else if (ci == 0 && !hasHeader) {
-          // 首章且无 header：仍插入一个分隔以显示章节名（仅连续阅读）
-          items.add(_ScrollItem.chapterDivider(chapter));
-        }
         final start = _chainChapterStart(ci);
         for (var i = 0; i < chapter.contents.length; i++) {
           items.add(_ScrollItem.image(chapter, i, start + i));
         }
-      }
-      // 最后一章无下一话时显示终结 tail；否则追加加载占位（可触发拉取下一话）
-      final lastChapter = _chain.last;
-      if (lastChapter.next == null) {
-        items.add(_ScrollItem.tail());
-      } else {
-        items.add(_ScrollItem.loadMore());
+        final isLast = ci == _chain.length - 1;
+        if (isLast) {
+          // 链尾用 tail / loadMore（自带目录/评论/下一章按钮）
+          final lastChapter = _chain.last;
+          if (lastChapter.next == null) {
+            items.add(_ScrollItem.tail());
+          } else {
+            items.add(_ScrollItem.loadMore());
+          }
+        } else {
+          // 其他话末尾放操作按钮
+          items.add(_ScrollItem.chapterDivider(chapter));
+        }
       }
     } else {
       final chapter = _detail!;
