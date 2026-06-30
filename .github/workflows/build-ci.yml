@@ -27,6 +27,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -105,7 +107,7 @@ jobs:
           test -n "$APP_VERSION"
 
           cd build/app/outputs/flutter-apk
-          mv app-release.apk "kira-ci-${APP_VERSION}-run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}-arm64-v8a.apk"
+          mv app-release.apk "kira-${APP_VERSION}-arm64-v8a.apk"
           ls -lh kira-*.apk
 
       - name: Upload APK artifacts
@@ -137,8 +139,9 @@ jobs:
             echo "集中 CI APK 测试包。"
             echo
             echo "最新上传版本: ${APP_VERSION}"
-            echo "Actions 运行: ${GITHUB_RUN_ID}, 第 ${GITHUB_RUN_ATTEMPT} 次尝试"
-            echo "提交: ${GITHUB_SHA}"
+            echo "最近提交:"
+            git log --oneline -5
+            echo
             echo "工作流: ${RUN_URL}"
             if [ -n "$NOTE" ]; then
               echo
