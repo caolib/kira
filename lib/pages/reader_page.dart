@@ -1814,7 +1814,7 @@ class _ReaderPageState extends State<ReaderPage> {
           FilledButton.icon(
             onPressed: () => _goChapter(nextUuid),
             icon: const Icon(Icons.skip_next),
-            label: const Text('下一章'),
+            label: const Text('下一话'),
             style: primaryButtonStyle,
           ),
       ],
@@ -1826,60 +1826,66 @@ class _ReaderPageState extends State<ReaderPage> {
     final hasNext = nextUuid != null;
     final buttonStyle = OutlinedButton.styleFrom(
       foregroundColor: Colors.white,
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
-      backgroundColor: Colors.black.withValues(alpha: 0.55),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      minimumSize: const Size(0, 40),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
+      backgroundColor: Colors.white.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
     final primaryButtonStyle = FilledButton.styleFrom(
       foregroundColor: Colors.white,
-      backgroundColor: Colors.white.withValues(alpha: 0.16),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      minimumSize: const Size(0, 40),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      backgroundColor: Colors.white.withValues(alpha: 0.18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
 
-    return SafeArea(
-      top: false,
-      child: Align(
-        alignment: Alignment.bottomCenter,
+    return ColoredBox(
+      color: Colors.black,
+      child: SafeArea(
+        top: false,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(12, 0, 12, _showToolbar ? 46 : 6),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 520),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.list_rounded, size: 18),
-                    label: const Text('目录'),
-                    style: buttonStyle,
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _showChapterComments,
-                    icon: const Icon(Icons.forum_outlined, size: 18),
-                    label: Text(_commentCount > 0 ? '$_commentCount' : '评论'),
-                    style: buttonStyle,
-                  ),
-                  if (hasNext)
-                    FilledButton.icon(
-                      onPressed: () => _goChapter(nextUuid),
-                      icon: const Icon(Icons.skip_next_rounded, size: 18),
-                      label: const Text('下一章'),
-                      style: primaryButtonStyle,
+          padding: const EdgeInsets.fromLTRB(32, 12, 32, 16),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.list),
+                      label: const Text('目录'),
+                      style: buttonStyle,
                     ),
-                ],
-              ),
+                    OutlinedButton.icon(
+                      onPressed: _showChapterComments,
+                      icon: const Icon(Icons.forum_outlined),
+                      label: Text(
+                        _commentCount > 0 ? '$_commentCount' : '评论',
+                      ),
+                      style: buttonStyle,
+                    ),
+                    if (hasNext)
+                      FilledButton.icon(
+                        onPressed: () => _goChapter(nextUuid),
+                        icon: const Icon(Icons.skip_next),
+                        label: const Text('下一话'),
+                        style: primaryButtonStyle,
+                      ),
+                  ],
+                ),
+                if (hasNext)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '继续翻页进入下一话',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -1894,7 +1900,7 @@ class _ReaderPageState extends State<ReaderPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _detail?.next != null ? '继续下滑或点击按钮进入下一章' : '已经是最后一章',
+            _detail?.next != null ? '继续下滑或点击按钮进入下一话' : '已经是最后一话',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white70,
@@ -2131,9 +2137,9 @@ class _ReaderPageState extends State<ReaderPage> {
                 child: _buildReaderImageGesture(_detail!, imageIndex),
               );
             }
-            return Stack(
+            return Column(
               children: [
-                Center(child: _buildReaderImageGesture(_detail!, imageIndex)),
+                Expanded(child: Center(child: _buildReaderImageGesture(_detail!, imageIndex))),
                 _buildPageModeEndActions(),
               ],
             );
@@ -2147,7 +2153,7 @@ class _ReaderPageState extends State<ReaderPage> {
             child: _buildReaderImageGesture(chapter, li, retryKey: i),
           );
           if (isChapterLastPage) {
-            return Stack(children: [child, _buildPageModeEndActions()]);
+            return Column(children: [Expanded(child: child), _buildPageModeEndActions()]);
           }
           return child;
         },
@@ -2378,7 +2384,7 @@ class _ReaderPageState extends State<ReaderPage> {
                           onPressed: _detail!.next != null
                               ? () => _goChapter(_detail!.next)
                               : null,
-                          tooltip: '下一章',
+                          tooltip: '下一话',
                         ),
                       ],
                     ),
