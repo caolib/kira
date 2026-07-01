@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:system_fonts/system_fonts.dart';
 
@@ -113,6 +114,11 @@ class _KiraAppState extends ConsumerState<KiraApp> {
     elevation: 0,
   );
 
+  // Router 必须只创建一次：若在 build() 里调用 createAppRouter()，
+  // 每次 UserManager 通知（任意设置变化都会触发）都会重建 GoRouter，
+  // 导致导航栈被重置到 initialLocation '/'（跳回首页）。
+  late final GoRouter _router = createAppRouter();
+
   @override
   void initState() {
     super.initState();
@@ -182,7 +188,7 @@ class _KiraAppState extends ConsumerState<KiraApp> {
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _user.themeMode,
-      routerConfig: createAppRouter(),
+      routerConfig: _router,
     );
   }
 }
