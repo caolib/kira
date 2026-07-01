@@ -48,6 +48,28 @@ class DownloadManager extends ChangeNotifier {
 
   bool get isBusy => _queuedKeys.isNotEmpty;
 
+  /// 当前下载队列的任务信息列表，可供 UI 展示。
+  List<ComicDownloadTaskInfo> get tasks {
+    final result = <ComicDownloadTaskInfo>[];
+    for (final task in _queue) {
+      final key = _taskKey(task.pathWord, task.chapter.uuid);
+      final isActive = _activeKey == key;
+      final info = getLocalComicInfo(task.pathWord);
+      result.add(ComicDownloadTaskInfo(
+        pathWord: task.pathWord,
+        chapterUuid: task.chapter.uuid,
+        chapterName: task.chapter.name,
+        comicName: info?.comic.name ?? task.pathWord,
+        cover: info?.comic.cover,
+        status: isActive
+            ? ComicDownloadTaskStatus.downloading
+            : ComicDownloadTaskStatus.pending,
+        progress: isActive ? _activeProgress : null,
+      ));
+    }
+    return result;
+  }
+
   Future<void> init() async {
     if (_initialized) return;
     _initFuture ??= _initialize();
@@ -756,4 +778,34 @@ class LocalComicEntry {
   final int downloadedCount;
 
   const LocalComicEntry({required this.info, required this.downloadedCount});
+}
+
+/// 漫画下载队列任务状态
+enum ComicDownloadTaskStatus {
+  /// 下载中
+  downloading,
+
+  /// 等待中
+  pending,
+}
+
+/// 漫画下载队列中的任务信息，供 UI 展示。
+class ComicDownloadTaskInfo {
+  final String pathWord;
+  final String chapterUuid;
+  final String chapterName;
+  final String comicName;
+  final String? cover;
+  final ComicDownloadTaskStatus status;
+  final ChapterDownloadProgress? progress;
+
+  const ComicDownloadTaskInfo({
+    required this.pathWord,
+    required this.chapterUuid,
+    required this.chapterName,
+    required this.comicName,
+    this.cover,
+    required this.status,
+    this.progress,
+  });
 }
