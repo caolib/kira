@@ -131,6 +131,11 @@ class _ReaderPageState extends State<ReaderPage> {
   final Map<int, int> _imageRetryCounts = {};
   final Map<int, String> _imageRetryTokens = {};
 
+  // 图片原始尺寸缓存：key 为图片 URL / 本地路径。
+  // 用于在竖向滚动模式下为占位符和错误 Widget 提供与真实图片一致的预估高度，
+  // 避免 placeholder → 真图尺寸不同导致的页面跳动。
+  final Map<String, Size> _imageNaturalSizes = {};
+
   // 评论缓存按章节 uuid 存放，连续阅读链中各章均可独立缓存，
   // 供分隔区评论按钮显示数量并避免重复打开时重新加载。
   final Map<String, List<ChapterComment>> _commentCache = {};
@@ -1064,6 +1069,57 @@ class _ReaderPageState extends State<ReaderPage> {
     });
   }
 
+  /// 记录单张图片的原始尺寸，供占位符/错误 Widget 估算高度。
+  void _recordImageNaturalSize(String source, Size size) {
+    if (size.isEmpty) return;
+    _imageNaturalSizes[source] = size;
+  }
+
+  /// 从已加载的图片中统计出最常见的宽高比（频率最高的桶）。
+  /// 返回 null 表示尚无数据。
+  double? get _typicalImageAspectRatio {
+    if (_imageNaturalSizes.isEmpty) return null;
+    // 按宽高比分桶（精度 0.01），取出现次数最多的桶的中位数。
+    const bucketStep = 0.01;
+    final buckets = <int, List<double>>{};
+    for (final size in _imageNaturalSizes.values) {
+      if (size.width <= 0) continue;
+      final ratio = size.height / size.width;
+      final bucket = (ratio / bucketStep).round();
+      buckets.putIfAbsent(bucket, () => []).add(ratio);
+    }
+    if (buckets.isEmpty) return null;
+    int maxCount = 0;
+    int? maxBucket;
+    for (final entry in buckets.entries) {
+      if (entry.value.length > maxCount) {
+        maxCount = entry.value.length;
+        maxBucket = entry.key;
+      }
+    }
+    if (maxBucket == null) return null;
+    // 返回该桶中所有比例的均值
+    final ratios = buckets[maxBucket]!;
+    return ratios.fold(0.0, (sum, r) => sum + r) / ratios.length;
+  }
+
+  /// 在竖向滚动模式下，为指定图片源返回占位符的预估高度。
+  /// 如果该图片自身已有缓存尺寸直接用；否则用当前最常见宽高比估算；
+  /// 最后兜底返回屏幕高度 × 1.35（典型竖图比例）。
+  double _estimatedPlaceholderHeight(String imageSource) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cached = _imageNaturalSizes[imageSource];
+    if (cached != null && cached.width > 0) {
+      return screenWidth * (cached.height / cached.width);
+    }
+    final typicalRatio = _typicalImageAspectRatio;
+    if (typicalRatio != null && typicalRatio > 0) {
+      return screenWidth * typicalRatio;
+    }
+    // 兜底：典型竖图宽高比约 1.35
+    return screenWidth * 1.35;
+  }
+
   void _scheduleImageRetry(int retryKey) {
     final attempts = _imageRetryCounts[retryKey] ?? 0;
     final retryLimit = _user.imageRetryCount;
@@ -1155,6 +1211,13 @@ class _ReaderPageState extends State<ReaderPage> {
     final memCacheWidth = _isHorizontalScrollMode
         ? (screenSize.height * MediaQuery.devicePixelRatioOf(context)).round()
         : (screenSize.width * MediaQuery.devicePixelRatioOf(context)).round();
+
+    // 竖向滚动模式下，占位符使用预估高度以防页面跳动；
+    // 页面/水平滚动模式不需要——前者占满 viewport，后者高度由外层 SizedBox 约束。
+    final estimatedPlaceholderH = !useFullViewport
+        ? _estimatedPlaceholderHeight(imageSource)
+        : null;
+
     Widget image;
 
     if (chapter.isDownloaded) {
@@ -1164,8 +1227,23 @@ class _ReaderPageState extends State<ReaderPage> {
         fit: imageFit,
         width: _isHorizontalScrollMode ? null : double.infinity,
         height: useFullViewport ? double.infinity : null,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          // 图片首帧渲染后，异步解析原始尺寸并缓存。
+          // containsKey 保证只 resolve 一次，避免重复创建 ImageStream。
+          if (frame == 0 && !_imageNaturalSizes.containsKey(imageSource)) {
+            FileImage(File(imageSource))
+                .resolve(ImageConfiguration.empty)
+                .addListener(ImageStreamListener((info, _) {
+              _recordImageNaturalSize(
+                imageSource,
+                Size(info.image.width.toDouble(), info.image.height.toDouble()),
+              );
+            }));
+          }
+          return child;
+        },
         errorBuilder: (_, _, _) => Container(
-          height: 400,
+          height: estimatedPlaceholderH ?? 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           child: Center(
             child: Column(
@@ -1201,6 +1279,16 @@ class _ReaderPageState extends State<ReaderPage> {
         height: useFullViewport ? double.infinity : null,
         imageBuilder: (_, imageProvider) {
           _clearImageRetryState(key);
+          // 图片加载成功后，异步解析其原始尺寸并缓存。
+          if (!_imageNaturalSizes.containsKey(imageSource)) {
+            imageProvider.resolve(ImageConfiguration.empty)
+                .addListener(ImageStreamListener((info, _) {
+              _recordImageNaturalSize(
+                imageSource,
+                Size(info.image.width.toDouble(), info.image.height.toDouble()),
+              );
+            }));
+          }
           return Image(
             image: imageProvider,
             fit: imageFit,
@@ -1209,7 +1297,7 @@ class _ReaderPageState extends State<ReaderPage> {
           );
         },
         placeholder: (_, _) => Container(
-          height: 400,
+          height: estimatedPlaceholderH ?? 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
@@ -1222,7 +1310,7 @@ class _ReaderPageState extends State<ReaderPage> {
           }
 
           return Container(
-            height: 400,
+            height: estimatedPlaceholderH ?? 400,
             color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
             child: Center(
               child: Column(

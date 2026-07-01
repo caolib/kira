@@ -342,8 +342,8 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                   child: Wrap(
                     alignment: WrapAlignment.center,
-                    spacing: 10,
-                    runSpacing: 10,
+                    spacing: 4,
+                    runSpacing: 4,
                     children: [
                       _buildIconButton(
                         icon: Icons.copy_all_outlined,
