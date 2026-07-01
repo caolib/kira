@@ -16,18 +16,22 @@ abstract class PrefsStore extends ChangeNotifier {
     return _cachedPrefs ??= await SharedPreferences.getInstance();
   }
 
+  /// Reset the cached SharedPreferences instance (for testing).
+  @visibleForTesting
+  void resetPrefsCache() {
+    _cachedPrefs = null;
+  }
+
   // ── Typed helpers ──────────────────────────────────────────────────
 
   /// Read a `String?` preference.
-  Future<String?> getString(String key) async =>
-      (await prefs).getString(key);
+  Future<String?> getString(String key) async => (await prefs).getString(key);
 
   /// Read an `int?` preference.
   Future<int?> getInt(String key) async => (await prefs).getInt(key);
 
   /// Read a `double?` preference.
-  Future<double?> getDouble(String key) async =>
-      (await prefs).getDouble(key);
+  Future<double?> getDouble(String key) async => (await prefs).getDouble(key);
 
   /// Read a `bool?` preference.
   Future<bool?> getBool(String key) async => (await prefs).getBool(key);

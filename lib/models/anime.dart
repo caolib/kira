@@ -1,29 +1,35 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'anime.g.dart';
+
+@JsonSerializable(fieldRename: FieldRename.snake)
 class AnimeTag {
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: '')
   final String pathWord;
 
   const AnimeTag({required this.name, required this.pathWord});
 
-  factory AnimeTag.fromJson(Map<String, dynamic> json) => AnimeTag(
-    name: json['name']?.toString() ?? '',
-    pathWord: json['path_word']?.toString() ?? '',
-  );
+  factory AnimeTag.fromJson(Map<String, dynamic> json) =>
+      _$AnimeTagFromJson(json);
 
-  Map<String, dynamic> toJson() => {'name': name, 'path_word': pathWord};
+  Map<String, dynamic> toJson() => _$AnimeTagToJson(this);
 }
 
+@JsonSerializable(fieldRename: FieldRename.snake)
 class AnimeCompany {
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: '')
   final String pathWord;
 
   const AnimeCompany({required this.name, required this.pathWord});
 
-  factory AnimeCompany.fromJson(Map<String, dynamic> json) => AnimeCompany(
-    name: json['name']?.toString() ?? '',
-    pathWord: json['path_word']?.toString() ?? '',
-  );
+  factory AnimeCompany.fromJson(Map<String, dynamic> json) =>
+      _$AnimeCompanyFromJson(json);
 
-  Map<String, dynamic> toJson() => {'name': name, 'path_word': pathWord};
+  Map<String, dynamic> toJson() => _$AnimeCompanyToJson(this);
 }
 
 class Anime {
@@ -195,9 +201,13 @@ class AnimeBrowseHistoryItem {
   });
 }
 
+@JsonSerializable(fieldRename: FieldRename.snake)
 class AnimeChapterLine {
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: '')
   final String pathWord;
+  @JsonKey(fromJson: _toBool)
   final bool config;
 
   const AnimeChapterLine({
@@ -207,18 +217,12 @@ class AnimeChapterLine {
   });
 
   factory AnimeChapterLine.fromJson(Map<String, dynamic> json) =>
-      AnimeChapterLine(
-        name: json['name']?.toString() ?? '',
-        pathWord: json['path_word']?.toString() ?? '',
-        config: json['config'] == true,
-      );
+      _$AnimeChapterLineFromJson(json);
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'path_word': pathWord,
-    'config': config,
-  };
+  Map<String, dynamic> toJson() => _$AnimeChapterLineToJson(this);
 }
+
+bool _toBool(dynamic value) => value == true;
 
 class AnimeChapter {
   final String name;

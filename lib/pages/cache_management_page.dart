@@ -172,7 +172,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       final prefs = await AppStorage.sharedPreferences();
       await prefs.remove(entry.key);
       if (entry.category == _CacheCategory.account) {
-        ApiClient().clearAuthState();
+        ApiClient().user.clearAuthState();
         await UserManager().init();
       }
       _revealedSensitiveKeys.remove(entry.key);
@@ -265,7 +265,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         await _clearImageCacheSection(section);
       }
       if (entries.any((entry) => entry.category == _CacheCategory.account)) {
-        ApiClient().clearAuthState();
+        ApiClient().user.clearAuthState();
         await UserManager().init();
       }
       _revealedSensitiveKeys.removeAll(keys);

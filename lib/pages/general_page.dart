@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
+import '../routing/app_router.dart';
 import '../utils/app_logger.dart';
 import '../utils/settings_backup.dart';
 import '../utils/toast.dart';
-import 'cache_management_page.dart';
 
 class GeneralPage extends StatefulWidget {
   const GeneralPage({super.key});
@@ -129,7 +130,7 @@ class _GeneralPageState extends State<GeneralPage> {
 
     try {
       await _settingsBackup.importPlainText(text);
-      ApiClient().clearAuthState();
+      ApiClient().user.clearAuthState();
       await _user.init();
       if (mounted) {
         showToast(context, '配置已导入并覆盖本地设置');
@@ -157,7 +158,7 @@ class _GeneralPageState extends State<GeneralPage> {
     try {
       final removedCount = await _settingsBackup.clearAllPreferences();
       await AppLogger.instance.clear();
-      ApiClient().clearAuthState();
+      ApiClient().user.clearAuthState();
       await _user.init();
       if (mounted) {
         showToast(context, '应用已重置，已清除 $removedCount 项本地数据');
@@ -241,12 +242,7 @@ class _GeneralPageState extends State<GeneralPage> {
                     subtitle: const Text('查看和删除本地缓存、历史和账号数据'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CacheManagementPage(),
-                        ),
-                      );
+                      context.pushNamed(AppRoutes.cacheManagement);
                     },
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),

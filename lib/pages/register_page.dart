@@ -68,7 +68,7 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      final questions = await _api.getSecurityQuestions();
+      final questions = await _api.user.getSecurityQuestions();
       if (!mounted) return;
       final availableQuestions = questions.isNotEmpty
           ? questions
@@ -117,7 +117,7 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      await _api.register(
+      await _api.user.register(
         username: username,
         password: password,
         question: _selectedQuestion!,

@@ -71,7 +71,11 @@ class ComicCoverCard extends StatelessWidget {
               Row(
                 children: [
                   if (showPopular) ...[
-                    Icon(Icons.local_fire_department, size: 12, color: cs.primary),
+                    Icon(
+                      Icons.local_fire_department,
+                      size: 12,
+                      color: cs.primary,
+                    ),
                     const SizedBox(width: 2),
                     Flexible(
                       child: Text(
@@ -115,18 +119,18 @@ class ComicCoverCard extends StatelessWidget {
   }
 
   static Widget _imagePlaceholder(ColorScheme cs) => Container(
-        color: cs.surfaceContainerHighest,
-        child: Center(
-          child: Icon(Icons.image, color: cs.onSurfaceVariant, size: 32),
-        ),
-      );
+    color: cs.surfaceContainerHighest,
+    child: Center(
+      child: Icon(Icons.image, color: cs.onSurfaceVariant, size: 32),
+    ),
+  );
 
   static Widget _imageError(ColorScheme cs) => Container(
-        color: cs.surfaceContainerHighest,
-        child: Center(
-          child: Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 32),
-        ),
-      );
+    color: cs.surfaceContainerHighest,
+    child: Center(
+      child: Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 32),
+    ),
+  );
 
   /// Format popular count to compact Chinese representation.
   static String formatPopular(int n) {

@@ -35,8 +35,8 @@ class SearchInitRepository extends CachedRepository<SearchInitData> {
 
   @override
   Future<SearchInitData> fetchFromApi() async {
-    final keywordsFuture = _api.getHotKeywords();
-    final tagsFuture = _api.getComicTags();
+    final keywordsFuture = _api.manga.getHotKeywords();
+    final tagsFuture = _api.manga.getComicTags();
     final keywords = await keywordsFuture;
     final tags = await tagsFuture;
     return SearchInitData(keywords: keywords, tags: tags);

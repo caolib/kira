@@ -394,7 +394,7 @@ class AnimeDownloadManager extends ChangeNotifier {
     try {
       await _resetDirectory(chapterDir);
 
-      final playback = await _api.getAnimePlayback(
+      final playback = await _api.anime.getAnimePlayback(
         task.pathWord,
         task.chapter.uuid,
         line: task.line,

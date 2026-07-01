@@ -1,13 +1,19 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'comic.g.dart';
+
+@JsonSerializable(fieldRename: FieldRename.snake)
 class Author {
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: '')
   final String pathWord;
 
   Author({required this.name, required this.pathWord});
 
-  factory Author.fromJson(Map<String, dynamic> json) =>
-      Author(name: json['name'] ?? '', pathWord: json['path_word'] ?? '');
+  factory Author.fromJson(Map<String, dynamic> json) => _$AuthorFromJson(json);
 
-  Map<String, dynamic> toJson() => {'name': name, 'path_word': pathWord};
+  Map<String, dynamic> toJson() => _$AuthorToJson(this);
 }
 
 class MangaBanner {
@@ -79,12 +85,19 @@ class MangaHome {
 }
 
 /// COPY 首页专题条目
+@JsonSerializable(fieldRename: FieldRename.snake)
 class MangaTopic {
+  @JsonKey(defaultValue: '')
   final String title;
+  @JsonKey(defaultValue: '')
   final String cover;
+  @JsonKey(defaultValue: '')
   final String period;
+  @JsonKey(defaultValue: '')
   final String pathWord;
+  @JsonKey(defaultValue: '')
   final String brief;
+  @JsonKey(fromJson: _intFromDynamic)
   final int type;
   final String? datetimeCreated;
 
@@ -98,25 +111,15 @@ class MangaTopic {
     this.datetimeCreated,
   });
 
-  factory MangaTopic.fromJson(Map<String, dynamic> json) => MangaTopic(
-    title: json['title']?.toString() ?? '',
-    cover: json['cover']?.toString() ?? '',
-    period: json['period']?.toString() ?? '',
-    pathWord: json['path_word']?.toString() ?? '',
-    brief: json['brief']?.toString() ?? '',
-    type: json['type'] is int ? json['type'] as int : 0,
-    datetimeCreated: json['datetime_created']?.toString(),
-  );
+  factory MangaTopic.fromJson(Map<String, dynamic> json) =>
+      _$MangaTopicFromJson(json);
 
-  Map<String, dynamic> toJson() => {
-    'title': title,
-    'cover': cover,
-    'period': period,
-    'path_word': pathWord,
-    'brief': brief,
-    'type': type,
-    'datetime_created': datetimeCreated,
-  };
+  Map<String, dynamic> toJson() => _$MangaTopicToJson(this);
+}
+
+int _intFromDynamic(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }
 
 /// COPY 漫画首页
@@ -218,44 +221,37 @@ class CopyMangaHome {
   }
 }
 
+@JsonSerializable(fieldRename: FieldRename.snake)
 class Theme {
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: '')
   final String pathWord;
+  @JsonKey(defaultValue: 0)
   final int count;
 
   Theme({required this.name, required this.pathWord, this.count = 0});
 
-  factory Theme.fromJson(Map<String, dynamic> json) => Theme(
-    name: json['name'] ?? '',
-    pathWord: json['path_word'] ?? '',
-    count: json['count'] ?? 0,
-  );
+  factory Theme.fromJson(Map<String, dynamic> json) => _$ThemeFromJson(json);
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'path_word': pathWord,
-    'count': count,
-  };
+  Map<String, dynamic> toJson() => _$ThemeToJson(this);
 }
 
+@JsonSerializable(fieldRename: FieldRename.snake)
 class ComicGroup {
+  @JsonKey(defaultValue: '')
   final String pathWord;
+  @JsonKey(defaultValue: 0)
   final int count;
+  @JsonKey(defaultValue: '')
   final String name;
 
   ComicGroup({required this.pathWord, required this.count, required this.name});
 
-  factory ComicGroup.fromJson(Map<String, dynamic> json) => ComicGroup(
-    pathWord: json['path_word'] ?? '',
-    count: json['count'] ?? 0,
-    name: json['name'] ?? '',
-  );
+  factory ComicGroup.fromJson(Map<String, dynamic> json) =>
+      _$ComicGroupFromJson(json);
 
-  Map<String, dynamic> toJson() => {
-    'path_word': pathWord,
-    'count': count,
-    'name': name,
-  };
+  Map<String, dynamic> toJson() => _$ComicGroupToJson(this);
 }
 
 class Comic {

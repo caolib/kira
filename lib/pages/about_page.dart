@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/user_manager.dart';
+import '../routing/app_router.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
-import 'acknowledgement_page.dart';
-import 'app_log_page.dart';
-import 'disclaimer_page.dart';
-import 'license_page.dart';
 
 class SettingIcon extends StatelessWidget {
   final IconData icon;
@@ -532,12 +530,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.gavel_outlined),
                       title: const Text('免责声明'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DisclaimerPage(),
-                        ),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.disclaimer),
                     ),
                     Divider(
                       height: 1,
@@ -547,10 +540,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.bug_report_outlined),
                       title: const Text('日志'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AppLogPage()),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.appLog),
                     ),
                     Divider(
                       height: 1,
@@ -560,12 +550,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.favorite_outline),
                       title: const Text('致谢'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AcknowledgementPage(),
-                        ),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.acknowledgement),
                     ),
                     Divider(
                       height: 1,
@@ -575,12 +560,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.copyright_outlined),
                       title: const Text('许可证'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ProjectLicensePage(),
-                        ),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.license),
                     ),
                   ],
                 ),

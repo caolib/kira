@@ -277,7 +277,11 @@ class _QueueTaskCard extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.pause_circle_outline, size: 14, color: Colors.orange),
+            const Icon(
+              Icons.pause_circle_outline,
+              size: 14,
+              color: Colors.orange,
+            ),
             const SizedBox(width: 6),
             Text('已暂停', style: tt.labelSmall?.copyWith(color: Colors.orange)),
           ],

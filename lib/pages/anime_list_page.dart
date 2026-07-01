@@ -1,11 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../models/anime.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../widgets/comic_card_skeleton.dart';
-import 'anime_detail_page.dart';
 import 'home_page.dart';
 
 enum AnimeListType {
@@ -69,11 +70,14 @@ class _AnimeListPageState extends State<AnimeListPage> {
     required int offset,
   }) async {
     if (widget.type == AnimeListType.updates) {
-      final data = await _api.getAnimeUpdates(limit: limit, offset: offset);
+      final data = await _api.anime.getAnimeUpdates(
+        limit: limit,
+        offset: offset,
+      );
       return (list: data.list.map((e) => e.anime).toList(), total: data.total);
     }
 
-    return _api.getAnimeRecommendations(
+    return _api.anime.getAnimeRecommendations(
       pos: widget.type.pos!,
       limit: limit,
       offset: offset,
@@ -132,12 +136,10 @@ class _AnimeListPageState extends State<AnimeListPage> {
   }
 
   void _openAnime(Anime anime) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            AnimeDetailPage(pathWord: anime.pathWord, initialAnime: anime),
-      ),
+    context.pushNamed(
+      AppRoutes.animeDetail,
+      pathParameters: {'pathWord': anime.pathWord},
+      extra: AnimeDetailExtra(initialAnime: anime),
     );
   }
 

@@ -3,18 +3,18 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../models/anime.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_hero_tags.dart';
-import 'anime_detail_page.dart';
-import 'comic_detail_page.dart';
 
 enum _HistoryMode { comic, anime }
 
@@ -113,9 +113,9 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
     try {
       if (_isAnimeMode) {
-        await _api.clearAnimeBrowseHistory();
+        await _api.user.clearAnimeBrowseHistory();
       } else {
-        await _api.clearBrowseHistory();
+        await _api.user.clearBrowseHistory();
       }
       if (!mounted) return;
       showToast(context, '已清空$_modeLabel浏览记录');
@@ -140,7 +140,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
     try {
       if (mode == _HistoryMode.anime) {
-        final data = await _api.getAnimeBrowseHistory();
+        final data = await _api.anime.getAnimeBrowseHistory();
         if (!mounted || _mode != mode) return;
         setState(() {
           _animeItems = data.list;
@@ -149,7 +149,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
           _loading = false;
         });
       } else {
-        final data = await _api.getBrowseHistory();
+        final data = await _api.user.getBrowseHistory();
         if (!mounted || _mode != mode) return;
         setState(() {
           _comicItems = data.list;
@@ -181,14 +181,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     _loadingMore = true;
     try {
       if (mode == _HistoryMode.anime) {
-        final data = await _api.getAnimeBrowseHistory(offset: _offset);
+        final data = await _api.anime.getAnimeBrowseHistory(offset: _offset);
         if (!mounted || _mode != mode) return;
         setState(() {
           _animeItems.addAll(data.list);
           _offset = _animeItems.length;
         });
       } else {
-        final data = await _api.getBrowseHistory(offset: _offset);
+        final data = await _api.user.getBrowseHistory(offset: _offset);
         if (!mounted || _mode != mode) return;
         setState(() {
           _comicItems.addAll(data.list);
@@ -267,10 +267,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
   }
 
   Future<void> _goLogin() async {
-    final loggedIn = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: widget.loginPageBuilder),
-    );
+    final loggedIn = await context.pushNamed<bool>(AppRoutes.login);
     if (loggedIn == true && mounted) {
       unawaited(_load(silent: true));
     }
@@ -279,14 +276,10 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
   void _openAnime(AnimeBrowseHistoryItem item) {
     if (!_animeFeatureEnabled) return;
     if (item.anime.pathWord.isEmpty) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnimeDetailPage(
-          pathWord: item.anime.pathWord,
-          initialAnime: item.anime,
-        ),
-      ),
+    context.pushNamed(
+      AppRoutes.animeDetail,
+      pathParameters: {'pathWord': item.anime.pathWord},
+      extra: AnimeDetailExtra(initialAnime: item.anime),
     );
   }
 
@@ -525,10 +518,10 @@ class _ComicBrowseHistoryCard extends StatelessWidget {
     );
 
     return _HistoryCardShell(
-      onTap: () => Navigator.push(
-        context,
-        ComicDetailPage.route(
-          pathWord: comic.pathWord,
+      onTap: () => context.pushNamed(
+        AppRoutes.comicDetail,
+        pathParameters: {'pathWord': comic.pathWord},
+        extra: ComicDetailExtra(
           initialComic: comic,
           heroTagBase: heroTagBase,
           lastBrowseId: item.lastBrowseId,

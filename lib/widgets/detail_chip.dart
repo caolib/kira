@@ -4,11 +4,7 @@ class DetailChip extends StatelessWidget {
   final String label;
   final double borderRadius;
 
-  const DetailChip({
-    super.key,
-    required this.label,
-    this.borderRadius = 6,
-  });
+  const DetailChip({super.key, required this.label, this.borderRadius = 6});
 
   @override
   Widget build(BuildContext context) {

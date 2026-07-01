@@ -101,23 +101,18 @@ class NetworkSettings extends PrefsStore {
       port != null && port > 0 && port <= 65535;
 
   static NetworkProxyMode _normalizeProxyMode(int? index) {
-    if (index == null ||
-        index < 0 ||
-        index >= NetworkProxyMode.values.length) {
+    if (index == null || index < 0 || index >= NetworkProxyMode.values.length) {
       return NetworkProxyMode.system;
     }
     return NetworkProxyMode.values[index];
   }
 
   static NetworkProxyType _normalizeProxyType(int? index) {
-    if (index == null ||
-        index < 0 ||
-        index >= NetworkProxyType.values.length) {
+    if (index == null || index < 0 || index >= NetworkProxyType.values.length) {
       return NetworkProxyType.http;
     }
     return NetworkProxyType.values[index];
   }
 
-  static int _normalizePort(int? port) =>
-      isValidProxyPort(port) ? port! : 0;
+  static int _normalizePort(int? port) => isValidProxyPort(port) ? port! : 0;
 }

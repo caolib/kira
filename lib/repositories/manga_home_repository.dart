@@ -56,8 +56,8 @@ class MangaHomeRepository
 
   @override
   Future<MangaHomeData> fetchAFromApi() async {
-    final homeFuture = _api.getMangaHome();
-    final rankingFuture = _api.getComicList(
+    final homeFuture = _api.manga.getMangaHome();
+    final rankingFuture = _api.manga.getComicList(
       ordering: ApiOrdering.datetimeUpdated,
       limit: 6,
     );
@@ -68,7 +68,7 @@ class MangaHomeRepository
 
   @override
   Future<CopyMangaHomeData> fetchBFromApi() async {
-    final home = await _api.getCopyMangaHome();
+    final home = await _api.manga.getCopyMangaHome();
     return CopyMangaHomeData(home: home);
   }
 }

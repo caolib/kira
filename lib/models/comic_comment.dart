@@ -1,11 +1,24 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'comic_comment.g.dart';
+
+@JsonSerializable(fieldRename: FieldRename.snake)
 class ComicComment {
+  @JsonKey(fromJson: _intOrStringToInt)
   final int id;
+  @JsonKey(defaultValue: '')
   final String createAt;
+  @JsonKey(defaultValue: '')
   final String userId;
+  @JsonKey(name: 'user_name', defaultValue: '匿名用户')
   final String userName;
+  @JsonKey(defaultValue: '')
   final String userAvatar;
+  @JsonKey(defaultValue: '')
   final String comment;
+  @JsonKey(name: 'count', fromJson: _intOrStringToInt)
   final int replyCount;
+  @JsonKey(name: 'parent_id', fromJson: _nullableIntOrStringToInt)
   final int? parentId;
   final String? parentUserId;
   final String? parentUserName;
@@ -23,35 +36,19 @@ class ComicComment {
     this.parentUserName,
   });
 
-  factory ComicComment.fromJson(Map<String, dynamic> json) => ComicComment(
-    id: json['id'] is int
-        ? json['id'] as int
-        : int.tryParse(json['id']?.toString() ?? '') ?? 0,
-    createAt: json['create_at']?.toString() ?? '',
-    userId: json['user_id']?.toString() ?? '',
-    userName: json['user_name']?.toString() ?? '匿名用户',
-    userAvatar: json['user_avatar']?.toString() ?? '',
-    comment: json['comment']?.toString() ?? '',
-    replyCount: json['count'] is int
-        ? json['count'] as int
-        : int.tryParse(json['count']?.toString() ?? '') ?? 0,
-    parentId: json['parent_id'] is int
-        ? json['parent_id'] as int
-        : int.tryParse(json['parent_id']?.toString() ?? ''),
-    parentUserId: json['parent_user_id']?.toString(),
-    parentUserName: json['parent_user_name']?.toString(),
-  );
+  factory ComicComment.fromJson(Map<String, dynamic> json) =>
+      _$ComicCommentFromJson(json);
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'create_at': createAt,
-    'user_id': userId,
-    'user_name': userName,
-    'user_avatar': userAvatar,
-    'comment': comment,
-    'count': replyCount,
-    'parent_id': parentId,
-    'parent_user_id': parentUserId,
-    'parent_user_name': parentUserName,
-  };
+  Map<String, dynamic> toJson() => _$ComicCommentToJson(this);
+}
+
+int _intOrStringToInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _nullableIntOrStringToInt(dynamic value) {
+  if (value is int) return value;
+  if (value == null) return null;
+  return int.tryParse(value.toString());
 }

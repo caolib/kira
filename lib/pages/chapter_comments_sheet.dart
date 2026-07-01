@@ -289,7 +289,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
 
     try {
-      final data = await _api.getChapterComments(
+      final data = await _api.manga.getChapterComments(
         widget.chapterUuid,
         limit: _pageSize,
         offset: loadMore ? _comments.length : 0,
@@ -352,7 +352,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
     try {
       while (mounted && _comments.length < _total) {
-        final data = await _api.getChapterComments(
+        final data = await _api.manga.getChapterComments(
           widget.chapterUuid,
           limit: _pageSize,
           offset: _comments.length,
@@ -768,7 +768,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       });
 
       try {
-        await _api.postChapterComment(widget.chapterUuid, content);
+        await _api.manga.postChapterComment(widget.chapterUuid, content);
         if (!mounted) return;
         if (dialogContext.mounted) {
           Navigator.of(dialogContext).pop();
@@ -959,7 +959,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
 
     try {
-      await _api.postChapterComment(widget.chapterUuid, content);
+      await _api.manga.postChapterComment(widget.chapterUuid, content);
       if (!mounted) return;
       showToast(context, '+1 已发送');
       await _loadComments(force: true);

@@ -1,14 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
+import '../routing/app_router.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/toast.dart';
 import '../widgets/detail_chip.dart';
 import '../widgets/local_content_list_page.dart';
-import 'anime_detail_page.dart';
-import 'anime_player_page.dart';
 
 class LocalAnimePage extends StatefulWidget {
   final bool embedded;
@@ -24,19 +25,20 @@ class _LocalAnimePageState extends State<LocalAnimePage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return LocalContentListPage(
       embedded: widget.embedded,
-      title: '本地动漫',
-      emptyTitle: '还没有本地动漫',
-      emptySubtitle: '去动漫详情页下载剧集后，这里会显示离线内容',
+      title: l10n.localAnimeTitle,
+      emptyTitle: l10n.noLocalAnimeTitle,
+      emptySubtitle: l10n.noLocalAnimeSubtitle,
       downloadFolderName: 'anime_downloads',
-      deleteDialogTitle: '删除本地动漫',
-      deleteDialogContent: '确定删除选中的 {count} 部本地动漫吗？已下载视频和封面都会被删除。',
-      deleteToastPrefix: '已删除 ',
-      deleteToastSuffix: ' 部本地动漫',
+      deleteDialogTitle: l10n.deleteLocalAnimeTitle,
+      deleteDialogContent: l10n.deleteLocalAnimeContent,
+      deleteToastPrefix: l10n.deleteToastPrefix,
+      deleteToastSuffix: l10n.deleteToastSuffixAnime,
       heroTagPrefix: 'local_anime',
       gridAspectRatio: 0.6,
-      unitLabel: '集',
+      unitLabel: l10n.episodeUnit,
       downloadManager: _downloads,
       initDownloads: _downloads.init,
       getLocalItems: () => _downloads
@@ -44,8 +46,10 @@ class _LocalAnimePageState extends State<LocalAnimePage> {
           .map((entry) => AnimeLocalContentEntry(entry))
           .toList(),
       deleteLocalItems: (pathWords) => _downloads.deleteLocalAnimes(pathWords),
-      detailPageBuilder: (pathWord) =>
-          LocalAnimeDetailPage(pathWord: pathWord),
+      onOpenDetail: (context, pathWord) => context.pushNamed(
+        AppRoutes.localAnimeDetail,
+        pathParameters: {'pathWord': pathWord},
+      ),
     );
   }
 }
@@ -99,19 +103,20 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
   Future<void> _deleteSelected() async {
     if (_selectedChapterIds.isEmpty) return;
     final count = _selectedChapterIds.length;
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除本地剧集'),
-        content: Text('确定删除选中的 $count 个剧集吗？'),
+        title: Text(l10n.deleteLocalEpisodesTitle),
+        content: Text(l10n.deleteEpisodesConfirm(count)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+            child: Text(l10n.deleteButton),
           ),
         ],
       ),
@@ -120,7 +125,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
 
     await _downloads.deleteChapters(widget.pathWord, _selectedChapterIds);
     if (!mounted) return;
-    showToast(context, '已删除 $count 个剧集');
+    showToast(context, l10n.deletedEpisodesCount(count));
     final remain = _downloads.downloadedChapters(widget.pathWord);
     if (remain.isEmpty) return;
     setState(() {
@@ -135,21 +140,25 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
       summary.chapterUuid,
     );
     if (videoPath == null || !File(videoPath).existsSync()) {
-      showToast(context, '视频文件不存在', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.videoFileNotFound,
+        isError: true,
+      );
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnimePlayerPage(
-          animeName:
-              _downloads.getLocalAnimeInfo(widget.pathWord)?.anime.name ?? '',
-          pathWord: widget.pathWord,
-          chapterUuid: summary.chapterUuid,
-          chapterName: summary.chapterName,
-          line: '',
-          localVideoPath: videoPath,
-        ),
+    context.pushNamed(
+      AppRoutes.animePlayer,
+      pathParameters: {
+        'pathWord': widget.pathWord,
+        'chapterUuid': summary.chapterUuid,
+      },
+      extra: AnimePlayerExtra(
+        animeName:
+            _downloads.getLocalAnimeInfo(widget.pathWord)?.anime.name ?? '',
+        chapterName: summary.chapterName,
+        line: '',
+        localVideoPath: videoPath,
       ),
     );
   }
@@ -165,33 +174,32 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final anime = info.anime;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectionMode ? '已选 ${_selectedChapterIds.length} 集' : anime.name,
+          _selectionMode
+              ? l10n.selectedCount(_selectedChapterIds.length, l10n.episodeUnit)
+              : anime.name,
         ),
         actions: [
           if (!_selectionMode)
             IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AnimeDetailPage(
-                    pathWord: widget.pathWord,
-                    initialAnime: anime,
-                  ),
-                ),
+              onPressed: () => context.pushNamed(
+                AppRoutes.animeDetail,
+                pathParameters: {'pathWord': widget.pathWord},
+                extra: AnimeDetailExtra(initialAnime: anime),
               ),
               icon: const Icon(Icons.public),
-              tooltip: '查看在线详情',
+              tooltip: l10n.viewOnlineDetail,
             ),
           if (!_selectionMode)
             IconButton(
               onPressed: () => setState(() => _selectionMode = true),
               icon: const Icon(Icons.checklist),
-              tooltip: '管理剧集',
+              tooltip: l10n.manageEpisodes,
             ),
           if (_selectionMode) ...[
             IconButton(
@@ -201,12 +209,12 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
                   ..addAll(chapters.map((item) => item.chapterUuid));
               }),
               icon: const Icon(Icons.select_all),
-              tooltip: '全选',
+              tooltip: l10n.selectAll,
             ),
             IconButton(
               onPressed: _selectedChapterIds.isEmpty ? null : _deleteSelected,
               icon: const Icon(Icons.delete_outline),
-              tooltip: '删除',
+              tooltip: l10n.deleteButton,
             ),
             IconButton(
               onPressed: () => setState(() {
@@ -214,7 +222,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
                 _selectedChapterIds.clear();
               }),
               icon: const Icon(Icons.close),
-              tooltip: '取消',
+              tooltip: l10n.cancelButton,
             ),
           ],
         ],
@@ -282,7 +290,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          '已下载 ${chapters.length} 集',
+                          l10n.downloadedEpisodeCount(chapters.length),
                           style: tt.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -311,7 +319,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                '本地剧集 (${chapters.length})',
+                l10n.localEpisodesTitle(chapters.length),
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),

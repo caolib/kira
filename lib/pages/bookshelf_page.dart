@@ -3,39 +3,44 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../providers/app_providers.dart';
+import '../providers/repository_providers.dart';
 import '../repositories/bookshelf_repository.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
-import 'anime_detail_page.dart';
-import 'comic_detail_page.dart';
 import 'home_page.dart';
-import 'profile_page.dart';
 
 enum _BookshelfType { comic, anime }
 
-class BookshelfPage extends StatefulWidget {
+class BookshelfPage extends ConsumerStatefulWidget {
   const BookshelfPage({super.key});
 
   @override
-  State<BookshelfPage> createState() => _BookshelfPageState();
+  ConsumerState<BookshelfPage> createState() => _BookshelfPageState();
 }
 
-class _BookshelfPageState extends State<BookshelfPage> {
-  final _api = ApiClient();
-  final _comicRepo = ComicBookshelfRepository();
-  final _animeRepo = AnimeBookshelfRepository();
-  final _user = UserManager();
+class _BookshelfPageState extends ConsumerState<BookshelfPage> {
+  ApiClient get _api => ref.read(apiClientProvider);
+  ComicBookshelfRepository get _comicRepo =>
+      ref.read(comicBookshelfRepoProvider);
+  AnimeBookshelfRepository get _animeRepo =>
+      ref.read(animeBookshelfRepoProvider);
+  UserManager get _user => ref.read(userManagerProvider);
   final _scrollController = ScrollController();
   Timer? _cacheTimeTimer;
   List<BookshelfItem> _items = [];
@@ -259,7 +264,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     _offset = 0;
     try {
       if (requestType == _BookshelfType.comic) {
-        final data = await _api.getBookshelf(ordering: _ordering);
+        final data = await _api.manga.getBookshelf(ordering: _ordering);
         if (!mounted || requestType != _type) return;
         final now = DateTime.now();
         setState(() {
@@ -272,7 +277,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
         });
         unawaited(_saveComicCache(data.list, data.total, now));
       } else {
-        final data = await _api.getAnimeBookshelf(ordering: _ordering);
+        final data = await _api.anime.getAnimeBookshelf(ordering: _ordering);
         if (!mounted || requestType != _type) return;
         final now = DateTime.now();
         setState(() {
@@ -286,7 +291,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
         unawaited(_saveAnimeCache(data.list, data.total, now));
       }
       if (!silent && mounted) {
-        showToast(context, '刷新成功');
+        showToast(context, AppLocalizations.of(context)!.refreshSuccess);
       }
     } catch (e) {
       debugPrint('BookshelfPage load error: $e');
@@ -294,7 +299,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
       } else if (!silent && mounted) {
-        showToast(context, '刷新失败', isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.refreshFailed,
+          isError: true,
+        );
       }
     } finally {
       if (requestType == _type) {
@@ -322,7 +331,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           if (mounted) setState(() {});
           return;
         }
-        final data = await _api.getBookshelf(
+        final data = await _api.manga.getBookshelf(
           limit: currentCount,
           ordering: _ordering,
         );
@@ -339,7 +348,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           if (mounted) setState(() {});
           return;
         }
-        final data = await _api.getAnimeBookshelf(
+        final data = await _api.anime.getAnimeBookshelf(
           limit: currentCount,
           ordering: _ordering,
         );
@@ -369,7 +378,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     setState(() => _loadingMore = true);
     try {
       if (requestType == _BookshelfType.comic) {
-        final data = await _api.getBookshelf(
+        final data = await _api.manga.getBookshelf(
           offset: _offset,
           ordering: _ordering,
         );
@@ -379,7 +388,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           _offset = _items.length;
         });
       } else {
-        final data = await _api.getAnimeBookshelf(
+        final data = await _api.anime.getAnimeBookshelf(
           offset: _offset,
           ordering: _ordering,
         );
@@ -413,7 +422,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
     if (_user.autoLogin) {
       await _user.logout();
       if (mounted) {
-        showToast(context, '自动登录失败，请手动重新登录', isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.autoLoginFailed,
+          isError: true,
+        );
       }
       return;
     }
@@ -428,47 +441,51 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
     final shouldLogin = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('登录已过期'),
-        content: const Text('书架需要登录后才能继续使用，是否现在重新登录？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('稍后再说'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('去登录'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(context)!;
+        return AlertDialog(
+          title: Text(l10n.loginExpiredTitle),
+          content: Text(l10n.loginExpiredBookshelfContent),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.laterButton),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.goLoginButton),
+            ),
+          ],
+        );
+      },
     );
 
     if (shouldLogin == true && mounted) {
-      final loggedIn = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
+      final loggedIn = await context.pushNamed<bool>(AppRoutes.login);
       if (loggedIn == true && mounted) {
         unawaited(_load(silent: true));
       }
     } else if (mounted) {
-      showToast(context, '登录后可继续查看书架', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.loginToViewBookshelf,
+        isError: true,
+      );
     }
 
     _showingLoginPrompt = false;
   }
 
-  static String _orderingLabel(String ordering) {
+  static String _orderingLabel(AppLocalizations l10n, String ordering) {
     switch (ordering) {
       case ApiOrdering.datetimeUpdated:
-        return '按更新';
+        return l10n.sortByUpdate;
       case ApiOrdering.datetimeModifier:
-        return '按收藏';
+        return l10n.sortByFavorite;
       case ApiOrdering.datetimeBrowse:
-        return '按阅读';
+        return l10n.sortByRead;
       default:
-        return '排序';
+        return l10n.sortLabel;
     }
   }
 
@@ -482,7 +499,8 @@ class _BookshelfPageState extends State<BookshelfPage> {
   bool get _currentItemsEmpty =>
       _type == _BookshelfType.comic ? _items.isEmpty : _animeItems.isEmpty;
 
-  String get _typeLabel => _type == _BookshelfType.comic ? '漫画' : '动漫';
+  String _typeLabel(AppLocalizations l10n) =>
+      _type == _BookshelfType.comic ? l10n.comicLabel : l10n.animeLabel;
   bool get _animeFeatureEnabled => _user.animeFeatureEnabled;
 
   String get _cacheTimeLabel {
@@ -490,7 +508,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
         ? _comicCacheTime
         : _animeCacheTime;
     if (cacheTime == null) return '';
-    return '刷新于 ${TimeFormat.relative(cacheTime)}';
+    return AppLocalizations.of(
+      context,
+    )!.refreshedAt(TimeFormat.relative(cacheTime));
   }
 
   void _setType(_BookshelfType type) {
@@ -529,7 +549,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           ? FloatingActionButton.small(
               heroTag: 'bookshelf_back_to_top',
               onPressed: _scrollToTop,
-              tooltip: '回到顶部',
+              tooltip: AppLocalizations.of(context)!.backToTop,
               child: const Icon(Icons.arrow_upward_rounded),
             )
           : null,
@@ -599,6 +619,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Widget _buildToolbar(BuildContext context, double hp) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return Padding(
@@ -615,12 +636,20 @@ class _BookshelfPageState extends State<BookshelfPage> {
                   ButtonSegment(
                     value: _BookshelfType.comic,
                     icon: const Icon(Icons.menu_book),
-                    label: Text(_comicTotal > 0 ? '漫画（$_comicTotal）' : '漫画'),
+                    label: Text(
+                      _comicTotal > 0
+                          ? l10n.comicWithCount(_comicTotal)
+                          : l10n.comicLabel,
+                    ),
                   ),
                   ButtonSegment(
                     value: _BookshelfType.anime,
                     icon: const Icon(Icons.movie_outlined),
-                    label: Text(_animeTotal > 0 ? '动漫（$_animeTotal）' : '动漫'),
+                    label: Text(
+                      _animeTotal > 0
+                          ? l10n.animeWithCount(_animeTotal)
+                          : l10n.animeLabel,
+                    ),
                   ),
                 ],
                 selected: {_type},
@@ -633,7 +662,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
             children: [
               if (_type == _BookshelfType.comic)
                 FilterChip(
-                  label: const Text('有更新'),
+                  label: Text(l10n.hasUpdate),
                   selected: _showUpdateOnly,
                   onSelected: _setShowUpdateOnly,
                 ),
@@ -645,7 +674,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
               const Spacer(),
               ActionChip(
                 avatar: const Icon(Icons.sort, size: 18),
-                label: Text(_orderingLabel(_ordering)),
+                label: Text(
+                  _orderingLabel(AppLocalizations.of(context)!, _ordering),
+                ),
                 onPressed: () => _showOrderingSheet(context),
               ),
             ],
@@ -656,6 +687,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   void _showOrderingSheet(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tt = Theme.of(context).textTheme;
     showModalBottomSheet(
       context: context,
@@ -665,26 +697,26 @@ class _BookshelfPageState extends State<BookshelfPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('排序方式', style: tt.titleMedium),
+              child: Text(l10n.sortMethod, style: tt.titleMedium),
             ),
             _OrderingTile(
               icon: Icons.update,
-              title: '作品更新时间',
-              subtitle: '按$_typeLabel最新章节的更新时间排序',
+              title: l10n.sortByUpdateTime,
+              subtitle: l10n.sortByUpdateTimeDesc(_typeLabel(l10n)),
               selected: _ordering == ApiOrdering.datetimeUpdated,
               onTap: () => _setOrdering(context, ApiOrdering.datetimeUpdated),
             ),
             _OrderingTile(
               icon: Icons.bookmark_added,
-              title: '收藏时间',
-              subtitle: '按加入书架的时间排序',
+              title: l10n.sortByFavoriteTime,
+              subtitle: l10n.sortByFavoriteTimeDesc,
               selected: _ordering == ApiOrdering.datetimeModifier,
               onTap: () => _setOrdering(context, ApiOrdering.datetimeModifier),
             ),
             _OrderingTile(
               icon: Icons.history,
-              title: '浏览时间',
-              subtitle: '按最近浏览的时间排序',
+              title: l10n.sortByBrowseTime,
+              subtitle: l10n.sortByBrowseTimeDesc,
               selected: _ordering == ApiOrdering.datetimeBrowse,
               onTap: () => _setOrdering(context, ApiOrdering.datetimeBrowse),
             ),
@@ -696,6 +728,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return Center(
@@ -705,19 +738,19 @@ class _BookshelfPageState extends State<BookshelfPage> {
           Icon(Icons.bookmark_border, size: 64, color: cs.onSurfaceVariant),
           const SizedBox(height: 16),
           Text(
-            '书架空空如也',
+            l10n.bookshelfEmpty,
             style: tt.titleMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Text(
-            '去找点好看的$_typeLabel吧',
+            l10n.goFindSomething(_typeLabel(l10n)),
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           FilledButton.tonalIcon(
             onPressed: _load,
             icon: const Icon(Icons.refresh),
-            label: const Text('刷新'),
+            label: Text(l10n.refreshButton),
           ),
         ],
       ),
@@ -738,7 +771,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            '没有漫画更新',
+            AppLocalizations.of(context)!.noComicUpdates,
             style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
@@ -791,10 +824,10 @@ class _BookshelfPageState extends State<BookshelfPage> {
     final before = await ReadingHistory.latestForComic(pathWord);
     if (!mounted) return;
 
-    await Navigator.push(
-      context,
-      ComicDetailPage.route(
-        pathWord: pathWord,
+    await context.pushNamed(
+      AppRoutes.comicDetail,
+      pathParameters: {'pathWord': pathWord},
+      extra: ComicDetailExtra(
         initialComic: item.comic,
         heroTagBase: heroTagBase,
         lastBrowseId: item.lastBrowseId,
@@ -872,15 +905,13 @@ class _BookshelfPageState extends State<BookshelfPage> {
           final item = _animeItems[i];
           return _AnimeBookshelfCard(
             anime: item.anime,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AnimeDetailPage(
-                  pathWord: item.anime.pathWord,
-                  initialAnime: item.anime,
-                ),
-              ),
-            ).then((_) => _refreshLoaded()),
+            onTap: () => context
+                .pushNamed(
+                  AppRoutes.animeDetail,
+                  pathParameters: {'pathWord': item.anime.pathWord},
+                  extra: AnimeDetailExtra(initialAnime: item.anime),
+                )
+                .then((_) => _refreshLoaded()),
           );
         }, childCount: totalCount),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -911,9 +942,9 @@ class _UpdateBadge extends StatelessWidget {
             bottomLeft: Radius.circular(10),
           ),
         ),
-        child: const Text(
-          '更新',
-          style: TextStyle(
+        child: Text(
+          AppLocalizations.of(context)!.updateBadge,
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 11,
             fontWeight: FontWeight.bold,
@@ -935,7 +966,7 @@ class _AnimeBookshelfCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final meta = anime.count > 0
-        ? '共 ${anime.count} 集'
+        ? AppLocalizations.of(context)!.totalEpisodes(anime.count)
         : (anime.company?.name ?? anime.years ?? '');
 
     return GestureDetector(

@@ -333,11 +333,13 @@ class _DanmakuBlocklistEditorState extends State<_DanmakuBlocklistEditor> {
         _controller.text = converted;
       }
     } catch (e, stack) {
-      unawaited(AppLogger.instance.recordWarning(
-        e,
-        stackTrace: stack,
-        source: 'player_settings.convert_chinese',
-      ));
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'player_settings.convert_chinese',
+        ),
+      );
     }
   }
 

@@ -63,7 +63,7 @@ class ComicDetailRepository extends CachedRepository<ComicDetailData> {
     // Only fetches the comic detail; chapters and collect state are loaded
     // separately by the page. The page will call saveToCache after assembling
     // the full data.
-    final comic = await _api.getComicDetail(_pathWord);
+    final comic = await _api.manga.getComicDetail(_pathWord);
     return ComicDetailData(
       comic: comic,
       chapters: [],

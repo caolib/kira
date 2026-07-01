@@ -14,5 +14,5 @@ class AnimeHomeRepository extends CachedRepository<AnimeHome> {
   final _api = ApiClient();
 
   @override
-  Future<AnimeHome> fetchFromApi() => _api.getAnimeHome();
+  Future<AnimeHome> fetchFromApi() => _api.anime.getAnimeHome();
 }

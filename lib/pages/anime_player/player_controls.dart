@@ -273,11 +273,13 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                           newBrightness,
                         );
                       } catch (e, stack) {
-                        unawaited(AppLogger.instance.recordWarning(
-                          e,
-                          stackTrace: stack,
-                          source: 'player_controls.set_brightness',
-                        ));
+                        unawaited(
+                          AppLogger.instance.recordWarning(
+                            e,
+                            stackTrace: stack,
+                            source: 'player_controls.set_brightness',
+                          ),
+                        );
                       }
                       setState(() => _currentBrightness = newBrightness);
                     }

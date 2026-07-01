@@ -31,10 +31,7 @@ class _ShimmerShellState extends State<ShimmerShell>
       animation: _controller,
       builder: (context, child) {
         final alpha = 0.15 + 0.15 * _controller.value;
-        return Opacity(
-          opacity: alpha + 0.15,
-          child: child,
-        );
+        return Opacity(opacity: alpha + 0.15, child: child);
       },
       child: widget.child,
     );
@@ -50,12 +47,7 @@ class ShimmerBox extends StatelessWidget {
   final double height;
   final double radius;
 
-  const ShimmerBox({
-    super.key,
-    this.width,
-    this.height = 14,
-    this.radius = 4,
-  });
+  const ShimmerBox({super.key, this.width, this.height = 14, this.radius = 4});
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +118,7 @@ class ComicRowSkeletonList extends StatelessWidget {
   final int count;
   final double cardWidth;
 
-  const ComicRowSkeletonList({
-    super.key,
-    this.count = 4,
-    this.cardWidth = 110,
-  });
+  const ComicRowSkeletonList({super.key, this.count = 4, this.cardWidth = 110});
 
   @override
   Widget build(BuildContext context) {
@@ -141,9 +129,7 @@ class ComicRowSkeletonList extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           itemCount: count,
           itemBuilder: (context, index) => Padding(
-            padding: EdgeInsets.only(
-              right: index < count - 1 ? 10 : 0,
-            ),
+            padding: EdgeInsets.only(right: index < count - 1 ? 10 : 0),
             child: SizedBox(
               width: cardWidth,
               child: const ShimmerShell(

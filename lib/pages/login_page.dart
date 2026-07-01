@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
+import '../routing/app_router.dart';
 import '../utils/toast.dart';
-import 'register_page.dart';
+import 'register_page.dart' show RegisterPrefill;
 
 List<BoxShadow> _profileCardShadow(ColorScheme cs) => [
   BoxShadow(
@@ -276,10 +278,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _goRegister() async {
-    final result = await Navigator.push<RegisterPrefill>(
-      context,
-      MaterialPageRoute(builder: (_) => const RegisterPage()),
-    );
+    final result = await context.pushNamed<RegisterPrefill>(AppRoutes.register);
     if (result == null || !mounted) return;
 
     await UserManager().saveCredentials(result.username, result.password);
@@ -309,8 +308,8 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = _useCopyLogin
-          ? await _api.copyLogin(username, password)
-          : await _api.login(username, password);
+          ? await _api.user.copyLogin(username, password)
+          : await _api.user.login(username, password);
       await UserManager().setLoginSource(_useCopyLogin ? 'copy' : 'hotmanga');
       if (_rememberMe) {
         await UserManager().saveCredentials(username, password);
@@ -364,7 +363,7 @@ class _LoginPageState extends State<LoginPage> {
         avatar: '',
       );
       // 用 token 拉取用户信息验证有效性
-      final info = await _api.getUserInfo();
+      final info = await _api.user.getUserInfo();
       await UserManager().saveLogin(
         token: token,
         userId: info['user_id']?.toString() ?? '',

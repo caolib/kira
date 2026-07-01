@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/anime_download_manager.dart' show LocalAnimeEntry;
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart' show LocalComicEntry;
@@ -78,7 +79,7 @@ class LocalContentListPage extends StatefulWidget {
   final String emptySubtitle;
   final String downloadFolderName;
   final String deleteDialogTitle;
-  final String deleteDialogContent;
+  final String Function(int) deleteDialogContent;
   final String deleteToastPrefix;
   final String deleteToastSuffix;
   final String heroTagPrefix;
@@ -90,7 +91,7 @@ class LocalContentListPage extends StatefulWidget {
   final Future<void> Function() initDownloads;
   final List<LocalContentEntry> Function() getLocalItems;
   final Future<void> Function(Set<String> pathWords) deleteLocalItems;
-  final Widget Function(String pathWord) detailPageBuilder;
+  final void Function(BuildContext context, String pathWord) onOpenDetail;
 
   const LocalContentListPage({
     super.key,
@@ -110,7 +111,7 @@ class LocalContentListPage extends StatefulWidget {
     required this.initDownloads,
     required this.getLocalItems,
     required this.deleteLocalItems,
-    required this.detailPageBuilder,
+    required this.onOpenDetail,
   });
 
   @override
@@ -173,7 +174,11 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      showToast(context, '打开文件夹失败：$e', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.openFolderFailed(e.toString()),
+        isError: true,
+      );
     }
   }
 
@@ -182,20 +187,23 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
     final count = _selectedPathWords.length;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(widget.deleteDialogTitle),
-        content: Text(widget.deleteDialogContent.replaceAll('{count}', '$count')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(context)!;
+        return AlertDialog(
+          title: Text(widget.deleteDialogTitle),
+          content: Text(widget.deleteDialogContent(count)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.cancelButton),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.deleteButton),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed != true) return;
 
@@ -205,7 +213,10 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
       _selectedPathWords.clear();
       _selectionMode = false;
     });
-    showToast(context, '${widget.deleteToastPrefix}$count${widget.deleteToastSuffix}');
+    showToast(
+      context,
+      '${widget.deleteToastPrefix}$count${widget.deleteToastSuffix}',
+    );
   }
 
   @override
@@ -268,12 +279,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
                     });
                     return;
                   }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => widget.detailPageBuilder(pathWord),
-                    ),
-                  );
+                  widget.onOpenDetail(context, pathWord);
                 },
                 onLongPress: () => setState(() {
                   _selectionMode = true;
@@ -295,24 +301,31 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
               heroTag: '${widget.heroTagPrefix}_open_folder',
               onPressed: _openDownloadFolder,
               icon: const Icon(Icons.folder_open, size: 20),
-              label: const Text('打开下载位置', style: TextStyle(fontSize: 13)),
+              label: Text(
+                AppLocalizations.of(context)!.openDownloadFolder,
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
           ),
         ],
       );
     }
 
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectionMode ? '已选 ${_selectedPathWords.length} 部' : widget.title,
+          _selectionMode
+              ? l10n.selectedItems(_selectedPathWords.length)
+              : widget.title,
         ),
         actions: [
           if (!_selectionMode && items.isNotEmpty)
             IconButton(
               onPressed: () => setState(() => _selectionMode = true),
               icon: const Icon(Icons.checklist),
-              tooltip: '批量管理',
+              tooltip: l10n.batchManage,
             ),
           if (_selectionMode) ...[
             IconButton(
@@ -324,12 +337,12 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
                         ..addAll(items.map((item) => item.pathWord));
                     }),
               icon: const Icon(Icons.select_all),
-              tooltip: '全选',
+              tooltip: l10n.selectAll,
             ),
             IconButton(
               onPressed: _selectedPathWords.isEmpty ? null : _deleteSelected,
               icon: const Icon(Icons.delete_outline),
-              tooltip: '删除',
+              tooltip: l10n.deleteButton,
             ),
             IconButton(
               onPressed: () => setState(() {
@@ -337,7 +350,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
                 _selectedPathWords.clear();
               }),
               icon: const Icon(Icons.close),
-              tooltip: '取消',
+              tooltip: l10n.cancelButton,
             ),
           ],
         ],
@@ -443,7 +456,10 @@ class _LocalContentCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          '已下载 ${entry.downloadedCount} $unitLabel',
+                          AppLocalizations.of(context)!.downloadedCountUnit(
+                            entry.downloadedCount,
+                            unitLabel,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

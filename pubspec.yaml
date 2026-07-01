@@ -1,13 +1,16 @@
 name: kira
 description: "A comic reader app."
 publish_to: "none"
-version: 1.1.5+243
+version: 1.1.5+244
 environment:
   sdk: ^3.11.0
 
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
   dio: ^5.8.0+1
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
@@ -30,12 +33,17 @@ dependencies:
   flutter_markdown_plus: ^1.0.3
   native_flutter_proxy: ^0.3.1
   flutter_secure_storage: ^10.3.1
+  go_router: ^14.8.1
+  flutter_riverpod: ^2.5.0
+  json_annotation: ^4.12.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  json_serializable: ^6.8.0
+  build_runner: ^2.4.0
 
 flutter_launcher_icons:
   image_path: "assets/ic_launcher.png"
@@ -49,6 +57,7 @@ flutter_launcher_icons:
     generate: true
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/ic_launcher.png

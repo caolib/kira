@@ -79,7 +79,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     }
 
     try {
-      final data = await _api.getComicComments(
+      final data = await _api.manga.getComicComments(
         widget.comicId,
         offset: loadMore ? _comments.length : 0,
       );
@@ -184,7 +184,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     });
 
     try {
-      final data = await _api.getComicComments(
+      final data = await _api.manga.getComicComments(
         widget.comicId,
         replyId: comment.id.toString(),
         limit: _replyPageSize,
@@ -847,7 +847,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       });
 
       try {
-        await _api.postComicComment(
+        await _api.manga.postComicComment(
           widget.comicId,
           content,
           replyId: isReply ? replyTo.id : null,
@@ -880,12 +880,14 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               total: currentState.total > 0 ? currentState.total + 1 : 0,
             );
           });
-          unawaited(_loadReplies(
-            _comments.firstWhere(
-              (c) => c.id == replyTo.id,
-              orElse: () => replyTo,
+          unawaited(
+            _loadReplies(
+              _comments.firstWhere(
+                (c) => c.id == replyTo.id,
+                orElse: () => replyTo,
+              ),
             ),
-          ));
+          );
         } else {
           unawaited(_loadComments());
         }

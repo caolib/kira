@@ -87,13 +87,15 @@ class ReaderSettings extends PrefsStore {
     _pageVertical = prefs.getBool(_keyPageVertical) ?? false;
     _dimming = prefs.getDouble(_keyDimming) ?? 0.3;
     _autoScrollEnabled = prefs.getBool(_keyAutoScrollEnabled) ?? false;
-    _autoScrollPause =
-        (prefs.getDouble(_keyAutoScrollPause) ?? 3.0).clamp(0.5, 8.0);
+    _autoScrollPause = (prefs.getDouble(_keyAutoScrollPause) ?? 3.0).clamp(
+      0.5,
+      8.0,
+    );
     _autoScrollResume = prefs.getBool(_keyAutoScrollResume) ?? false;
-    _autoScrollResumeDelay =
-        (prefs.getDouble(_keyAutoScrollResumeDelay) ?? 2.0).clamp(1.0, 5.0);
-    _autoScrollDistance =
-        (prefs.getDouble(_keyAutoScrollDistance) ?? 0.8).clamp(0.2, 1.0);
+    _autoScrollResumeDelay = (prefs.getDouble(_keyAutoScrollResumeDelay) ?? 2.0)
+        .clamp(1.0, 5.0);
+    _autoScrollDistance = (prefs.getDouble(_keyAutoScrollDistance) ?? 0.8)
+        .clamp(0.2, 1.0);
     _continuousReading = prefs.getBool(_keyContinuousReading) ?? true;
     _viewerAutoRotateLandscape =
         prefs.getBool(_keyViewerAutoRotateLandscape) ?? false;

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
+import '../api/api_transport.dart';
 import '../utils/app_icon_switcher.dart';
 import '../utils/app_logger.dart';
 import 'api_ordering.dart';
@@ -660,7 +661,7 @@ class UserManager extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    ApiClient().clearAuthState();
+    ApiClient().user.clearAuthState();
     _token = null;
     _userId = null;
     _username = null;
@@ -1350,7 +1351,7 @@ class UserManager extends ChangeNotifier {
 
   Future<void> refreshUserInfo() async {
     if (!isLoggedIn) return;
-    final info = await ApiClient().getUserInfo();
+    final info = await ApiClient().user.getUserInfo();
     await saveLogin(
       token: _token!,
       userId: info['user_id']?.toString() ?? _userId ?? '',

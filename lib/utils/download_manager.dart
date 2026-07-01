@@ -300,7 +300,7 @@ class DownloadManager extends ChangeNotifier {
     try {
       await _resetDirectory(chapterDir);
 
-      final detail = await _api.getChapterDetail(
+      final detail = await _api.manga.getChapterDetail(
         task.pathWord,
         task.chapter.uuid,
       );
@@ -371,7 +371,7 @@ class DownloadManager extends ChangeNotifier {
     var total = 0;
 
     while (true) {
-      final data = await _api.getChapterComments(
+      final data = await _api.manga.getChapterComments(
         chapterUuid,
         limit: 100,
         offset: offset,

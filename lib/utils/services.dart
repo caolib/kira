@@ -84,31 +84,17 @@ class Services {
   static T _defaultFactory<T>() {
     // The existing singletons use factory constructors, so calling
     // them always returns the same instance.  We just delegate.
-    switch (T) {
-      case ApiClient _:
-        return ApiClient() as T;
-      case UserManager _:
-        return UserManager() as T;
-      case ReaderSettings _:
-        return ReaderSettings() as T;
-      case DanmakuSettings _:
-        return DanmakuSettings() as T;
-      case CommentSettings _:
-        return CommentSettings() as T;
-      case ThemeSettings _:
-        return ThemeSettings() as T;
-      case NetworkSettings _:
-        return NetworkSettings() as T;
-      case AiSettings _:
-        return AiSettings() as T;
-      case DandanplayApi _:
-        return DandanplayApi() as T;
-      case DownloadManager _:
-        return DownloadManager() as T;
-      case AnimeDownloadManager _:
-        return AnimeDownloadManager() as T;
-      default:
-        throw StateError('No default factory registered for $T');
-    }
+    if (T == ApiClient) return ApiClient() as T;
+    if (T == UserManager) return UserManager() as T;
+    if (T == ReaderSettings) return ReaderSettings() as T;
+    if (T == DanmakuSettings) return DanmakuSettings() as T;
+    if (T == CommentSettings) return CommentSettings() as T;
+    if (T == ThemeSettings) return ThemeSettings() as T;
+    if (T == NetworkSettings) return NetworkSettings() as T;
+    if (T == AiSettings) return AiSettings() as T;
+    if (T == DandanplayApi) return DandanplayApi() as T;
+    if (T == DownloadManager) return DownloadManager() as T;
+    if (T == AnimeDownloadManager) return AnimeDownloadManager() as T;
+    throw StateError('No default factory registered for $T');
   }
 }

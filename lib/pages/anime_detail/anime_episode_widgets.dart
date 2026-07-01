@@ -109,9 +109,7 @@ class _BoundAnimeChapterRow extends StatelessWidget {
                         ),
                       ),
                       items: [
-                        const DropdownMenuItem<int?>(
-                          child: Text('未绑定'),
-                        ),
+                        const DropdownMenuItem<int?>(child: Text('未绑定')),
                         for (final episode in episodes)
                           DropdownMenuItem<int?>(
                             value: episode.episodeId,

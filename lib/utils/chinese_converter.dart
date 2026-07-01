@@ -44,11 +44,13 @@ class ChineseConverter {
         return converted;
       }
     } catch (e, stack) {
-      unawaited(AppLogger.instance.recordWarning(
-        e,
-        stackTrace: stack,
-        source: 'chinese_converter',
-      ));
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'chinese_converter',
+        ),
+      );
     }
 
     return text;

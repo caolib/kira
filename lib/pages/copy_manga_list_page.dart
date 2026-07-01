@@ -1,13 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
-import 'comic_detail_page.dart';
 
 enum CopyMangaListKind { recommendations, ranking, newest, finished }
 
@@ -97,17 +98,17 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
   Future<({List<Comic> list, int total})> _fetch(int offset) {
     switch (widget.kind) {
       case CopyMangaListKind.recommendations:
-        return _api.getCopyRecommendations(offset: offset);
+        return _api.manga.getCopyRecommendations(offset: offset);
       case CopyMangaListKind.ranking:
-        return _api.getCopyRankComics(
+        return _api.manga.getCopyRankComics(
           dateType: _rankDateType,
           audienceType: _rankAudienceType,
           offset: offset,
         );
       case CopyMangaListKind.newest:
-        return _api.getCopyNewestComics(offset: offset);
+        return _api.manga.getCopyNewestComics(offset: offset);
       case CopyMangaListKind.finished:
-        return _api.getCopyFinishedComics(offset: offset);
+        return _api.manga.getCopyFinishedComics(offset: offset);
     }
   }
 
@@ -171,13 +172,10 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
   }
 
   void _openComic(Comic comic, String heroTagBase) {
-    Navigator.push(
-      context,
-      ComicDetailPage.route(
-        pathWord: comic.pathWord,
-        initialComic: comic,
-        heroTagBase: heroTagBase,
-      ),
+    context.pushNamed(
+      AppRoutes.comicDetail,
+      pathParameters: {'pathWord': comic.pathWord},
+      extra: ComicDetailExtra(initialComic: comic, heroTagBase: heroTagBase),
     );
   }
 

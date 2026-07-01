@@ -94,7 +94,7 @@ class ComicBookshelfRepository extends CachedRepository<ComicBookshelfData> {
 
   @override
   Future<ComicBookshelfData> fetchFromApi() async {
-    final data = await _api.getBookshelf(ordering: _ordering);
+    final data = await _api.manga.getBookshelf(ordering: _ordering);
     return ComicBookshelfData(
       items: data.list,
       total: data.total,
@@ -124,7 +124,7 @@ class AnimeBookshelfRepository extends CachedRepository<AnimeBookshelfData> {
 
   @override
   Future<AnimeBookshelfData> fetchFromApi() async {
-    final data = await _api.getAnimeBookshelf(ordering: _ordering);
+    final data = await _api.anime.getAnimeBookshelf(ordering: _ordering);
     return AnimeBookshelfData(
       items: data.list,
       total: data.total,

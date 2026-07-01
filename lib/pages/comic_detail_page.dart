@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/comic.dart' as comic_model;
 import '../models/comic.dart' hide Theme;
 import '../repositories/comic_detail_repository.dart';
+import '../routing/app_router.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
@@ -16,8 +18,6 @@ import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_hero_tags.dart';
 import 'comic_comments_sheet.dart';
-import 'ranking_page.dart';
-import 'reader_page.dart';
 
 class ComicDetailPage extends StatefulWidget {
   final String pathWord;
@@ -225,7 +225,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     }
 
     try {
-      final comic = await _api.getComicDetail(widget.pathWord);
+      final comic = await _api.manga.getComicDetail(widget.pathWord);
       if (!mounted) return;
       final selectedGroup = _resolveSelectedGroup(
         comic,
@@ -249,7 +249,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   Future<void> _loadCollectState() async {
     try {
-      final query = await _api.getComicQuery(widget.pathWord);
+      final query = await _api.manga.getComicQuery(widget.pathWord);
       if (!mounted) return;
       setState(() => _isCollected = query['collect'] != null);
       await _saveCache();
@@ -306,7 +306,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     });
 
     try {
-      final result = await _api.getChapterList(
+      final result = await _api.manga.getChapterList(
         widget.pathWord,
         group: targetGroup,
         offset: page * _pageSize,
@@ -478,7 +478,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         final cached = _chapterPageCache[cacheKey];
         final result =
             cached ??
-            await _api.getChapterList(
+            await _api.manga.getChapterList(
               widget.pathWord,
               group: _selectedGroup,
               offset: nextPage * _pageSize,
@@ -528,7 +528,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     final newState = !_isCollected;
     setState(() => _isCollected = newState);
     try {
-      await _api.toggleCollect(comicId, collect: newState);
+      await _api.manga.toggleCollect(comicId, collect: newState);
       await _saveCache();
     } catch (_) {
       setState(() => _isCollected = !newState);
@@ -564,13 +564,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     final authorName = author.name.trim().isEmpty
         ? authorPathWord
         : author.name.trim();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RankingPage.author(
-          authorPathWord: authorPathWord,
-          authorName: authorName,
-        ),
+    context.pushNamed(
+      AppRoutes.ranking,
+      extra: RankingExtra(
+        authorPathWord: authorPathWord,
+        authorName: authorName,
       ),
     );
   }
@@ -585,14 +583,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     final themeName = theme.name.trim().isEmpty
         ? themePathWord
         : theme.name.trim();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RankingPage.theme(
-          themePathWord: themePathWord,
-          themeName: themeName,
-        ),
-      ),
+    context.pushNamed(
+      AppRoutes.ranking,
+      extra: RankingExtra(themePathWord: themePathWord, themeName: themeName),
     );
   }
 
@@ -683,19 +676,21 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   }
 
   void _openReader(Chapter chapter) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ReaderPage(
-          pathWord: widget.pathWord,
-          comicName: _comic?.name,
-          group: _selectedGroup,
-          chapterUuid: chapter.uuid,
-          chapterName: chapter.name,
-          chapterListPage: _chapterPage,
-        ),
-      ),
-    ).then((_) => _loadLocalHistory());
+    context
+        .pushNamed(
+          AppRoutes.reader,
+          pathParameters: {
+            'pathWord': widget.pathWord,
+            'chapterUuid': chapter.uuid,
+          },
+          extra: ReaderExtra(
+            comicName: _comic?.name,
+            group: _selectedGroup,
+            chapterName: chapter.name,
+            chapterListPage: _chapterPage,
+          ),
+        )
+        .then((_) => _loadLocalHistory());
   }
 
   List<Chapter> get _displayChapters =>
@@ -745,21 +740,23 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         if (_nextBrowseChapter != null)
                           FloatingActionButton.extended(
                             heroTag: 'next_chapter',
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ReaderPage(
-                                  pathWord: widget.pathWord,
-                                  comicName: _comic?.name,
-                                  group: _selectedGroup,
-                                  chapterUuid: _nextBrowseChapter!.uuid,
-                                  chapterName: _nextBrowseChapter!.name,
-                                  chapterListPage:
-                                      _nextBrowseChapterListPage ??
-                                      _chapterPage,
-                                ),
-                              ),
-                            ).then((_) => _loadLocalHistory()),
+                            onPressed: () => context
+                                .pushNamed(
+                                  AppRoutes.reader,
+                                  pathParameters: {
+                                    'pathWord': widget.pathWord,
+                                    'chapterUuid': _nextBrowseChapter!.uuid,
+                                  },
+                                  extra: ReaderExtra(
+                                    comicName: _comic?.name,
+                                    group: _selectedGroup,
+                                    chapterName: _nextBrowseChapter!.name,
+                                    chapterListPage:
+                                        _nextBrowseChapterListPage ??
+                                        _chapterPage,
+                                  ),
+                                )
+                                .then((_) => _loadLocalHistory()),
                             icon: const Icon(Icons.skip_next, size: 20),
                             label: Text(
                               _truncateNextChapterName(
@@ -770,21 +767,23 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           ),
                         FloatingActionButton.extended(
                           heroTag: 'continue_reading',
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ReaderPage(
-                                pathWord: widget.pathWord,
-                                comicName: _comic?.name,
-                                group: _selectedGroup,
-                                chapterUuid: _lastBrowseId!,
-                                chapterName: _lastBrowseName ?? '',
-                                chapterListPage:
-                                    _lastBrowseReaderChapterListPage,
-                                initialPage: _lastBrowsePage,
-                              ),
-                            ),
-                          ).then((_) => _loadLocalHistory()),
+                          onPressed: () => context
+                              .pushNamed(
+                                AppRoutes.reader,
+                                pathParameters: {
+                                  'pathWord': widget.pathWord,
+                                  'chapterUuid': _lastBrowseId!,
+                                },
+                                extra: ReaderExtra(
+                                  comicName: _comic?.name,
+                                  group: _selectedGroup,
+                                  chapterName: _lastBrowseName ?? '',
+                                  chapterListPage:
+                                      _lastBrowseReaderChapterListPage,
+                                  initialPage: _lastBrowsePage,
+                                ),
+                              )
+                              .then((_) => _loadLocalHistory()),
                           icon: const Icon(Icons.play_arrow, size: 20),
                           label: Text(
                             _continueReadingLabel(),

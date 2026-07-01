@@ -56,7 +56,10 @@ bool jsonBool(Map<String, dynamic>? json, String key, {bool fallback = false}) {
 Map<String, dynamic>? jsonMap(Map<String, dynamic>? json, String key) {
   if (json == null) return null;
   final value = json[key];
-  return value is Map ? Map<String, dynamic>.from(value) : null;
+  if (value is! Map) return null;
+  return Map<String, dynamic>.from(
+    value.map((k, v) => MapEntry(k.toString(), v)),
+  );
 }
 
 /// Extension to convert an empty string to `null`.

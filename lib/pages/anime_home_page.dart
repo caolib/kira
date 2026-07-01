@@ -2,28 +2,32 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../models/anime.dart';
 import '../models/user_manager.dart';
+import '../providers/app_providers.dart';
+import '../providers/repository_providers.dart';
 import '../repositories/anime_home_repository.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/toast.dart';
-import 'anime_detail_page.dart';
 import 'anime_list_page.dart';
 import 'home_page.dart';
 
-class AnimeHomePage extends StatefulWidget {
+class AnimeHomePage extends ConsumerStatefulWidget {
   const AnimeHomePage({super.key});
 
   @override
-  State<AnimeHomePage> createState() => _AnimeHomePageState();
+  ConsumerState<AnimeHomePage> createState() => _AnimeHomePageState();
 }
 
 const _animeHomeCardWidth = 112.0;
 
-class _AnimeHomePageState extends State<AnimeHomePage> {
-  final _repo = AnimeHomeRepository();
-  final _user = UserManager();
+class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
+  AnimeHomeRepository get _repo => ref.read(animeHomeRepositoryProvider);
+  UserManager get _user => ref.read(userManagerProvider);
   AnimeHome? _home;
   bool _loading = true;
   bool _refreshing = false;
@@ -91,22 +95,15 @@ class _AnimeHomePageState extends State<AnimeHomePage> {
       showToast(context, '当前动漫暂时无法打开', isError: true);
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnimeDetailPage(
-          pathWord: anime.pathWord,
-          initialAnime: anime.cover.isEmpty ? null : anime,
-        ),
-      ),
+    context.pushNamed(
+      AppRoutes.animeDetail,
+      pathParameters: {'pathWord': anime.pathWord},
+      extra: AnimeDetailExtra(initialAnime: anime.cover.isEmpty ? null : anime),
     );
   }
 
   void _openList(AnimeListType type) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => AnimeListPage(type: type)),
-    );
+    context.pushNamed(AppRoutes.animeList, pathParameters: {'type': type.name});
   }
 
   @override

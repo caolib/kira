@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
 import '../utils/reading_history.dart';
@@ -10,8 +13,6 @@ import '../utils/toast.dart';
 import '../widgets/detail_chip.dart';
 import '../widgets/local_content_list_page.dart';
 import 'chapter_comments_sheet.dart';
-import 'comic_detail_page.dart';
-import 'reader_page.dart';
 
 class LocalComicsPage extends StatefulWidget {
   final bool embedded;
@@ -27,19 +28,20 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return LocalContentListPage(
       embedded: widget.embedded,
-      title: '本地漫画',
-      emptyTitle: '还没有本地漫画',
-      emptySubtitle: '去漫画详情页下载章节后，这里会显示离线内容',
+      title: l10n.localComicsTitle,
+      emptyTitle: l10n.noLocalComicsTitle,
+      emptySubtitle: l10n.noLocalComicsSubtitle,
       downloadFolderName: 'comic_downloads',
-      deleteDialogTitle: '删除本地漫画',
-      deleteDialogContent: '确定删除选中的 {count} 部本地漫画吗？已下载章节和封面都会被删除。',
-      deleteToastPrefix: '已删除 ',
-      deleteToastSuffix: ' 部本地漫画',
+      deleteDialogTitle: l10n.deleteLocalComicsTitle,
+      deleteDialogContent: l10n.deleteLocalComicsContent,
+      deleteToastPrefix: l10n.deleteToastPrefix,
+      deleteToastSuffix: l10n.deleteToastSuffixComic,
       heroTagPrefix: 'local_comics',
       gridAspectRatio: 0.58,
-      unitLabel: '章',
+      unitLabel: l10n.chapterUnit,
       downloadManager: _downloads,
       initDownloads: _downloads.init,
       getLocalItems: () => _downloads
@@ -47,8 +49,10 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
           .map((entry) => ComicLocalContentEntry(entry))
           .toList(),
       deleteLocalItems: (pathWords) => _downloads.deleteLocalComics(pathWords),
-      detailPageBuilder: (pathWord) =>
-          LocalComicDetailPage(pathWord: pathWord),
+      onOpenDetail: (context, pathWord) => context.pushNamed(
+        AppRoutes.localComicDetail,
+        pathParameters: {'pathWord': pathWord},
+      ),
     );
   }
 }
@@ -170,19 +174,20 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
   Future<void> _deleteSelected() async {
     if (_selectedChapterIds.isEmpty) return;
     final count = _selectedChapterIds.length;
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除本地章节'),
-        content: Text('确定删除选中的 $count 个章节吗？'),
+        title: Text(l10n.deleteLocalChaptersTitle),
+        content: Text(l10n.deleteChaptersConfirm(count)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+            child: Text(l10n.deleteButton),
           ),
         ],
       ),
@@ -191,7 +196,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
 
     await _downloads.deleteChapters(widget.pathWord, _selectedChapterIds);
     if (!mounted) return;
-    showToast(context, '已删除 $count 个章节');
+    showToast(context, l10n.deletedChaptersCount(count));
     final remain = _downloads.downloadedChapters(widget.pathWord);
     if (remain.isEmpty) {
       return;
@@ -208,19 +213,21 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
       summary.chapterUuid,
     );
     if (!mounted || detail == null) return;
-    unawaited(showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width),
-      backgroundColor: Colors.transparent,
-      builder: (_) => ChapterCommentsSheet(
-        chapterUuid: detail.uuid,
-        comicName: _downloads.getLocalComicInfo(widget.pathWord)?.comic.name,
-        chapterName: detail.name,
-        initialComments: detail.comments,
-        initialTotal: detail.commentTotal,
+    unawaited(
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width),
+        backgroundColor: Colors.transparent,
+        builder: (_) => ChapterCommentsSheet(
+          chapterUuid: detail.uuid,
+          comicName: _downloads.getLocalComicInfo(widget.pathWord)?.comic.name,
+          chapterName: detail.name,
+          initialComments: detail.comments,
+          initialTotal: detail.commentTotal,
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -238,29 +245,31 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
     final comic = info.comic;
     final nextChapter = _findNextDownloadedChapter(chapters);
 
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectionMode ? '已选 ${_selectedChapterIds.length} 章' : comic.name,
+          _selectionMode
+              ? l10n.selectedCount(_selectedChapterIds.length, l10n.chapterUnit)
+              : comic.name,
         ),
         actions: [
           if (!_selectionMode)
             IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                ComicDetailPage.route(
-                  pathWord: widget.pathWord,
-                  initialComic: comic,
-                ),
+              onPressed: () => context.pushNamed(
+                AppRoutes.comicDetail,
+                pathParameters: {'pathWord': widget.pathWord},
+                extra: ComicDetailExtra(initialComic: comic),
               ),
               icon: const Icon(Icons.public),
-              tooltip: '查看在线详情',
+              tooltip: l10n.viewOnlineDetail,
             ),
           if (!_selectionMode)
             IconButton(
               onPressed: () => setState(() => _selectionMode = true),
               icon: const Icon(Icons.checklist),
-              tooltip: '管理章节',
+              tooltip: l10n.manageChapters,
             ),
           if (_selectionMode) ...[
             IconButton(
@@ -270,12 +279,12 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                   ..addAll(chapters.map((item) => item.chapterUuid));
               }),
               icon: const Icon(Icons.select_all),
-              tooltip: '全选',
+              tooltip: l10n.selectAll,
             ),
             IconButton(
               onPressed: _selectedChapterIds.isEmpty ? null : _deleteSelected,
               icon: const Icon(Icons.delete_outline),
-              tooltip: '删除',
+              tooltip: l10n.deleteButton,
             ),
             IconButton(
               onPressed: () => setState(() {
@@ -283,7 +292,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                 _selectedChapterIds.clear();
               }),
               icon: const Icon(Icons.close),
-              tooltip: '取消',
+              tooltip: l10n.cancelButton,
             ),
           ],
         ],
@@ -359,7 +368,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              '已下载 ${chapters.length} 章',
+                              l10n.downloadedChapterCount(chapters.length),
                               style: tt.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -390,7 +399,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                   child: Row(
                     children: [
                       Text(
-                        '本地章节 (${chapters.length})',
+                        l10n.localChaptersTitle(chapters.length),
                         style: tt.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -402,7 +411,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                           _reversed ? Icons.arrow_downward : Icons.arrow_upward,
                           size: 20,
                         ),
-                        tooltip: _reversed ? '逆序（新→旧）' : '正序（旧→新）',
+                        tooltip: _reversed ? l10n.sortReverse : l10n.sortNormal,
                       ),
                     ],
                   ),
@@ -440,17 +449,19 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                           });
                           return;
                         }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ReaderPage(
-                              pathWord: widget.pathWord,
-                              comicName: comic.name,
-                              chapterUuid: chapter.chapterUuid,
-                              chapterName: chapter.chapterName,
-                            ),
-                          ),
-                        ).then((_) => _loadHistory());
+                        context
+                            .pushNamed(
+                              AppRoutes.reader,
+                              pathParameters: {
+                                'pathWord': widget.pathWord,
+                                'chapterUuid': chapter.chapterUuid,
+                              },
+                              extra: ReaderExtra(
+                                comicName: comic.name,
+                                chapterName: chapter.chapterName,
+                              ),
+                            )
+                            .then((_) => _loadHistory());
                       },
                       onLongPress: () => setState(() {
                         _selectionMode = true;
@@ -483,17 +494,19 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                   if (nextChapter != null && _isLastBrowseComplete)
                     FloatingActionButton.extended(
                       heroTag: 'local_next_chapter',
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ReaderPage(
-                            pathWord: widget.pathWord,
-                            comicName: comic.name,
-                            chapterUuid: nextChapter.chapterUuid,
-                            chapterName: nextChapter.chapterName,
-                          ),
-                        ),
-                      ).then((_) => _loadHistory()),
+                      onPressed: () => context
+                          .pushNamed(
+                            AppRoutes.reader,
+                            pathParameters: {
+                              'pathWord': widget.pathWord,
+                              'chapterUuid': nextChapter.chapterUuid,
+                            },
+                            extra: ReaderExtra(
+                              comicName: comic.name,
+                              chapterName: nextChapter.chapterName,
+                            ),
+                          )
+                          .then((_) => _loadHistory()),
                       icon: const Icon(Icons.skip_next, size: 20),
                       label: Text(
                         _truncateNextChapterName(nextChapter.chapterName),
@@ -502,18 +515,20 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                     ),
                   FloatingActionButton.extended(
                     heroTag: 'local_continue_reading',
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ReaderPage(
-                          pathWord: widget.pathWord,
-                          comicName: comic.name,
-                          chapterUuid: _lastBrowseId!,
-                          chapterName: _lastBrowseName ?? '',
-                          initialPage: _lastBrowsePage,
-                        ),
-                      ),
-                    ).then((_) => _loadHistory()),
+                    onPressed: () => context
+                        .pushNamed(
+                          AppRoutes.reader,
+                          pathParameters: {
+                            'pathWord': widget.pathWord,
+                            'chapterUuid': _lastBrowseId!,
+                          },
+                          extra: ReaderExtra(
+                            comicName: comic.name,
+                            chapterName: _lastBrowseName ?? '',
+                            initialPage: _lastBrowsePage,
+                          ),
+                        )
+                        .then((_) => _loadHistory()),
                     icon: const Icon(Icons.play_arrow, size: 20),
                     label: Text(
                       _continueReadingLabel(),
@@ -635,7 +650,7 @@ class _LocalChapterCard extends StatelessWidget {
               const Spacer(),
               Text(
                 isRead && !isLastRead
-                    ? '已读 · ${summary.pageCount}P'
+                    ? '${AppLocalizations.of(context)!.readMark} · ${summary.pageCount}P'
                     : '${summary.pageCount}P',
                 style: tt.labelSmall?.copyWith(color: subtitleColor),
               ),
