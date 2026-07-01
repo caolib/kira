@@ -11,6 +11,7 @@ import '../api/ai_api.dart';
 import '../api/api_client.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
+import '../utils/app_logger.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
@@ -327,6 +328,81 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _loadingMore = false;
         _error = e.toString();
       });
+    }
+  }
+
+  /// 发评论后只刷新第 1 页，保留第 2+ 页已有数据。
+  ///
+  /// 新评论会出现在第 1 页，导致原第 1 页末尾评论「溢出」到第 2 页。
+  /// 若新第 1 页满 pageSize 条，说明有一条溢出，需要把原第 1 页的最后一条
+  /// 插入第 2 页头部（如果已加载了第 2+ 页的话）。第 2+ 页其余数据不动。
+  Future<void> _refreshFirstPage() async {
+    try {
+      final data = await _api.manga.getChapterComments(
+        widget.chapterUuid,
+        limit: _pageSize,
+        offset: 0,
+      );
+      if (!mounted) return;
+
+      final firstPageComments = data.list;
+
+      // 计算已有评论中属于第 2+ 页的部分
+      final existingBeyondPage1 = _comments.length > _pageSize
+          ? _comments.sublist(_pageSize)
+          : <ChapterComment>[];
+
+      List<ChapterComment> merged;
+      if (firstPageComments.length >= _pageSize && existingBeyondPage1.isNotEmpty) {
+        // 第 1 页满，说明有一条从第 1 页溢出到第 2 页。
+        // 溢出的是旧第 1 页的最后一条（原 _comments[_pageSize - 1]）。
+        final overflowComment = _comments[_pageSize - 1];
+
+        // 避免重复：如果溢出评论的 id 已存在于新 fetched 数据或
+        // 后续页中，不再插入。
+        final allIds = <int>{
+          ...firstPageComments.map((c) => c.id),
+          ...existingBeyondPage1.map((c) => c.id),
+        };
+        final insertOverflow = !allIds.contains(overflowComment.id);
+
+        // 去除后续页中与第 1 页重复的评论
+        final dedupedBeyond = existingBeyondPage1
+            .where((c) => !firstPageComments.any((f) => f.id == c.id))
+            .toList();
+
+        merged = [
+          ...firstPageComments,
+          if (insertOverflow) overflowComment,
+          ...dedupedBeyond,
+        ];
+      } else {
+        // 第 1 页未满（评论总数 < pageSize），或没有第 2+ 页数据
+        // 直接拼接第 1 页 + 去重后的后续页
+        final dedupedBeyond = existingBeyondPage1
+            .where((c) => !firstPageComments.any((f) => f.id == c.id))
+            .toList();
+        merged = [...firstPageComments, ...dedupedBeyond];
+      }
+
+      setState(() {
+        _comments = merged;
+        _total = data.total;
+        _error = null;
+      });
+      _notifyCommentsUpdated();
+      _maybeAutoSummary();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _tryLoadMoreWhenNearBottom();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      // 刷新第 1 页失败时不影响已有数据，仅记录错误
+      AppLogger().recordWarning(
+        '刷新第1页评论失败: $e',
+        stackTrace: StackTrace.current,
+      );
     }
   }
 
@@ -774,7 +850,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           Navigator.of(dialogContext).pop();
         }
         showToast(context, '评论已发布');
-        await _loadComments(force: true);
+        await _refreshFirstPage();
       } catch (e) {
         if (!dialogContext.mounted) return;
         setLocal(() {
@@ -962,7 +1038,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       await _api.manga.postChapterComment(widget.chapterUuid, content);
       if (!mounted) return;
       showToast(context, '+1 已发送');
-      await _loadComments(force: true);
+      await _refreshFirstPage();
     } catch (e) {
       if (!mounted) return;
       await _showPostCommentErrorDialog(e);
