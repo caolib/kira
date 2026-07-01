@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/user_manager.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/cover_brightness_filter.dart';
-import 'local_comics_page.dart';
 import 'local_anime_page.dart';
+import 'local_comics_page.dart';
 
 String _formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';
@@ -277,7 +277,7 @@ class _QueueTaskCard extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.pause_circle_outline, size: 14, color: Colors.orange),
+            const Icon(Icons.pause_circle_outline, size: 14, color: Colors.orange),
             const SizedBox(width: 6),
             Text('已暂停', style: tt.labelSmall?.copyWith(color: Colors.orange)),
           ],

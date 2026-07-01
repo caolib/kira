@@ -4,11 +4,12 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+
 import '../models/anime.dart';
 import '../models/api_ordering.dart';
-import '../models/comic.dart';
 import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
+import '../models/comic.dart';
 import '../models/comic_comment.dart';
 import '../models/user_manager.dart';
 import '../utils/app_dio.dart';

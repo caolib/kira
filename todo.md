@@ -1,7 +1,7 @@
 # Kira 项目设计问题清单
 
 > 审查日期: 2026-06-30
-> 最后更新: 2026-06-30
+> 最后更新: 2026-07-01
 
 ---
 
@@ -44,8 +44,17 @@
 - **已完成**: copy_manga_list_page.dart 减少 ~140 行（提取到共享 widgets）
 - **已评估**: reader_page.dart 已有 part 文件结构，进一步拆分收益有限
 
-### 6. 业务逻辑嵌入 Widget — 未开始
-- **建议**: 抽象 Repository 层，统一缓存-请求模式
+### 6. 业务逻辑嵌入 Widget — ✅ 已修复
+
+- 创建 `CachedRepository<T>` / `DualCachedRepository<A, B>` 基类（`lib/models/cached_repository.dart`）
+- 创建 5 个具体 Repository（`lib/repositories/`）：
+  - `MangaHomeRepository` — 漫画首页双缓存（manga_home + copy_home，1h TTL）
+  - `AnimeHomeRepository` — 动漫首页缓存
+  - `SearchInitRepository` — 搜索初始化缓存（关键词+标签，1h TTL）
+  - `ComicDetailRepository` — 漫画详情缓存
+  - `ComicBookshelfRepository` / `AnimeBookshelfRepository` — 书架缓存（30min TTL，skipApiIfCacheFresh）
+- 重构 5 个页面：home_page、anime_home_page、search_page、comic_detail_page、bookshelf_page
+- 统一 4 种缓存模式（并行/串行/TTL门控/API透明）为单一 Repository 接口
 
 ### 7. `lib/widgets/` 目录为空 — ✅ 已修复
 - 创建共享组件：
@@ -74,7 +83,11 @@
 ### 11. API 层 part/mixin 紧耦合 — 未开始
 ### 12. 无路由框架 — 未开始
 ### 13. 无国际化 — 未开始
-### 14. 缓存-请求模式重复 — 未开始
+### 14. 缓存-请求模式重复 — ✅ 已修复
+
+- 通过 P1-6 的 Repository 基类统一了 6 个页面的缓存-请求模式
+- 移除了各页面中手动的 `_loadFromCache()` / `_cache.put()` / `_cache.get()` 调用
+- 书架页面的手动 `cache_time` 逻辑已迁移到 Repository TTL 机制
 
 ### 15. 免责声明文本重复定义 — ✅ 已修复
 - 提取 `appDisclaimerItems` + `appDisclaimerFooter` 到 `lib/pages/disclaimer_page.dart`
@@ -84,16 +97,37 @@
 - 提取 `showLoginExpiredDialog()` 到 `lib/widgets/login_expired_dialog.dart`
 - 迁移 `browse_history_page.dart` 和 `bookshelf_page.dart`
 
-### 17. `local_comics_page` 和 `local_anime_page` 结构高度相似 — 未开始
+### 17. `local_comics_page` 和 `local_anime_page` 结构高度相似 — ✅ 已修复
+
+- 创建 `LocalContentListPage` 通用列表页组件（`lib/widgets/local_content_list_page.dart`）
+  - `LocalContentEntry` 抽象接口适配两种领域模型
+  - `ComicLocalContentEntry` / `AnimeLocalContentEntry` 适配器
+  - 通用选择模式、删除流程、FAB、嵌入模式
+- 提取 `_DetailChip` → `lib/widgets/detail_chip.dart`（共享组件，borderRadius 参数化）
+- `LocalComicsPage` / `LocalAnimePage` 保留为薄委托层
+- 详情页保持独立（功能差异过大）
 
 ---
 
 ## P3 — 改进建议
 
-### 18. `analysis_options.yaml` 过于宽松 — 未开始
-### 19. `utils/` 目录混入 UI 组件 — 未开始
+### 18. `analysis_options.yaml` 过于宽松 — ✅ 已修复
+
+- 从 `flutter_lints` 升级，新增 60+ 条严格规则
+- 修复 190 个 lint 警告（113 个自动修复 + 28 个手动 `unawaited()` 包装 + 排序修复）
+- 移除已废弃的 lint 规则（`avoid_returning_null_for_future`、`avoid_null_checks_in_equality_operators`）
+- 0 个 analyze 问题
+
+### 19. `utils/` 目录混入 UI 组件 — ✅ 已修复
+
+- `comic_card_skeleton.dart` → `lib/widgets/comic_card_skeleton.dart`
+- `comic_hero_tags.dart` → `lib/widgets/comic_hero_tags.dart`
+- 更新 10 个文件的 import 路径
 ### 20. 测试覆盖稀疏 — 未开始
-### 21. `Comic` 模型有两种 JSON 构造器 — 未开始
+### 21. `Comic` 模型有两种 JSON 构造器 — ✅ 已修复
+
+- `Comic.fromDetailJson` 改为委托 `Comic.fromJson(json['comic'])` + `copyWith()`
+- 消除 25 行重复字段赋值，仅覆盖 `popular` 和 `groups`
 
 ---
 
@@ -120,3 +154,13 @@
 | `lib/pages/disclaimer_page.dart` | 免责声明页（从 profile_page 拆出） |
 | `lib/pages/about_page.dart` | 关于页（从 profile_page 拆出） |
 | `test/test_helpers.dart` | 测试辅助（安全存储注入） |
+| `lib/models/cached_repository.dart` | CachedRepository / DualCachedRepository 基类 |
+| `lib/repositories/manga_home_repository.dart` | 漫画首页仓库 |
+| `lib/repositories/anime_home_repository.dart` | 动漫首页仓库 |
+| `lib/repositories/search_init_repository.dart` | 搜索初始化仓库 |
+| `lib/repositories/comic_detail_repository.dart` | 漫画详情仓库 |
+| `lib/repositories/bookshelf_repository.dart` | 书架仓库（漫画+动漫） |
+| `lib/widgets/comic_card_skeleton.dart` | 漫画卡片骨架屏（从utils/迁移） |
+| `lib/widgets/comic_hero_tags.dart` | Hero 动画标签（从utils/迁移） |
+| `lib/widgets/detail_chip.dart` | 详情标签芯片 |
+| `lib/widgets/local_content_list_page.dart` | 本地内容通用列表页 |

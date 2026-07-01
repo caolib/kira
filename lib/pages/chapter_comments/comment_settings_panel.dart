@@ -527,7 +527,6 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                               for (final p in zhipu.presets)
                                 ListTile(
                                   contentPadding: const EdgeInsets.only(
-                                    left: 0,
                                     right: 8,
                                   ),
                                   leading: Radio<String>(value: p.id),

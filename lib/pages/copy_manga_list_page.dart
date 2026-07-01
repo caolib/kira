@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
-import '../utils/comic_card_skeleton.dart';
-import '../utils/comic_hero_tags.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'comic_detail_page.dart';
 
 enum CopyMangaListKind { recommendations, ranking, newest, finished }
@@ -97,18 +97,17 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
   Future<({List<Comic> list, int total})> _fetch(int offset) {
     switch (widget.kind) {
       case CopyMangaListKind.recommendations:
-        return _api.getCopyRecommendations(limit: _pageSize, offset: offset);
+        return _api.getCopyRecommendations(offset: offset);
       case CopyMangaListKind.ranking:
         return _api.getCopyRankComics(
           dateType: _rankDateType,
           audienceType: _rankAudienceType,
-          limit: _pageSize,
           offset: offset,
         );
       case CopyMangaListKind.newest:
-        return _api.getCopyNewestComics(limit: _pageSize, offset: offset);
+        return _api.getCopyNewestComics(offset: offset);
       case CopyMangaListKind.finished:
-        return _api.getCopyFinishedComics(limit: _pageSize, offset: offset);
+        return _api.getCopyFinishedComics(offset: offset);
     }
   }
 

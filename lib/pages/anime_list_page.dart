@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/anime.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/comic_card_skeleton.dart';
+import '../widgets/comic_card_skeleton.dart';
 import 'anime_detail_page.dart';
 import 'home_page.dart';
 
@@ -252,9 +252,9 @@ class _AnimeGridCard extends StatelessWidget {
                   fadeInDuration: Duration.zero,
                   fadeOutDuration: Duration.zero,
                   placeholder: (_, _) =>
-                      _ImagePlaceholder(icon: Icons.movie_outlined),
+                      const _ImagePlaceholder(icon: Icons.movie_outlined),
                   errorWidget: (_, _, _) =>
-                      _ImagePlaceholder(icon: Icons.broken_image),
+                      const _ImagePlaceholder(icon: Icons.broken_image),
                 ),
               ),
             ),

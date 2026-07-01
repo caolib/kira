@@ -84,7 +84,7 @@ mixin _UserApi on _ApiClientBase {
 
   /// 获取个人信息
   Future<Map<String, dynamic>> getUserInfo() async {
-    return await _get('/api/v3/member/info');
+    return _get('/api/v3/member/info');
   }
 
   Future<void> logout() async {

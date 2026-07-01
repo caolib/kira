@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,7 +26,6 @@ class ComicCommentsSheet extends StatefulWidget {
 }
 
 class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
-  static const _pageSize = 10;
   static const _replyPageSize = 3;
   static const _loadMoreThreshold = 240.0;
   static const _listBottomPadding = 80.0;
@@ -80,7 +81,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     try {
       final data = await _api.getComicComments(
         widget.comicId,
-        limit: _pageSize,
         offset: loadMore ? _comments.length : 0,
       );
       if (!mounted) return;
@@ -880,14 +880,14 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               total: currentState.total > 0 ? currentState.total + 1 : 0,
             );
           });
-          _loadReplies(
+          unawaited(_loadReplies(
             _comments.firstWhere(
               (c) => c.id == replyTo.id,
               orElse: () => replyTo,
             ),
-          );
+          ));
         } else {
-          _loadComments();
+          unawaited(_loadComments());
         }
       } catch (e) {
         if (!dialogContext.mounted) return;

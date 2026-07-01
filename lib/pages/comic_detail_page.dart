@@ -1,17 +1,20 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+
 import '../api/api_client.dart';
-import '../models/comic.dart' hide Theme;
-import '../models/comic.dart' as comic_model;
 import '../models/chapter.dart';
+import '../models/comic.dart' as comic_model;
+import '../models/comic.dart' hide Theme;
+import '../repositories/comic_detail_repository.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/data_cache.dart';
 import '../utils/download_manager.dart';
 import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'comic_comments_sheet.dart';
 import 'ranking_page.dart';
 import 'reader_page.dart';
@@ -66,7 +69,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   static const _nextChapterNameMaxLength = 10;
 
   final _api = ApiClient();
-  final _cache = DataCache();
+  late final _repo = ComicDetailRepository(widget.pathWord);
   final _downloads = DownloadManager();
   Comic? _comic;
   List<Chapter> _chapters = [];
@@ -98,8 +101,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   int _lastBrowsePage = 1;
   int _lastBrowseTotalPage = 0;
   Set<String> _readChapterUuids = const <String>{};
-
-  String get _cacheKey => 'comic_detail_${widget.pathWord}';
 
   @override
   void initState() {
@@ -159,24 +160,19 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   }
 
   Future<void> _loadFromCache() async {
-    final cached = await _cache.get(_cacheKey);
-    if (cached is! Map) return;
-    final comicJson = cached['comic'];
-    if (comicJson is! Map) return;
+    final cached = await _repo.loadFromCache();
+    if (cached == null) return;
 
-    final comic = Comic.fromJson(Map<String, dynamic>.from(comicJson));
-    final cachedGroup = cached['selectedGroup']?.toString();
+    final comic = cached.comic;
+    final cachedGroup = cached.selectedGroup;
     final selectedGroup = _resolveSelectedGroup(
       comic,
       preferredGroup: cachedGroup,
     );
     final canReuseCachedChapters =
-        cachedGroup == null || cachedGroup == selectedGroup;
+        cachedGroup == 'default' || cachedGroup == selectedGroup;
     final cachedChapters = canReuseCachedChapters
-        ? (cached['chapters'] as List?)
-                  ?.map((j) => Chapter.fromJson(Map<String, dynamic>.from(j)))
-                  .toList() ??
-              []
+        ? cached.chapters
         : <Chapter>[];
 
     if (!mounted) return;
@@ -184,9 +180,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _comic = comic;
       _selectedGroup = selectedGroup;
       _chapters = cachedChapters;
-      _chapterTotal = canReuseCachedChapters ? cached['chapterTotal'] ?? 0 : 0;
-      _chapterPage = canReuseCachedChapters ? cached['chapterPage'] ?? 0 : 0;
-      _isCollected = cached['isCollected'] == true;
+      _chapterTotal = canReuseCachedChapters ? cached.chapterTotal : 0;
+      _chapterPage = canReuseCachedChapters ? cached.chapterPage : 0;
+      _isCollected = cached.isCollected;
       _loadingComic = false;
     });
     await _syncNextBrowseChapter();
@@ -195,14 +191,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   Future<void> _saveCache() async {
     final comic = _comic;
     if (comic == null) return;
-    await _cache.put(_cacheKey, {
-      'comic': comic.toJson(),
-      'selectedGroup': _selectedGroup,
-      'chapterPage': _chapterPage,
-      'chapterTotal': _chapterTotal,
-      'chapters': _chapters.map((c) => c.toJson()).toList(),
-      'isCollected': _isCollected,
-    });
+    await _repo.saveToCache(
+      ComicDetailData(
+        comic: comic,
+        selectedGroup: _selectedGroup,
+        chapterPage: _chapterPage,
+        chapterTotal: _chapterTotal,
+        chapters: _chapters,
+        isCollected: _isCollected,
+      ),
+    );
   }
 
   String _resolveSelectedGroup(Comic comic, {String? preferredGroup}) {
@@ -256,10 +254,12 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       setState(() => _isCollected = query['collect'] != null);
       await _saveCache();
     } catch (e, stack) {
-      AppLogger.instance.recordWarning(
-        e,
-        stackTrace: stack,
-        source: 'comic_detail.load_collect_state',
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comic_detail.load_collect_state',
+        ),
       );
     }
   }
@@ -309,7 +309,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       final result = await _api.getChapterList(
         widget.pathWord,
         group: targetGroup,
-        limit: _pageSize,
         offset: page * _pageSize,
       );
       if (!mounted) return;
@@ -482,7 +481,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
             await _api.getChapterList(
               widget.pathWord,
               group: _selectedGroup,
-              limit: _pageSize,
               offset: nextPage * _pageSize,
             );
         if (cached == null) {
@@ -1314,7 +1312,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     await _loadLocalHistory(group: group);
                     await _loadChapterPageForHistory(group: group);
                   },
-                  style: ButtonStyle(
+                  style: const ButtonStyle(
                     visualDensity: VisualDensity.compact,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -1589,13 +1587,10 @@ class _DownloadedBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Colors.green,
-        shape: BoxShape.circle,
-      ),
+    return const DecoratedBox(
+      decoration: BoxDecoration(color: Colors.green, shape: BoxShape.circle),
       child: Padding(
-        padding: const EdgeInsets.all(2),
+        padding: EdgeInsets.all(2),
         child: Icon(Icons.check, size: 12, color: Colors.white),
       ),
     );

@@ -85,8 +85,6 @@ class ChapterDetail extends Chapter {
       ordered: chapter['ordered'] ?? 0,
       contents: images,
       isLong: chapter['is_long'] ?? false,
-      comments: const [],
-      commentTotal: 0,
     );
   }
 

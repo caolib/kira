@@ -1,15 +1,17 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
 import 'acknowledgement_page.dart';
+import 'ai_config_page.dart';
 import 'app_log_page.dart';
 import 'appearance_page.dart';
 import 'browse_history_page.dart';
@@ -17,7 +19,6 @@ import 'download_center_page.dart';
 import 'general_page.dart';
 import 'license_page.dart';
 import 'network_page.dart';
-import 'ai_config_page.dart';
 
 const _appDisclaimerItems = [
   '本应用（以下简称"本软件"）系独立开发的非官方第三方客户端，与任何内容平台、出版商或权利人均无隶属、合作或代理关系。',
@@ -538,7 +539,6 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   CircleAvatar(
                     radius: 32,
@@ -1903,20 +1903,20 @@ class _AboutPageState extends State<AboutPage> {
                     onChanged: (value) {
                       if (value != null) setState(() => selected = value);
                     },
-                    child: Column(
+                    child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'stable',
-                          title: const Text('稳定版 (Stable)'),
-                          subtitle: const Text('仅检查正式发布版本'),
+                          title: Text('稳定版 (Stable)'),
+                          subtitle: Text('仅检查正式发布版本'),
                         ),
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'beta',
-                          title: const Text('预览版（Beta）'),
-                          subtitle: const Text('从最新提交构建的版本，可能不稳定'),
+                          title: Text('预览版（Beta）'),
+                          subtitle: Text('从最新提交构建的版本，可能不稳定'),
                         ),
                       ],
                     ),

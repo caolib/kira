@@ -4,18 +4,16 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../api/api_client.dart';
-import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../repositories/manga_home_repository.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/data_cache.dart';
 import '../utils/time_format.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'comic_detail_page.dart';
 import 'copy_manga_list_page.dart';
-import 'recommend_page.dart';
 import 'ranking_page.dart';
+import 'recommend_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -57,13 +55,7 @@ double _copySectionContentWidth(
 }
 
 class _HomePageState extends State<HomePage> {
-  static const _cacheKey = 'manga_home_v1';
-  static const _copyCacheKey = 'manga_home_copy_v1';
-  static const _cacheTtl = Duration(hours: 1);
-  static const _rankingOrdering = ApiOrdering.datetimeUpdated;
-
-  final _api = ApiClient();
-  final _cache = DataCache();
+  final _repo = MangaHomeRepository();
   final _user = UserManager();
   MangaHome? _home;
   CopyMangaHome? _copyHome;
@@ -107,25 +99,19 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadFromCache() async {
     if (_isCopySource) {
-      final cached = await _cache.get(_copyCacheKey);
+      final cached = await _repo.loadBFromCache();
       if (!mounted || cached == null || !_loading) return;
       setState(() {
-        _copyHome = CopyMangaHome.fromJson(
-          Map<String, dynamic>.from(cached['home']),
-        );
+        _copyHome = cached.home;
         _loading = false;
       });
       return;
     }
-    final cached = await _cache.get(_cacheKey);
+    final cached = await _repo.loadAFromCache();
     if (!mounted || cached == null || !_loading) return;
     setState(() {
-      _home = MangaHome.fromJson(Map<String, dynamic>.from(cached['home']));
-      _rankingPreview =
-          (cached['ranking'] as List?)
-              ?.map((j) => Comic.fromJson(j))
-              .toList() ??
-          [];
+      _home = cached.home;
+      _rankingPreview = cached.ranking;
       _loading = false;
     });
   }
@@ -142,24 +128,14 @@ class _HomePageState extends State<HomePage> {
       setState(() => _refreshing = true);
     }
     try {
-      final homeFuture = _api.getMangaHome();
-      final rankingFuture = _api.getComicList(
-        ordering: _rankingOrdering,
-        limit: 6,
-      );
-      final home = await homeFuture;
-      final ranking = await rankingFuture;
+      final data = await _repo.loadA();
       if (!mounted) return;
       setState(() {
-        _home = home;
-        _rankingPreview = ranking.list;
+        _home = data.home;
+        _rankingPreview = data.ranking;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_cacheKey, {
-        'home': home.toJson(),
-        'ranking': ranking.list.map((c) => c.toJson()).toList(),
-      }, ttl: _cacheTtl);
     } catch (e) {
       debugPrint('HomePage load error: $e');
       if (!mounted) return;
@@ -182,14 +158,13 @@ class _HomePageState extends State<HomePage> {
       setState(() => _refreshing = true);
     }
     try {
-      final home = await _api.getCopyMangaHome();
+      final data = await _repo.loadB();
       if (!mounted) return;
       setState(() {
-        _copyHome = home;
+        _copyHome = data.home;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_copyCacheKey, {'home': home.toJson()}, ttl: _cacheTtl);
     } catch (e) {
       debugPrint('HomePage copy load error: $e');
       if (!mounted) return;
@@ -712,9 +687,10 @@ class _MangaBannerCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => _ImagePlaceholder(icon: Icons.book),
+                placeholder: (_, _) =>
+                    const _ImagePlaceholder(icon: Icons.book),
                 errorWidget: (_, _, _) =>
-                    _ImagePlaceholder(icon: Icons.broken_image),
+                    const _ImagePlaceholder(icon: Icons.broken_image),
               ),
             ),
             DecoratedBox(

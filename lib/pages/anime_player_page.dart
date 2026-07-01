@@ -1,14 +1,14 @@
 import 'dart:async';
 
+import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
-import 'package:canvas_danmaku/canvas_danmaku.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
@@ -22,13 +22,13 @@ import '../utils/chinese_converter.dart';
 import '../utils/network_error.dart';
 import 'profile_page.dart';
 
+part 'anime_player/chapter_selector.dart';
+part 'anime_player/danmaku_panels.dart';
+part 'anime_player/error_panel.dart';
 part 'anime_player/media_open_diagnosis.dart';
 part 'anime_player/player_controls.dart';
-part 'anime_player/video_link_panel.dart';
-part 'anime_player/danmaku_panels.dart';
-part 'anime_player/chapter_selector.dart';
-part 'anime_player/error_panel.dart';
 part 'anime_player/player_settings_panel.dart';
+part 'anime_player/video_link_panel.dart';
 
 class AnimePlayerPage extends StatefulWidget {
   final String animeName;
@@ -582,7 +582,6 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     try {
       await _player.open(
         Media(videoUrl, httpHeaders: _videoHttpHeaders),
-        play: true,
       );
       if (!mounted || serial != _openMediaSerial) return;
       _readyToSavePlaybackProgress = true;
@@ -912,11 +911,11 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         widget.animeName,
       );
     } catch (e, stack) {
-      AppLogger.instance.recordWarning(
+      unawaited(AppLogger.instance.recordWarning(
         e,
         stackTrace: stack,
         source: 'anime_player.convert_anime_name',
-      );
+      ));
     }
     return animeName;
   }
@@ -1047,7 +1046,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           DanmakuContentItem(
             c.text,
             type: mode,
-            color: Color(int.parse("FF$colorStr", radix: 16)),
+            color: Color(int.parse('FF$colorStr', radix: 16)),
           ),
         );
         filteredComments.add(c);

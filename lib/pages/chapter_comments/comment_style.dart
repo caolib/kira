@@ -11,7 +11,7 @@ double _measureTextWidth(
     textDirection: TextDirection.ltr,
     textScaler: textScaler,
     maxLines: 1,
-  )..layout(minWidth: 0, maxWidth: maxWidth);
+  )..layout(maxWidth: maxWidth);
   return painter.size.width;
 }
 

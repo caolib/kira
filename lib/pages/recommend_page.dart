@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
 import '../utils/app_logger.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/comic_card_skeleton.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'comic_detail_page.dart';
 import 'home_page.dart';
 
@@ -53,11 +56,11 @@ class _RecommendPageState extends State<RecommendPage> {
         _offset = _comics.length;
       });
     } catch (e, stack) {
-      AppLogger.instance.recordWarning(
+      unawaited(AppLogger.instance.recordWarning(
         e,
         stackTrace: stack,
         source: 'recommend_page.load_more',
-      );
+      ));
     }
     if (mounted) {
       setState(() => _loadingMore = false);

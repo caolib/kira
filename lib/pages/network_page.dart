@@ -85,7 +85,7 @@ class _NetworkPageState extends State<NetworkPage> {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: cs.outlineVariant, width: 1),
+              side: BorderSide(color: cs.outlineVariant),
             ),
             color: cs.surfaceContainerLow,
             child: Column(
@@ -291,7 +291,7 @@ class _NetworkPageState extends State<NetworkPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: cs.outlineVariant, width: 1),
+          side: BorderSide(color: cs.outlineVariant),
         ),
         color: cs.surfaceContainerLow,
         child: Padding(
@@ -469,7 +469,7 @@ class _NetworkPageState extends State<NetworkPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: cs.outlineVariant, width: 1),
+          side: BorderSide(color: cs.outlineVariant),
         ),
         color: cs.surfaceContainerLow,
         child: Material(
@@ -547,7 +547,7 @@ class _NetworkPageState extends State<NetworkPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: cs.outlineVariant, width: 1),
+          side: BorderSide(color: cs.outlineVariant),
         ),
         color: cs.surfaceContainerLow,
         child: Column(
@@ -1110,7 +1110,7 @@ class _ConnectedButtonGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final border = BorderSide(color: cs.outline, width: 1);
+    final border = BorderSide(color: cs.outline);
 
     return IntrinsicHeight(
       child: Row(

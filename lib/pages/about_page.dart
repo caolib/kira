@@ -320,20 +320,20 @@ class _AboutPageState extends State<AboutPage> {
                     onChanged: (value) {
                       if (value != null) setState(() => selected = value);
                     },
-                    child: Column(
+                    child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'stable',
-                          title: const Text('稳定版 (Stable)'),
-                          subtitle: const Text('仅检查正式发布版本'),
+                          title: Text('稳定版 (Stable)'),
+                          subtitle: Text('仅检查正式发布版本'),
                         ),
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'beta',
-                          title: const Text('预览版（Beta）'),
-                          subtitle: const Text('从最新提交构建的版本，可能不稳定'),
+                          title: Text('预览版（Beta）'),
+                          subtitle: Text('从最新提交构建的版本，可能不稳定'),
                         ),
                       ],
                     ),

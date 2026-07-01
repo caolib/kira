@@ -1,13 +1,14 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
 import '../utils/reading_history.dart';
 import '../utils/toast.dart';
+import '../widgets/detail_chip.dart';
+import '../widgets/local_content_list_page.dart';
 import 'chapter_comments_sheet.dart';
 import 'comic_detail_page.dart';
 import 'reader_page.dart';
@@ -22,368 +23,32 @@ class LocalComicsPage extends StatefulWidget {
 }
 
 class _LocalComicsPageState extends State<LocalComicsPage> {
-  static const _downloadFolderName = 'comic_downloads';
-
   final _downloads = DownloadManager();
-  final Set<String> _selectedPathWords = {};
-  bool _selectionMode = false;
-  bool _loading = true;
-
-  bool get _isDesktopPlatform =>
-      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-
-  @override
-  void initState() {
-    super.initState();
-    _downloads.addListener(_handleChanged);
-    unawaited(_initialize());
-  }
-
-  @override
-  void dispose() {
-    _downloads.removeListener(_handleChanged);
-    super.dispose();
-  }
-
-  void _handleChanged() {
-    if (!mounted) return;
-    final valid = _downloads
-        .localComics()
-        .map((item) => item.info.comic.pathWord)
-        .toSet();
-    _selectedPathWords.removeWhere((pathWord) => !valid.contains(pathWord));
-    if (_selectedPathWords.isEmpty) {
-      _selectionMode = false;
-    }
-    setState(() {});
-  }
-
-  Future<void> _initialize() async {
-    await _downloads.init();
-    if (!mounted) return;
-    setState(() => _loading = false);
-  }
-
-  Future<void> _openDownloadFolder() async {
-    try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final folder = Directory(
-        '${docsDir.path}${Platform.pathSeparator}$_downloadFolderName',
-      );
-      if (!await folder.exists()) {
-        await folder.create(recursive: true);
-      }
-      final path = folder.path;
-      if (Platform.isWindows) {
-        await Process.run('explorer', [path]);
-      } else if (Platform.isMacOS) {
-        await Process.run('open', [path]);
-      } else if (Platform.isLinux) {
-        await Process.run('xdg-open', [path]);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      showToast(context, '打开文件夹失败：$e', isError: true);
-    }
-  }
-
-  Future<void> _deleteSelected() async {
-    if (_selectedPathWords.isEmpty) return;
-    final count = _selectedPathWords.length;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除本地漫画'),
-        content: Text('确定删除选中的 $count 部本地漫画吗？已下载章节和封面都会被删除。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    await _downloads.deleteLocalComics(_selectedPathWords);
-    if (!mounted) return;
-    setState(() {
-      _selectedPathWords.clear();
-      _selectionMode = false;
-    });
-    showToast(context, '已删除 $count 部本地漫画');
-  }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final items = _downloads.localComics();
-
-    final body = _loading
-        ? const Center(child: CircularProgressIndicator())
-        : items.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.download_done_outlined,
-                  size: 56,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(height: 12),
-                Text('还没有本地漫画', style: tt.titleMedium),
-                const SizedBox(height: 6),
-                Text(
-                  '去漫画详情页下载章节后，这里会显示离线内容',
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-          )
-        : GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 150,
-              childAspectRatio: 0.58,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-            ),
-            itemCount: items.length,
-            itemBuilder: (_, index) {
-              final item = items[index];
-              final pathWord = item.info.comic.pathWord;
-              final selected = _selectedPathWords.contains(pathWord);
-              return _LocalComicCard(
-                entry: item,
-                selected: selected,
-                selectionMode: _selectionMode,
-                onTap: () {
-                  if (_selectionMode) {
-                    setState(() {
-                      if (selected) {
-                        _selectedPathWords.remove(pathWord);
-                      } else {
-                        _selectedPathWords.add(pathWord);
-                      }
-                      if (_selectedPathWords.isEmpty) {
-                        _selectionMode = false;
-                      }
-                    });
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LocalComicDetailPage(pathWord: pathWord),
-                    ),
-                  );
-                },
-                onLongPress: () => setState(() {
-                  _selectionMode = true;
-                  _selectedPathWords.add(pathWord);
-                }),
-              );
-            },
-          );
-
-    if (widget.embedded) {
-      if (!_isDesktopPlatform) return body;
-      return Stack(
-        children: [
-          body,
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton.extended(
-              heroTag: 'local_comics_open_folder',
-              onPressed: _openDownloadFolder,
-              icon: const Icon(Icons.folder_open, size: 20),
-              label: const Text('打开下载位置', style: TextStyle(fontSize: 13)),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _selectionMode ? '已选 ${_selectedPathWords.length} 部' : '本地漫画',
-        ),
-        actions: [
-          if (!_selectionMode && items.isNotEmpty)
-            IconButton(
-              onPressed: () => setState(() => _selectionMode = true),
-              icon: const Icon(Icons.checklist),
-              tooltip: '批量管理',
-            ),
-          if (_selectionMode) ...[
-            IconButton(
-              onPressed: items.isEmpty
-                  ? null
-                  : () => setState(() {
-                      _selectedPathWords
-                        ..clear()
-                        ..addAll(items.map((item) => item.info.comic.pathWord));
-                    }),
-              icon: const Icon(Icons.select_all),
-              tooltip: '全选',
-            ),
-            IconButton(
-              onPressed: _selectedPathWords.isEmpty ? null : _deleteSelected,
-              icon: const Icon(Icons.delete_outline),
-              tooltip: '删除',
-            ),
-            IconButton(
-              onPressed: () => setState(() {
-                _selectionMode = false;
-                _selectedPathWords.clear();
-              }),
-              icon: const Icon(Icons.close),
-              tooltip: '取消',
-            ),
-          ],
-        ],
-      ),
-      body: body,
-    );
-  }
-}
-
-class _LocalComicCard extends StatelessWidget {
-  final LocalComicEntry entry;
-  final bool selected;
-  final bool selectionMode;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-
-  const _LocalComicCard({
-    required this.entry,
-    required this.selected,
-    required this.selectionMode,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final comic = entry.info.comic;
-    final coverPath = entry.info.coverPath;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected ? cs.primary : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox.expand(
-                        child: coverPath != null && File(coverPath).existsSync()
-                            ? CoverBrightnessFilter(
-                                child: Image.file(
-                                  File(coverPath),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : ColoredBox(
-                                color: cs.surfaceContainerHighest,
-                                child: Icon(
-                                  Icons.broken_image_outlined,
-                                  color: cs.onSurfaceVariant,
-                                  size: 32,
-                                ),
-                              ),
-                      ),
-                    ),
-                    if (selectionMode)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: selected ? cs.primary : Colors.black45,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              selected ? Icons.check : Icons.circle_outlined,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    Positioned(
-                      left: 8,
-                      right: 8,
-                      bottom: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '已下载 ${entry.downloadedCount} 章',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                comic.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: tt.bodySmall,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                comic.authors.isNotEmpty
-                    ? comic.authors.map((item) => item.name).join(' / ')
-                    : comic.pathWord,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return LocalContentListPage(
+      embedded: widget.embedded,
+      title: '本地漫画',
+      emptyTitle: '还没有本地漫画',
+      emptySubtitle: '去漫画详情页下载章节后，这里会显示离线内容',
+      downloadFolderName: 'comic_downloads',
+      deleteDialogTitle: '删除本地漫画',
+      deleteDialogContent: '确定删除选中的 {count} 部本地漫画吗？已下载章节和封面都会被删除。',
+      deleteToastPrefix: '已删除 ',
+      deleteToastSuffix: ' 部本地漫画',
+      heroTagPrefix: 'local_comics',
+      gridAspectRatio: 0.58,
+      unitLabel: '章',
+      downloadManager: _downloads,
+      initDownloads: _downloads.init,
+      getLocalItems: () => _downloads
+          .localComics()
+          .map((entry) => ComicLocalContentEntry(entry))
+          .toList(),
+      deleteLocalItems: (pathWords) => _downloads.deleteLocalComics(pathWords),
+      detailPageBuilder: (pathWord) =>
+          LocalComicDetailPage(pathWord: pathWord),
     );
   }
 }
@@ -543,7 +208,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
       summary.chapterUuid,
     );
     if (!mounted || detail == null) return;
-    showModalBottomSheet(
+    unawaited(showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width),
@@ -555,7 +220,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
         initialComments: detail.comments,
         initialTotal: detail.commentTotal,
       ),
-    );
+    ));
   }
 
   @override
@@ -676,19 +341,19 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                               runSpacing: 6,
                               children: [
                                 if (comic.status != null)
-                                  _DetailChip(
+                                  DetailChip(
                                     label:
                                         comic.status!['display']?.toString() ??
                                         '',
                                   ),
                                 if (comic.region != null)
-                                  _DetailChip(
+                                  DetailChip(
                                     label:
                                         comic.region!['display']?.toString() ??
                                         '',
                                   ),
                                 ...comic.themes.map(
-                                  (item) => _DetailChip(label: item.name),
+                                  (item) => DetailChip(label: item.name),
                                 ),
                               ],
                             ),
@@ -977,30 +642,6 @@ class _LocalChapterCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DetailChip extends StatelessWidget {
-  final String label;
-
-  const _DetailChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(color: cs.onSecondaryContainer),
       ),
     );
   }

@@ -347,22 +347,9 @@ class Comic {
         groupsMap[k] = ComicGroup.fromJson(v);
       });
     }
-    return Comic(
-      uuid: comic.uuid,
-      name: comic.name,
-      pathWord: comic.pathWord,
-      cover: comic.cover,
-      popular: json['popular'] ?? comic.popular,
-      authors: comic.authors,
-      themes: comic.themes,
-      datetimeUpdated: comic.datetimeUpdated,
-      brief: comic.brief,
-      status: comic.status,
-      lastChapter: comic.lastChapter,
-      lastChapterId: comic.lastChapterId,
-      lastChapterName: comic.lastChapterName,
-      groups: groupsMap,
-      region: comic.region,
+    return comic.copyWith(
+      popular: json['popular'] as int? ?? comic.popular,
+      groups: groupsMap.isEmpty ? comic.groups : groupsMap,
     );
   }
 

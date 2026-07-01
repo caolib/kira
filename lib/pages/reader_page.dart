@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import '../api/api_client.dart';
+
 import '../api/ai_api.dart';
+import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
@@ -16,8 +17,8 @@ import '../utils/chapter_summary_cache.dart';
 import '../utils/download_manager.dart';
 import '../utils/image_load_stats.dart';
 import '../utils/network_error.dart';
-import '../utils/toast.dart';
 import '../utils/reading_history.dart';
+import '../utils/toast.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
 
@@ -357,7 +358,7 @@ class _ReaderPageState extends State<ReaderPage> {
       }
       _autoAdvancingChapter = false;
       _saveReadingHistory();
-      _preloadComments();
+      unawaited(_preloadComments());
       // 缓存命中且当前无下一话时，后台静默刷新章节导航，用于发现新增的下一话。
       if (!forceRefresh && !detail.isDownloaded && detail.next == null) {
         _refreshChapterMetadata(detail);
@@ -611,7 +612,6 @@ class _ReaderPageState extends State<ReaderPage> {
           await _api.getChapterDetail(
             widget.pathWord,
             nextUuid,
-            forceRefresh: false,
           );
       if (next.contents.isEmpty) {
         throw StateError('Chapter has no readable pages');
@@ -622,7 +622,7 @@ class _ReaderPageState extends State<ReaderPage> {
         _loadingNextChainChapter = false;
       });
       // 追加后立即预加载该话评论，使分隔区评论按钮能显示数量
-      if (_user.commentPreload) _preloadComments(chapter: next);
+      if (_user.commentPreload) unawaited(_preloadComments(chapter: next));
     } catch (_) {
       _loadingNextChainChapter = false;
       // 追加失败保持链不变，用户可手动重试（继续翻页会再次触发）
@@ -1102,7 +1102,6 @@ class _ReaderPageState extends State<ReaderPage> {
     _pauseAutoScrollForOverlay();
     await Navigator.of(context).push(
       PageRouteBuilder<void>(
-        opaque: true,
         pageBuilder: (_, _, _) => _ReaderImageViewer(
           imageSource: chapter.contents[localIndex],
           isDownloaded: chapter.isDownloaded,
@@ -1115,12 +1114,12 @@ class _ReaderPageState extends State<ReaderPage> {
     if (!mounted) return;
     _resumeAutoScrollAfterOverlay();
     if (_showToolbar) {
-      SystemChrome.setEnabledSystemUIMode(
+      unawaited(SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.manual,
         overlays: SystemUiOverlay.values,
-      );
+      ));
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
     }
   }
 
@@ -1297,7 +1296,7 @@ class _ReaderPageState extends State<ReaderPage> {
     for (var ci = 0; ci < chainIndex; ci++) {
       idx += _chain[ci].contents.length + 1;
     }
-    idx += (page - 1);
+    idx += page - 1;
     return idx;
   }
 
@@ -1545,7 +1544,7 @@ class _ReaderPageState extends State<ReaderPage> {
       }
     } else {
       final chapter = _detail!;
-      final start = 0;
+      const start = 0;
       for (var i = 0; i < chapter.contents.length; i++) {
         items.add(_ScrollItem.image(chapter, i, start + i));
       }
@@ -1761,7 +1760,7 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildFirstChapterHead() {
-    final message = const Center(
+    const message = Center(
       child: Text(
         '已经是第一章',
         style: TextStyle(color: Colors.white54, fontSize: 14),
@@ -1771,11 +1770,11 @@ class _ReaderPageState extends State<ReaderPage> {
     if (_isHorizontalScrollMode) {
       return SizedBox(
         width: _scrollModeTailExtent(context),
-        child: Padding(padding: const EdgeInsets.all(32), child: message),
+        child: const Padding(padding: EdgeInsets.all(32), child: message),
       );
     }
 
-    return Padding(padding: const EdgeInsets.all(32), child: message);
+    return const Padding(padding: EdgeInsets.all(32), child: message);
   }
 
   Widget _buildChapterEndActionsRow() {
@@ -1875,8 +1874,8 @@ class _ReaderPageState extends State<ReaderPage> {
                   ],
                 ),
                 if (hasNext)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
                     child: Text(
                       '继续翻页进入下一话',
                       style: TextStyle(
@@ -1886,8 +1885,8 @@ class _ReaderPageState extends State<ReaderPage> {
                     ),
                   )
                 else
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
                     child: Text(
                       '已经是最后一话',
                       style: TextStyle(
@@ -1984,7 +1983,7 @@ class _ReaderPageState extends State<ReaderPage> {
 
     if (action == 'back_to_catalog') {
       // 返回目录会退出阅读页，无需恢复自动滚动
-      if (mounted) Navigator.of(context).maybePop();
+      if (mounted) unawaited(Navigator.of(context).maybePop());
       return;
     }
     if (mounted) _resumeAutoScrollAfterOverlay();

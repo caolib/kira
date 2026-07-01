@@ -1,16 +1,18 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../models/anime.dart';
 import '../models/api_ordering.dart';
-import '../models/comic.dart' hide Theme;
 import '../models/comic.dart' as m;
+import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../repositories/search_init_repository.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/comic_card_skeleton.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/data_cache.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'anime_detail_page.dart';
 import 'comic_detail_page.dart';
 import 'home_page.dart' show ComicCard;
@@ -25,13 +27,11 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  static const _searchInitCacheKey = 'search_init_v2';
-  static const _searchInitCacheTtl = Duration(hours: 1);
   static const _tagSpacing = 8.0;
   bool _refreshing = false;
 
   final _api = ApiClient();
-  final _cache = DataCache();
+  final _searchInitRepo = SearchInitRepository();
   final _user = UserManager();
   final _searchController = TextEditingController();
 
@@ -80,13 +80,11 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _loadFromCache() async {
-    final cached = await _cache.get(_searchInitCacheKey);
+    final cached = await _searchInitRepo.loadFromCache();
     if (!mounted || cached == null || !_loading) return;
     setState(() {
-      _keywords = List<String>.from(cached['keywords'] ?? []);
-      _tags =
-          (cached['tags'] as List?)?.map((t) => m.Theme.fromJson(t)).toList() ??
-          [];
+      _keywords = cached.keywords;
+      _tags = cached.tags;
       _loading = false;
     });
   }
@@ -98,21 +96,14 @@ class _SearchPageState extends State<SearchPage> {
       setState(() => _refreshing = true);
     }
     try {
-      final keywordsFuture = _api.getHotKeywords();
-      final tagsFuture = _api.getComicTags();
-      final keywords = await keywordsFuture;
-      final tags = await tagsFuture;
+      final data = await _searchInitRepo.load();
       if (!mounted) return;
       setState(() {
-        _keywords = keywords;
-        _tags = tags;
+        _keywords = data.keywords;
+        _tags = data.tags;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_searchInitCacheKey, {
-        'keywords': keywords,
-        'tags': tags.map((t) => t.toJson()).toList(),
-      }, ttl: _searchInitCacheTtl);
     } catch (e) {
       debugPrint('SearchPage loadInit error: $e');
       if (mounted) {

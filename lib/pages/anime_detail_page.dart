@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
 import '../models/anime.dart';
-import '../utils/cover_brightness_filter.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/anime_playback_history.dart';
 import '../utils/chinese_converter.dart';
-import '../utils/data_cache.dart';
+import '../utils/cover_brightness_filter.dart';
 import '../utils/dandanplay_binding_store.dart';
 import '../utils/dandanplay_episode_binding.dart';
+import '../utils/data_cache.dart';
 import '../utils/toast.dart';
 import 'anime_player_page.dart';
 import 'bangumi_comments_section.dart';
@@ -22,8 +22,8 @@ import 'home_page.dart';
 part 'anime_detail/anime_detail_models.dart';
 part 'anime_detail/anime_detail_widgets.dart';
 part 'anime_detail/anime_episode_widgets.dart';
-part 'anime_detail/dandanplay_binding_dialog.dart';
 part 'anime_detail/dandanplay_alignment_dialog.dart';
+part 'anime_detail/dandanplay_binding_dialog.dart';
 
 class AnimeDetailPage extends StatefulWidget {
   final String pathWord;
@@ -297,7 +297,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       return;
     }
     if (_isCommentsTab) {
-      await (_bangumiCommentsKey.currentState?.reload(forceRefresh: true) ??
+      await (_bangumiCommentsKey.currentState?.reload() ??
           Future<void>.value());
       return;
     }
@@ -1211,7 +1211,6 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
                     spacing: 8,
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
-                    alignment: WrapAlignment.start,
                     children: [
                       Text(
                         '已选 ${_selectedUuids.length} 集',

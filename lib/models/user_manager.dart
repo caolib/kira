@@ -1,20 +1,23 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'app_theme_option.dart';
-import 'api_ordering.dart';
-import 'network_proxy_types.dart';
-export 'network_proxy_types.dart';
-import 'reader_settings.dart';
-import 'danmaku_settings.dart';
-import 'comment_settings.dart';
-import 'theme_settings.dart';
-import 'network_settings.dart';
+
 import '../api/api_client.dart';
 import '../utils/app_icon_switcher.dart';
 import '../utils/app_logger.dart';
+import 'api_ordering.dart';
+import 'app_theme_option.dart';
+import 'comment_settings.dart';
+import 'danmaku_settings.dart';
+import 'network_proxy_types.dart';
+import 'network_settings.dart';
+import 'reader_settings.dart';
+import 'theme_settings.dart';
+
+export 'network_proxy_types.dart';
 
 class SavedCredential {
   final String username;

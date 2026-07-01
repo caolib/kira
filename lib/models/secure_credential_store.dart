@@ -36,15 +36,15 @@ class SecureCredentialStore {
 
   @protected
   Future<String?> doRead(String key) =>
-      const FlutterSecureStorage(aOptions: AndroidOptions()).read(key: key);
+      const FlutterSecureStorage().read(key: key);
 
   @protected
   Future<void> doWrite(String key, String value) =>
-      const FlutterSecureStorage(aOptions: AndroidOptions()).write(key: key, value: value);
+      const FlutterSecureStorage().write(key: key, value: value);
 
   @protected
   Future<void> doDelete(String key) =>
-      const FlutterSecureStorage(aOptions: AndroidOptions()).delete(key: key);
+      const FlutterSecureStorage().delete(key: key);
 
   Future<String?> readUsername() => doRead(_keyUsername);
 

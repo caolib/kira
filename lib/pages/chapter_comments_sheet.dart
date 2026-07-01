@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
-import '../api/api_client.dart';
 import '../api/ai_api.dart';
+import '../api/api_client.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
 import '../utils/chapter_summary_cache.dart';
@@ -18,9 +18,9 @@ import '../utils/toast.dart';
 import 'chapter_comment_display.dart';
 
 part 'chapter_comments/comment_models.dart';
+part 'chapter_comments/comment_settings_panel.dart';
 part 'chapter_comments/comment_style.dart';
 part 'chapter_comments/comment_widgets.dart';
-part 'chapter_comments/comment_settings_panel.dart';
 
 class ChapterCommentsSheet extends StatefulWidget {
   final String chapterUuid;
@@ -1436,7 +1436,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             return _CommentCard(
               entry: entry,
               relativeTime: TimeFormat.relativeOf(entry.createAt),
-              compact: false,
               showAvatar: _showUserAvatar,
               showUserName: _showUserName,
               showCommentTime: _showCommentTime,
@@ -1782,7 +1781,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 padding: const EdgeInsets.fromLTRB(4, 2, 8, 2),
                 child: MarkdownBody(
                   data: _stripSpoilersMarker(_aiSummary),
-                  selectable: false,
                   styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
                       .copyWith(
                         p: tt.bodyMedium?.copyWith(height: 1.5),

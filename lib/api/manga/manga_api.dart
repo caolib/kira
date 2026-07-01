@@ -317,7 +317,7 @@ mixin _MangaApi on _ApiClientBase {
 
   // 6. 用户状态查询
   Future<Map<String, dynamic>> getComicQuery(String pathWord) async {
-    return await _get('/api/v3/comic2/$pathWord/query');
+    return _get('/api/v3/comic2/$pathWord/query');
   }
 
   // 7. 章节列表

@@ -247,7 +247,7 @@ class DownloadManager extends ChangeNotifier {
     for (final chapterUuid in chapterUuids.toSet()) {
       await _removeDownloadedChapter(pathWord, chapterUuid, deleteFiles: true);
     }
-    if ((_manifest[pathWord]?.isEmpty ?? true)) {
+    if (_manifest[pathWord]?.isEmpty ?? true) {
       await _removeLocalComic(pathWord);
     }
     notifyListeners();

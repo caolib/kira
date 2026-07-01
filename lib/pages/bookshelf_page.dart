@@ -1,21 +1,22 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../api/api_client.dart';
 import '../models/anime.dart';
 import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../repositories/bookshelf_repository.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/comic_card_skeleton.dart';
-import '../utils/data_cache.dart';
 import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'anime_detail_page.dart';
 import 'comic_detail_page.dart';
 import 'home_page.dart';
@@ -32,6 +33,8 @@ class BookshelfPage extends StatefulWidget {
 
 class _BookshelfPageState extends State<BookshelfPage> {
   final _api = ApiClient();
+  final _comicRepo = ComicBookshelfRepository();
+  final _animeRepo = AnimeBookshelfRepository();
   final _user = UserManager();
   final _scrollController = ScrollController();
   Timer? _cacheTimeTimer;
@@ -55,9 +58,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
   bool _showUpdateOnly = false;
   bool _showBackToTop = false;
 
-  static const _cacheTtl = Duration(minutes: 30);
-  static const _comicCacheKey = 'bookshelf_comic';
-  static const _animeCacheKey = 'bookshelf_anime';
   static const _showUpdateOnlyKey = 'local_bookshelf_show_update_only';
   static const _legacyShowUpdateOnlyKey = 'bookshelf_show_update_only';
 
@@ -193,59 +193,27 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Future<void> _tryLoadCache() async {
-    final cache = DataCache();
-    final comicRaw = await cache.get(_comicCacheKey);
-    if (comicRaw is Map<String, dynamic>) {
-      final items =
-          (comicRaw['items'] as List?)
-              ?.map((e) => BookshelfItem.fromJson(Map<String, dynamic>.from(e)))
-              .toList() ??
-          [];
-      final total = comicRaw['total'] as int? ?? 0;
-      final cacheTimeMs = comicRaw['cache_time'] as int?;
-      final cacheTime = cacheTimeMs != null
-          ? DateTime.fromMillisecondsSinceEpoch(cacheTimeMs)
-          : null;
-      if (items.isNotEmpty &&
-          cacheTime != null &&
-          DateTime.now().difference(cacheTime) < _cacheTtl) {
-        setState(() {
-          _items = items;
-          _total = total;
-          _comicTotal = total;
-          _offset = items.length;
-          _comicCacheTime = cacheTime;
-          _loading = false;
-        });
-      }
+    final comicCached = await _comicRepo.loadFromCache();
+    if (comicCached != null && comicCached.items.isNotEmpty) {
+      setState(() {
+        _items = comicCached.items;
+        _total = comicCached.total;
+        _comicTotal = comicCached.total;
+        _offset = comicCached.items.length;
+        _comicCacheTime = comicCached.cacheTime;
+        _loading = false;
+      });
     }
-    final animeRaw = await cache.get(_animeCacheKey);
-    if (animeRaw is Map<String, dynamic>) {
-      final items =
-          (animeRaw['items'] as List?)
-              ?.map(
-                (e) =>
-                    AnimeBookshelfItem.fromJson(Map<String, dynamic>.from(e)),
-              )
-              .toList() ??
-          [];
-      final total = animeRaw['total'] as int? ?? 0;
-      final cacheTimeMs = animeRaw['cache_time'] as int?;
-      final cacheTime = cacheTimeMs != null
-          ? DateTime.fromMillisecondsSinceEpoch(cacheTimeMs)
-          : null;
-      if (items.isNotEmpty &&
-          cacheTime != null &&
-          DateTime.now().difference(cacheTime) < _cacheTtl) {
-        setState(() {
-          _animeItems = items;
-          _total = total;
-          _animeTotal = total;
-          _offset = items.length;
-          _animeCacheTime = cacheTime;
-          _loading = false;
-        });
-      }
+    final animeCached = await _animeRepo.loadFromCache();
+    if (animeCached != null && animeCached.items.isNotEmpty) {
+      setState(() {
+        _animeItems = animeCached.items;
+        _total = animeCached.total;
+        _animeTotal = animeCached.total;
+        _offset = animeCached.items.length;
+        _animeCacheTime = animeCached.cacheTime;
+        _loading = false;
+      });
     }
   }
 
@@ -254,12 +222,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
     int total,
     DateTime cacheTime,
   ) async {
-    final cache = DataCache();
-    await cache.put(_comicCacheKey, {
-      'items': items.map((e) => e.toJson()).toList(),
-      'total': total,
-      'cache_time': cacheTime.millisecondsSinceEpoch,
-    }, ttl: _cacheTtl);
+    await _comicRepo.saveToCache(
+      ComicBookshelfData(items: items, total: total, cacheTime: cacheTime),
+    );
   }
 
   Future<void> _saveAnimeCache(
@@ -267,12 +232,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
     int total,
     DateTime cacheTime,
   ) async {
-    final cache = DataCache();
-    await cache.put(_animeCacheKey, {
-      'items': items.map((e) => e.toJson()).toList(),
-      'total': total,
-      'cache_time': cacheTime.millisecondsSinceEpoch,
-    }, ttl: _cacheTtl);
+    await _animeRepo.saveToCache(
+      AnimeBookshelfData(items: items, total: total, cacheTime: cacheTime),
+    );
   }
 
   Future<void> _load({bool silent = false, bool force = false}) async {
@@ -281,7 +243,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           ? _comicCacheTime
           : _animeCacheTime;
       if (cacheTime != null &&
-          DateTime.now().difference(cacheTime) < _cacheTtl) {
+          DateTime.now().difference(cacheTime) < const Duration(minutes: 30)) {
         return;
       }
     }
@@ -308,7 +270,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           _comicCacheTime = now;
           _loading = false;
         });
-        _saveComicCache(data.list, data.total, now);
+        unawaited(_saveComicCache(data.list, data.total, now));
       } else {
         final data = await _api.getAnimeBookshelf(ordering: _ordering);
         if (!mounted || requestType != _type) return;
@@ -321,7 +283,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           _animeCacheTime = now;
           _loading = false;
         });
-        _saveAnimeCache(data.list, data.total, now);
+        unawaited(_saveAnimeCache(data.list, data.total, now));
       }
       if (!silent && mounted) {
         showToast(context, '刷新成功');
@@ -362,7 +324,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
         }
         final data = await _api.getBookshelf(
           limit: currentCount,
-          offset: 0,
           ordering: _ordering,
         );
         if (!mounted || requestType != _type) return;
@@ -380,7 +341,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
         }
         final data = await _api.getAnimeBookshelf(
           limit: currentCount,
-          offset: 0,
           ordering: _ordering,
         );
         if (!mounted || requestType != _type) return;
@@ -490,7 +450,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
         MaterialPageRoute(builder: (_) => const LoginPage()),
       );
       if (loggedIn == true && mounted) {
-        _load(silent: true);
+        unawaited(_load(silent: true));
       }
     } else if (mounted) {
       showToast(context, '登录后可继续查看书架', isError: true);
@@ -540,7 +500,8 @@ class _BookshelfPageState extends State<BookshelfPage> {
         ? _comicCacheTime
         : _animeCacheTime;
     final hasValidCache =
-        cacheTime != null && DateTime.now().difference(cacheTime) < _cacheTtl;
+        cacheTime != null &&
+        DateTime.now().difference(cacheTime) < const Duration(minutes: 30);
     final items = type == _BookshelfType.comic ? _items : _animeItems;
     final itemsEmpty = type == _BookshelfType.comic
         ? _items.isEmpty

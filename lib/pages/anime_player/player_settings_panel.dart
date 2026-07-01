@@ -207,7 +207,6 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               Slider(
                 value: _area,
                 min: 0.1,
-                max: 1.0,
                 divisions: 9,
                 label: '${(_area * 100).toStringAsFixed(0)}%',
                 onChanged: (v) => setState(() => _area = v),
@@ -231,7 +230,6 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               Slider(
                 value: _opacity,
                 min: 0.1,
-                max: 1.0,
                 divisions: 9,
                 label: '${(_opacity * 100).toStringAsFixed(0)}%',
                 onChanged: (v) => setState(() => _opacity = v),
@@ -335,11 +333,11 @@ class _DanmakuBlocklistEditorState extends State<_DanmakuBlocklistEditor> {
         _controller.text = converted;
       }
     } catch (e, stack) {
-      AppLogger.instance.recordWarning(
+      unawaited(AppLogger.instance.recordWarning(
         e,
         stackTrace: stack,
         source: 'player_settings.convert_chinese',
-      );
+      ));
     }
   }
 

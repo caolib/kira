@@ -261,7 +261,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                         0.0,
                         1.0,
                       );
-                      player.setVolume(newVolume * 100.0);
+                      unawaited(player.setVolume(newVolume * 100.0));
                       setState(() => _currentVolume = newVolume);
                     } else if (_isDraggingBrightness) {
                       final newBrightness = (_initialBrightness + ratio).clamp(
@@ -273,11 +273,11 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                           newBrightness,
                         );
                       } catch (e, stack) {
-                        AppLogger.instance.recordWarning(
+                        unawaited(AppLogger.instance.recordWarning(
                           e,
                           stackTrace: stack,
                           source: 'player_controls.set_brightness',
-                        );
+                        ));
                       }
                       setState(() => _currentBrightness = newBrightness);
                     }

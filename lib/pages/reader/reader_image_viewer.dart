@@ -261,7 +261,6 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
             transformationController: _transformationController,
             minScale: 1,
             maxScale: 5,
-            clipBehavior: Clip.hardEdge,
             child: SizedBox(
               width: constraints.maxWidth,
               height: constraints.maxHeight,

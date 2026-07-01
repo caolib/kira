@@ -865,8 +865,8 @@ class AiApi {
     final seen = <String>{};
     for (final item in rawModels) {
       final id = switch (item) {
-        String value => value,
-        Map map => map['id'] as String?,
+        final String value => value,
+        final Map map => map['id'] as String?,
         _ => null,
       };
       final trimmed = id?.trim();

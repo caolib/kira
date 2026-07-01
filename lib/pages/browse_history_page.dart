@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -8,9 +10,9 @@ import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/network_error.dart';
-import '../utils/comic_hero_tags.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'anime_detail_page.dart';
 import 'comic_detail_page.dart';
 
@@ -270,7 +272,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
       MaterialPageRoute(builder: widget.loginPageBuilder),
     );
     if (loggedIn == true && mounted) {
-      _load(silent: true);
+      unawaited(_load(silent: true));
     }
   }
 
@@ -375,9 +377,9 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                   padding: EdgeInsets.fromLTRB(hp, 0, hp, 24),
                   sliver: SliverList.builder(
                     itemCount: 20,
-                    itemBuilder: (_, _) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: const _HistoryCardSkeleton(),
+                    itemBuilder: (_, _) => const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: _HistoryCardSkeleton(),
                     ),
                   ),
                 ),

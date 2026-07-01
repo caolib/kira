@@ -11,10 +11,10 @@ import 'package:system_fonts/system_fonts.dart';
 
 import 'models/user_manager.dart';
 import 'pages/anime_home_page.dart';
-import 'pages/home_page.dart';
-import 'pages/search_page.dart';
 import 'pages/bookshelf_page.dart';
+import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/search_page.dart';
 import 'utils/app_logger.dart';
 import 'utils/app_update.dart';
 import 'utils/display_mode_preference.dart';
@@ -64,10 +64,10 @@ void main() {
           }
         }
       }
-      SystemChrome.setEnabledSystemUIMode(
+      unawaited(SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.manual,
         overlays: SystemUiOverlay.values,
-      );
+      ));
       SystemChrome.setSystemUIOverlayStyle(
         const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
@@ -362,31 +362,31 @@ class _MainPageState extends State<MainPage> {
   // 可见 tabs 取决于登录状态和动漫功能开关；外观页仍保留完整顺序。
 
   static final _navItemData = {
-    'comic': _NavItem(
+    'comic': const _NavItem(
       page: HomePage(),
       icon: Icon(Icons.menu_book_outlined),
       selectedIcon: Icon(Icons.menu_book),
       label: '漫画',
     ),
-    'anime': _NavItem(
+    'anime': const _NavItem(
       page: AnimeHomePage(),
       icon: Icon(Icons.movie_outlined),
       selectedIcon: Icon(Icons.movie),
       label: '动漫',
     ),
-    'search': _NavItem(
+    'search': const _NavItem(
       page: SearchPage(),
       icon: Icon(Icons.search_outlined),
       selectedIcon: Icon(Icons.search),
       label: '搜索',
     ),
-    'bookshelf': _NavItem(
+    'bookshelf': const _NavItem(
       page: BookshelfPage(),
       icon: Icon(Icons.bookmark_border),
       selectedIcon: Icon(Icons.bookmark),
       label: '书架',
     ),
-    'profile': _NavItem(
+    'profile': const _NavItem(
       page: ProfilePage(),
       icon: Icon(Icons.person_outline),
       selectedIcon: Icon(Icons.person),

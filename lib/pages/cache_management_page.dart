@@ -735,7 +735,6 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                             : ExpansionTile(
                                 shape: const Border(),
                                 collapsedShape: const Border(),
-                                initiallyExpanded: false,
                                 leading: Icon(section.category.icon),
                                 title: Text(section.label),
                                 subtitle: Text(
@@ -944,7 +943,6 @@ class _ImageCacheSectionCard extends StatelessWidget {
           : ExpansionTile(
               shape: const Border(),
               collapsedShape: const Border(),
-              initiallyExpanded: false,
               leading: Icon(section.icon),
               title: Text(section.label),
               subtitle: Text(subtitle, style: tt.bodySmall),

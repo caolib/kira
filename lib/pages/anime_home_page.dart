@@ -3,11 +3,10 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../api/api_client.dart';
 import '../models/anime.dart';
 import '../models/user_manager.dart';
+import '../repositories/anime_home_repository.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/data_cache.dart';
 import '../utils/toast.dart';
 import 'anime_detail_page.dart';
 import 'anime_list_page.dart';
@@ -23,10 +22,7 @@ class AnimeHomePage extends StatefulWidget {
 const _animeHomeCardWidth = 112.0;
 
 class _AnimeHomePageState extends State<AnimeHomePage> {
-  static const _cacheKey = 'anime_home_v1';
-
-  final _api = ApiClient();
-  final _cache = DataCache();
+  final _repo = AnimeHomeRepository();
   final _user = UserManager();
   AnimeHome? _home;
   bool _loading = true;
@@ -52,10 +48,10 @@ class _AnimeHomePageState extends State<AnimeHomePage> {
   }
 
   Future<void> _loadFromCache() async {
-    final cached = await _cache.get(_cacheKey);
+    final cached = await _repo.loadFromCache();
     if (!mounted || cached == null || !_loading) return;
     setState(() {
-      _home = AnimeHome.fromJson(Map<String, dynamic>.from(cached));
+      _home = cached;
       _loading = false;
     });
   }
@@ -72,14 +68,13 @@ class _AnimeHomePageState extends State<AnimeHomePage> {
     }
 
     try {
-      final home = await _api.getAnimeHome();
+      final home = await _repo.load();
       if (!mounted) return;
       setState(() {
         _home = home;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_cacheKey, home.toJson());
     } catch (e) {
       debugPrint('AnimeHomePage load error: $e');
       if (!mounted) return;
@@ -464,9 +459,10 @@ class _AnimeBannerCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => _ImagePlaceholder(icon: Icons.movie),
+                placeholder: (_, _) =>
+                    const _ImagePlaceholder(icon: Icons.movie),
                 errorWidget: (_, _, _) =>
-                    _ImagePlaceholder(icon: Icons.broken_image),
+                    const _ImagePlaceholder(icon: Icons.broken_image),
               ),
             ),
             DecoratedBox(
@@ -612,9 +608,9 @@ class _AnimeCard extends StatelessWidget {
                         fadeInDuration: Duration.zero,
                         fadeOutDuration: Duration.zero,
                         placeholder: (_, _) =>
-                            _ImagePlaceholder(icon: Icons.movie_outlined),
+                            const _ImagePlaceholder(icon: Icons.movie_outlined),
                         errorWidget: (_, _, _) =>
-                            _ImagePlaceholder(icon: Icons.broken_image),
+                            const _ImagePlaceholder(icon: Icons.broken_image),
                       ),
                     ),
                   ],

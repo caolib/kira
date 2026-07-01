@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 import 'app_dio.dart';
@@ -11,7 +13,6 @@ class ChineseConverter {
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 8),
       sendTimeout: const Duration(seconds: 8),
-      responseType: ResponseType.json,
     ),
   );
 
@@ -43,11 +44,11 @@ class ChineseConverter {
         return converted;
       }
     } catch (e, stack) {
-      AppLogger.instance.recordWarning(
+      unawaited(AppLogger.instance.recordWarning(
         e,
         stackTrace: stack,
         source: 'chinese_converter',
-      );
+      ));
     }
 
     return text;

@@ -224,7 +224,7 @@ class SettingsBackupService {
   }
 
   static String _normalizeInput(String input) {
-    var text = input.trim();
+    final text = input.trim();
     if (!text.startsWith('```')) return text;
 
     final lines = const LineSplitter().convert(text);

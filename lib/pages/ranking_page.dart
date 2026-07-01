@@ -1,10 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../api/api_client.dart';
 import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../utils/app_logger.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/comic_card_skeleton.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'comic_detail_page.dart';
 import 'home_page.dart';
 
@@ -88,7 +91,6 @@ class _RankingPageState extends State<RankingPage> {
     try {
       final data = await _api.getComicList(
         ordering: _ordering,
-        limit: 21,
         author: widget.authorPathWord,
         theme: widget.themePathWord,
       );
@@ -110,7 +112,6 @@ class _RankingPageState extends State<RankingPage> {
     try {
       final data = await _api.getComicList(
         ordering: _ordering,
-        limit: 21,
         offset: _offset,
         author: widget.authorPathWord,
         theme: widget.themePathWord,
@@ -121,11 +122,11 @@ class _RankingPageState extends State<RankingPage> {
         _offset = _comics.length;
       });
     } catch (e, stack) {
-      AppLogger.instance.recordWarning(
+      unawaited(AppLogger.instance.recordWarning(
         e,
         stackTrace: stack,
         source: 'ranking_page.load_more',
-      );
+      ));
     }
     if (mounted) {
       setState(() => _loadingMore = false);

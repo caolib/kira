@@ -2,9 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../models/comic.dart' hide Theme;
-import '../utils/comic_hero_tags.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
+import '../widgets/comic_hero_tags.dart';
 
 /// Reusable comic card with cover image, title, popular count, and optional
 /// update time. Used across home, search, bookshelf, category, etc.
