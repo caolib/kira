@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
@@ -91,6 +92,17 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   CancelToken? _summaryCancelToken;
   Set<int> _spoilerIds = const {};
   List<ChapterCommentDisplayEntry> _lastSnippetEntries = const [];
+  // ── AI 流式节流 ──
+  Timer? _summaryThrottleTimer;
+  bool _summaryHasPendingUpdate = false;
+  // ── 评论分组缓存 ──
+  List<ChapterCommentDisplayEntry> _groupedEntries = const [];
+  bool _reasoningScrollPending = false;
+
+  /// 在 _comments 变化后调用，重建分组缓存。
+  void _rebuildGroupedEntries() {
+    _groupedEntries = _comments.isEmpty ? const [] : groupChapterComments(_comments);
+  }
   late final ChapterSummaryProgress _summaryProgress;
   bool _usingSharedSummaryProgress = false;
 
@@ -117,6 +129,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _comments = List<ChapterComment>.from(widget.initialComments!);
       _total = widget.initialTotal ?? _comments.length;
       _loading = false;
+      _rebuildGroupedEntries();
       if (_user.commentAutoLoadAll && _comments.length < _total) {
         _loadAllComments();
       }
@@ -132,6 +145,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   @override
   void dispose() {
     _summaryCancelToken?.cancel();
+    _summaryThrottleTimer?.cancel();
     _summaryProgress.removeListener(_onSummaryProgressChanged);
     _aiSettings.removeListener(_onAiChanged);
     _scrollController.dispose();
@@ -313,6 +327,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _loadingMore = false;
         _error = null;
       });
+      _rebuildGroupedEntries();
       _notifyCommentsUpdated();
       if (!loadMore) {
         _maybeAutoSummary();
@@ -444,6 +459,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           _comments = [..._comments, ...newComments];
           _total = data.total;
         });
+        _rebuildGroupedEntries();
         _notifyCommentsUpdated();
 
         if (_comments.length < _total) {
@@ -517,17 +533,37 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         } else {
           buffer.write(chunk.text);
         }
+        // 节流 setState：最多每 66ms 刷新一次（~15fps），
+        // 避免每个 SSE chunk 都触发整棵 Widget 树 rebuild。
+        _summaryHasPendingUpdate = true;
+        _summaryThrottleTimer ??= Timer(const Duration(milliseconds: 66), () {
+          _summaryThrottleTimer = null;
+          if (!mounted || !_summaryHasPendingUpdate) return;
+          _summaryHasPendingUpdate = false;
+          final reasoningText = reasoningBuffer.toString();
+          setState(() {
+            _aiSummary = buffer.toString();
+            _aiSummaryReasoning = reasoningText;
+          });
+          _scrollReasoningToBottom();
+        });
+        ChapterSummaryCache.updateProgress(
+          widget.chapterUuid,
+          buffer.toString(),
+          reasoningContent: reasoningBuffer.toString(),
+        );
+      }
+      // Flush 任何因节流而未刷新的最终文本
+      _summaryThrottleTimer?.cancel();
+      _summaryThrottleTimer = null;
+      if (_summaryHasPendingUpdate && mounted) {
+        _summaryHasPendingUpdate = false;
         final reasoningText = reasoningBuffer.toString();
         setState(() {
           _aiSummary = buffer.toString();
           _aiSummaryReasoning = reasoningText;
         });
         _scrollReasoningToBottom();
-        ChapterSummaryCache.updateProgress(
-          widget.chapterUuid,
-          buffer.toString(),
-          reasoningContent: reasoningText,
-        );
       }
       if (mounted && buffer.isNotEmpty) {
         final full = buffer.toString();
@@ -573,7 +609,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   String _buildCommentSnippets() {
     const maxChars = 64 * 1024;
     final buffer = StringBuffer();
-    final entries = groupChapterComments(_comments);
+    final entries = _groupedEntries;
     _lastSnippetEntries = entries;
     var truncated = false;
     for (final entry in entries) {
@@ -659,7 +695,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   void _scrollReasoningToBottom() {
+    if (_reasoningScrollPending) return;
+    _reasoningScrollPending = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reasoningScrollPending = false;
       if (!mounted) return;
       final c = _reasoningScrollController;
       if (!c.hasClients) return;
@@ -1479,7 +1518,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       );
     }
 
-    final entries = groupChapterComments(_comments);
+    final entries = _groupedEntries;
     final hasSummary = _hasSummaryPanel;
     final summaryOffset = hasSummary ? 1 : 0;
 
