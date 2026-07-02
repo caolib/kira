@@ -93,8 +93,9 @@ class _ReaderBottomBar extends StatelessWidget {
                               activeTickMarkColor: colorScheme.primary,
                               inactiveTickMarkColor: Colors.white24,
                               thumbColor: colorScheme.primary,
-                              overlayColor:
-                                  colorScheme.primary.withValues(alpha: 0.2),
+                              overlayColor: colorScheme.primary.withValues(
+                                alpha: 0.2,
+                              ),
                             ),
                             child: Slider(
                               value: currentPage.toDouble(),
@@ -123,8 +124,7 @@ class _ReaderBottomBar extends StatelessWidget {
                         IconButton(
                           icon: Icon(
                             Icons.skip_previous,
-                            color:
-                                hasPrev ? Colors.white : Colors.white38,
+                            color: hasPrev ? Colors.white : Colors.white38,
                           ),
                           onPressed: onPrevChapter,
                           tooltip: '上一章',
@@ -137,9 +137,7 @@ class _ReaderBottomBar extends StatelessWidget {
                         if (showAutoScrollButton)
                           IconButton(
                             tooltip: autoScrollEnabled
-                                ? (autoScrollActive
-                                    ? '暂停自动滚动'
-                                    : '自动滚动即将恢复')
+                                ? (autoScrollActive ? '暂停自动滚动' : '自动滚动即将恢复')
                                 : '开启自动滚动',
                             icon: Icon(
                               autoScrollEnabled
@@ -147,9 +145,10 @@ class _ReaderBottomBar extends StatelessWidget {
                                   : Icons.play_circle_outline,
                               color: autoScrollEnabled
                                   ? (autoScrollActive
-                                      ? colorScheme.primary
-                                      : colorScheme.primary
-                                          .withValues(alpha: 0.4))
+                                        ? colorScheme.primary
+                                        : colorScheme.primary.withValues(
+                                            alpha: 0.4,
+                                          ))
                                   : Colors.white,
                             ),
                             onPressed: onToggleAutoScroll,
@@ -172,16 +171,14 @@ class _ReaderBottomBar extends StatelessWidget {
                           tooltip: '章节评论',
                         ),
                         IconButton(
-                          icon:
-                              const Icon(Icons.settings, color: Colors.white),
+                          icon: const Icon(Icons.settings, color: Colors.white),
                           onPressed: onSettings,
                           tooltip: '阅读设置',
                         ),
                         IconButton(
                           icon: Icon(
                             Icons.skip_next,
-                            color:
-                                hasNext ? Colors.white : Colors.white38,
+                            color: hasNext ? Colors.white : Colors.white38,
                           ),
                           onPressed: onNextChapter,
                           tooltip: '下一话',

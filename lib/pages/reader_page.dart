@@ -114,6 +114,7 @@ class _ReaderPageState extends State<ReaderPage> {
   int _currentPage = 1;
   bool _isDraggingSlider = false;
   bool _autoAdvancingChapter = false;
+
   /// 滚动模式尾部的 item 索引（-1 表示无尾部/有下一话）。
   int _scrollTailIndex = -1;
   // 无动画翻页：拖动过程中的累计位移与是否已翻页标记。
@@ -1245,12 +1246,17 @@ class _ReaderPageState extends State<ReaderPage> {
           if (frame == 0 && !_imageNaturalSizes.containsKey(imageSource)) {
             FileImage(File(imageSource))
                 .resolve(ImageConfiguration.empty)
-                .addListener(ImageStreamListener((info, _) {
-              _recordImageNaturalSize(
-                imageSource,
-                Size(info.image.width.toDouble(), info.image.height.toDouble()),
-              );
-            }));
+                .addListener(
+                  ImageStreamListener((info, _) {
+                    _recordImageNaturalSize(
+                      imageSource,
+                      Size(
+                        info.image.width.toDouble(),
+                        info.image.height.toDouble(),
+                      ),
+                    );
+                  }),
+                );
           }
           return child;
         },
@@ -1293,13 +1299,19 @@ class _ReaderPageState extends State<ReaderPage> {
           _clearImageRetryState(key);
           // 图片加载成功后，异步解析其原始尺寸并缓存。
           if (!_imageNaturalSizes.containsKey(imageSource)) {
-            imageProvider.resolve(ImageConfiguration.empty)
-                .addListener(ImageStreamListener((info, _) {
-              _recordImageNaturalSize(
-                imageSource,
-                Size(info.image.width.toDouble(), info.image.height.toDouble()),
-              );
-            }));
+            imageProvider
+                .resolve(ImageConfiguration.empty)
+                .addListener(
+                  ImageStreamListener((info, _) {
+                    _recordImageNaturalSize(
+                      imageSource,
+                      Size(
+                        info.image.width.toDouble(),
+                        info.image.height.toDouble(),
+                      ),
+                    );
+                  }),
+                );
           }
           return Image(
             image: imageProvider,
@@ -1637,8 +1649,8 @@ class _ReaderPageState extends State<ReaderPage> {
     // 记录尾部 item 索引，用于检测是否应返回目录
     _scrollTailIndex =
         (_continuousReading ? _chain.last.next == null : _detail!.next == null)
-            ? totalItems - 1
-            : -1;
+        ? totalItems - 1
+        : -1;
 
     return Listener(
       onPointerDown: (_) => _onAutoScrollTouchStart(),
@@ -1723,8 +1735,7 @@ class _ReaderPageState extends State<ReaderPage> {
                     isHorizontalScroll: _isHorizontalScrollMode,
                     tailExtent: _scrollModeTailExtent(context),
                     onCatalog: () => Navigator.pop(context),
-                    onComments: () =>
-                        _showChapterComments(chapter: chapter),
+                    onComments: () => _showChapterComments(chapter: chapter),
                   );
                 case _ScrollItemKind.image:
                   final image = _buildReaderImageGesture(
@@ -1966,67 +1977,64 @@ class _ReaderPageState extends State<ReaderPage> {
         physics: instantTurn ? const NeverScrollableScrollPhysics() : null,
         itemCount: itemCount,
         onPageChanged: (index) {
-            // 末尾空白页：返回目录
-            if (hasEndBlank && index == totalChapters) {
-              if (!_autoAdvancingChapter) {
-                _autoAdvancingChapter = true;
-                Navigator.pop(context);
-              }
-              return;
+          // 末尾空白页：返回目录
+          if (hasEndBlank && index == totalChapters) {
+            if (!_autoAdvancingChapter) {
+              _autoAdvancingChapter = true;
+              Navigator.pop(context);
             }
-            final (ci, li) = _resolveChainImage(index);
-            final chapterChanged = _syncActiveChapterFromGlobal(ci);
-            setState(() {
-              _currentPage = li + 1;
-              if (!_isDraggingSlider) {
-                _showToolbar = false;
-                SystemChrome.setEnabledSystemUIMode(
-                  SystemUiMode.immersiveSticky,
-                );
-              }
-            });
-            _saveReadingHistory();
-            _preloadChainImages(ci, li);
-            // 接近链尾且有下一话：预加载下一话到链中，翻页时即可无缝衔接
-            if (ci == _chain.length - 1 &&
-                li >= _chain.last.contents.length - 2 &&
-                _chain.last.next != null &&
-                !_loadingNextChainChapter) {
-              _appendNextChapterToChain();
+            return;
+          }
+          final (ci, li) = _resolveChainImage(index);
+          final chapterChanged = _syncActiveChapterFromGlobal(ci);
+          setState(() {
+            _currentPage = li + 1;
+            if (!_isDraggingSlider) {
+              _showToolbar = false;
+              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
             }
-            if (chapterChanged) {
-              _preloadComments();
-            }
-          },
+          });
+          _saveReadingHistory();
+          _preloadChainImages(ci, li);
+          // 接近链尾且有下一话：预加载下一话到链中，翻页时即可无缝衔接
+          if (ci == _chain.length - 1 &&
+              li >= _chain.last.contents.length - 2 &&
+              _chain.last.next != null &&
+              !_loadingNextChainChapter) {
+            _appendNextChapterToChain();
+          }
+          if (chapterChanged) {
+            _preloadComments();
+          }
+        },
         itemBuilder: (_, i) {
-            // 末尾空白页
-            if (hasEndBlank && i == totalChapters) {
-              return const SizedBox.expand();
-            }
-            final (ci, li) = _resolveChainImage(i);
-            final chapter = _chain[ci];
-            // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
-            final isChapterLastPage = li == chapter.contents.length - 1;
-            final child = Center(
-              child: _buildReaderImageGesture(chapter, li, retryKey: i),
+          // 末尾空白页
+          if (hasEndBlank && i == totalChapters) {
+            return const SizedBox.expand();
+          }
+          final (ci, li) = _resolveChainImage(i);
+          final chapter = _chain[ci];
+          // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
+          final isChapterLastPage = li == chapter.contents.length - 1;
+          final child = Center(
+            child: _buildReaderImageGesture(chapter, li, retryKey: i),
+          );
+          if (isChapterLastPage) {
+            return Column(
+              children: [
+                Expanded(child: child),
+                _PageModeEndActions(
+                  hasNext: chapter.next != null,
+                  commentCount: _commentCountFor(chapter),
+                  onCatalog: () => Navigator.pop(context),
+                  onComments: () => _showChapterComments(chapter: chapter),
+                  onNextChapter: chapter.next != null
+                      ? () => _goChapter(chapter.next)
+                      : null,
+                ),
+              ],
             );
-            if (isChapterLastPage) {
-              return Column(
-                children: [
-                  Expanded(child: child),
-                  _PageModeEndActions(
-                    hasNext: chapter.next != null,
-                    commentCount: _commentCountFor(chapter),
-                    onCatalog: () => Navigator.pop(context),
-                    onComments: () =>
-                        _showChapterComments(chapter: chapter),
-                    onNextChapter: chapter.next != null
-                        ? () => _goChapter(chapter.next)
-                        : null,
-                  ),
-                ],
-              );
-            }
+          }
           return child;
         },
       ),
@@ -2116,8 +2124,10 @@ class _ReaderPageState extends State<ReaderPage> {
                         : page;
                     _pageController.jumpToPage(globalIndex);
                   } else {
-                    _jumpToScrollPage(page,
-                        totalPages: _detail!.contents.length);
+                    _jumpToScrollPage(
+                      page,
+                      totalPages: _detail!.contents.length,
+                    );
                   }
                 },
                 onDragStart: () => _isDraggingSlider = true,
@@ -2126,8 +2136,7 @@ class _ReaderPageState extends State<ReaderPage> {
                     ? () => _goChapter(_detail!.prev)
                     : null,
                 onCatalog: () => Navigator.pop(context),
-                onToggleAutoScroll: () =>
-                    _setAutoScroll(!_autoScrollEnabled),
+                onToggleAutoScroll: () => _setAutoScroll(!_autoScrollEnabled),
                 onComments: _showChapterComments,
                 onSettings: _showSettingsPanel,
                 onNextChapter: _detail!.next != null

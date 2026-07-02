@@ -68,10 +68,7 @@ void main() {
 
       // After reset, resolve without an override throws StateError
       // because _TestService has no default factory.
-      expect(
-        () => Services.resolve<_TestService>(),
-        throwsStateError,
-      );
+      expect(() => Services.resolve<_TestService>(), throwsStateError);
     });
 
     test('after reset, new override works again', () {

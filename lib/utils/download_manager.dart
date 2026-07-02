@@ -55,17 +55,19 @@ class DownloadManager extends ChangeNotifier {
       final key = _taskKey(task.pathWord, task.chapter.uuid);
       final isActive = _activeKey == key;
       final info = getLocalComicInfo(task.pathWord);
-      result.add(ComicDownloadTaskInfo(
-        pathWord: task.pathWord,
-        chapterUuid: task.chapter.uuid,
-        chapterName: task.chapter.name,
-        comicName: info?.comic.name ?? task.pathWord,
-        cover: info?.comic.cover,
-        status: isActive
-            ? ComicDownloadTaskStatus.downloading
-            : ComicDownloadTaskStatus.pending,
-        progress: isActive ? _activeProgress : null,
-      ));
+      result.add(
+        ComicDownloadTaskInfo(
+          pathWord: task.pathWord,
+          chapterUuid: task.chapter.uuid,
+          chapterName: task.chapter.name,
+          comicName: info?.comic.name ?? task.pathWord,
+          cover: info?.comic.cover,
+          status: isActive
+              ? ComicDownloadTaskStatus.downloading
+              : ComicDownloadTaskStatus.pending,
+          progress: isActive ? _activeProgress : null,
+        ),
+      );
     }
     return result;
   }

@@ -16,11 +16,21 @@ void main() {
     test('returns empty list when value is not a list', () {
       expect(jsonList({'key': 'not a list'}, 'key'), []);
       expect(jsonList({'key': 42}, 'key'), []);
-      expect(jsonList({'key': {'nested': true}}, 'key'), []);
+      expect(
+        jsonList({
+          'key': {'nested': true},
+        }, 'key'),
+        [],
+      );
     });
 
     test('returns list when value is a valid list', () {
-      expect(jsonList({'key': [1, 2, 3]}, 'key'), [1, 2, 3]);
+      expect(
+        jsonList({
+          'key': [1, 2, 3],
+        }, 'key'),
+        [1, 2, 3],
+      );
     });
 
     test('returns empty list when value is an empty list', () {
@@ -160,11 +170,18 @@ void main() {
     test('returns null when value is not a map', () {
       expect(jsonMap({'key': 'string'}, 'key'), isNull);
       expect(jsonMap({'key': 42}, 'key'), isNull);
-      expect(jsonMap({'key': [1, 2]}, 'key'), isNull);
+      expect(
+        jsonMap({
+          'key': [1, 2],
+        }, 'key'),
+        isNull,
+      );
     });
 
     test('returns map for valid map value', () {
-      final result = jsonMap({'key': {'a': 1}}, 'key');
+      final result = jsonMap({
+        'key': {'a': 1},
+      }, 'key');
       expect(result, isNotNull);
       expect(result!['a'], 1);
     });

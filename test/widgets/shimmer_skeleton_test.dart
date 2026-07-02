@@ -9,9 +9,7 @@ void main() {
     testWidgets('renders with specified width and height', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: ShimmerBox(width: 100, height: 20),
-          ),
+          home: Scaffold(body: ShimmerBox(width: 100, height: 20)),
         ),
       );
 
@@ -21,13 +19,11 @@ void main() {
       expect(shimmerBox.height, 20);
     });
 
-    testWidgets('renders with default height when width is null', (tester) async {
+    testWidgets('renders with default height when width is null', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: ShimmerBox(),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: ShimmerBox())),
       );
 
       expect(find.byType(ShimmerBox), findsOneWidget);
@@ -40,11 +36,7 @@ void main() {
     testWidgets('builds with a child without error', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: ShimmerShell(
-              child: Text('Loading'),
-            ),
-          ),
+          home: Scaffold(body: ShimmerShell(child: Text('Loading'))),
         ),
       );
 
@@ -60,11 +52,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                ComicCoverSkeletonGrid(),
-              ],
-            ),
+            body: CustomScrollView(slivers: [ComicCoverSkeletonGrid()]),
           ),
         ),
       );
@@ -77,11 +65,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                ComicCoverSkeletonGrid(count: 3),
-              ],
-            ),
+            body: CustomScrollView(slivers: [ComicCoverSkeletonGrid(count: 3)]),
           ),
         ),
       );
@@ -97,11 +81,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                ComicRowSkeletonList(),
-              ],
-            ),
+            body: CustomScrollView(slivers: [ComicRowSkeletonList()]),
           ),
         ),
       );
@@ -113,11 +93,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                ComicRowSkeletonList(count: 3),
-              ],
-            ),
+            body: CustomScrollView(slivers: [ComicRowSkeletonList(count: 3)]),
           ),
         ),
       );

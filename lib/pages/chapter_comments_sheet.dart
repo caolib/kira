@@ -101,8 +101,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
   /// 在 _comments 变化后调用，重建分组缓存。
   void _rebuildGroupedEntries() {
-    _groupedEntries = _comments.isEmpty ? const [] : groupChapterComments(_comments);
+    _groupedEntries = _comments.isEmpty
+        ? const []
+        : groupChapterComments(_comments);
   }
+
   late final ChapterSummaryProgress _summaryProgress;
   bool _usingSharedSummaryProgress = false;
 
@@ -368,7 +371,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           : <ChapterComment>[];
 
       List<ChapterComment> merged;
-      if (firstPageComments.length >= _pageSize && existingBeyondPage1.isNotEmpty) {
+      if (firstPageComments.length >= _pageSize &&
+          existingBeyondPage1.isNotEmpty) {
         // 第 1 页满，说明有一条从第 1 页溢出到第 2 页。
         // 溢出的是旧第 1 页的最后一条（原 _comments[_pageSize - 1]）。
         final overflowComment = _comments[_pageSize - 1];

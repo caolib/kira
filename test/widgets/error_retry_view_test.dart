@@ -6,7 +6,12 @@ void main() {
   // ── ErrorRetryView ────────────────────────────────────────────────────
 
   group('ErrorRetryView', () {
-    Widget buildSubject({VoidCallback? onRetry, IconData? icon, String? message, String? retryLabel}) {
+    Widget buildSubject({
+      VoidCallback? onRetry,
+      IconData? icon,
+      String? message,
+      String? retryLabel,
+    }) {
       return MaterialApp(
         home: Scaffold(
           body: ErrorRetryView(
@@ -64,11 +69,7 @@ void main() {
       return MaterialApp(
         home: Scaffold(
           body: CustomScrollView(
-            slivers: [
-              SliverErrorRetryView(
-                onRetry: onRetry ?? () {},
-              ),
-            ],
+            slivers: [SliverErrorRetryView(onRetry: onRetry ?? () {})],
           ),
         ),
       );
@@ -84,7 +85,9 @@ void main() {
 
     testWidgets('tapping retry button calls callback', (tester) async {
       var pressed = false;
-      await tester.pumpWidget(buildSliverSubject(onRetry: () => pressed = true));
+      await tester.pumpWidget(
+        buildSliverSubject(onRetry: () => pressed = true),
+      );
 
       await tester.tap(find.text('重试'));
       expect(pressed, true);
