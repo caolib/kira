@@ -491,7 +491,9 @@ class _ReaderPageState extends State<ReaderPage> {
     required List<ChapterComment> comments,
   }) async {
     await _aiSettings.load();
-    if (!mounted || _currentUuid != chapterUuid) return;
+    // ponytail: 检查章节是否仍在链中（连续阅读追加后 _currentUuid 可能尚未更新）。
+    // 允许后台 AI 总结运行，不要求 _currentUuid == chapterUuid。
+    if (!mounted || !_chain.any((c) => c.uuid == chapterUuid)) return;
     if (!_user.commentPreload ||
         !_aiSettings.hasConfig ||
         !_aiSettings.summaryEnabled ||
@@ -504,7 +506,7 @@ class _ReaderPageState extends State<ReaderPage> {
     }
 
     final cached = await ChapterSummaryCache.get(chapterUuid);
-    if (!mounted || _currentUuid != chapterUuid) return;
+    if (!mounted || !_chain.any((c) => c.uuid == chapterUuid)) return;
     if (cached != null && cached.isNotEmpty) return;
     if (ChapterSummaryCache.isGenerating(chapterUuid)) return;
 
@@ -536,7 +538,7 @@ class _ReaderPageState extends State<ReaderPage> {
         messages: messages,
       );
       await for (final chunk in stream) {
-        if (!mounted || _currentUuid != chapterUuid) {
+        if (!mounted || !_chain.any((c) => c.uuid == chapterUuid)) {
           ChapterSummaryCache.clearProgress(chapterUuid);
           return;
         }
