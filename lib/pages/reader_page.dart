@@ -114,6 +114,8 @@ class _ReaderPageState extends State<ReaderPage> {
   int _currentPage = 1;
   bool _isDraggingSlider = false;
   bool _autoAdvancingChapter = false;
+  /// 滚动模式尾部的 item 索引（-1 表示无尾部/有下一话）。
+  int _scrollTailIndex = -1;
   // 无动画翻页：拖动过程中的累计位移与是否已翻页标记。
   double _instantTurnDragDelta = 0;
   bool _instantTurnCommitted = false;
@@ -314,6 +316,7 @@ class _ReaderPageState extends State<ReaderPage> {
       } else {
         _loading = true;
       }
+      _scrollTailIndex = -1;
     });
     try {
       final detail =
@@ -733,13 +736,20 @@ class _ReaderPageState extends State<ReaderPage> {
         showToast(context, '正在加载下一话…');
         return;
       }
-      showToast(context, '当前已无下一话');
+      // 已经是最后一话：跳转到末尾空白页（触发返回目录）
+      if (_isPageMode && _pageController.hasClients) {
+        final blankPageIndex = _chainImageCount;
+        if (_user.readerInstantPageTurn) {
+          _pageController.jumpToPage(blankPageIndex);
+        } else {
+          _pageController.animateToPage(
+            blankPageIndex,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
       return;
-    }
-    if (_detail!.next != null) {
-      _goChapter(_detail!.next);
-    } else {
-      showToast(context, '当前已无下一话');
     }
   }
 
@@ -1526,49 +1536,47 @@ class _ReaderPageState extends State<ReaderPage> {
     return false;
   }
 
-  /// 滚动模式：已无上/下一话时，继续同方向滚动则返回详情页。
+  /// 滚动模式：最后一话时，"已经是最后一话"组件滚动到屏幕约 3/5 位置则返回目录。
+  bool _shouldScrollToCatalog(ScrollNotification notification) {
+    if (_scrollTailIndex < 0 || _loading || _autoAdvancingChapter) return false;
+
+    final positions = _itemPositionsListener.itemPositions.value;
+    for (final p in positions) {
+      if (p.index != _scrollTailIndex) continue;
+      // 尾部组件滚动到屏幕约一半高度位置时触发跳转
+      if (p.itemLeadingEdge <= 0.5) {
+        return true;
+      }
+      break;
+    }
+
+    return false;
+  }
+
+  /// 滚动模式：已无上一话时，继续向上/向左滚动则返回详情页。
   bool _shouldScrollBackToDetail(ScrollNotification notification) {
     if (_detail == null || _loading || _autoAdvancingChapter) return false;
 
     final hasHeader = _detail!.prev == null;
+    if (!hasHeader) return false;
+
     final positions = _itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return false;
 
-    // 已无下一话：tail 已完全可见且继续向下/向右滚动
-    if (_detail!.next == null) {
-      final tailIndex = (hasHeader ? 1 : 0) + _detail!.contents.length;
-      var tailFullyVisible = false;
-      for (final p in positions) {
-        if (p.index != tailIndex) continue;
-        tailFullyVisible =
-            p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
-        break;
-      }
-      if (!tailFullyVisible) return false;
-      if (notification is ScrollUpdateNotification) {
-        return (notification.scrollDelta ?? 0) > 0;
-      }
-      if (notification is OverscrollNotification) {
-        return notification.overscroll > 0;
-      }
-    }
-
     // 已无上一话：header 已完全可见且继续向上/向左滚动
-    if (hasHeader) {
-      var headFullyVisible = false;
-      for (final p in positions) {
-        if (p.index != 0) continue;
-        headFullyVisible =
-            p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
-        break;
-      }
-      if (!headFullyVisible) return false;
-      if (notification is ScrollUpdateNotification) {
-        return (notification.scrollDelta ?? 0) < 0;
-      }
-      if (notification is OverscrollNotification) {
-        return notification.overscroll < 0;
-      }
+    var headFullyVisible = false;
+    for (final p in positions) {
+      if (p.index != 0) continue;
+      headFullyVisible =
+          p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
+      break;
+    }
+    if (!headFullyVisible) return false;
+    if (notification is ScrollUpdateNotification) {
+      return (notification.scrollDelta ?? 0) < 0;
+    }
+    if (notification is OverscrollNotification) {
+      return notification.overscroll < 0;
     }
 
     return false;
@@ -1579,27 +1587,6 @@ class _ReaderPageState extends State<ReaderPage> {
     if (nextUuid == null || _autoAdvancingChapter) return;
     _autoAdvancingChapter = true;
     _goChapter(nextUuid);
-  }
-
-  /// 翻页模式：用户滑到开头/结尾空白页时，执行跨章跳转。
-  void _handlePageModeBlankPage(bool isEndBlank) {
-    if (_detail == null || _autoAdvancingChapter) return;
-    _autoAdvancingChapter = true;
-    if (isEndBlank) {
-      if (_detail!.next != null) {
-        _goChapter(_detail!.next);
-      } else {
-        showToast(context, '当前已无下一话');
-        Navigator.pop(context);
-      }
-    } else {
-      if (_detail!.prev != null) {
-        _goChapter(_detail!.prev);
-      } else {
-        showToast(context, '当前已无上一话');
-        Navigator.pop(context);
-      }
-    }
   }
 
   Widget _buildScrollMode() {
@@ -1645,6 +1632,11 @@ class _ReaderPageState extends State<ReaderPage> {
       items.add(_ScrollItem.tail());
     }
     final totalItems = items.length;
+    // 记录尾部 item 索引，用于检测是否应返回目录
+    _scrollTailIndex =
+        (_continuousReading ? _chain.last.next == null : _detail!.next == null)
+            ? totalItems - 1
+            : -1;
 
     return Listener(
       onPointerDown: (_) => _onAutoScrollTouchStart(),
@@ -1667,9 +1659,17 @@ class _ReaderPageState extends State<ReaderPage> {
             }
             if (_continuousReading) {
               _maybeAppendNextChainOnScroll();
+              if (_shouldScrollToCatalog(n)) {
+                _autoAdvancingChapter = true;
+                Navigator.pop(context);
+              }
             } else {
               if (_shouldAutoAdvanceScrollChapter(n)) {
                 _autoAdvanceToNextChapter();
+              }
+              if (_shouldScrollToCatalog(n)) {
+                _autoAdvancingChapter = true;
+                Navigator.pop(context);
               }
               if (_shouldScrollBackToDetail(n)) {
                 Navigator.pop(context);
@@ -1735,15 +1735,26 @@ class _ReaderPageState extends State<ReaderPage> {
                   }
                   return image;
                 case _ScrollItemKind.tail:
+                  final tailHasNext = _continuousReading
+                      ? _chain.last.next != null
+                      : _detail?.next != null;
                   return _NextChapterTail(
-                    hasNext: _detail?.next != null,
+                    hasNext: tailHasNext,
                     isHorizontalScroll: _isHorizontalScrollMode,
                     tailExtent: _scrollModeTailExtent(context),
-                    commentCount: _commentCount,
+                    commentCount: _continuousReading
+                        ? _commentCountFor(_chain.last)
+                        : _commentCount,
                     onCatalog: () => Navigator.pop(context),
-                    onComments: _showChapterComments,
-                    onNextChapter: _detail?.next != null
-                        ? () => _goChapter(_detail!.next)
+                    onComments: _continuousReading
+                        ? () => _showChapterComments(chapter: _chain.last)
+                        : _showChapterComments,
+                    onNextChapter: tailHasNext
+                        ? () => _goChapter(
+                            _continuousReading
+                                ? _chain.last.next!
+                                : _detail!.next!,
+                          )
                         : null,
                   );
                 case _ScrollItemKind.loadMore:
@@ -1930,9 +1941,9 @@ class _ReaderPageState extends State<ReaderPage> {
     final horizontalDrag = instantTurn && !_isVerticalPageMode;
     final verticalDrag = instantTurn && _isVerticalPageMode;
     final totalChapters = _chainImageCount;
-    final isContinuous = _continuousReading;
-    final imageCount = _detail!.contents.length;
-    final itemCount = isContinuous ? totalChapters : imageCount + 2;
+    // 最后一话无下一话时，末尾追加一个空白页用于返回目录
+    final hasEndBlank = _chain.last.next == null;
+    final itemCount = totalChapters + (hasEndBlank ? 1 : 0);
     return GestureDetector(
       onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
       onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
@@ -1945,11 +1956,7 @@ class _ReaderPageState extends State<ReaderPage> {
       onVerticalDragCancel: verticalDrag ? _onInstantTurnDragCancel : null,
       child: PageView.builder(
         // 连续阅读：章切换不重建 PageView，避免丢位置；用稳定 key。
-        key: ValueKey(
-          isContinuous
-              ? 'page-continuous-$_scrollWidgetVersion'
-              : 'page-$_currentUuid',
-        ),
+        key: ValueKey('page-continuous-$_scrollWidgetVersion'),
         controller: _pageController,
         scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
         reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
@@ -1957,17 +1964,14 @@ class _ReaderPageState extends State<ReaderPage> {
         physics: instantTurn ? const NeverScrollableScrollPhysics() : null,
         itemCount: itemCount,
         onPageChanged: (index) {
-          if (!isContinuous) {
-            if (index == 0) {
-              _handlePageModeBlankPage(false);
+            // 末尾空白页：返回目录
+            if (hasEndBlank && index == totalChapters) {
+              if (!_autoAdvancingChapter) {
+                _autoAdvancingChapter = true;
+                Navigator.pop(context);
+              }
               return;
             }
-            if (index == imageCount + 1) {
-              _handlePageModeBlankPage(true);
-              return;
-            }
-          }
-          if (isContinuous) {
             final (ci, li) = _resolveChainImage(index);
             final chapterChanged = _syncActiveChapterFromGlobal(ci);
             setState(() {
@@ -1991,49 +1995,12 @@ class _ReaderPageState extends State<ReaderPage> {
             if (chapterChanged) {
               _preloadComments();
             }
-            return;
-          }
-          setState(() {
-            _currentPage = index;
-            if (!_isDraggingSlider) {
-              _showToolbar = false;
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-            }
-          });
-          _saveReadingHistory();
-          _preloadImages(index - 1);
-        },
+          },
         itemBuilder: (_, i) {
-          if (!isContinuous) {
-            if (i == 0 || i == imageCount + 1) {
+            // 末尾空白页
+            if (hasEndBlank && i == totalChapters) {
               return const SizedBox.expand();
             }
-            final imageIndex = i - 1;
-            if (imageIndex < imageCount - 1) {
-              return Center(
-                child: _buildReaderImageGesture(_detail!, imageIndex),
-              );
-            }
-              return Column(
-                children: [
-                  Expanded(
-                    child: Center(
-                      child: _buildReaderImageGesture(_detail!, imageIndex),
-                    ),
-                  ),
-                  _PageModeEndActions(
-                    hasNext: _detail?.next != null,
-                    commentCount: _commentCount,
-                    onCatalog: () => Navigator.pop(context),
-                    onComments: _showChapterComments,
-                    onNextChapter: _detail?.next != null
-                        ? () => _goChapter(_detail!.next)
-                        : null,
-                  ),
-                ],
-              );
-            }
-            // 连续阅读：按全局索引解析章节与章内索引
             final (ci, li) = _resolveChainImage(i);
             final chapter = _chain[ci];
             // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
