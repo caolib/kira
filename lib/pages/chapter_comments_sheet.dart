@@ -359,7 +359,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       final data = await _api.manga.getChapterComments(
         widget.chapterUuid,
         limit: _pageSize,
-        offset: 0,
       );
       if (!mounted) return;
 
@@ -418,9 +417,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     } catch (e) {
       if (!mounted) return;
       // 刷新第 1 页失败时不影响已有数据，仅记录错误
-      AppLogger().recordWarning(
-        '刷新第1页评论失败: $e',
-        stackTrace: StackTrace.current,
+      unawaited(
+        AppLogger().recordWarning(
+          '刷新第1页评论失败: $e',
+          stackTrace: StackTrace.current,
+        ),
       );
     }
   }

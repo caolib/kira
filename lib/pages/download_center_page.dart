@@ -189,7 +189,7 @@ class _ComicDownloadQueueView extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: tasks.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final task = tasks[i];
         return _ComicQueueTaskCard(task: task);
@@ -236,7 +236,7 @@ class _CombinedDownloadQueueView extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: totalTasks,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         if (i < comicTasks.length) {
           return _ComicQueueTaskCard(task: comicTasks[i]);
@@ -490,7 +490,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
                             child: Image.network(
                               task.cover!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _placeholder(cs),
+                              errorBuilder: (_, _, _) => _placeholder(cs),
                             ),
                           )
                         : _placeholder(cs),

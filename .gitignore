@@ -58,3 +58,5 @@ ref/
 .claude
 
 .omo
+
+.vscode/settings.json

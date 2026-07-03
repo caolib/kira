@@ -198,10 +198,7 @@ class _KiraAppState extends ConsumerState<KiraApp> {
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _user.themeMode,
       routerConfig: _router,
-      locale:
-          _user.locale.isEmpty
-              ? null
-              : _parseLocale(_user.locale),
+      locale: _user.locale.isEmpty ? null : _parseLocale(_user.locale),
     );
   }
 }

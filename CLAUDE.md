@@ -2,60 +2,6 @@
 
 ## Project Structure & Module Organization
 
-```
-lib/
-  main.dart              — App entry point, ProviderScope + MaterialApp.router
-  api/
-    api_transport.dart   — Shared Dio instance, auth, cache headers, host rotation
-    api_client.dart      — Facade: creates ApiTransport, exposes .manga/.anime/.network/.user
-    manga/manga_api.dart — MangaApi(ApiTransport _t) — standalone class, not a mixin
-    anime/anime_api.dart — AnimeApi(ApiTransport _t)
-    network/network_api.dart — NetworkApi(ApiTransport _t)
-    user/user_api.dart   — UserApi(ApiTransport _t)
-  models/
-    cached_repository.dart   — CachedRepository<T> + DualCachedRepository<A,B> base classes
-    comic.dart               — Comic, Author, Theme, ComicGroup, MangaTopic (simple models use json_serializable)
-    anime.dart               — Anime, AnimeTag, AnimeCompany, AnimeChapterLine (simple models use json_serializable)
-    comic_comment.dart       — ComicComment (json_serializable)
-    chapter_comment.dart     — ChapterComment (json_serializable)
-    user_manager.dart        — Facade: forwards to sub-stores (ReaderSettings, ThemeSettings, etc.)
-    user_manager/
-      prefs_store.dart       — Base class for SharedPreferences-backed stores
-      reader_settings.dart   — Reader configuration sub-store
-      danmaku_settings.dart  — Danmaku configuration sub-store
-      comment_settings.dart  — Comment display sub-store
-      theme_settings.dart    — Theme mode/fonts sub-store
-      network_settings.dart  — Proxy/API host sub-store
-      network_proxy_types.dart — Enum for proxy types
-  pages/                 — Screen widgets (StatefulWidget or ConsumerStatefulWidget)
-  widgets/               — Shared UI components
-    comic_cover_card.dart     — Reusable comic cover card
-    shimmer_skeleton.dart     — ShimmerBox, ShimmerShell, ComicCoverSkeletonGrid, ComicRowSkeletonList
-    error_retry_view.dart     — ErrorRetryView + SliverErrorRetryView
-    local_content_list_page.dart — Generic local content list (LocalContentEntry interface)
-    detail_chip.dart          — Shared DetailChip widget
-    comic_card_skeleton.dart  — Moved from utils/
-    comic_hero_tags.dart      — Moved from utils/
-    login_expired_dialog.dart — Extracted login-expired dialog
-  repositories/          — CachedRepository subclasses for each data domain
-    manga_home_repository.dart
-    anime_home_repository.dart
-    search_init_repository.dart
-    comic_detail_repository.dart
-    bookshelf_repository.dart (ComicBookshelfRepository + AnimeBookshelfRepository)
-  providers/             — Riverpod providers (incremental migration)
-    app_providers.dart        — Singleton providers: userManagerProvider, apiClientProvider, etc.
-    settings_providers.dart   — Sub-store providers derived from userManagerProvider
-    repository_providers.dart — Repository providers
-  routing/
-    app_router.dart       — GoRouter configuration with named routes (AppRoutes constants)
-    main_shell.dart       — Bottom-nav shell via ShellRoute
-  l10n/
-    app_zh.arb            — Chinese strings (template ARB)
-    app_localizations.dart — Generated localizations
-  utils/                 — Helpers (AppLogger, AppStorage, toast, etc.)
-```
-
 Platform folders (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) hold only platform-specific integration code. Static assets live in `assets/` and must be declared in `pubspec.yaml`. Release notes belong in `docs/CHANGELOG.md`. Use `ref/` for reference material, not production code.
 
 ## Architecture Patterns

@@ -176,39 +176,6 @@ class _GeneralPageState extends State<GeneralPage> {
     }
   }
 
-  void _showLanguagePicker(BuildContext context) {
-    final selected = _user.locale;
-    showDialog<String>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('选择语言'),
-        children: [
-          RadioGroup<String>(
-            groupValue: selected,
-            onChanged: (v) => Navigator.pop(ctx, v),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RadioListTile<String>(
-                  title: Text('简体中文（跟随系统）'),
-                  value: '',
-                ),
-                RadioListTile<String>(
-                  title: Text('繁體中文'),
-                  value: 'zh-Hant',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).then((value) {
-      if (value != null) {
-        _user.setLocale(value);
-      }
-    });
-  }
-
   String _formatBackupTime(DateTime time) {
     final local = time.toLocal();
     final year = local.year.toString().padLeft(4, '0');
@@ -272,15 +239,18 @@ class _GeneralPageState extends State<GeneralPage> {
                   ListTile(
                     leading: const Icon(Icons.language_rounded),
                     title: const Text('语言'),
-                    subtitle: Text(
-                      switch (_user.locale) {
-                        'zh-Hant' => '繁體中文',
-                        _ => '简体中文（跟随系统）',
-                      },
-                      style: tt.bodySmall,
+                    subtitle: Text(switch (_user.locale) {
+                      'zh-Hant' => '繁體中文',
+                      _ => '简体中文（跟随系统）',
+                    }, style: tt.bodySmall),
+                    trailing: PopupMenuButton<String>(
+                      icon: const Icon(Icons.arrow_drop_down),
+                      onSelected: _user.setLocale,
+                      itemBuilder: (ctx) => const [
+                        PopupMenuItem(value: '', child: Text('简体中文（跟随系统）')),
+                        PopupMenuItem(value: 'zh-Hant', child: Text('繁體中文')),
+                      ],
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showLanguagePicker(context),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
