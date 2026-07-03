@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -81,23 +82,37 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   final ValueNotifier<bool> _showFloatingButtons = ValueNotifier(true);
   double _lastScrollOffset = 0;
 
-  String _aiSummary = '';
-  String _aiSummaryReasoning = '';
-  bool _summarizing = false;
-  bool _summaryExpanded = false;
-  bool _summaryExpansionTouched = false;
-  bool _summaryReasoningExpanded = false;
-  bool _summaryReasoningExpansionTouched = false;
-  String? _summaryError;
+  // ── AI 流式内容用 ValueNotifier 承载 ──
+  // 这样流式 chunk 只会让 _SummaryPanel 内部的 ValueListenableBuilder 重建，
+  // 不再触发整棵 Widget 树（评论列表）rebuild —— 这是 AI 生成时卡顿的根因。
+  // 空字符串等价于「无」；用 String? 的 _summaryError 通过 getter/setter 转换。
+  final ValueNotifier<String> _aiSummaryVN = ValueNotifier('');
+  final ValueNotifier<String> _aiSummaryReasoningVN = ValueNotifier('');
+  final ValueNotifier<bool> _summarizingVN = ValueNotifier(false);
+  final ValueNotifier<String> _summaryErrorVN = ValueNotifier('');
+
+  String get _aiSummary => _aiSummaryVN.value;
+  set _aiSummary(String v) => _aiSummaryVN.value = v;
+  String get _aiSummaryReasoning => _aiSummaryReasoningVN.value;
+  set _aiSummaryReasoning(String v) => _aiSummaryReasoningVN.value = v;
+  bool get _summarizing => _summarizingVN.value;
+  set _summarizing(bool v) => _summarizingVN.value = v;
+  String? get _summaryError =>
+      _summaryErrorVN.value.isEmpty ? null : _summaryErrorVN.value;
+  set _summaryError(String? v) => _summaryErrorVN.value = v ?? '';
+
   CancelToken? _summaryCancelToken;
   Set<int> _spoilerIds = const {};
   List<ChapterCommentDisplayEntry> _lastSnippetEntries = const [];
-  // ── AI 流式节流 ──
+  // ── AI 流式节流（节流写入 ValueNotifier，而非 setState） ──
   Timer? _summaryThrottleTimer;
-  bool _summaryHasPendingUpdate = false;
+  bool _summaryThrottleScheduled = false;
+  bool _summaryHasPendingTextFlush = false;
   // ── 评论分组缓存 ──
   List<ChapterCommentDisplayEntry> _groupedEntries = const [];
   bool _reasoningScrollPending = false;
+  // 缓存上次 _hasSummaryPanel 的结果，仅在面板有/无切换时 setState 刷新 ListView 结构。
+  bool _hasSummaryPanelCached = false;
 
   /// 在 _comments 变化后调用，重建分组缓存。
   void _rebuildGroupedEntries() {
@@ -110,14 +125,68 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _groupedEntries = groupChapterComments(_comments);
       return;
     }
-    final filtered = _comments.where(
-      (c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()),
-    ).toList();
+    final filtered = _comments
+        .where((c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()))
+        .toList();
     _groupedEntries = groupChapterComments(filtered);
   }
 
   late final ChapterSummaryProgress _summaryProgress;
   bool _usingSharedSummaryProgress = false;
+
+  void _flushSummaryText(
+    StringBuffer buffer,
+    StringBuffer reasoningBuffer, {
+    bool allowScroll = true,
+    bool syncSummaryCache = false,
+  }) {
+    final summaryText = buffer.toString();
+    final reasoningText = reasoningBuffer.toString();
+    _aiSummary = summaryText;
+    _aiSummaryReasoning = reasoningText;
+    if (allowScroll && _summarizing) {
+      _scrollReasoningToBottom();
+    }
+    if (syncSummaryCache) {
+      ChapterSummaryCache.updateProgress(
+        widget.chapterUuid,
+        summaryText,
+        reasoningContent: reasoningText,
+      );
+    }
+  }
+
+  void _scheduleSummaryTextFlush(
+    StringBuffer buffer,
+    StringBuffer reasoningBuffer,
+  ) {
+    _summaryHasPendingTextFlush = true;
+    if (_summaryThrottleScheduled) return;
+    _summaryThrottleScheduled = true;
+    _summaryThrottleTimer = Timer(const Duration(milliseconds: 66), () {
+      _summaryThrottleScheduled = false;
+      _summaryThrottleTimer = null;
+      if (!mounted || !_summaryHasPendingTextFlush) return;
+      _summaryHasPendingTextFlush = false;
+      _flushSummaryText(buffer, reasoningBuffer, syncSummaryCache: true);
+    });
+  }
+
+  void _finalizeSummaryTextFlush(
+    StringBuffer buffer,
+    StringBuffer reasoningBuffer,
+  ) {
+    _summaryThrottleTimer?.cancel();
+    _summaryThrottleTimer = null;
+    _summaryThrottleScheduled = false;
+    if (!_summaryHasPendingTextFlush &&
+        _aiSummary == buffer.toString() &&
+        _aiSummaryReasoning == reasoningBuffer.toString()) {
+      return;
+    }
+    _summaryHasPendingTextFlush = false;
+    _flushSummaryText(buffer, reasoningBuffer);
+  }
 
   @override
   void initState() {
@@ -129,13 +198,20 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _commentFontScale = _user.commentFontScale;
     _scrollController.addListener(_handleScrollDirection);
     _aiSettings.addListener(_onAiChanged);
-    _applySummaryDefaultExpansion();
+    // 监听流式 VN，仅在「面板有/无」这种结构性变化时刷新评论列表的 itemCount。
+    // 流式增量写入 VN 时（_hasSummaryPanel 不变）不会触发 setState，
+    // 因此评论列表得以在 AI 生成期间保持完全静止。
+    _aiSummaryVN.addListener(_onSummaryPresenceVnChanged);
+    _aiSummaryReasoningVN.addListener(_onSummaryPresenceVnChanged);
+    _summarizingVN.addListener(_onSummaryPresenceVnChanged);
+    _summaryErrorVN.addListener(_onSummaryPresenceVnChanged);
+    _hasSummaryPanelCached = _hasSummaryPanel;
     _summaryProgress = ChapterSummaryCache.progressOf(widget.chapterUuid);
     _summaryProgress.addListener(_onSummaryProgressChanged);
-    _applySummaryProgress(rebuild: false);
+    _applySummaryProgress();
     _aiSettings.load().then((_) {
       if (!mounted) return;
-      setState(_applySummaryDefaultExpansion);
+      setState(() {}); // 配置加载完成，刷新工具栏按钮可见性等
       _loadCachedSummary().then((_) => _maybeAutoSummary());
     });
     if (widget.initialComments != null) {
@@ -161,34 +237,37 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _summaryThrottleTimer?.cancel();
     _summaryProgress.removeListener(_onSummaryProgressChanged);
     _aiSettings.removeListener(_onAiChanged);
+    _aiSummaryVN.removeListener(_onSummaryPresenceVnChanged);
+    _aiSummaryReasoningVN.removeListener(_onSummaryPresenceVnChanged);
+    _summarizingVN.removeListener(_onSummaryPresenceVnChanged);
+    _summaryErrorVN.removeListener(_onSummaryPresenceVnChanged);
     _scrollController.dispose();
     _reasoningScrollController.dispose();
     _showFloatingButtons.dispose();
+    _aiSummaryVN.dispose();
+    _aiSummaryReasoningVN.dispose();
+    _summarizingVN.dispose();
+    _summaryErrorVN.dispose();
     super.dispose();
   }
 
   void _onAiChanged() {
-    if (mounted) setState(_applySummaryDefaultExpansion);
+    if (!mounted) return;
+    // AiSettings 变化（如 spoilerAnalysis 开关）会影响评论卡片的剧透遮罩显示，
+    // 这里同步刷新整棵树一次；触发频率极低（用户手动改设置）。
+    setState(() {});
   }
 
-  void _applySummaryDefaultExpansion() {
-    if (!_summaryExpansionTouched) {
-      _summaryExpanded = !_aiSettings.summaryCollapsed;
+  /// 当流式相关 ValueNotifier 变化时，仅在「面板有/无」切换时刷新 ListView 结构。
+  /// 流式增量写作期间 _hasSummaryPanel 保持为 true，所以不会触发 setState，
+  /// 评论列表因此不重建 —— 卡顿消除。
+  void _onSummaryPresenceVnChanged() {
+    if (!mounted) return;
+    final now = _hasSummaryPanel;
+    if (now != _hasSummaryPanelCached) {
+      _hasSummaryPanelCached = now;
+      setState(() {});
     }
-  }
-
-  void _toggleSummaryExpanded() {
-    setState(() {
-      _summaryExpansionTouched = true;
-      _summaryExpanded = !_summaryExpanded;
-    });
-  }
-
-  void _toggleSummaryReasoningExpanded() {
-    setState(() {
-      _summaryReasoningExpansionTouched = true;
-      _summaryReasoningExpanded = !_summaryReasoningExpanded;
-    });
   }
 
   void _onSummaryProgressChanged() {
@@ -215,42 +294,42 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     return result;
   }
 
-  void _applySummaryProgress({bool rebuild = true}) {
-    void apply() {
-      if (!_summaryProgress.hasState) {
-        if (_usingSharedSummaryProgress) {
-          _aiSummary = '';
-          _aiSummaryReasoning = '';
-          _summarizing = false;
-          _summaryError = null;
-          _spoilerIds = const {};
-          _usingSharedSummaryProgress = false;
-        }
-        return;
-      }
-
-      _usingSharedSummaryProgress = true;
-      _summarizing = _summaryProgress.isGenerating;
-      if (_summaryProgress.content.isNotEmpty) {
-        _aiSummary = _summaryProgress.content;
-        _spoilerIds = _parseSpoilerIds(_summaryProgress.content);
-      }
-      _aiSummaryReasoning = _summaryProgress.reasoningContent;
-      if (_summarizing) _scrollReasoningToBottom();
-      if (_summaryProgress.error != null) {
-        _summaryError = _summaryProgress.error;
-      } else if (_summaryProgress.isGenerating ||
-          _summaryProgress.content.isNotEmpty) {
+  void _applySummaryProgress() {
+    if (!_summaryProgress.hasState) {
+      if (_usingSharedSummaryProgress) {
+        _aiSummary = '';
+        _aiSummaryReasoning = '';
+        _summarizing = false;
         _summaryError = null;
+        _spoilerIds = const {};
+        _usingSharedSummaryProgress = false;
+        // 面板有/无切换由 VN 监听器自动 setState；
+        // _spoilerIds 变化需显式 setState 让评论卡片的剧透遮罩刷新
+        // （仅在退出共享进度这种一次性事件时发生）。
+        if (mounted) setState(() {});
       }
-      _applySummaryDefaultExpansion();
+      return;
     }
 
-    if (rebuild) {
-      setState(apply);
-    } else {
-      apply();
+    _usingSharedSummaryProgress = true;
+    _summarizing = _summaryProgress.isGenerating;
+    if (_summaryProgress.content.isNotEmpty) {
+      _aiSummary = _summaryProgress.content;
+      final newSpoilerIds = _parseSpoilerIds(_summaryProgress.content);
+      if (newSpoilerIds != _spoilerIds) {
+        _spoilerIds = newSpoilerIds;
+        if (mounted) setState(() {}); // 评论卡片剧透遮罩需要更新
+      }
     }
+    _aiSummaryReasoning = _summaryProgress.reasoningContent;
+    if (_summarizing) _scrollReasoningToBottom();
+    if (_summaryProgress.error != null) {
+      _summaryError = _summaryProgress.error;
+    } else if (_summaryProgress.isGenerating ||
+        _summaryProgress.content.isNotEmpty) {
+      _summaryError = null;
+    }
+    // 面板展开/折叠的默认值现由 _SummaryPanel 自行根据 aiSettings 决定。
   }
 
   void _maybeAutoSummary() {
@@ -270,11 +349,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   Future<void> _loadCachedSummary() async {
     final cached = await ChapterSummaryCache.get(widget.chapterUuid);
     if (!mounted || cached == null || cached.isEmpty) return;
-    setState(() {
-      _aiSummary = cached;
-      _aiSummaryReasoning = '';
-      _spoilerIds = _parseSpoilerIds(cached);
-    });
+    _aiSummary = cached;
+    _aiSummaryReasoning = '';
+    setState(() => _spoilerIds = _parseSpoilerIds(cached));
   }
 
   void _handleScrollDirection() {
@@ -506,10 +583,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _summaryError = null;
       _aiSummary = '';
       _aiSummaryReasoning = '';
-      _summaryReasoningExpanded = false;
-      _summaryReasoningExpansionTouched = false;
       _spoilerIds = const {};
-      _applySummaryDefaultExpansion();
     });
     if (_reasoningScrollController.hasClients) {
       _reasoningScrollController.jumpTo(0);
@@ -548,38 +622,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         } else {
           buffer.write(chunk.text);
         }
-        // 节流 setState：最多每 66ms 刷新一次（~15fps），
-        // 避免每个 SSE chunk 都触发整棵 Widget 树 rebuild。
-        _summaryHasPendingUpdate = true;
-        _summaryThrottleTimer ??= Timer(const Duration(milliseconds: 66), () {
-          _summaryThrottleTimer = null;
-          if (!mounted || !_summaryHasPendingUpdate) return;
-          _summaryHasPendingUpdate = false;
-          final reasoningText = reasoningBuffer.toString();
-          setState(() {
-            _aiSummary = buffer.toString();
-            _aiSummaryReasoning = reasoningText;
-          });
-          _scrollReasoningToBottom();
-        });
-        ChapterSummaryCache.updateProgress(
-          widget.chapterUuid,
-          buffer.toString(),
-          reasoningContent: reasoningBuffer.toString(),
-        );
+        _scheduleSummaryTextFlush(buffer, reasoningBuffer);
       }
-      // Flush 任何因节流而未刷新的最终文本
-      _summaryThrottleTimer?.cancel();
-      _summaryThrottleTimer = null;
-      if (_summaryHasPendingUpdate && mounted) {
-        _summaryHasPendingUpdate = false;
-        final reasoningText = reasoningBuffer.toString();
-        setState(() {
-          _aiSummary = buffer.toString();
-          _aiSummaryReasoning = reasoningText;
-        });
-        _scrollReasoningToBottom();
-      }
+      _finalizeSummaryTextFlush(buffer, reasoningBuffer);
       if (mounted && buffer.isNotEmpty) {
         final full = buffer.toString();
         setState(() => _spoilerIds = _parseSpoilerIds(full));
@@ -612,10 +657,14 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       }
       final message = _extractSummaryError(e);
       ChapterSummaryCache.failProgress(widget.chapterUuid, message);
-      setState(() => _summaryError = message);
+      _summaryError = message;
     } finally {
+      _summaryThrottleTimer?.cancel();
+      _summaryThrottleTimer = null;
+      _summaryThrottleScheduled = false;
+      _summaryHasPendingTextFlush = false;
       if (mounted) {
-        setState(() => _summarizing = false);
+        _summarizing = false;
       }
       _summaryCancelToken = null;
     }
@@ -728,10 +777,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     setState(() {
       _aiSummary = '';
       _aiSummaryReasoning = '';
-      _summaryExpansionTouched = false;
-      _summaryExpanded = !_aiSettings.summaryCollapsed;
-      _summaryReasoningExpanded = false;
-      _summaryReasoningExpansionTouched = false;
       _summaryError = null;
       _spoilerIds = const {};
     });
@@ -1132,16 +1177,12 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                       height: 18,
                       child: Checkbox(
                         value: noRemind,
-                        onChanged: (v) =>
-                            setLocal(() => noRemind = v ?? false),
+                        onChanged: (v) => setLocal(() => noRemind = v ?? false),
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      '不再提醒',
-                      style: Theme.of(ctx).textTheme.bodySmall,
-                    ),
+                    Text('不再提醒', style: Theme.of(ctx).textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -1925,213 +1966,28 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Widget _buildSummaryPanel(ColorScheme cs, TextTheme tt) {
-    final hasContent = _aiSummary.isNotEmpty;
-    final reasoning = _aiSummaryReasoning.trim();
-    final hasReasoning = reasoning.isNotEmpty;
-    final defaultReasoningExpanded = _summarizing && !hasContent;
-    final reasoningExpanded =
-        hasReasoning &&
-        (_summaryReasoningExpansionTouched
-            ? _summaryReasoningExpanded
-            : defaultReasoningExpanded);
-    final statusColor = _summaryStatusColor(
-      cs,
-      hasContent: hasContent,
-      hasReasoning: hasReasoning,
-    );
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: statusColor.withValues(alpha: 0.72),
-          width: 1.2,
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 8, 10, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: _toggleSummaryExpanded,
-            child: Row(
-              children: [
-                if (_modelChoices.isEmpty)
-                  _buildSummaryTitle(cs, tt)
-                else
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {},
-                    child: _buildSummaryTitle(cs, tt),
-                  ),
-                const Spacer(),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: _summaryExpanded ? '收起' : '展开',
-                  onPressed: _toggleSummaryExpanded,
-                  icon: Icon(
-                    _summaryExpanded ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (_summaryExpanded) ...[
-            if (hasReasoning) ...[
-              _buildSummaryReasoningBox(
+    return _SummaryPanel(
+      aiSummaryListenable: _aiSummaryVN,
+      aiSummaryReasoningListenable: _aiSummaryReasoningVN,
+      summarizingListenable: _summarizingVN,
+      summaryErrorListenable: _summaryErrorVN,
+      reasoningScrollController: _reasoningScrollController,
+      aiSettings: _aiSettings,
+      modelChoices: _modelChoices,
+      buildSummaryTitle: () => _buildSummaryTitle(cs, tt),
+      summaryStatusColor:
+          ({required bool hasContent, required bool hasReasoning}) =>
+              _summaryStatusColor(
                 cs,
-                tt,
-                reasoning: reasoning,
-                expanded: reasoningExpanded,
-                toggleable: true,
+                hasContent: hasContent,
+                hasReasoning: hasReasoning,
               ),
-              const SizedBox(height: 8),
-            ],
-            if (_summaryError != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
-                child: Text(
-                  '生成失败：${_summaryError!}',
-                  style: tt.bodySmall?.copyWith(color: cs.error),
-                ),
-              )
-            else if (hasContent)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 2, 8, 2),
-                child: MarkdownBody(
-                  data: _stripSpoilersMarker(_aiSummary),
-                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
-                      .copyWith(
-                        p: tt.bodyMedium?.copyWith(height: 1.5),
-                        h1: tt.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        h2: tt.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        h3: tt.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-                        strong: tt.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: cs.primary,
-                        ),
-                        listBullet: tt.bodyMedium,
-                      ),
-                ),
-              )
-            else if (_summarizing)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 6, 8, 6),
-                child: Text(
-                  '正在生成中…',
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: _summarizing ? '停止' : '重新生成',
-                  onPressed: _summarizing ? _stopSummarize : _summarizeComments,
-                  icon: Icon(
-                    _summarizing ? Icons.stop : Icons.refresh,
-                    size: 18,
-                  ),
-                ),
-                if (hasContent && !_summarizing) ...[
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: '复制',
-                    onPressed: () async {
-                      final text = _stripSpoilersMarker(_aiSummary);
-                      await Clipboard.setData(ClipboardData(text: text));
-                      if (mounted) showToast(context, '已复制');
-                    },
-                    icon: const Icon(Icons.copy, size: 18),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: '清除总结',
-                    onPressed: _clearSummary,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryReasoningBox(
-    ColorScheme cs,
-    TextTheme tt, {
-    required String reasoning,
-    required bool expanded,
-    required bool toggleable,
-  }) {
-    final textStyle = tt.bodySmall?.copyWith(
-      color: cs.onSurfaceVariant.withValues(alpha: 0.78),
-      fontSize: 12,
-      height: 1.35,
-    );
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: toggleable ? _toggleSummaryReasoningExpanded : null,
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(4, 2, 8, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.psychology_alt_outlined,
-                  size: 14,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.78),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  expanded ? '思考过程' : '思考过程（已折叠）',
-                  style: textStyle?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                if (toggleable) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    expanded ? Icons.expand_less : Icons.expand_more,
-                    size: 16,
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.78),
-                  ),
-                ],
-              ],
-            ),
-            if (expanded) ...[
-              const SizedBox(height: 6),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: SingleChildScrollView(
-                  controller: _reasoningScrollController,
-                  child: Text(reasoning, style: textStyle),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+      stripSpoilersMarker: _stripSpoilersMarker,
+      onShowModelPicker: _showModelPickerSheet,
+      onStopSummarize: _stopSummarize,
+      onSummarizeComments: _summarizeComments,
+      onClearSummary: _clearSummary,
+      onCopied: () => showToast(context, '已复制'),
     );
   }
 
@@ -2332,5 +2188,444 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           maxWidth,
           compact: true,
         );
+  }
+}
+
+class _SummaryPanel extends StatefulWidget {
+  final ValueListenable<String> aiSummaryListenable;
+  final ValueListenable<String> aiSummaryReasoningListenable;
+  final ValueListenable<bool> summarizingListenable;
+  final ValueListenable<String> summaryErrorListenable;
+  final ScrollController reasoningScrollController;
+  final AiSettings aiSettings;
+  final List<_AiSummaryModelChoice> modelChoices;
+  final Widget Function() buildSummaryTitle;
+  final Color Function({required bool hasContent, required bool hasReasoning})
+  summaryStatusColor;
+  final String Function(String text) stripSpoilersMarker;
+  final Future<void> Function() onShowModelPicker;
+  final void Function() onStopSummarize;
+  final Future<void> Function() onSummarizeComments;
+  final Future<void> Function() onClearSummary;
+  final VoidCallback onCopied;
+
+  const _SummaryPanel({
+    required this.aiSummaryListenable,
+    required this.aiSummaryReasoningListenable,
+    required this.summarizingListenable,
+    required this.summaryErrorListenable,
+    required this.reasoningScrollController,
+    required this.aiSettings,
+    required this.modelChoices,
+    required this.buildSummaryTitle,
+    required this.summaryStatusColor,
+    required this.stripSpoilersMarker,
+    required this.onShowModelPicker,
+    required this.onStopSummarize,
+    required this.onSummarizeComments,
+    required this.onClearSummary,
+    required this.onCopied,
+  });
+
+  @override
+  State<_SummaryPanel> createState() => _SummaryPanelState();
+}
+
+class _SummaryPanelState extends State<_SummaryPanel> {
+  static const double _streamingSummaryPlaceholderHeight = 44;
+  static const double _streamingSummaryBoxHeight = 220;
+  bool _summaryExpanded = false;
+  bool _summaryExpansionTouched = false;
+  bool _summaryReasoningExpanded = false;
+  bool _summaryReasoningExpansionTouched = false;
+
+  bool get _summarizing => widget.summarizingListenable.value;
+  String get _aiSummary => widget.aiSummaryListenable.value;
+  String get _aiSummaryReasoning => widget.aiSummaryReasoningListenable.value;
+  String? get _summaryError {
+    final value = widget.summaryErrorListenable.value;
+    return value.isEmpty ? null : value;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _applySummaryDefaultExpansion();
+    widget.summarizingListenable.addListener(_onSummarizingChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SummaryPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.summarizingListenable != widget.summarizingListenable) {
+      oldWidget.summarizingListenable.removeListener(_onSummarizingChanged);
+      widget.summarizingListenable.addListener(_onSummarizingChanged);
+    }
+    _applySummaryDefaultExpansion();
+  }
+
+  @override
+  void dispose() {
+    widget.summarizingListenable.removeListener(_onSummarizingChanged);
+    super.dispose();
+  }
+
+  void _onSummarizingChanged() {
+    if (!_summarizing && !_summaryExpansionTouched) {
+      _applySummaryDefaultExpansion();
+    }
+    if (_summarizing) {
+      _summaryReasoningExpanded = false;
+      _summaryReasoningExpansionTouched = false;
+    }
+  }
+
+  void _applySummaryDefaultExpansion() {
+    if (!_summaryExpansionTouched) {
+      _summaryExpanded = !widget.aiSettings.summaryCollapsed;
+    }
+  }
+
+  void _toggleSummaryExpanded() {
+    setState(() {
+      _summaryExpansionTouched = true;
+      _summaryExpanded = !_summaryExpanded;
+    });
+  }
+
+  void _toggleSummaryReasoningExpanded() {
+    setState(() {
+      _summaryReasoningExpansionTouched = true;
+      _summaryReasoningExpanded = !_summaryReasoningExpanded;
+    });
+  }
+
+  Widget _buildSummaryReasoningBox(
+    BuildContext context,
+    ColorScheme cs,
+    TextTheme tt, {
+    required String reasoning,
+    required bool expanded,
+    required bool toggleable,
+  }) {
+    final textStyle = tt.bodySmall?.copyWith(
+      color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+      fontSize: 12,
+      height: 1.35,
+    );
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: toggleable ? _toggleSummaryReasoningExpanded : null,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(4, 2, 8, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLowest.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.psychology_alt_outlined,
+                  size: 14,
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  expanded ? '思考过程' : '思考过程（已折叠）',
+                  style: textStyle?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                if (toggleable) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 16,
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+                  ),
+                ],
+              ],
+            ),
+            if (expanded) ...[
+              const SizedBox(height: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  controller: widget.reasoningScrollController,
+                  child: Text(reasoning, style: textStyle),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStreamingReasoningPlaceholder(ColorScheme cs, TextTheme tt) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(4, 2, 8, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.psychology_alt_outlined,
+                size: 14,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '思考过程',
+                style: tt.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStreamingSummaryContent(
+    BuildContext context,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    final summaryText = widget.stripSpoilersMarker(_aiSummary);
+    final hasSummaryText = summaryText.trim().isNotEmpty;
+    final boxHeight = hasSummaryText
+        ? _streamingSummaryBoxHeight
+        : _streamingSummaryPlaceholderHeight;
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(minHeight: boxHeight, maxHeight: boxHeight),
+      margin: const EdgeInsets.fromLTRB(4, 2, 8, 2),
+      padding: const EdgeInsets.fromLTRB(0, 0, 4, 0),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Scrollbar(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
+          child: !hasSummaryText
+              ? Text(
+                  '正在生成中…',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                )
+              : MarkdownBody(
+                  data: summaryText,
+                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                      .copyWith(
+                        p: tt.bodyMedium?.copyWith(height: 1.5),
+                        h1: tt.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        h2: tt.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        h3: tt.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                        strong: tt.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: cs.primary,
+                        ),
+                        listBullet: tt.bodyMedium,
+                      ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        widget.aiSummaryListenable,
+        widget.aiSummaryReasoningListenable,
+        widget.summarizingListenable,
+        widget.summaryErrorListenable,
+      ]),
+      builder: (context, _) {
+        final cs = Theme.of(context).colorScheme;
+        final tt = Theme.of(context).textTheme;
+        final hasContent = _aiSummary.isNotEmpty;
+        final reasoning = _aiSummaryReasoning.trim();
+        final hasReasoning = reasoning.isNotEmpty;
+        final showStreamingSummaryBox = _summarizing;
+        final reasoningExpanded =
+            hasReasoning &&
+            (_summaryReasoningExpansionTouched
+                ? _summaryReasoningExpanded
+                : false);
+        final statusColor = widget.summaryStatusColor(
+          hasContent: hasContent,
+          hasReasoning: hasReasoning,
+        );
+
+        return Container(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: statusColor.withValues(alpha: 0.72),
+              width: 1.2,
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(12, 8, 10, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: _toggleSummaryExpanded,
+                child: Row(
+                  children: [
+                    if (widget.modelChoices.isEmpty)
+                      widget.buildSummaryTitle()
+                    else
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {},
+                        child: widget.buildSummaryTitle(),
+                      ),
+                    const Spacer(),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: _summaryExpanded ? '收起' : '展开',
+                      onPressed: _toggleSummaryExpanded,
+                      icon: Icon(
+                        _summaryExpanded
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_summaryExpanded) ...[
+                if (_summarizing || hasReasoning) ...[
+                  hasReasoning
+                      ? _buildSummaryReasoningBox(
+                          context,
+                          cs,
+                          tt,
+                          reasoning: reasoning,
+                          expanded: reasoningExpanded,
+                          toggleable: true,
+                        )
+                      : _buildStreamingReasoningPlaceholder(cs, tt),
+                  const SizedBox(height: 8),
+                ],
+                if (_summaryError != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+                    child: Text(
+                      '生成失败：${_summaryError!}',
+                      style: tt.bodySmall?.copyWith(color: cs.error),
+                    ),
+                  )
+                else if (showStreamingSummaryBox)
+                  _buildStreamingSummaryContent(context, cs, tt)
+                else if (hasContent)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 2, 8, 2),
+                    child: MarkdownBody(
+                      data: widget.stripSpoilersMarker(_aiSummary),
+                      styleSheet:
+                          MarkdownStyleSheet.fromTheme(
+                            Theme.of(context),
+                          ).copyWith(
+                            p: tt.bodyMedium?.copyWith(height: 1.5),
+                            h1: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            h2: tt.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            h3: tt.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            strong: tt.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: cs.primary,
+                            ),
+                            listBullet: tt.bodyMedium,
+                          ),
+                    ),
+                  )
+                else if (_summarizing)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 6, 8, 6),
+                    child: Text(
+                      '正在生成中…',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: _summarizing ? '停止' : '重新生成',
+                      onPressed: _summarizing
+                          ? widget.onStopSummarize
+                          : widget.onSummarizeComments,
+                      icon: Icon(
+                        _summarizing ? Icons.stop : Icons.refresh,
+                        size: 18,
+                      ),
+                    ),
+                    if (hasContent && !_summarizing) ...[
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: '复制',
+                        onPressed: () async {
+                          final text = widget.stripSpoilersMarker(_aiSummary);
+                          await Clipboard.setData(ClipboardData(text: text));
+                          if (context.mounted) widget.onCopied();
+                        },
+                        icon: const Icon(Icons.copy, size: 18),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: '清除总结',
+                        onPressed: widget.onClearSummary,
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
   }
 }
