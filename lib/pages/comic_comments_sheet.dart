@@ -86,21 +86,24 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       );
       if (!mounted) return;
 
-      final mergedComments = (loadMore
-          ? [
-              ..._comments,
-              ...data.list.where(
-                (item) => !_comments.any((existing) => existing.id == item.id),
-              ),
-            ]
-          : data.list)
-          .where(
-            (item) => !_user.isCommentUserBlocked(
-              item.userId,
-              item.userName.trim(),
-            ),
-          )
-          .toList();
+      final mergedComments =
+          (loadMore
+                  ? [
+                      ..._comments,
+                      ...data.list.where(
+                        (item) => !_comments.any(
+                          (existing) => existing.id == item.id,
+                        ),
+                      ),
+                    ]
+                  : data.list)
+              .where(
+                (item) => !_user.isCommentUserBlocked(
+                  item.userId,
+                  item.userName.trim(),
+                ),
+              )
+              .toList();
 
       setState(() {
         _comments = mergedComments;
@@ -200,23 +203,24 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       );
       if (!mounted) return;
 
-      final mergedReplies = (loadMore
-          ? [
-              ...currentState.replies,
-              ...data.list.where(
-                (item) => !currentState.replies.any(
-                  (existing) => existing.id == item.id,
+      final mergedReplies =
+          (loadMore
+                  ? [
+                      ...currentState.replies,
+                      ...data.list.where(
+                        (item) => !currentState.replies.any(
+                          (existing) => existing.id == item.id,
+                        ),
+                      ),
+                    ]
+                  : data.list)
+              .where(
+                (item) => !_user.isCommentUserBlocked(
+                  item.userId,
+                  item.userName.trim(),
                 ),
-              ),
-            ]
-          : data.list)
-          .where(
-            (item) => !_user.isCommentUserBlocked(
-              item.userId,
-              item.userName.trim(),
-            ),
-          )
-          .toList();
+              )
+              .toList();
 
       // 回复按时间正序（从旧到新）
       mergedReplies.sort((a, b) => a.createAt.compareTo(b.createAt));
@@ -320,11 +324,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                             tooltip: '评论设置',
                             icon: const Icon(Icons.tune),
                           ),
-                          IconButton(
-                            onPressed: () => Navigator.of(context).maybePop(),
-                            tooltip: '关闭',
-                            icon: const Icon(Icons.close),
-                          ),
                         ],
                       ),
                     ),
@@ -340,6 +339,21 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               child: ValueListenableBuilder<bool>(
                 valueListenable: _showFloatingButtons,
                 builder: (context, showFloatingButtons, child) {
+                  final buttonStyle = FilledButton.styleFrom(
+                    backgroundColor: cs.primaryContainer,
+                    foregroundColor: cs.onPrimaryContainer,
+                    elevation: 6,
+                    shadowColor: Colors.black.withValues(alpha: 0.22),
+                    minimumSize: const Size(0, 52),
+                    maximumSize: const Size.fromHeight(52),
+                    fixedSize: const Size.fromHeight(52),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  );
+
                   return AnimatedSlide(
                     offset: showFloatingButtons
                         ? Offset.zero
@@ -352,24 +366,40 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                       duration: const Duration(milliseconds: 260),
                       child: SafeArea(
                         top: false,
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: cs.primaryContainer,
-                            foregroundColor: cs.onPrimaryContainer,
-                            elevation: 6,
-                            shadowColor: Colors.black.withValues(alpha: 0.22),
-                            minimumSize: const Size(0, 52),
-                            maximumSize: const Size.fromHeight(52),
-                            fixedSize: const Size.fromHeight(52),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FilledButton.icon(
+                              style: buttonStyle,
+                              onPressed: _showPostCommentDialog,
+                              icon: const Icon(Icons.comment_outlined),
+                              label: const Text('评论'),
                             ),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: _showPostCommentDialog,
-                          icon: const Icon(Icons.comment_outlined),
-                          label: const Text('评论'),
+                            const SizedBox(width: 8),
+                            SizedBox.square(
+                              dimension: 52,
+                              child: FilledButton(
+                                style: buttonStyle.copyWith(
+                                  padding: const WidgetStatePropertyAll(
+                                    EdgeInsets.zero,
+                                  ),
+                                  minimumSize: const WidgetStatePropertyAll(
+                                    Size.square(52),
+                                  ),
+                                  maximumSize: const WidgetStatePropertyAll(
+                                    Size.square(52),
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    Navigator.of(context).maybePop(),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -967,16 +997,12 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                       height: 18,
                       child: Checkbox(
                         value: noRemind,
-                        onChanged: (v) =>
-                            setLocal(() => noRemind = v ?? false),
+                        onChanged: (v) => setLocal(() => noRemind = v ?? false),
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      '不再提醒',
-                      style: Theme.of(ctx).textTheme.bodySmall,
-                    ),
+                    Text('不再提醒', style: Theme.of(ctx).textTheme.bodySmall),
                   ],
                 ),
               ),

@@ -180,7 +180,7 @@ class AiSettings extends ChangeNotifier {
   static const presetSpoilerId = 'spoiler';
 
   /// 默认提示词（基础提示词）。
-  static const defaultPromptBasic =
+  static const _legacyDefaultPromptBasic =
       '先梳理评论区的主流声音、分歧点、大家吐槽/夸赞的核心内容；'
       '之后直抒胸臆，大胆表达你的立场，好坏直接点明，不中和、不打太极；'
       '绝对不要虚构漫画剧情，所有内容都基于现有评论；'
@@ -189,6 +189,19 @@ class AiSettings extends ChangeNotifier {
       '- 很多人都表示...\n'
       '- 有些人觉得...\n'
       '- 个别人认为...\n'
+      '### 我的评论\n'
+      '（发表你的评论，简短10-20字左右，不要附和他人观点，'
+      '不是对其他人的看法，而是直接说你自己的看法或吐槽，表现得自然一点）';
+
+  static const defaultPromptBasic =
+      '先梳理评论区的主流声音、分歧点、大家吐槽/夸赞的核心内容；'
+      '之后直抒胸臆，大胆表达你的立场，好坏直接点明，不中和、不打太极；'
+      '绝对不要虚构漫画剧情，所有内容都基于现有评论；'
+      '语言干练接地气，用 Markdown 输出一份犀利总结，类似下面的格式：\n'
+      '### 大家在聊什么 （不超过7项，取多数人讨论的，每一项字数保持在25字以内）\n'
+      '- 角色A做了什么...\n'
+      '- 很多人吐槽...\n'
+      '- xxxx...\n'
       '### 我的评论\n'
       '（发表你的评论，简短10-20字左右，不要附和他人观点，'
       '不是对其他人的看法，而是直接说你自己的看法或吐槽，表现得自然一点）';
@@ -462,6 +475,11 @@ class AiSettings extends ChangeNotifier {
       try {
         final list = (jsonDecode(raw) as List)
             .map((e) => PromptPreset.fromJson(e as Map<String, dynamic>))
+            .map((preset) {
+              final migratedPreset = _migrateStoredPreset(preset);
+              if (!identical(migratedPreset, preset)) migrated = true;
+              return migratedPreset;
+            })
             .where((preset) {
               final keep = _shouldKeepStoredPreset(preset);
               if (!keep) migrated = true;
@@ -499,6 +517,15 @@ class AiSettings extends ChangeNotifier {
       );
       await sp.setString(_keyActivePreset, _activePresetId);
     }
+  }
+
+  PromptPreset _migrateStoredPreset(PromptPreset preset) {
+    if (preset.id == presetBasicId &&
+        preset.isBuiltIn &&
+        preset.prompt == _legacyDefaultPromptBasic) {
+      return builtInPresets.first;
+    }
+    return preset;
   }
 
   bool _shouldKeepStoredPreset(PromptPreset preset) {
