@@ -3,25 +3,25 @@ import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../api/api_client.dart';
-import '../models/api_ordering.dart';
+import '../l10n/app_localizations.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../providers/app_providers.dart';
+import '../providers/repository_providers.dart';
+import '../repositories/manga_home_repository.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/data_cache.dart';
 import '../utils/time_format.dart';
-import 'comic_detail_page.dart';
-import 'copy_manga_list_page.dart';
-import 'recommend_page.dart';
-import 'ranking_page.dart';
+import '../widgets/comic_hero_tags.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
 const _mangaHomeCardWidth = 112.0;
@@ -56,15 +56,9 @@ double _copySectionContentWidth(
   return math.max(1.0, contentWidth - 56);
 }
 
-class _HomePageState extends State<HomePage> {
-  static const _cacheKey = 'manga_home_v1';
-  static const _copyCacheKey = 'manga_home_copy_v1';
-  static const _cacheTtl = Duration(hours: 1);
-  static const _rankingOrdering = ApiOrdering.datetimeUpdated;
-
-  final _api = ApiClient();
-  final _cache = DataCache();
-  final _user = UserManager();
+class _HomePageState extends ConsumerState<HomePage> {
+  MangaHomeRepository get _repo => ref.read(mangaHomeRepositoryProvider);
+  UserManager get _user => ref.read(userManagerProvider);
   MangaHome? _home;
   CopyMangaHome? _copyHome;
   String? _activeSource; // 当前已加载的数据源
@@ -107,25 +101,19 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadFromCache() async {
     if (_isCopySource) {
-      final cached = await _cache.get(_copyCacheKey);
+      final cached = await _repo.loadBFromCache();
       if (!mounted || cached == null || !_loading) return;
       setState(() {
-        _copyHome = CopyMangaHome.fromJson(
-          Map<String, dynamic>.from(cached['home']),
-        );
+        _copyHome = cached.home;
         _loading = false;
       });
       return;
     }
-    final cached = await _cache.get(_cacheKey);
+    final cached = await _repo.loadAFromCache();
     if (!mounted || cached == null || !_loading) return;
     setState(() {
-      _home = MangaHome.fromJson(Map<String, dynamic>.from(cached['home']));
-      _rankingPreview =
-          (cached['ranking'] as List?)
-              ?.map((j) => Comic.fromJson(j))
-              .toList() ??
-          [];
+      _home = cached.home;
+      _rankingPreview = cached.ranking;
       _loading = false;
     });
   }
@@ -142,24 +130,14 @@ class _HomePageState extends State<HomePage> {
       setState(() => _refreshing = true);
     }
     try {
-      final homeFuture = _api.getMangaHome();
-      final rankingFuture = _api.getComicList(
-        ordering: _rankingOrdering,
-        limit: 6,
-      );
-      final home = await homeFuture;
-      final ranking = await rankingFuture;
+      final data = await _repo.loadA();
       if (!mounted) return;
       setState(() {
-        _home = home;
-        _rankingPreview = ranking.list;
+        _home = data.home;
+        _rankingPreview = data.ranking;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_cacheKey, {
-        'home': home.toJson(),
-        'ranking': ranking.list.map((c) => c.toJson()).toList(),
-      }, ttl: _cacheTtl);
     } catch (e) {
       debugPrint('HomePage load error: $e');
       if (!mounted) return;
@@ -182,14 +160,13 @@ class _HomePageState extends State<HomePage> {
       setState(() => _refreshing = true);
     }
     try {
-      final home = await _api.getCopyMangaHome();
+      final data = await _repo.loadB();
       if (!mounted) return;
       setState(() {
-        _copyHome = home;
+        _copyHome = data.home;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_copyCacheKey, {'home': home.toJson()}, ttl: _cacheTtl);
     } catch (e) {
       debugPrint('HomePage copy load error: $e');
       if (!mounted) return;
@@ -202,13 +179,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openComic(Comic comic, String heroTagBase) {
-    Navigator.push(
-      context,
-      ComicDetailPage.route(
-        pathWord: comic.pathWord,
-        initialComic: comic,
-        heroTagBase: heroTagBase,
-      ),
+    context.pushNamed(
+      AppRoutes.comicDetail,
+      pathParameters: {'pathWord': comic.pathWord},
+      extra: ComicDetailExtra(initialComic: comic, heroTagBase: heroTagBase),
     );
   }
 
@@ -240,9 +214,15 @@ class _HomePageState extends State<HomePage> {
             children: [
               Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
               const SizedBox(height: 16),
-              Text('加载失败', style: tt.titleMedium),
+              Text(
+                AppLocalizations.of(context)!.loadingFailed,
+                style: tt.titleMedium,
+              ),
               const SizedBox(height: 8),
-              FilledButton.tonal(onPressed: _load, child: const Text('重试')),
+              FilledButton.tonal(
+                onPressed: _load,
+                child: Text(AppLocalizations.of(context)!.retryButton),
+              ),
             ],
           ),
         ),
@@ -285,13 +265,10 @@ class _HomePageState extends State<HomePage> {
       if (home.recommendations.isNotEmpty) {
         slivers.add(
           _MangaSection(
-            title: '热门推荐',
+            title: AppLocalizations.of(context)!.hotRecommend,
             icon: Icons.auto_awesome,
             hp: hp,
-            onMore: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const RecommendPage()),
-            ),
+            onMore: () => context.pushNamed(AppRoutes.recommend),
             child: _MangaHorizontalList(
               items: home.recommendations,
               onTap: _openComic,
@@ -302,13 +279,10 @@ class _HomePageState extends State<HomePage> {
       if (_rankingPreview.isNotEmpty) {
         slivers.add(
           _SectionTitle(
-            title: '漫画排行',
+            title: AppLocalizations.of(context)!.comicRanking,
             icon: Icons.leaderboard,
             hp: hp,
-            onMore: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const RankingPage()),
-            ),
+            onMore: () => context.pushNamed(AppRoutes.ranking),
           ),
         );
         slivers.add(
@@ -356,7 +330,9 @@ class _HomePageState extends State<HomePage> {
     final isCopy = _isCopySource;
     return FloatingActionButton.small(
       heroTag: 'home-source-switch',
-      tooltip: isCopy ? '切换到 HOT 首页' : '切换到 COPY 首页',
+      tooltip: isCopy
+          ? AppLocalizations.of(context)!.switchToHotHome
+          : AppLocalizations.of(context)!.switchToCopyHome,
       onPressed: () => _user.setMangaHomeSource(isCopy ? 'hot' : 'copy'),
       child: const Icon(Icons.swap_horiz),
     );
@@ -364,6 +340,7 @@ class _HomePageState extends State<HomePage> {
 
   /// COPY 首页各板块
   List<Widget> _buildCopySlivers(CopyMangaHome home, double hp) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final slivers = <Widget>[];
@@ -425,16 +402,14 @@ class _HomePageState extends State<HomePage> {
     }
 
     addSection(
-      '推荐',
+      l10n.copyRecommend,
       Icons.auto_awesome,
       home.recComics,
       scope: 'copy-rec',
       topPadding: 8,
-      onMore: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const CopyMangaListPage.recommendations(),
-        ),
+      onMore: () => context.pushNamed(
+        AppRoutes.copyMangaList,
+        pathParameters: {'kind': 'recommendations'},
       ),
     );
     if (home.rankDayComics.isNotEmpty ||
@@ -443,14 +418,12 @@ class _HomePageState extends State<HomePage> {
       slivers.add(
         _CopyCollapsibleSection(
           storageKey: 'copy-ranking',
-          title: '排行榜',
+          title: l10n.copyRanking,
           icon: Icons.leaderboard,
           hp: hp,
-          onMore: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const CopyMangaListPage.ranking(),
-            ),
+          onMore: () => context.pushNamed(
+            AppRoutes.copyMangaList,
+            pathParameters: {'kind': 'ranking'},
           ),
           child: _CopyRankingTabs(
             dayItems: home.rankDayComics,
@@ -462,29 +435,29 @@ class _HomePageState extends State<HomePage> {
       );
     }
     addSection(
-      '热门更新',
+      l10n.copyHotUpdate,
       Icons.local_fire_department,
       home.hotComics,
       scope: 'copy-hot',
     );
     addSection(
-      '全新上架',
+      l10n.copyNewArrival,
       Icons.fiber_new,
       home.newComics,
       scope: 'copy-new',
-      onMore: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const CopyMangaListPage.newest()),
+      onMore: () => context.pushNamed(
+        AppRoutes.copyMangaList,
+        pathParameters: {'kind': 'newest'},
       ),
     );
     addSection(
-      '已完结',
+      l10n.copyFinished,
       Icons.done_all,
       home.finishComics,
       scope: 'copy-finish',
-      onMore: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const CopyMangaListPage.finished()),
+      onMore: () => context.pushNamed(
+        AppRoutes.copyMangaList,
+        pathParameters: {'kind': 'finished'},
       ),
     );
 
@@ -502,7 +475,7 @@ class _HomePageState extends State<HomePage> {
                   color: cs.onSurfaceVariant,
                 ),
                 const SizedBox(height: 16),
-                Text('暂无内容', style: tt.titleMedium),
+                Text(l10n.noContent, style: tt.titleMedium),
               ],
             ),
           ),
@@ -712,9 +685,10 @@ class _MangaBannerCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => _ImagePlaceholder(icon: Icons.book),
+                placeholder: (_, _) =>
+                    const _ImagePlaceholder(icon: Icons.book),
                 errorWidget: (_, _, _) =>
-                    _ImagePlaceholder(icon: Icons.broken_image),
+                    const _ImagePlaceholder(icon: Icons.broken_image),
               ),
             ),
             DecoratedBox(
@@ -787,6 +761,7 @@ class _MangaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return SliverToBoxAdapter(
@@ -810,7 +785,10 @@ class _MangaSection extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('更多', style: TextStyle(color: cs.primary)),
+                        Text(
+                          l10n.moreButton,
+                          style: TextStyle(color: cs.primary),
+                        ),
                         Icon(Icons.chevron_right, size: 18, color: cs.primary),
                       ],
                     ),
@@ -868,6 +846,7 @@ class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -918,7 +897,10 @@ class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('更多', style: TextStyle(color: cs.primary)),
+                              Text(
+                                l10n.moreButton,
+                                style: TextStyle(color: cs.primary),
+                              ),
                               Icon(
                                 Icons.chevron_right,
                                 size: 18,
@@ -1122,6 +1104,7 @@ class _CopyRankingTabsState extends State<_CopyRankingTabs>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final items = _itemsForIndex(_selectedIndex);
@@ -1149,10 +1132,10 @@ class _CopyRankingTabsState extends State<_CopyRankingTabs>
             labelStyle: tt.labelMedium?.copyWith(fontWeight: FontWeight.bold),
             unselectedLabelStyle: tt.labelMedium,
             splashBorderRadius: BorderRadius.circular(8),
-            tabs: const [
-              Tab(text: '日榜'),
-              Tab(text: '周榜'),
-              Tab(text: '月榜'),
+            tabs: [
+              Tab(text: l10n.dayRank),
+              Tab(text: l10n.weekRank),
+              Tab(text: l10n.monthRank),
             ],
           ),
         ),
@@ -1179,7 +1162,7 @@ class _CopyEmptySectionMessage extends StatelessWidget {
       height: 96,
       child: Center(
         child: Text(
-          '暂无内容',
+          AppLocalizations.of(context)!.noContent,
           style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
       ),
@@ -1368,6 +1351,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return SliverToBoxAdapter(
@@ -1388,7 +1372,7 @@ class _SectionTitle extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('更多', style: TextStyle(color: cs.primary)),
+                    Text(l10n.moreButton, style: TextStyle(color: cs.primary)),
                     Icon(Icons.chevron_right, size: 18, color: cs.primary),
                   ],
                 ),

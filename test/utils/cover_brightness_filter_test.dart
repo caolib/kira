@@ -57,7 +57,6 @@ void main() {
       MaterialApp(
         theme: ThemeData(brightness: Brightness.light),
         darkTheme: ThemeData(brightness: Brightness.dark),
-        themeMode: ThemeMode.system,
         home: const Scaffold(
           body: CoverBrightnessFilter(child: SizedBox(width: 10, height: 10)),
         ),

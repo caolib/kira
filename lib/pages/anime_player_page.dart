@@ -1,34 +1,35 @@
 import 'dart:async';
 
+import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
-import 'package:canvas_danmaku/canvas_danmaku.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
 import '../models/anime.dart';
 import '../models/user_manager.dart';
+import '../routing/app_router.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/anime_playback_history.dart';
 import '../utils/app_dio.dart';
 import '../utils/app_logger.dart';
 import '../utils/chinese_converter.dart';
 import '../utils/network_error.dart';
-import 'profile_page.dart';
 
+part 'anime_player/chapter_selector.dart';
+part 'anime_player/danmaku_panels.dart';
+part 'anime_player/error_panel.dart';
 part 'anime_player/media_open_diagnosis.dart';
 part 'anime_player/player_controls.dart';
-part 'anime_player/video_link_panel.dart';
-part 'anime_player/danmaku_panels.dart';
-part 'anime_player/chapter_selector.dart';
-part 'anime_player/error_panel.dart';
 part 'anime_player/player_settings_panel.dart';
+part 'anime_player/video_link_panel.dart';
 
 class AnimePlayerPage extends StatefulWidget {
   final String animeName;
@@ -505,17 +506,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   }
 
   Future<void> _goLogin() async {
-    final loggedIn = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
+    final loggedIn = await context.pushNamed<bool>(AppRoutes.login);
     if (loggedIn == true && mounted) {
       await _load();
     }
   }
 
   Future<AnimePlayback> _getPlayback({required bool forceRefresh}) async {
-    return _api.getAnimePlayback(
+    return _api.anime.getAnimePlayback(
       widget.pathWord,
       _currentChapterUuid,
       line: _line,
@@ -580,10 +578,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     }
 
     try {
-      await _player.open(
-        Media(videoUrl, httpHeaders: _videoHttpHeaders),
-        play: true,
-      );
+      await _player.open(Media(videoUrl, httpHeaders: _videoHttpHeaders));
       if (!mounted || serial != _openMediaSerial) return;
       _readyToSavePlaybackProgress = true;
       setState(() {
@@ -911,7 +906,15 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       animeName = await ChineseConverter.convertToSimplifiedChinese(
         widget.animeName,
       );
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_player.convert_anime_name',
+        ),
+      );
+    }
     return animeName;
   }
 
@@ -1041,7 +1044,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           DanmakuContentItem(
             c.text,
             type: mode,
-            color: Color(int.parse("FF$colorStr", radix: 16)),
+            color: Color(int.parse('FF$colorStr', radix: 16)),
           ),
         );
         filteredComments.add(c);

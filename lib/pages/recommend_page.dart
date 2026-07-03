@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
 import '../api/api_client.dart';
 import '../models/comic.dart' hide Theme;
-import '../utils/comic_hero_tags.dart';
-import '../utils/comic_card_skeleton.dart';
-import 'comic_detail_page.dart';
+import '../routing/app_router.dart';
+import '../utils/app_logger.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'home_page.dart';
 
 /// 推荐漫画完整列表页
@@ -29,7 +34,7 @@ class _RecommendPageState extends State<RecommendPage> {
 
   Future<void> _load() async {
     try {
-      final data = await _api.getRecommendations(limit: 21);
+      final data = await _api.manga.getRecommendations(limit: 21);
       if (!mounted) return;
       setState(() {
         _comics = data;
@@ -45,13 +50,24 @@ class _RecommendPageState extends State<RecommendPage> {
     if (_loadingMore) return;
     setState(() => _loadingMore = true);
     try {
-      final data = await _api.getRecommendations(limit: 21, offset: _offset);
+      final data = await _api.manga.getRecommendations(
+        limit: 21,
+        offset: _offset,
+      );
       if (!mounted) return;
       setState(() {
         _comics.addAll(data);
         _offset = _comics.length;
       });
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'recommend_page.load_more',
+        ),
+      );
+    }
     if (mounted) {
       setState(() => _loadingMore = false);
     } else {
@@ -107,10 +123,10 @@ class _RecommendPageState extends State<RecommendPage> {
                         return ComicCard(
                           comic: comic,
                           heroTagBase: heroTagBase,
-                          onTap: () => Navigator.push(
-                            context,
-                            ComicDetailPage.route(
-                              pathWord: comic.pathWord,
+                          onTap: () => context.pushNamed(
+                            AppRoutes.comicDetail,
+                            pathParameters: {'pathWord': comic.pathWord},
+                            extra: ComicDetailExtra(
                               initialComic: comic,
                               heroTagBase: heroTagBase,
                             ),

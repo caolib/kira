@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import '../api/api_client.dart';
+
 import '../api/ai_api.dart';
+import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
@@ -16,8 +17,8 @@ import '../utils/chapter_summary_cache.dart';
 import '../utils/download_manager.dart';
 import '../utils/image_load_stats.dart';
 import '../utils/network_error.dart';
-import '../utils/toast.dart';
 import '../utils/reading_history.dart';
+import '../utils/toast.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
 
@@ -25,6 +26,11 @@ part 'reader/reader_image_cache.dart';
 part 'reader/reader_image_viewer.dart';
 part 'reader/reader_settings_panel.dart';
 part 'reader/reader_widgets.dart';
+part 'reader/reader_scroll_item.dart';
+part 'reader/reader_pull_to_refresh.dart';
+part 'reader/reader_chapter_widgets.dart';
+part 'reader/reader_top_bar.dart';
+part 'reader/reader_bottom_bar.dart';
 
 class ReaderPage extends StatefulWidget {
   final String pathWord;
@@ -108,6 +114,9 @@ class _ReaderPageState extends State<ReaderPage> {
   int _currentPage = 1;
   bool _isDraggingSlider = false;
   bool _autoAdvancingChapter = false;
+
+  /// 滚动模式尾部的 item 索引（-1 表示无尾部/有下一话）。
+  int _scrollTailIndex = -1;
   // 无动画翻页：拖动过程中的累计位移与是否已翻页标记。
   double _instantTurnDragDelta = 0;
   bool _instantTurnCommitted = false;
@@ -124,6 +133,11 @@ class _ReaderPageState extends State<ReaderPage> {
   final Map<int, int> _imageReloadVersions = {};
   final Map<int, int> _imageRetryCounts = {};
   final Map<int, String> _imageRetryTokens = {};
+
+  // 图片原始尺寸缓存：key 为图片 URL / 本地路径。
+  // 用于在竖向滚动模式下为占位符和错误 Widget 提供与真实图片一致的预估高度，
+  // 避免 placeholder → 真图尺寸不同导致的页面跳动。
+  final Map<String, Size> _imageNaturalSizes = {};
 
   // 评论缓存按章节 uuid 存放，连续阅读链中各章均可独立缓存，
   // 供分隔区评论按钮显示数量并避免重复打开时重新加载。
@@ -303,6 +317,7 @@ class _ReaderPageState extends State<ReaderPage> {
       } else {
         _loading = true;
       }
+      _scrollTailIndex = -1;
     });
     try {
       final detail =
@@ -312,7 +327,7 @@ class _ReaderPageState extends State<ReaderPage> {
                   widget.pathWord,
                   _currentUuid,
                 )) ??
-          await _api.getChapterDetail(
+          await _api.manga.getChapterDetail(
             widget.pathWord,
             _currentUuid,
             forceRefresh: forceRefresh,
@@ -357,7 +372,7 @@ class _ReaderPageState extends State<ReaderPage> {
       }
       _autoAdvancingChapter = false;
       _saveReadingHistory();
-      _preloadComments();
+      unawaited(_preloadComments());
       // 缓存命中且当前无下一话时，后台静默刷新章节导航，用于发现新增的下一话。
       if (!forceRefresh && !detail.isDownloaded && detail.next == null) {
         _refreshChapterMetadata(detail);
@@ -408,7 +423,7 @@ class _ReaderPageState extends State<ReaderPage> {
   /// 仅在缓存命中且当前无下一话时触发，已有下一话时导航链完整，无需刷新。
   void _refreshChapterMetadata(ChapterDetail cached) {
     final chapterUuid = cached.uuid;
-    _api
+    _api.manga
         .getChapterDetail(widget.pathWord, chapterUuid, forceRefresh: true)
         .then((fresh) {
           if (!mounted || _currentUuid != chapterUuid || _detail == null) {
@@ -458,7 +473,7 @@ class _ReaderPageState extends State<ReaderPage> {
     final chapterName = detail.name;
 
     try {
-      final data = await _api.getChapterComments(chapterUuid, limit: 100);
+      final data = await _api.manga.getChapterComments(chapterUuid, limit: 100);
       if (!mounted) return;
       _updateCommentCache(chapterUuid, data.list, data.total, rebuild: true);
       await _maybeAutoSummaryAfterPreload(
@@ -477,7 +492,9 @@ class _ReaderPageState extends State<ReaderPage> {
     required List<ChapterComment> comments,
   }) async {
     await _aiSettings.load();
-    if (!mounted || _currentUuid != chapterUuid) return;
+    // ponytail: 检查章节是否仍在链中（连续阅读追加后 _currentUuid 可能尚未更新）。
+    // 允许后台 AI 总结运行，不要求 _currentUuid == chapterUuid。
+    if (!mounted || !_chain.any((c) => c.uuid == chapterUuid)) return;
     if (!_user.commentPreload ||
         !_aiSettings.hasConfig ||
         !_aiSettings.summaryEnabled ||
@@ -490,7 +507,7 @@ class _ReaderPageState extends State<ReaderPage> {
     }
 
     final cached = await ChapterSummaryCache.get(chapterUuid);
-    if (!mounted || _currentUuid != chapterUuid) return;
+    if (!mounted || !_chain.any((c) => c.uuid == chapterUuid)) return;
     if (cached != null && cached.isNotEmpty) return;
     if (ChapterSummaryCache.isGenerating(chapterUuid)) return;
 
@@ -522,7 +539,7 @@ class _ReaderPageState extends State<ReaderPage> {
         messages: messages,
       );
       await for (final chunk in stream) {
-        if (!mounted || _currentUuid != chapterUuid) {
+        if (!mounted || !_chain.any((c) => c.uuid == chapterUuid)) {
           ChapterSummaryCache.clearProgress(chapterUuid);
           return;
         }
@@ -608,11 +625,7 @@ class _ReaderPageState extends State<ReaderPage> {
             widget.pathWord,
             nextUuid,
           )) ??
-          await _api.getChapterDetail(
-            widget.pathWord,
-            nextUuid,
-            forceRefresh: false,
-          );
+          await _api.manga.getChapterDetail(widget.pathWord, nextUuid);
       if (next.contents.isEmpty) {
         throw StateError('Chapter has no readable pages');
       }
@@ -622,7 +635,7 @@ class _ReaderPageState extends State<ReaderPage> {
         _loadingNextChainChapter = false;
       });
       // 追加后立即预加载该话评论，使分隔区评论按钮能显示数量
-      if (_user.commentPreload) _preloadComments(chapter: next);
+      if (_user.commentPreload) unawaited(_preloadComments(chapter: next));
     } catch (_) {
       _loadingNextChainChapter = false;
       // 追加失败保持链不变，用户可手动重试（继续翻页会再次触发）
@@ -726,13 +739,20 @@ class _ReaderPageState extends State<ReaderPage> {
         showToast(context, '正在加载下一话…');
         return;
       }
-      showToast(context, '当前已无下一话');
+      // 已经是最后一话：跳转到末尾空白页（触发返回目录）
+      if (_isPageMode && _pageController.hasClients) {
+        final blankPageIndex = _chainImageCount;
+        if (_user.readerInstantPageTurn) {
+          _pageController.jumpToPage(blankPageIndex);
+        } else {
+          _pageController.animateToPage(
+            blankPageIndex,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
       return;
-    }
-    if (_detail!.next != null) {
-      _goChapter(_detail!.next);
-    } else {
-      showToast(context, '当前已无下一话');
     }
   }
 
@@ -1062,6 +1082,57 @@ class _ReaderPageState extends State<ReaderPage> {
     });
   }
 
+  /// 记录单张图片的原始尺寸，供占位符/错误 Widget 估算高度。
+  void _recordImageNaturalSize(String source, Size size) {
+    if (size.isEmpty) return;
+    _imageNaturalSizes[source] = size;
+  }
+
+  /// 从已加载的图片中统计出最常见的宽高比（频率最高的桶）。
+  /// 返回 null 表示尚无数据。
+  double? get _typicalImageAspectRatio {
+    if (_imageNaturalSizes.isEmpty) return null;
+    // 按宽高比分桶（精度 0.01），取出现次数最多的桶的中位数。
+    const bucketStep = 0.01;
+    final buckets = <int, List<double>>{};
+    for (final size in _imageNaturalSizes.values) {
+      if (size.width <= 0) continue;
+      final ratio = size.height / size.width;
+      final bucket = (ratio / bucketStep).round();
+      buckets.putIfAbsent(bucket, () => []).add(ratio);
+    }
+    if (buckets.isEmpty) return null;
+    int maxCount = 0;
+    int? maxBucket;
+    for (final entry in buckets.entries) {
+      if (entry.value.length > maxCount) {
+        maxCount = entry.value.length;
+        maxBucket = entry.key;
+      }
+    }
+    if (maxBucket == null) return null;
+    // 返回该桶中所有比例的均值
+    final ratios = buckets[maxBucket]!;
+    return ratios.fold(0.0, (sum, r) => sum + r) / ratios.length;
+  }
+
+  /// 在竖向滚动模式下，为指定图片源返回占位符的预估高度。
+  /// 如果该图片自身已有缓存尺寸直接用；否则用当前最常见宽高比估算；
+  /// 最后兜底返回屏幕高度 × 1.35（典型竖图比例）。
+  double _estimatedPlaceholderHeight(String imageSource) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cached = _imageNaturalSizes[imageSource];
+    if (cached != null && cached.width > 0) {
+      return screenWidth * (cached.height / cached.width);
+    }
+    final typicalRatio = _typicalImageAspectRatio;
+    if (typicalRatio != null && typicalRatio > 0) {
+      return screenWidth * typicalRatio;
+    }
+    // 兜底：典型竖图宽高比约 1.35
+    return screenWidth * 1.35;
+  }
+
   void _scheduleImageRetry(int retryKey) {
     final attempts = _imageRetryCounts[retryKey] ?? 0;
     final retryLimit = _user.imageRetryCount;
@@ -1102,7 +1173,6 @@ class _ReaderPageState extends State<ReaderPage> {
     _pauseAutoScrollForOverlay();
     await Navigator.of(context).push(
       PageRouteBuilder<void>(
-        opaque: true,
         pageBuilder: (_, _, _) => _ReaderImageViewer(
           imageSource: chapter.contents[localIndex],
           isDownloaded: chapter.isDownloaded,
@@ -1115,12 +1185,16 @@ class _ReaderPageState extends State<ReaderPage> {
     if (!mounted) return;
     _resumeAutoScrollAfterOverlay();
     if (_showToolbar) {
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual,
-        overlays: SystemUiOverlay.values,
+      unawaited(
+        SystemChrome.setEnabledSystemUIMode(
+          SystemUiMode.manual,
+          overlays: SystemUiOverlay.values,
+        ),
       );
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      unawaited(
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky),
+      );
     }
   }
 
@@ -1150,6 +1224,13 @@ class _ReaderPageState extends State<ReaderPage> {
     final memCacheWidth = _isHorizontalScrollMode
         ? (screenSize.height * MediaQuery.devicePixelRatioOf(context)).round()
         : (screenSize.width * MediaQuery.devicePixelRatioOf(context)).round();
+
+    // 竖向滚动模式下，占位符使用预估高度以防页面跳动；
+    // 页面/水平滚动模式不需要——前者占满 viewport，后者高度由外层 SizedBox 约束。
+    final estimatedPlaceholderH = !useFullViewport
+        ? _estimatedPlaceholderHeight(imageSource)
+        : null;
+
     Widget image;
 
     if (chapter.isDownloaded) {
@@ -1159,8 +1240,28 @@ class _ReaderPageState extends State<ReaderPage> {
         fit: imageFit,
         width: _isHorizontalScrollMode ? null : double.infinity,
         height: useFullViewport ? double.infinity : null,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          // 图片首帧渲染后，异步解析原始尺寸并缓存。
+          // containsKey 保证只 resolve 一次，避免重复创建 ImageStream。
+          if (frame == 0 && !_imageNaturalSizes.containsKey(imageSource)) {
+            FileImage(File(imageSource))
+                .resolve(ImageConfiguration.empty)
+                .addListener(
+                  ImageStreamListener((info, _) {
+                    _recordImageNaturalSize(
+                      imageSource,
+                      Size(
+                        info.image.width.toDouble(),
+                        info.image.height.toDouble(),
+                      ),
+                    );
+                  }),
+                );
+          }
+          return child;
+        },
         errorBuilder: (_, _, _) => Container(
-          height: 400,
+          height: estimatedPlaceholderH ?? 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           child: Center(
             child: Column(
@@ -1196,6 +1297,22 @@ class _ReaderPageState extends State<ReaderPage> {
         height: useFullViewport ? double.infinity : null,
         imageBuilder: (_, imageProvider) {
           _clearImageRetryState(key);
+          // 图片加载成功后，异步解析其原始尺寸并缓存。
+          if (!_imageNaturalSizes.containsKey(imageSource)) {
+            imageProvider
+                .resolve(ImageConfiguration.empty)
+                .addListener(
+                  ImageStreamListener((info, _) {
+                    _recordImageNaturalSize(
+                      imageSource,
+                      Size(
+                        info.image.width.toDouble(),
+                        info.image.height.toDouble(),
+                      ),
+                    );
+                  }),
+                );
+          }
           return Image(
             image: imageProvider,
             fit: imageFit,
@@ -1204,7 +1321,7 @@ class _ReaderPageState extends State<ReaderPage> {
           );
         },
         placeholder: (_, _) => Container(
-          height: 400,
+          height: estimatedPlaceholderH ?? 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
@@ -1217,7 +1334,7 @@ class _ReaderPageState extends State<ReaderPage> {
           }
 
           return Container(
-            height: 400,
+            height: estimatedPlaceholderH ?? 400,
             color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
             child: Center(
               child: Column(
@@ -1297,7 +1414,7 @@ class _ReaderPageState extends State<ReaderPage> {
     for (var ci = 0; ci < chainIndex; ci++) {
       idx += _chain[ci].contents.length + 1;
     }
-    idx += (page - 1);
+    idx += page - 1;
     return idx;
   }
 
@@ -1433,49 +1550,47 @@ class _ReaderPageState extends State<ReaderPage> {
     return false;
   }
 
-  /// 滚动模式：已无上/下一话时，继续同方向滚动则返回详情页。
+  /// 滚动模式：最后一话时，"已经是最后一话"组件滚动到屏幕约 3/5 位置则返回目录。
+  bool _shouldScrollToCatalog(ScrollNotification notification) {
+    if (_scrollTailIndex < 0 || _loading || _autoAdvancingChapter) return false;
+
+    final positions = _itemPositionsListener.itemPositions.value;
+    for (final p in positions) {
+      if (p.index != _scrollTailIndex) continue;
+      // 尾部组件滚动到屏幕约一半高度位置时触发跳转
+      if (p.itemLeadingEdge <= 0.5) {
+        return true;
+      }
+      break;
+    }
+
+    return false;
+  }
+
+  /// 滚动模式：已无上一话时，继续向上/向左滚动则返回详情页。
   bool _shouldScrollBackToDetail(ScrollNotification notification) {
     if (_detail == null || _loading || _autoAdvancingChapter) return false;
 
     final hasHeader = _detail!.prev == null;
+    if (!hasHeader) return false;
+
     final positions = _itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return false;
 
-    // 已无下一话：tail 已完全可见且继续向下/向右滚动
-    if (_detail!.next == null) {
-      final tailIndex = (hasHeader ? 1 : 0) + _detail!.contents.length;
-      var tailFullyVisible = false;
-      for (final p in positions) {
-        if (p.index != tailIndex) continue;
-        tailFullyVisible =
-            p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
-        break;
-      }
-      if (!tailFullyVisible) return false;
-      if (notification is ScrollUpdateNotification) {
-        return (notification.scrollDelta ?? 0) > 0;
-      }
-      if (notification is OverscrollNotification) {
-        return notification.overscroll > 0;
-      }
-    }
-
     // 已无上一话：header 已完全可见且继续向上/向左滚动
-    if (hasHeader) {
-      var headFullyVisible = false;
-      for (final p in positions) {
-        if (p.index != 0) continue;
-        headFullyVisible =
-            p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
-        break;
-      }
-      if (!headFullyVisible) return false;
-      if (notification is ScrollUpdateNotification) {
-        return (notification.scrollDelta ?? 0) < 0;
-      }
-      if (notification is OverscrollNotification) {
-        return notification.overscroll < 0;
-      }
+    var headFullyVisible = false;
+    for (final p in positions) {
+      if (p.index != 0) continue;
+      headFullyVisible =
+          p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
+      break;
+    }
+    if (!headFullyVisible) return false;
+    if (notification is ScrollUpdateNotification) {
+      return (notification.scrollDelta ?? 0) < 0;
+    }
+    if (notification is OverscrollNotification) {
+      return notification.overscroll < 0;
     }
 
     return false;
@@ -1486,27 +1601,6 @@ class _ReaderPageState extends State<ReaderPage> {
     if (nextUuid == null || _autoAdvancingChapter) return;
     _autoAdvancingChapter = true;
     _goChapter(nextUuid);
-  }
-
-  /// 翻页模式：用户滑到开头/结尾空白页时，执行跨章跳转。
-  void _handlePageModeBlankPage(bool isEndBlank) {
-    if (_detail == null || _autoAdvancingChapter) return;
-    _autoAdvancingChapter = true;
-    if (isEndBlank) {
-      if (_detail!.next != null) {
-        _goChapter(_detail!.next);
-      } else {
-        showToast(context, '当前已无下一话');
-        Navigator.pop(context);
-      }
-    } else {
-      if (_detail!.prev != null) {
-        _goChapter(_detail!.prev);
-      } else {
-        showToast(context, '当前已无上一话');
-        Navigator.pop(context);
-      }
-    }
   }
 
   Widget _buildScrollMode() {
@@ -1545,13 +1639,18 @@ class _ReaderPageState extends State<ReaderPage> {
       }
     } else {
       final chapter = _detail!;
-      final start = 0;
+      const start = 0;
       for (var i = 0; i < chapter.contents.length; i++) {
         items.add(_ScrollItem.image(chapter, i, start + i));
       }
       items.add(_ScrollItem.tail());
     }
     final totalItems = items.length;
+    // 记录尾部 item 索引，用于检测是否应返回目录
+    _scrollTailIndex =
+        (_continuousReading ? _chain.last.next == null : _detail!.next == null)
+        ? totalItems - 1
+        : -1;
 
     return Listener(
       onPointerDown: (_) => _onAutoScrollTouchStart(),
@@ -1574,9 +1673,17 @@ class _ReaderPageState extends State<ReaderPage> {
             }
             if (_continuousReading) {
               _maybeAppendNextChainOnScroll();
+              if (_shouldScrollToCatalog(n)) {
+                _autoAdvancingChapter = true;
+                Navigator.pop(context);
+              }
             } else {
               if (_shouldAutoAdvanceScrollChapter(n)) {
                 _autoAdvanceToNextChapter();
+              }
+              if (_shouldScrollToCatalog(n)) {
+                _autoAdvancingChapter = true;
+                Navigator.pop(context);
               }
               if (_shouldScrollBackToDetail(n)) {
                 Navigator.pop(context);
@@ -1617,9 +1724,19 @@ class _ReaderPageState extends State<ReaderPage> {
               final item = items[i];
               switch (item.kind) {
                 case _ScrollItemKind.header:
-                  return _buildFirstChapterHead();
+                  return _FirstChapterHead(
+                    isHorizontalScroll: _isHorizontalScrollMode,
+                    tailExtent: _scrollModeTailExtent(context),
+                  );
                 case _ScrollItemKind.chapterDivider:
-                  return _buildChapterDivider(item.chapter!);
+                  final chapter = item.chapter!;
+                  return _ChapterDivider(
+                    commentCount: _commentCountFor(chapter),
+                    isHorizontalScroll: _isHorizontalScrollMode,
+                    tailExtent: _scrollModeTailExtent(context),
+                    onCatalog: () => Navigator.pop(context),
+                    onComments: () => _showChapterComments(chapter: chapter),
+                  );
                 case _ScrollItemKind.image:
                   final image = _buildReaderImageGesture(
                     item.chapter!,
@@ -1631,9 +1748,38 @@ class _ReaderPageState extends State<ReaderPage> {
                   }
                   return image;
                 case _ScrollItemKind.tail:
-                  return _buildNextChapterTail();
+                  final tailHasNext = _continuousReading
+                      ? _chain.last.next != null
+                      : _detail?.next != null;
+                  return _NextChapterTail(
+                    hasNext: tailHasNext,
+                    isHorizontalScroll: _isHorizontalScrollMode,
+                    tailExtent: _scrollModeTailExtent(context),
+                    commentCount: _continuousReading
+                        ? _commentCountFor(_chain.last)
+                        : _commentCount,
+                    onCatalog: () => Navigator.pop(context),
+                    onComments: _continuousReading
+                        ? () => _showChapterComments(chapter: _chain.last)
+                        : _showChapterComments,
+                    onNextChapter: tailHasNext
+                        ? () => _goChapter(
+                            _continuousReading
+                                ? _chain.last.next!
+                                : _detail!.next!,
+                          )
+                        : null,
+                  );
                 case _ScrollItemKind.loadMore:
-                  return _buildLoadMoreTail();
+                  return _LoadMoreTail(
+                    isLoading: _loadingNextChainChapter,
+                    isHorizontalScroll: _isHorizontalScrollMode,
+                    tailExtent: _scrollModeTailExtent(context),
+                    commentCount: _commentCountFor(_chain.last),
+                    onCatalog: () => Navigator.pop(context),
+                    onComments: () =>
+                        _showChapterComments(chapter: _chain.last),
+                  );
               }
             },
           ),
@@ -1678,251 +1824,6 @@ class _ReaderPageState extends State<ReaderPage> {
         return;
       }
     }
-  }
-
-  Widget _buildChapterDivider(ChapterDetail chapter) {
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [_buildChapterDividerActions(chapter)],
-      ),
-    );
-    if (_isHorizontalScrollMode) {
-      return SizedBox(width: _scrollModeTailExtent(context), child: content);
-    }
-    return ColoredBox(color: Colors.black, child: content);
-  }
-
-  /// 章节分隔区的操作按钮：目录、评论（针对该章）。
-  Widget _buildChapterDividerActions(ChapterDetail chapter) {
-    final buttonStyle = OutlinedButton.styleFrom(
-      foregroundColor: Colors.white,
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
-      backgroundColor: Colors.white.withValues(alpha: 0.08),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-    final commentCount = _commentCountFor(chapter);
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        OutlinedButton.icon(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.list),
-          label: const Text('目录'),
-          style: buttonStyle,
-        ),
-        OutlinedButton.icon(
-          onPressed: () => _showChapterComments(chapter: chapter),
-          icon: const Icon(Icons.forum_outlined),
-          label: Text(commentCount > 0 ? '$commentCount' : '评论'),
-          style: buttonStyle,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoadMoreTail() {
-    final cs = Theme.of(context).colorScheme;
-    final chapter = _chain.last;
-    final content = Padding(
-      padding: const EdgeInsets.fromLTRB(32, 48, 32, 32),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_loadingNextChainChapter)
-              const CircularProgressIndicator(strokeWidth: 2)
-            else
-              Icon(Icons.expand_more, color: cs.onSurfaceVariant, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              _loadingNextChainChapter ? '正在加载下一话…' : '继续滚动加载下一话',
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            _buildChapterDividerActions(chapter),
-          ],
-        ),
-      ),
-    );
-    return ColoredBox(
-      color: Colors.black,
-      child: SizedBox(
-        width: _isHorizontalScrollMode ? _scrollModeTailExtent(context) : null,
-        height: _isHorizontalScrollMode
-            ? null
-            : _scrollModeTailExtent(context) * 0.6,
-        child: Align(alignment: Alignment.topCenter, child: content),
-      ),
-    );
-  }
-
-  Widget _buildFirstChapterHead() {
-    final message = const Center(
-      child: Text(
-        '已经是第一章',
-        style: TextStyle(color: Colors.white54, fontSize: 14),
-      ),
-    );
-
-    if (_isHorizontalScrollMode) {
-      return SizedBox(
-        width: _scrollModeTailExtent(context),
-        child: Padding(padding: const EdgeInsets.all(32), child: message),
-      );
-    }
-
-    return Padding(padding: const EdgeInsets.all(32), child: message);
-  }
-
-  Widget _buildChapterEndActionsRow() {
-    final nextUuid = _detail?.next;
-    final hasNext = nextUuid != null;
-    final buttonStyle = OutlinedButton.styleFrom(
-      foregroundColor: Colors.white,
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
-      backgroundColor: Colors.white.withValues(alpha: 0.08),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-    final primaryButtonStyle = FilledButton.styleFrom(
-      foregroundColor: Colors.white,
-      backgroundColor: Colors.white.withValues(alpha: 0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        OutlinedButton.icon(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.list),
-          label: const Text('目录'),
-          style: buttonStyle,
-        ),
-        OutlinedButton.icon(
-          onPressed: _showChapterComments,
-          icon: const Icon(Icons.forum_outlined),
-          label: Text(_commentCount > 0 ? '$_commentCount' : '评论'),
-          style: buttonStyle,
-        ),
-        if (hasNext)
-          FilledButton.icon(
-            onPressed: () => _goChapter(nextUuid),
-            icon: const Icon(Icons.skip_next),
-            label: const Text('下一话'),
-            style: primaryButtonStyle,
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPageModeEndActions() {
-    final nextUuid = _detail?.next;
-    final hasNext = nextUuid != null;
-    final buttonStyle = OutlinedButton.styleFrom(
-      foregroundColor: Colors.white,
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
-      backgroundColor: Colors.white.withValues(alpha: 0.08),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-    final primaryButtonStyle = FilledButton.styleFrom(
-      foregroundColor: Colors.white,
-      backgroundColor: Colors.white.withValues(alpha: 0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-
-    return ColoredBox(
-      color: Colors.black,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(32, 12, 32, 16),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.list),
-                      label: const Text('目录'),
-                      style: buttonStyle,
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _showChapterComments,
-                      icon: const Icon(Icons.forum_outlined),
-                      label: Text(
-                        _commentCount > 0 ? '$_commentCount' : '评论',
-                      ),
-                      style: buttonStyle,
-                    ),
-                    if (hasNext)
-                      FilledButton.icon(
-                        onPressed: () => _goChapter(nextUuid),
-                        icon: const Icon(Icons.skip_next),
-                        label: const Text('下一话'),
-                        style: primaryButtonStyle,
-                      ),
-                  ],
-                ),
-                if (hasNext)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      '继续翻页进入下一话',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNextChapterTail() {
-    final content = Padding(
-      padding: const EdgeInsets.fromLTRB(32, 72, 32, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _detail?.next != null ? '继续下滑或点击按钮进入下一话' : '已经是最后一话',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              height: 1.6,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildChapterEndActionsRow(),
-        ],
-      ),
-    );
-
-    return ColoredBox(
-      color: Colors.black,
-      child: SizedBox(
-        width: _isHorizontalScrollMode ? _scrollModeTailExtent(context) : null,
-        height: _isHorizontalScrollMode ? null : _scrollModeTailExtent(context),
-        child: Align(alignment: Alignment.topCenter, child: content),
-      ),
-    );
   }
 
   Future<void> _showChapterComments({ChapterDetail? chapter}) async {
@@ -1973,7 +1874,7 @@ class _ReaderPageState extends State<ReaderPage> {
 
     if (action == 'back_to_catalog') {
       // 返回目录会退出阅读页，无需恢复自动滚动
-      if (mounted) Navigator.of(context).maybePop();
+      if (mounted) unawaited(Navigator.of(context).maybePop());
       return;
     }
     if (mounted) _resumeAutoScrollAfterOverlay();
@@ -2053,9 +1954,9 @@ class _ReaderPageState extends State<ReaderPage> {
     final horizontalDrag = instantTurn && !_isVerticalPageMode;
     final verticalDrag = instantTurn && _isVerticalPageMode;
     final totalChapters = _chainImageCount;
-    final isContinuous = _continuousReading;
-    final imageCount = _detail!.contents.length;
-    final itemCount = isContinuous ? totalChapters : imageCount + 2;
+    // 最后一话无下一话时，末尾追加一个空白页用于返回目录
+    final hasEndBlank = _chain.last.next == null;
+    final itemCount = totalChapters + (hasEndBlank ? 1 : 0);
     return GestureDetector(
       onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
       onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
@@ -2068,11 +1969,7 @@ class _ReaderPageState extends State<ReaderPage> {
       onVerticalDragCancel: verticalDrag ? _onInstantTurnDragCancel : null,
       child: PageView.builder(
         // 连续阅读：章切换不重建 PageView，避免丢位置；用稳定 key。
-        key: ValueKey(
-          isContinuous
-              ? 'page-continuous-$_scrollWidgetVersion'
-              : 'page-$_currentUuid',
-        ),
+        key: ValueKey('page-continuous-$_scrollWidgetVersion'),
         controller: _pageController,
         scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
         reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
@@ -2080,71 +1977,41 @@ class _ReaderPageState extends State<ReaderPage> {
         physics: instantTurn ? const NeverScrollableScrollPhysics() : null,
         itemCount: itemCount,
         onPageChanged: (index) {
-          if (!isContinuous) {
-            if (index == 0) {
-              _handlePageModeBlankPage(false);
-              return;
-            }
-            if (index == imageCount + 1) {
-              _handlePageModeBlankPage(true);
-              return;
-            }
-          }
-          if (isContinuous) {
-            final (ci, li) = _resolveChainImage(index);
-            final chapterChanged = _syncActiveChapterFromGlobal(ci);
-            setState(() {
-              _currentPage = li + 1;
-              if (!_isDraggingSlider) {
-                _showToolbar = false;
-                SystemChrome.setEnabledSystemUIMode(
-                  SystemUiMode.immersiveSticky,
-                );
-              }
-            });
-            _saveReadingHistory();
-            _preloadChainImages(ci, li);
-            // 接近链尾且有下一话：预加载下一话到链中，翻页时即可无缝衔接
-            if (ci == _chain.length - 1 &&
-                li >= _chain.last.contents.length - 2 &&
-                _chain.last.next != null &&
-                !_loadingNextChainChapter) {
-              _appendNextChapterToChain();
-            }
-            if (chapterChanged) {
-              _preloadComments();
+          // 末尾空白页：返回目录
+          if (hasEndBlank && index == totalChapters) {
+            if (!_autoAdvancingChapter) {
+              _autoAdvancingChapter = true;
+              Navigator.pop(context);
             }
             return;
           }
+          final (ci, li) = _resolveChainImage(index);
+          final chapterChanged = _syncActiveChapterFromGlobal(ci);
           setState(() {
-            _currentPage = index;
+            _currentPage = li + 1;
             if (!_isDraggingSlider) {
               _showToolbar = false;
               SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
             }
           });
           _saveReadingHistory();
-          _preloadImages(index - 1);
+          _preloadChainImages(ci, li);
+          // 接近链尾且有下一话：预加载下一话到链中，翻页时即可无缝衔接
+          if (ci == _chain.length - 1 &&
+              li >= _chain.last.contents.length - 2 &&
+              _chain.last.next != null &&
+              !_loadingNextChainChapter) {
+            _appendNextChapterToChain();
+          }
+          if (chapterChanged) {
+            _preloadComments();
+          }
         },
         itemBuilder: (_, i) {
-          if (!isContinuous) {
-            if (i == 0 || i == imageCount + 1) {
-              return const SizedBox.expand();
-            }
-            final imageIndex = i - 1;
-            if (imageIndex < imageCount - 1) {
-              return Center(
-                child: _buildReaderImageGesture(_detail!, imageIndex),
-              );
-            }
-            return Column(
-              children: [
-                Expanded(child: Center(child: _buildReaderImageGesture(_detail!, imageIndex))),
-                _buildPageModeEndActions(),
-              ],
-            );
+          // 末尾空白页
+          if (hasEndBlank && i == totalChapters) {
+            return const SizedBox.expand();
           }
-          // 连续阅读：按全局索引解析章节与章内索引
           final (ci, li) = _resolveChainImage(i);
           final chapter = _chain[ci];
           // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
@@ -2153,7 +2020,20 @@ class _ReaderPageState extends State<ReaderPage> {
             child: _buildReaderImageGesture(chapter, li, retryKey: i),
           );
           if (isChapterLastPage) {
-            return Column(children: [Expanded(child: child), _buildPageModeEndActions()]);
+            return Column(
+              children: [
+                Expanded(child: child),
+                _PageModeEndActions(
+                  hasNext: chapter.next != null,
+                  commentCount: _commentCountFor(chapter),
+                  onCatalog: () => Navigator.pop(context),
+                  onComments: () => _showChapterComments(chapter: chapter),
+                  onNextChapter: chapter.next != null
+                      ? () => _goChapter(chapter.next)
+                      : null,
+                ),
+              ],
+            );
           }
           return child;
         },
@@ -2182,219 +2062,6 @@ class _ReaderPageState extends State<ReaderPage> {
       enabled: !detail.isDownloaded && !_loading,
       onRefresh: _refreshChapter,
       child: child,
-    );
-  }
-
-  // ── 工具栏 ──
-
-  Widget _buildTopBar(ColorScheme cs) {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: IgnorePointer(
-        ignoring: !_showToolbar,
-        child: AnimatedSlide(
-          duration: const Duration(milliseconds: 200),
-          offset: Offset(0, _showToolbar ? 0 : -_hiddenToolbarSlideOffset),
-          child: Container(
-            color: Colors.black,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Expanded(
-                      child: Text(
-                        _detail?.name ?? widget.chapterName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomBar(ColorScheme cs) {
-    final total = _detail!.contents.length;
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: IgnorePointer(
-        ignoring: !_showToolbar,
-        child: AnimatedSlide(
-          duration: const Duration(milliseconds: 200),
-          offset: Offset(0, _showToolbar ? 0 : _hiddenToolbarSlideOffset),
-          child: Container(
-            color: Colors.black,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 24, 8, 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 页码进度条（带间隔点）
-                    Row(
-                      children: [
-                        Text(
-                          '$_currentPage',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Expanded(
-                          child: SliderTheme(
-                            data: SliderThemeData(
-                              trackHeight: 3,
-                              thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 7,
-                              ),
-                              tickMarkShape: const RoundSliderTickMarkShape(
-                                tickMarkRadius: 2.5,
-                              ),
-                              activeTrackColor: cs.primary,
-                              inactiveTrackColor: Colors.white24,
-                              activeTickMarkColor: cs.primary,
-                              inactiveTickMarkColor: Colors.white24,
-                              thumbColor: cs.primary,
-                              overlayColor: cs.primary.withValues(alpha: 0.2),
-                            ),
-                            child: Slider(
-                              value: _currentPage.toDouble(),
-                              min: 1,
-                              max: total.toDouble(),
-                              divisions: total > 1 ? total - 1 : null,
-                              onChangeStart: (_) {
-                                _isDraggingSlider = true;
-                              },
-                              onChangeEnd: (_) {
-                                _isDraggingSlider = false;
-                              },
-                              onChanged: (v) {
-                                final page = v.round();
-                                setState(() => _currentPage = page);
-                                if (_isPageMode) {
-                                  final globalIndex = _continuousReading
-                                      ? _chainChapterStart(_chainIndex) +
-                                            (page - 1)
-                                      : page;
-                                  _pageController.jumpToPage(globalIndex);
-                                } else {
-                                  _jumpToScrollPage(page, totalPages: total);
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '$total',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // 按钮行
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.skip_previous,
-                            color: _detail!.prev != null
-                                ? Colors.white
-                                : Colors.white38,
-                          ),
-                          onPressed: _detail!.prev != null
-                              ? () => _goChapter(_detail!.prev)
-                              : null,
-                          tooltip: '上一章',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.list, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                          tooltip: '目录',
-                        ),
-                        if (!_isPageMode && _user.readerAutoScrollEnabled)
-                          IconButton(
-                            tooltip: _autoScrollEnabled
-                                ? (_autoScrollActive ? '暂停自动滚动' : '自动滚动即将恢复')
-                                : '开启自动滚动',
-                            icon: Icon(
-                              _autoScrollEnabled
-                                  ? Icons.pause_circle_filled
-                                  : Icons.play_circle_outline,
-                              color: _autoScrollEnabled
-                                  ? (_autoScrollActive
-                                        ? cs.primary
-                                        : cs.primary.withValues(alpha: 0.4))
-                                  : Colors.white,
-                            ),
-                            onPressed: () =>
-                                _setAutoScroll(!_autoScrollEnabled),
-                          ),
-                        IconButton(
-                          icon: Badge(
-                            isLabelVisible: _commentCount > 0,
-                            backgroundColor: Colors.white,
-                            textColor: Colors.black,
-                            label: Text(
-                              '$_commentCount',
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                            child: const Icon(
-                              Icons.forum_outlined,
-                              color: Colors.white,
-                            ),
-                          ),
-                          onPressed: _showChapterComments,
-                          tooltip: '章节评论',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.settings, color: Colors.white),
-                          onPressed: _showSettingsPanel,
-                          tooltip: '阅读设置',
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.skip_next,
-                            color: _detail!.next != null
-                                ? Colors.white
-                                : Colors.white38,
-                          ),
-                          onPressed: _detail!.next != null
-                              ? () => _goChapter(_detail!.next)
-                              : null,
-                          tooltip: '下一话',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -2428,146 +2095,57 @@ class _ReaderPageState extends State<ReaderPage> {
               _buildRefreshableReader(
                 _isPageMode ? _buildPageMode() : _buildScrollMode(),
               ),
-            _buildTopBar(cs),
-            if (_detail != null) _buildBottomBar(cs),
+            _ReaderTopBar(
+              showToolbar: _showToolbar,
+              chapterName: _detail?.name ?? widget.chapterName,
+              slideOffset: _hiddenToolbarSlideOffset,
+              onBack: () => Navigator.pop(context),
+            ),
+            if (_detail != null)
+              _ReaderBottomBar(
+                showToolbar: _showToolbar,
+                currentPage: _currentPage,
+                totalPage: _detail!.contents.length,
+                hasPrev: _detail!.prev != null,
+                hasNext: _detail!.next != null,
+                commentCount: _commentCount,
+                isPageMode: _isPageMode,
+                autoScrollEnabled: _autoScrollEnabled,
+                autoScrollActive: _autoScrollActive,
+                showAutoScrollButton:
+                    !_isPageMode && _user.readerAutoScrollEnabled,
+                slideOffset: _hiddenToolbarSlideOffset,
+                colorScheme: cs,
+                onPageChanged: (page) {
+                  setState(() => _currentPage = page);
+                  if (_isPageMode) {
+                    final globalIndex = _continuousReading
+                        ? _chainChapterStart(_chainIndex) + (page - 1)
+                        : page;
+                    _pageController.jumpToPage(globalIndex);
+                  } else {
+                    _jumpToScrollPage(
+                      page,
+                      totalPages: _detail!.contents.length,
+                    );
+                  }
+                },
+                onDragStart: () => _isDraggingSlider = true,
+                onDragEnd: () => _isDraggingSlider = false,
+                onPrevChapter: _detail!.prev != null
+                    ? () => _goChapter(_detail!.prev)
+                    : null,
+                onCatalog: () => Navigator.pop(context),
+                onToggleAutoScroll: () => _setAutoScroll(!_autoScrollEnabled),
+                onComments: _showChapterComments,
+                onSettings: _showSettingsPanel,
+                onNextChapter: _detail!.next != null
+                    ? () => _goChapter(_detail!.next)
+                    : null,
+              ),
           ],
         ),
       ),
-    );
-  }
-}
-
-enum _ScrollItemKind { header, chapterDivider, image, tail, loadMore }
-
-class _ScrollItem {
-  final _ScrollItemKind kind;
-  final ChapterDetail? chapter;
-  final int? localIndex;
-  final int? globalIndex;
-
-  const _ScrollItem._({
-    required this.kind,
-    this.chapter,
-    this.localIndex,
-    this.globalIndex,
-  });
-
-  factory _ScrollItem.header() =>
-      const _ScrollItem._(kind: _ScrollItemKind.header);
-  factory _ScrollItem.chapterDivider(ChapterDetail c) =>
-      _ScrollItem._(kind: _ScrollItemKind.chapterDivider, chapter: c);
-  factory _ScrollItem.image(ChapterDetail c, int local, int global) =>
-      _ScrollItem._(
-        kind: _ScrollItemKind.image,
-        chapter: c,
-        localIndex: local,
-        globalIndex: global,
-      );
-  factory _ScrollItem.tail() => const _ScrollItem._(kind: _ScrollItemKind.tail);
-  factory _ScrollItem.loadMore() =>
-      const _ScrollItem._(kind: _ScrollItemKind.loadMore);
-}
-
-class _ReaderPullToRefresh extends StatefulWidget {
-  final bool enabled;
-  final Future<void> Function() onRefresh;
-  final Widget child;
-
-  const _ReaderPullToRefresh({
-    required this.enabled,
-    required this.onRefresh,
-    required this.child,
-  });
-
-  @override
-  State<_ReaderPullToRefresh> createState() => _ReaderPullToRefreshState();
-}
-
-class _ReaderPullToRefreshState extends State<_ReaderPullToRefresh> {
-  static const _triggerExtent = 90.0;
-  double _dragExtent = 0;
-  bool _refreshing = false;
-
-  bool get _indicatorVisible => _dragExtent > 0 || _refreshing;
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    if (!widget.enabled || _refreshing) return;
-    final nextExtent = (_dragExtent + details.delta.dy).clamp(
-      0.0,
-      _triggerExtent * 1.4,
-    );
-    if (nextExtent == _dragExtent) return;
-    setState(() => _dragExtent = nextExtent);
-  }
-
-  Future<void> _handleDragEnd() async {
-    if (!widget.enabled || _refreshing) return;
-    if (_dragExtent < _triggerExtent) {
-      setState(() => _dragExtent = 0);
-      return;
-    }
-
-    setState(() {
-      _refreshing = true;
-      _dragExtent = _triggerExtent;
-    });
-    try {
-      await widget.onRefresh();
-    } finally {
-      if (mounted) {
-        setState(() {
-          _refreshing = false;
-          _dragExtent = 0;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.enabled) return widget.child;
-
-    final progress = (_dragExtent / _triggerExtent).clamp(0.0, 1.0);
-    return Stack(
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onVerticalDragUpdate: _handleDragUpdate,
-          onVerticalDragEnd: (_) => _handleDragEnd(),
-          onVerticalDragCancel: () {
-            if (!_refreshing && mounted) setState(() => _dragExtent = 0);
-          },
-          child: widget.child,
-        ),
-        Positioned(
-          top: MediaQuery.of(context).padding.top + 12,
-          left: 0,
-          right: 0,
-          child: IgnorePointer(
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 180),
-              opacity: _indicatorVisible ? 1 : 0,
-              child: Center(
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: CircularProgressIndicator(
-                    value: _refreshing ? null : progress,
-                    strokeWidth: 2.4,
-                    color: Colors.white,
-                    backgroundColor: Colors.white24,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

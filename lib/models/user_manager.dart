@@ -1,15 +1,24 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'app_theme_option.dart';
-import 'api_ordering.dart';
+
 import '../api/api_client.dart';
+import '../api/api_transport.dart';
 import '../utils/app_icon_switcher.dart';
+import '../utils/app_logger.dart';
+import 'api_ordering.dart';
+import 'app_theme_option.dart';
+import 'comment_settings.dart';
+import 'danmaku_settings.dart';
+import 'network_proxy_types.dart';
+import 'network_settings.dart';
+import 'reader_settings.dart';
+import 'theme_settings.dart';
 
-enum NetworkProxyMode { system, manual }
-
-enum NetworkProxyType { http, socks }
+export 'network_proxy_types.dart';
 
 class SavedCredential {
   final String username;
@@ -73,19 +82,34 @@ class UserManager extends ChangeNotifier {
   factory UserManager() => _instance;
   UserManager._();
 
-  static const double minDarkModeCoverBrightness = 0.10;
-  static const double maxDarkModeCoverBrightness = 1.0;
-  static const double defaultDarkModeCoverBrightness = 0.85;
-  static const defaultNavKey = 'comic';
-  static const defaultNavOrder = [
-    'comic',
-    'anime',
-    'search',
-    'bookshelf',
-    'profile',
-  ];
+  // ── Domain-specific sub-stores ─────────────────────────────────────
+  // Each store is an independent ChangeNotifier.  Callers that only
+  // need reader / danmaku / comment / theme / network settings should
+  // import the specific store directly and skip the facade entirely.
+
+  final reader = ReaderSettings();
+  final danmaku = DanmakuSettings();
+  final comment = CommentSettings();
+  final theme = ThemeSettings();
+  final network = NetworkSettings();
+
+  // ── Backward-compat constant re-exports ────────────────────────────
+  // These delegate to the canonical definitions in each sub-store so
+  // existing callers that reference UserManager.defaultXxx keep working.
+
+  static const double minDarkModeCoverBrightness =
+      ThemeSettings.minDarkModeCoverBrightness;
+  static const double maxDarkModeCoverBrightness =
+      ThemeSettings.maxDarkModeCoverBrightness;
+  static const double defaultDarkModeCoverBrightness =
+      ThemeSettings.defaultDarkModeCoverBrightness;
+  static const defaultNavKey = ThemeSettings.defaultNavKey;
+  static const defaultNavOrder = ThemeSettings.defaultNavOrder;
+  static const defaultDisplayModeRefreshRate =
+      ThemeSettings.defaultDisplayModeRefreshRate;
   static const defaultUpdateMirrorPrefix = 'https://ghproxy.net/';
-  static const defaultDisplayModeRefreshRate = 0;
+
+  static const appLogoPaths = ThemeSettings.appLogoPaths;
 
   static const _keyToken = 'user_token';
   static const _keyUsername = 'user_username';
@@ -148,6 +172,7 @@ class UserManager extends ChangeNotifier {
   static const _keyNetworkProxyHost = 'network_proxy_host';
   static const _keyNetworkProxyPort = 'network_proxy_port';
   static const _keyAnimeFeatureEnabled = 'anime_feature_enabled';
+  static const _keyLocale = 'locale';
   static const _keyBannerVisible = 'banner_visible';
   static const _keyMangaHomeSource = 'manga_home_source';
   static const _keyCopyApiHost = 'copy_api_host';
@@ -165,12 +190,9 @@ class UserManager extends ChangeNotifier {
   static const _keyDanmakuHideTop = 'danmaku_hide_top';
   static const _keyDanmakuHideBottom = 'danmaku_hide_bottom';
   static const _keyDanmakuBlocklist = 'danmaku_blocklist';
+  static const _keyCommentBlockedUsers = 'comment_blocked_users';
+  static const _keyCommentBlockNoRemind = 'comment_block_no_remind';
   static const _keyLogoIndex = 'logo_index';
-
-  static const appLogoPaths = [
-    'assets/ic_launcher.png',
-    'assets/ic_launcher_1.png',
-  ];
 
   String? _token;
   String? _username;
@@ -230,6 +252,7 @@ class UserManager extends ChangeNotifier {
   String _networkProxyHost = '';
   int _networkProxyPort = 0;
   bool _animeFeatureEnabled = true;
+  String _locale = ''; // '' = follow system, 'zh' = 简体, 'zh-Hant' = 繁体
   bool _bannerVisible = true;
   String _mangaHomeSource = 'hot';
   String _copyApiHost = defaultCopyApiHost;
@@ -246,6 +269,9 @@ class UserManager extends ChangeNotifier {
   bool _danmakuHideTop = false;
   bool _danmakuHideBottom = false;
   List<String> _danmakuBlocklist = [];
+  /// 评论屏蔽用户黑名单，元素为 `userId|userName` 形式
+  List<String> _commentBlockedUsers = [];
+  bool _commentBlockNoRemind = false;
   int _logoIndex = 1;
 
   String? get token => _token;
@@ -324,6 +350,9 @@ class UserManager extends ChangeNotifier {
   bool get hasManualProxy =>
       _networkProxyHost.isNotEmpty && _networkProxyPort > 0;
   bool get animeFeatureEnabled => _animeFeatureEnabled;
+
+  /// '' = follow system, 'zh' = 简体中文, 'zh-Hant' = 繁體中文
+  String get locale => _locale;
   bool get bannerVisible => _bannerVisible;
   String get mangaHomeSource => _mangaHomeSource;
   String get copyApiHost => _copyApiHost;
@@ -341,6 +370,8 @@ class UserManager extends ChangeNotifier {
   bool get danmakuHideTop => _danmakuHideTop;
   bool get danmakuHideBottom => _danmakuHideBottom;
   List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
+  List<String> get commentBlockedUsers => List.unmodifiable(_commentBlockedUsers);
+  bool get commentBlockNoRemind => _commentBlockNoRemind;
   int get logoIndex => _logoIndex;
   String get appLogoPath =>
       appLogoPaths[_logoIndex.clamp(0, appLogoPaths.length - 1)];
@@ -531,6 +562,7 @@ class UserManager extends ChangeNotifier {
     _networkProxyHost = prefs.getString(_keyNetworkProxyHost)?.trim() ?? '';
     _networkProxyPort = _normalizeProxyPort(prefs.getInt(_keyNetworkProxyPort));
     _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? true;
+    _locale = prefs.getString(_keyLocale) ?? '';
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;
     _mangaHomeSource = prefs.getString(_keyMangaHomeSource) ?? 'hot';
     _copyApiHost = normalizeCopyApiHost(prefs.getString(_keyCopyApiHost));
@@ -553,6 +585,10 @@ class UserManager extends ChangeNotifier {
     _danmakuHideTop = prefs.getBool(_keyDanmakuHideTop) ?? false;
     _danmakuHideBottom = prefs.getBool(_keyDanmakuHideBottom) ?? false;
     _danmakuBlocklist = prefs.getStringList(_keyDanmakuBlocklist) ?? [];
+    _commentBlockedUsers =
+        prefs.getStringList(_keyCommentBlockedUsers) ?? [];
+    _commentBlockNoRemind =
+        prefs.getBool(_keyCommentBlockNoRemind) ?? false;
     _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(
       0,
       appLogoPaths.length - 1,
@@ -561,9 +597,46 @@ class UserManager extends ChangeNotifier {
       try {
         final platformIndex = await AppIconSwitcher.getAppIconIndex();
         _logoIndex = platformIndex.clamp(0, appLogoPaths.length - 1);
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'user_manager.get_app_icon',
+          ),
+        );
+      }
     }
+    // Initialize domain-specific sub-stores with the same prefs instance.
+    await reader.initFromPrefs(prefs);
+    await danmaku.initFromPrefs(prefs);
+    await comment.initFromPrefs(prefs);
+    await theme.initFromPrefs(prefs);
+    await network.initFromPrefs(prefs);
+
+    // Forward sub-store notifications so legacy listeners on UserManager
+    // still rebuild when domain settings change.
+    reader.addListener(_onSubStoreChanged);
+    danmaku.addListener(_onSubStoreChanged);
+    comment.addListener(_onSubStoreChanged);
+    theme.addListener(_onSubStoreChanged);
+    network.addListener(_onSubStoreChanged);
+
     notifyListeners();
+  }
+
+  void _onSubStoreChanged() {
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    reader.removeListener(_onSubStoreChanged);
+    danmaku.removeListener(_onSubStoreChanged);
+    comment.removeListener(_onSubStoreChanged);
+    theme.removeListener(_onSubStoreChanged);
+    network.removeListener(_onSubStoreChanged);
+    super.dispose();
   }
 
   Future<void> saveLogin({
@@ -605,7 +678,7 @@ class UserManager extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    ApiClient().clearAuthState();
+    ApiClient().user.clearAuthState();
     _token = null;
     _userId = null;
     _username = null;
@@ -688,7 +761,15 @@ class UserManager extends ChangeNotifier {
     // 后台刷新用户信息
     try {
       await refreshUserInfo();
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'user_manager.refresh_user_info',
+        ),
+      );
+    }
     return true;
   }
 
@@ -1130,6 +1211,18 @@ class UserManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setLocale(String locale) async {
+    if (_locale == locale) return;
+    _locale = locale;
+    final prefs = await SharedPreferences.getInstance();
+    if (locale.isEmpty) {
+      await prefs.remove(_keyLocale);
+    } else {
+      await prefs.setString(_keyLocale, locale);
+    }
+    notifyListeners();
+  }
+
   Future<void> setBannerVisible(bool visible) async {
     if (_bannerVisible == visible) return;
     _bannerVisible = visible;
@@ -1263,6 +1356,57 @@ class UserManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// `entry` 格式：`userId|userName`（userId 可为空字符串，userName 作为兜底标识）。
+  bool isCommentUserBlocked(String userId, String userName) {
+    if (userId.isEmpty && userName.isEmpty) return false;
+    for (final raw in _commentBlockedUsers) {
+      final sep = raw.indexOf('|');
+      if (sep < 0) {
+        if (userId.isNotEmpty && raw == userId) return true;
+        continue;
+      }
+      final bId = raw.substring(0, sep);
+      final bName = raw.substring(sep + 1);
+      if (userId.isNotEmpty && bId == userId) return true;
+      if (userId.isEmpty && userName.isNotEmpty && bName == userName) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> blockCommentUser(String userId, String userName) async {
+    final key = '$userId|$userName';
+    if (_commentBlockedUsers.any((e) => e == key)) return;
+    _commentBlockedUsers = [..._commentBlockedUsers, key];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCommentBlockedUsers, _commentBlockedUsers);
+    notifyListeners();
+  }
+
+  Future<void> unblockCommentUser(String rawKey) async {
+    _commentBlockedUsers = _commentBlockedUsers
+        .where((e) => e != rawKey)
+        .toList(growable: true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCommentBlockedUsers, _commentBlockedUsers);
+    notifyListeners();
+  }
+
+  Future<void> clearCommentBlockedUsers() async {
+    _commentBlockedUsers = const [];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyCommentBlockedUsers);
+    notifyListeners();
+  }
+
+  Future<void> setCommentBlockNoRemind(bool value) async {
+    _commentBlockNoRemind = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCommentBlockNoRemind, value);
+    notifyListeners();
+  }
+
   Future<void> setLogoIndex(int index) async {
     final next = index.clamp(0, appLogoPaths.length - 1);
     if (_logoIndex == next) return;
@@ -1273,13 +1417,21 @@ class UserManager extends ChangeNotifier {
     if (Platform.isAndroid || Platform.isIOS) {
       try {
         await AppIconSwitcher.setAppIcon(next);
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'user_manager.set_app_icon',
+          ),
+        );
+      }
     }
   }
 
   Future<void> refreshUserInfo() async {
     if (!isLoggedIn) return;
-    final info = await ApiClient().getUserInfo();
+    final info = await ApiClient().user.getUserInfo();
     await saveLogin(
       token: _token!,
       userId: info['user_id']?.toString() ?? _userId ?? '',

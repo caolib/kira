@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
@@ -7,10 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
-import '../api/api_client.dart';
 import '../api/ai_api.dart';
+import '../api/api_client.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
+import '../utils/app_logger.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
@@ -18,9 +20,9 @@ import '../utils/toast.dart';
 import 'chapter_comment_display.dart';
 
 part 'chapter_comments/comment_models.dart';
+part 'chapter_comments/comment_settings_panel.dart';
 part 'chapter_comments/comment_style.dart';
 part 'chapter_comments/comment_widgets.dart';
-part 'chapter_comments/comment_settings_panel.dart';
 
 class ChapterCommentsSheet extends StatefulWidget {
   final String chapterUuid;
@@ -90,6 +92,30 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   CancelToken? _summaryCancelToken;
   Set<int> _spoilerIds = const {};
   List<ChapterCommentDisplayEntry> _lastSnippetEntries = const [];
+  // ── AI 流式节流 ──
+  Timer? _summaryThrottleTimer;
+  bool _summaryHasPendingUpdate = false;
+  // ── 评论分组缓存 ──
+  List<ChapterCommentDisplayEntry> _groupedEntries = const [];
+  bool _reasoningScrollPending = false;
+
+  /// 在 _comments 变化后调用，重建分组缓存。
+  void _rebuildGroupedEntries() {
+    if (_comments.isEmpty) {
+      _groupedEntries = const [];
+      return;
+    }
+    final blocked = _user.commentBlockedUsers;
+    if (blocked.isEmpty) {
+      _groupedEntries = groupChapterComments(_comments);
+      return;
+    }
+    final filtered = _comments.where(
+      (c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()),
+    ).toList();
+    _groupedEntries = groupChapterComments(filtered);
+  }
+
   late final ChapterSummaryProgress _summaryProgress;
   bool _usingSharedSummaryProgress = false;
 
@@ -116,6 +142,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _comments = List<ChapterComment>.from(widget.initialComments!);
       _total = widget.initialTotal ?? _comments.length;
       _loading = false;
+      _rebuildGroupedEntries();
       if (_user.commentAutoLoadAll && _comments.length < _total) {
         _loadAllComments();
       }
@@ -131,6 +158,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   @override
   void dispose() {
     _summaryCancelToken?.cancel();
+    _summaryThrottleTimer?.cancel();
     _summaryProgress.removeListener(_onSummaryProgressChanged);
     _aiSettings.removeListener(_onAiChanged);
     _scrollController.dispose();
@@ -289,7 +317,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
 
     try {
-      final data = await _api.getChapterComments(
+      final data = await _api.manga.getChapterComments(
         widget.chapterUuid,
         limit: _pageSize,
         offset: loadMore ? _comments.length : 0,
@@ -312,6 +340,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _loadingMore = false;
         _error = null;
       });
+      _rebuildGroupedEntries();
       _notifyCommentsUpdated();
       if (!loadMore) {
         _maybeAutoSummary();
@@ -327,6 +356,83 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _loadingMore = false;
         _error = e.toString();
       });
+    }
+  }
+
+  /// 发评论后只刷新第 1 页，保留第 2+ 页已有数据。
+  ///
+  /// 新评论会出现在第 1 页，导致原第 1 页末尾评论「溢出」到第 2 页。
+  /// 若新第 1 页满 pageSize 条，说明有一条溢出，需要把原第 1 页的最后一条
+  /// 插入第 2 页头部（如果已加载了第 2+ 页的话）。第 2+ 页其余数据不动。
+  Future<void> _refreshFirstPage() async {
+    try {
+      final data = await _api.manga.getChapterComments(
+        widget.chapterUuid,
+        limit: _pageSize,
+      );
+      if (!mounted) return;
+
+      final firstPageComments = data.list;
+
+      // 计算已有评论中属于第 2+ 页的部分
+      final existingBeyondPage1 = _comments.length > _pageSize
+          ? _comments.sublist(_pageSize)
+          : <ChapterComment>[];
+
+      List<ChapterComment> merged;
+      if (firstPageComments.length >= _pageSize &&
+          existingBeyondPage1.isNotEmpty) {
+        // 第 1 页满，说明有一条从第 1 页溢出到第 2 页。
+        // 溢出的是旧第 1 页的最后一条（原 _comments[_pageSize - 1]）。
+        final overflowComment = _comments[_pageSize - 1];
+
+        // 避免重复：如果溢出评论的 id 已存在于新 fetched 数据或
+        // 后续页中，不再插入。
+        final allIds = <int>{
+          ...firstPageComments.map((c) => c.id),
+          ...existingBeyondPage1.map((c) => c.id),
+        };
+        final insertOverflow = !allIds.contains(overflowComment.id);
+
+        // 去除后续页中与第 1 页重复的评论
+        final dedupedBeyond = existingBeyondPage1
+            .where((c) => !firstPageComments.any((f) => f.id == c.id))
+            .toList();
+
+        merged = [
+          ...firstPageComments,
+          if (insertOverflow) overflowComment,
+          ...dedupedBeyond,
+        ];
+      } else {
+        // 第 1 页未满（评论总数 < pageSize），或没有第 2+ 页数据
+        // 直接拼接第 1 页 + 去重后的后续页
+        final dedupedBeyond = existingBeyondPage1
+            .where((c) => !firstPageComments.any((f) => f.id == c.id))
+            .toList();
+        merged = [...firstPageComments, ...dedupedBeyond];
+      }
+
+      setState(() {
+        _comments = merged;
+        _total = data.total;
+        _error = null;
+      });
+      _notifyCommentsUpdated();
+      _maybeAutoSummary();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _tryLoadMoreWhenNearBottom();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      // 刷新第 1 页失败时不影响已有数据，仅记录错误
+      unawaited(
+        AppLogger().recordWarning(
+          '刷新第1页评论失败: $e',
+          stackTrace: StackTrace.current,
+        ),
+      );
     }
   }
 
@@ -352,7 +458,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
     try {
       while (mounted && _comments.length < _total) {
-        final data = await _api.getChapterComments(
+        final data = await _api.manga.getChapterComments(
           widget.chapterUuid,
           limit: _pageSize,
           offset: _comments.length,
@@ -368,6 +474,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           _comments = [..._comments, ...newComments];
           _total = data.total;
         });
+        _rebuildGroupedEntries();
         _notifyCommentsUpdated();
 
         if (_comments.length < _total) {
@@ -441,17 +548,37 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         } else {
           buffer.write(chunk.text);
         }
+        // 节流 setState：最多每 66ms 刷新一次（~15fps），
+        // 避免每个 SSE chunk 都触发整棵 Widget 树 rebuild。
+        _summaryHasPendingUpdate = true;
+        _summaryThrottleTimer ??= Timer(const Duration(milliseconds: 66), () {
+          _summaryThrottleTimer = null;
+          if (!mounted || !_summaryHasPendingUpdate) return;
+          _summaryHasPendingUpdate = false;
+          final reasoningText = reasoningBuffer.toString();
+          setState(() {
+            _aiSummary = buffer.toString();
+            _aiSummaryReasoning = reasoningText;
+          });
+          _scrollReasoningToBottom();
+        });
+        ChapterSummaryCache.updateProgress(
+          widget.chapterUuid,
+          buffer.toString(),
+          reasoningContent: reasoningBuffer.toString(),
+        );
+      }
+      // Flush 任何因节流而未刷新的最终文本
+      _summaryThrottleTimer?.cancel();
+      _summaryThrottleTimer = null;
+      if (_summaryHasPendingUpdate && mounted) {
+        _summaryHasPendingUpdate = false;
         final reasoningText = reasoningBuffer.toString();
         setState(() {
           _aiSummary = buffer.toString();
           _aiSummaryReasoning = reasoningText;
         });
         _scrollReasoningToBottom();
-        ChapterSummaryCache.updateProgress(
-          widget.chapterUuid,
-          buffer.toString(),
-          reasoningContent: reasoningText,
-        );
       }
       if (mounted && buffer.isNotEmpty) {
         final full = buffer.toString();
@@ -497,7 +624,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   String _buildCommentSnippets() {
     const maxChars = 64 * 1024;
     final buffer = StringBuffer();
-    final entries = groupChapterComments(_comments);
+    final entries = _groupedEntries;
     _lastSnippetEntries = entries;
     var truncated = false;
     for (final entry in entries) {
@@ -583,7 +710,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   void _scrollReasoningToBottom() {
+    if (_reasoningScrollPending) return;
+    _reasoningScrollPending = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reasoningScrollPending = false;
       if (!mounted) return;
       final c = _reasoningScrollController;
       if (!c.hasClients) return;
@@ -768,13 +898,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       });
 
       try {
-        await _api.postChapterComment(widget.chapterUuid, content);
+        await _api.manga.postChapterComment(widget.chapterUuid, content);
         if (!mounted) return;
         if (dialogContext.mounted) {
           Navigator.of(dialogContext).pop();
         }
         showToast(context, '评论已发布');
-        await _loadComments(force: true);
+        await _refreshFirstPage();
       } catch (e) {
         if (!dialogContext.mounted) return;
         setLocal(() {
@@ -865,7 +995,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         },
       );
     } finally {
-      controller.dispose();
+      // ponytail: 延后一帧 dispose，避免弹窗退出动画期间
+      // 还在读取 controller.text 导致 used-after-dispose
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
     }
   }
 
@@ -876,11 +1010,15 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+      ),
       builder: (sheetContext) {
         final cs = Theme.of(sheetContext).colorScheme;
         final tt = Theme.of(sheetContext).textTheme;
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -929,6 +1067,16 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                   subtitle: const Text('发送一条相同评论'),
                   onTap: () => Navigator.of(sheetContext).pop('plus_one'),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.block_outlined),
+                  title: const Text('屏蔽用户'),
+                  subtitle: Text(
+                    '隐藏 ${entry.primaryComment.userName} 的评论',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => Navigator.of(sheetContext).pop('block'),
+                ),
               ],
             ),
           ),
@@ -943,7 +1091,81 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       showToast(context, '评论已复制');
     } else if (action == 'plus_one') {
       await _plusOneComment(content);
+    } else if (action == 'block') {
+      await _blockCommentUser(entry.primaryComment);
     }
+  }
+
+  Future<void> _blockCommentUser(ChapterComment comment) async {
+    final name = comment.userName.trim();
+    if (_user.commentBlockNoRemind) {
+      await _user.blockCommentUser(comment.userId, name);
+      if (!mounted) return;
+      setState(_rebuildGroupedEntries);
+      showToast(context, '已屏蔽该用户');
+      return;
+    }
+
+    var noRemind = false;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('屏蔽用户'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isEmpty
+                    ? '确定屏蔽该用户吗？屏蔽后将不再显示其评论。'
+                    : '确定屏蔽「$name」吗？屏蔽后将不再显示其评论。\n可在评论区设置 → 黑名单中解除。',
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => setLocal(() => noRemind = !noRemind),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Checkbox(
+                        value: noRemind,
+                        onChanged: (v) =>
+                            setLocal(() => noRemind = v ?? false),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '不再提醒',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('屏蔽'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    if (noRemind) await _user.setCommentBlockNoRemind(true);
+    await _user.blockCommentUser(comment.userId, name);
+    if (!mounted) return;
+    setState(_rebuildGroupedEntries);
+    showToast(context, '已屏蔽该用户');
   }
 
   Future<void> _plusOneComment(String content) async {
@@ -959,10 +1181,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
 
     try {
-      await _api.postChapterComment(widget.chapterUuid, content);
+      await _api.manga.postChapterComment(widget.chapterUuid, content);
       if (!mounted) return;
       showToast(context, '+1 已发送');
-      await _loadComments(force: true);
+      await _refreshFirstPage();
     } catch (e) {
       if (!mounted) return;
       await _showPostCommentErrorDialog(e);
@@ -1014,7 +1236,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             width: sheetSize.width,
             height: sheetSize.height * _sheetMaxHeightFactor,
             child: ExcludeSemantics(
-              child: _CommentSettingsPanel(
+              child: CommentSettingsPanel(
                 useCompactLayout: _useCompactLayout,
                 showUserAvatar: _showUserAvatar,
                 showUserName: _showUserName,
@@ -1403,7 +1625,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       );
     }
 
-    final entries = groupChapterComments(_comments);
+    final entries = _groupedEntries;
     final hasSummary = _hasSummaryPanel;
     final summaryOffset = hasSummary ? 1 : 0;
 
@@ -1436,7 +1658,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             return _CommentCard(
               entry: entry,
               relativeTime: TimeFormat.relativeOf(entry.createAt),
-              compact: false,
               showAvatar: _showUserAvatar,
               showUserName: _showUserName,
               showCommentTime: _showCommentTime,
@@ -1782,7 +2003,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 padding: const EdgeInsets.fromLTRB(4, 2, 8, 2),
                 child: MarkdownBody(
                   data: _stripSpoilersMarker(_aiSummary),
-                  selectable: false,
                   styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
                       .copyWith(
                         p: tt.bodyMedium?.copyWith(height: 1.5),

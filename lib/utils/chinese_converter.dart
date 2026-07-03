@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 import 'app_dio.dart';
+import 'app_logger.dart';
 
 class ChineseConverter {
   static final Dio _dio = AppDio.create(
@@ -10,7 +13,6 @@ class ChineseConverter {
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 8),
       sendTimeout: const Duration(seconds: 8),
-      responseType: ResponseType.json,
     ),
   );
 
@@ -41,7 +43,15 @@ class ChineseConverter {
         _cache[cacheKey] = converted;
         return converted;
       }
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'chinese_converter',
+        ),
+      );
+    }
 
     return text;
   }

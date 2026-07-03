@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
 import '../api/api_client.dart';
 import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
-import '../utils/comic_hero_tags.dart';
-import '../utils/comic_card_skeleton.dart';
-import 'comic_detail_page.dart';
+import '../routing/app_router.dart';
+import '../utils/app_logger.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'home_page.dart';
 
 /// 漫画排行完整列表页，支持排序切换
@@ -85,9 +90,8 @@ class _RankingPageState extends State<RankingPage> {
       _offset = 0;
     });
     try {
-      final data = await _api.getComicList(
+      final data = await _api.manga.getComicList(
         ordering: _ordering,
-        limit: 21,
         author: widget.authorPathWord,
         theme: widget.themePathWord,
       );
@@ -107,9 +111,8 @@ class _RankingPageState extends State<RankingPage> {
     if (_loadingMore || _offset >= _total) return;
     setState(() => _loadingMore = true);
     try {
-      final data = await _api.getComicList(
+      final data = await _api.manga.getComicList(
         ordering: _ordering,
-        limit: 21,
         offset: _offset,
         author: widget.authorPathWord,
         theme: widget.themePathWord,
@@ -119,7 +122,15 @@ class _RankingPageState extends State<RankingPage> {
         _comics.addAll(data.list);
         _offset = _comics.length;
       });
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'ranking_page.load_more',
+        ),
+      );
+    }
     if (mounted) {
       setState(() => _loadingMore = false);
     } else {
@@ -211,10 +222,10 @@ class _RankingPageState extends State<RankingPage> {
                           return ComicCard(
                             comic: comic,
                             heroTagBase: heroTagBase,
-                            onTap: () => Navigator.push(
-                              context,
-                              ComicDetailPage.route(
-                                pathWord: comic.pathWord,
+                            onTap: () => context.pushNamed(
+                              AppRoutes.comicDetail,
+                              pathParameters: {'pathWord': comic.pathWord},
+                              extra: ComicDetailExtra(
                                 initialComic: comic,
                                 heroTagBase: heroTagBase,
                               ),

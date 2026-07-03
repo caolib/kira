@@ -1,11 +1,19 @@
-part of '../api_client.dart';
+import 'package:dio/dio.dart';
 
-mixin _AnimeApi on _ApiClientBase {
+import '../../models/anime.dart';
+import '../../models/api_ordering.dart';
+import '../api_transport.dart';
+
+class AnimeApi {
+  final ApiTransport _t;
+
+  AnimeApi(this._t);
+
   // ── 动漫相关 ──
 
   Future<({List<AnimeBrowseHistoryItem> list, int total})>
   getAnimeBrowseHistory({int limit = 20, int offset = 0}) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/member/browse/cartoons',
       params: {
         'free_type': 1,
@@ -31,7 +39,7 @@ mixin _AnimeApi on _ApiClientBase {
     int limit = 20,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/search/cartoon',
       params: {
         'platform': 3,
@@ -53,7 +61,7 @@ mixin _AnimeApi on _ApiClientBase {
     int offset = 0,
     String ordering = ApiOrdering.datetimeModifier,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/member/collect/cartoons',
       params: {
         'free_type': 1,
@@ -81,7 +89,7 @@ mixin _AnimeApi on _ApiClientBase {
 
   /// 动漫首页
   Future<AnimeHome> getAnimeHome() async {
-    final data = await _get('/api/v3/h5/homeIndex/cartoonsfree');
+    final data = await _t.get('/api/v3/h5/homeIndex/cartoonsfree');
     return AnimeHome.fromJson(data);
   }
 
@@ -90,7 +98,7 @@ mixin _AnimeApi on _ApiClientBase {
     int limit = 24,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/recs',
       params: {'pos': pos, 'limit': limit, 'offset': offset},
     );
@@ -108,7 +116,7 @@ mixin _AnimeApi on _ApiClientBase {
     int limit = 21,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/updates',
       params: {'date': 'weekly-cartoon-free', 'limit': limit, 'offset': offset},
     );
@@ -121,7 +129,7 @@ mixin _AnimeApi on _ApiClientBase {
   }
 
   Future<Anime> getAnimeDetail(String pathWord) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/cartoon2/$pathWord',
       params: {'platform': 3, '_update': true},
     );
@@ -129,7 +137,7 @@ mixin _AnimeApi on _ApiClientBase {
   }
 
   Future<AnimeQuery> getAnimeQuery(String pathWord) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/cartoon2/$pathWord/query',
       params: {'platform': 3, '_update': true},
     );
@@ -141,7 +149,7 @@ mixin _AnimeApi on _ApiClientBase {
     int limit = 100,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/cartoon/$pathWord/chapters2',
       params: {'limit': limit, 'offset': offset, '_update': true},
     );
@@ -157,8 +165,8 @@ mixin _AnimeApi on _ApiClientBase {
     String cartoonId, {
     required bool collect,
   }) async {
-    await _dio.post(
-      _url('/api/v3/member/collect/cartoon'),
+    await _t.dio.post(
+      _t.url('/api/v3/member/collect/cartoon'),
       data: 'cartoon_id=$cartoonId&is_collect=${collect ? 1 : 0}',
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );
@@ -172,7 +180,7 @@ mixin _AnimeApi on _ApiClientBase {
   }) async {
     final cacheKey = _animePlaybackCacheKey(pathWord, chapterUuid, line);
     if (!forceRefresh) {
-      final cached = await _cache.get(cacheKey);
+      final cached = await _t.cache.get(cacheKey);
       if (cached is Map) {
         try {
           final playback = AnimePlayback.fromJson(
@@ -182,20 +190,20 @@ mixin _AnimeApi on _ApiClientBase {
             return playback;
           }
         } catch (_) {
-          await _cache.remove(cacheKey);
+          await _t.cache.remove(cacheKey);
         }
       }
     } else {
-      await _cache.remove(cacheKey);
+      await _t.cache.remove(cacheKey);
     }
 
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/cartoon/$pathWord/chapter/$chapterUuid',
       params: {'platform': 3, 'line': line},
     );
     final playback = AnimePlayback.fromJson(data);
     if (_resolveAnimeVideoUrl(playback.chapter).isNotEmpty) {
-      await _cache.put(
+      await _t.cache.put(
         cacheKey,
         playback.toJson(),
         ttl: const Duration(hours: 6),
@@ -205,7 +213,7 @@ mixin _AnimeApi on _ApiClientBase {
   }
 
   Future<void> clearAnimePlaybackCache(String pathWord) async {
-    await _cache.removeByPrefix(_animePlaybackCachePrefix(pathWord));
+    await _t.cache.removeByPrefix(_animePlaybackCachePrefix(pathWord));
   }
 
   String _animePlaybackCachePrefix(String pathWord) =>

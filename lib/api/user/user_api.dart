@@ -1,15 +1,26 @@
-part of '../api_client.dart';
+import 'dart:convert';
+import 'dart:math';
 
-mixin _UserApi on _ApiClientBase {
+import 'package:dio/dio.dart';
+
+import '../../models/comic.dart';
+import '../../utils/app_dio.dart';
+import '../../utils/network_error.dart';
+import '../api_transport.dart';
+
+class UserApi {
+  final ApiTransport _t;
+
+  UserApi(this._t);
+
   // ── 用户相关 ──
 
   /// 登录，返回用户信息
-  @override
   Future<Map<String, dynamic>> login(String username, String password) async {
     final salt = Random().nextInt(9000) + 1000;
     final encoded = base64Encode(utf8.encode('$password-$salt'));
-    final resp = await _dio.post(
-      _url('/api/v3/login'),
+    final resp = await _t.dio.post(
+      _t.url('/api/v3/login'),
       data:
           'username=$username&password=$encoded&salt=$salt&source=Official&version=2.2.0&platform=3',
       options: Options(
@@ -20,11 +31,11 @@ mixin _UserApi on _ApiClientBase {
   }
 
   /// 拷贝登录
-  @override
   Future<Map<String, dynamic>> copyLogin(
     String username,
     String password,
   ) async {
+    const hostCopy = 'www.mangacopy.com';
     final salt = Random().nextInt(900000) + 100000;
     final encoded = base64Encode(utf8.encode('$password-$salt'));
     final dio = AppDio.create(
@@ -37,8 +48,8 @@ mixin _UserApi on _ApiClientBase {
               'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,en-GB;q=0.6,ru;q=0.5,ja;q=0.4,zh-TW;q=0.3',
           'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
           'platform': '2',
-          'origin': 'https://$_hostCopy',
-          'referer': 'https://$_hostCopy/web/login/loginByAccount',
+          'origin': 'https://$hostCopy',
+          'referer': 'https://$hostCopy/web/login/loginByAccount',
           'priority': 'u=1, i',
           'sec-ch-ua':
               '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
@@ -54,7 +65,7 @@ mixin _UserApi on _ApiClientBase {
     );
 
     final resp = await dio.post(
-      'https://$_hostCopy/api/kb/web/login',
+      'https://$hostCopy/api/kb/web/login',
       data: Uri(
         queryParameters: {
           'username': username,
@@ -84,22 +95,24 @@ mixin _UserApi on _ApiClientBase {
 
   /// 获取个人信息
   Future<Map<String, dynamic>> getUserInfo() async {
-    return await _get('/api/v3/member/info');
+    return _t.get('/api/v3/member/info');
   }
 
   Future<void> logout() async {
-    await _dio.post(
-      _url('/api/v3/logout'),
+    await _t.dio.post(
+      _t.url('/api/v3/logout'),
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );
   }
 
   void clearAuthState() {
-    _cookies.clear();
+    _t.clearCookies();
   }
 
   Future<List<String>> getSecurityQuestions() async {
-    final resp = await _dio.get(_url('/api/v3/member/securityquestionall/'));
+    final resp = await _t.dio.get(
+      _t.url('/api/v3/member/securityquestionall/'),
+    );
     final results = resp.data['results'] as List? ?? const [];
     return results
         .map((e) => e['code']?.toString() ?? '')
@@ -113,6 +126,8 @@ mixin _UserApi on _ApiClientBase {
     required String question,
     required String answer,
   }) async {
+    const hostWeb = 'www.manga2026.xyz';
+
     Map<String, dynamic> parseResponse(dynamic raw) {
       if (raw is Map) return Map<String, dynamic>.from(raw);
       if (raw is String && raw.isNotEmpty) {
@@ -147,8 +162,8 @@ mixin _UserApi on _ApiClientBase {
           'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
           'platform': '2',
           'pragma': 'no-cache',
-          'origin': 'https://$_hostWeb',
-          'referer': 'https://$_hostWeb/web/login/loginByAccount',
+          'origin': 'https://$hostWeb',
+          'referer': 'https://$hostWeb/web/login/loginByAccount',
           'priority': 'u=1, i',
           'sec-ch-ua':
               '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
@@ -159,13 +174,13 @@ mixin _UserApi on _ApiClientBase {
           'sec-fetch-site': 'same-origin',
           'user-agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
-          'Cookie': _buildRegisterCookie(),
+          'Cookie': _t.buildRegisterCookie(),
         },
       ),
     );
 
     final resp = await dio.post(
-      'https://$_hostWeb/api/v2/register',
+      'https://$hostWeb/api/v2/register',
       data: Uri(
         queryParameters: {
           'username': username,
@@ -200,7 +215,7 @@ mixin _UserApi on _ApiClientBase {
     int limit = 20,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/member/browse/comics',
       params: {
         'free_type': 1,
@@ -222,26 +237,26 @@ mixin _UserApi on _ApiClientBase {
   }
 
   Future<void> clearBrowseHistory() async {
-    if (_user.loginSource == 'copy') {
+    if (_t.user.loginSource == 'copy') {
       final dio = AppDio.create(
         source: 'copy_api',
         options: BaseOptions(
           validateStatus: (_) => true,
           headers: {
-            'User-Agent': 'COPY/${_user.copyAppVersion}',
+            'User-Agent': 'COPY/${_t.user.copyAppVersion}',
             'Accept': 'application/json',
             'source': 'copyApp',
             'platform': '3',
-            'version': _user.copyAppVersion,
+            'version': _t.user.copyAppVersion,
             'Connection': 'keep-alive',
             'Accept-Encoding': 'gzip',
             'webp': '1',
-            'Authorization': 'Token ${_user.token}',
+            'Authorization': 'Token ${_t.user.token}',
           },
         ),
       );
       final resp = await dio.delete(
-        'https://${_user.copyApiHost}/api/v3/member/browse/comics',
+        'https://${_t.user.copyApiHost}/api/v3/member/browse/comics',
         queryParameters: {'platform': 3},
         options: Options(contentType: 'application/x-www-form-urlencoded'),
       );
@@ -256,34 +271,34 @@ mixin _UserApi on _ApiClientBase {
         source: 'copy_api',
       );
     } else {
-      await _dio.delete(
-        _url('/api/v3/member/browse/comics'),
+      await _t.dio.delete(
+        _t.url('/api/v3/member/browse/comics'),
         options: Options(contentType: 'application/x-www-form-urlencoded'),
       );
     }
   }
 
   Future<void> clearAnimeBrowseHistory() async {
-    if (_user.loginSource == 'copy') {
+    if (_t.user.loginSource == 'copy') {
       final dio = AppDio.create(
         source: 'copy_api',
         options: BaseOptions(
           validateStatus: (_) => true,
           headers: {
-            'User-Agent': 'COPY/${_user.copyAppVersion}',
+            'User-Agent': 'COPY/${_t.user.copyAppVersion}',
             'Accept': 'application/json',
             'source': 'copyApp',
             'platform': '3',
-            'version': _user.copyAppVersion,
+            'version': _t.user.copyAppVersion,
             'Connection': 'keep-alive',
             'Accept-Encoding': 'gzip',
             'webp': '1',
-            'Authorization': 'Token ${_user.token}',
+            'Authorization': 'Token ${_t.user.token}',
           },
         ),
       );
       final resp = await dio.delete(
-        'https://${_user.copyApiHost}/api/v3/member/browse/cartoons',
+        'https://${_t.user.copyApiHost}/api/v3/member/browse/cartoons',
         queryParameters: {'platform': 3},
         options: Options(contentType: 'application/x-www-form-urlencoded'),
       );
@@ -298,8 +313,8 @@ mixin _UserApi on _ApiClientBase {
         source: 'copy_api',
       );
     } else {
-      await _dio.delete(
-        _url('/api/v3/member/browse/cartoons'),
+      await _t.dio.delete(
+        _t.url('/api/v3/member/browse/cartoons'),
         options: Options(contentType: 'application/x-www-form-urlencoded'),
       );
     }

@@ -56,3 +56,7 @@ ref/
 .env
 
 .claude
+
+.omo
+
+.vscode/settings.json

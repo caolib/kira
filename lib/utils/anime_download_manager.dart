@@ -273,7 +273,7 @@ class AnimeDownloadManager extends ChangeNotifier {
     for (final chapterUuid in chapterUuids.toSet()) {
       await _removeDownloadedChapter(pathWord, chapterUuid, deleteFiles: true);
     }
-    if ((_manifest[pathWord]?.isEmpty ?? true)) {
+    if (_manifest[pathWord]?.isEmpty ?? true) {
       await _removeLocalAnime(pathWord);
     }
     notifyListeners();
@@ -394,7 +394,7 @@ class AnimeDownloadManager extends ChangeNotifier {
     try {
       await _resetDirectory(chapterDir);
 
-      final playback = await _api.getAnimePlayback(
+      final playback = await _api.anime.getAnimePlayback(
         task.pathWord,
         task.chapter.uuid,
         line: task.line,
@@ -776,7 +776,7 @@ class AnimeDownloadManager extends ChangeNotifier {
 
   static final _placeholderTask = _AnimeDownloadTask(
     pathWord: '',
-    chapter: AnimeChapter(name: '', uuid: '', vCover: ''),
+    chapter: const AnimeChapter(name: '', uuid: '', vCover: ''),
     line: '',
     animeName: '',
     cover: '',

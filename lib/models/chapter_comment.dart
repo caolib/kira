@@ -1,9 +1,20 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'chapter_comment.g.dart';
+
+@JsonSerializable(fieldRename: FieldRename.snake)
 class ChapterComment {
+  @JsonKey(fromJson: _intOrStringToInt)
   final int id;
+  @JsonKey(defaultValue: '')
   final String createAt;
+  @JsonKey(defaultValue: '')
   final String userId;
+  @JsonKey(defaultValue: '匿名用户')
   final String userName;
+  @JsonKey(defaultValue: '')
   final String userAvatar;
+  @JsonKey(defaultValue: '')
   final String comment;
 
   const ChapterComment({
@@ -15,23 +26,13 @@ class ChapterComment {
     required this.comment,
   });
 
-  factory ChapterComment.fromJson(Map<String, dynamic> json) => ChapterComment(
-    id: json['id'] is int
-        ? json['id'] as int
-        : int.tryParse(json['id']?.toString() ?? '') ?? 0,
-    createAt: json['create_at']?.toString() ?? '',
-    userId: json['user_id']?.toString() ?? '',
-    userName: json['user_name']?.toString() ?? '匿名用户',
-    userAvatar: json['user_avatar']?.toString() ?? '',
-    comment: json['comment']?.toString() ?? '',
-  );
+  factory ChapterComment.fromJson(Map<String, dynamic> json) =>
+      _$ChapterCommentFromJson(json);
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'create_at': createAt,
-    'user_id': userId,
-    'user_name': userName,
-    'user_avatar': userAvatar,
-    'comment': comment,
-  };
+  Map<String, dynamic> toJson() => _$ChapterCommentToJson(this);
+}
+
+int _intOrStringToInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }

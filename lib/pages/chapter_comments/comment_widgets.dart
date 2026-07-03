@@ -291,7 +291,6 @@ class _CommentCardState extends State<_CommentCard> {
                       contentSpacing: contentSpacing,
                       bodyStyle: bodyStyle,
                       showAvatar: showAvatar,
-                      spoilerIds: const {},
                     )
                   : Column(
                       mainAxisSize: MainAxisSize.min,
@@ -353,8 +352,7 @@ class _MergedCommentContent extends StatefulWidget {
     required this.contentSpacing,
     required this.bodyStyle,
     this.showAvatar = true,
-    this.spoilerIds = const {},
-  });
+  }) : spoilerIds = const {};
 
   @override
   State<_MergedCommentContent> createState() => _MergedCommentContentState();

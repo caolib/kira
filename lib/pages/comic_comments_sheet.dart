@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import '../models/user_manager.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import 'chapter_comments_sheet.dart' show CommentSettingsPanel;
 
 class ComicCommentsSheet extends StatefulWidget {
   final String comicId;
@@ -24,7 +27,6 @@ class ComicCommentsSheet extends StatefulWidget {
 }
 
 class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
-  static const _pageSize = 10;
   static const _replyPageSize = 3;
   static const _loadMoreThreshold = 240.0;
   static const _listBottomPadding = 80.0;
@@ -78,21 +80,27 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     }
 
     try {
-      final data = await _api.getComicComments(
+      final data = await _api.manga.getComicComments(
         widget.comicId,
-        limit: _pageSize,
         offset: loadMore ? _comments.length : 0,
       );
       if (!mounted) return;
 
-      final mergedComments = loadMore
+      final mergedComments = (loadMore
           ? [
               ..._comments,
               ...data.list.where(
                 (item) => !_comments.any((existing) => existing.id == item.id),
               ),
             ]
-          : data.list;
+          : data.list)
+          .where(
+            (item) => !_user.isCommentUserBlocked(
+              item.userId,
+              item.userName.trim(),
+            ),
+          )
+          .toList();
 
       setState(() {
         _comments = mergedComments;
@@ -184,7 +192,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     });
 
     try {
-      final data = await _api.getComicComments(
+      final data = await _api.manga.getComicComments(
         widget.comicId,
         replyId: comment.id.toString(),
         limit: _replyPageSize,
@@ -192,7 +200,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       );
       if (!mounted) return;
 
-      final mergedReplies = loadMore
+      final mergedReplies = (loadMore
           ? [
               ...currentState.replies,
               ...data.list.where(
@@ -201,7 +209,14 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 ),
               ),
             ]
-          : data.list;
+          : data.list)
+          .where(
+            (item) => !_user.isCommentUserBlocked(
+              item.userId,
+              item.userName.trim(),
+            ),
+          )
+          .toList();
 
       // 回复按时间正序（从旧到新）
       mergedReplies.sort((a, b) => a.createAt.compareTo(b.createAt));
@@ -299,6 +314,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
+                          ),
+                          IconButton(
+                            onPressed: _showCommentSettings,
+                            tooltip: '评论设置',
+                            icon: const Icon(Icons.tune),
                           ),
                           IconButton(
                             onPressed: () => Navigator.of(context).maybePop(),
@@ -470,6 +490,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
 
     return GestureDetector(
       onTap: () => _showPostCommentDialog(replyTo: comment),
+      onLongPress: () => _showCommentActionMenu(comment),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         decoration: BoxDecoration(
@@ -731,6 +752,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
 
     return GestureDetector(
       onTap: () => _showPostCommentDialog(replyTo: reply),
+      onLongPress: () => _showCommentActionMenu(reply),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -816,6 +838,273 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
 
   int _commentTextLength(String text) => text.trim().runes.length;
 
+  Future<void> _showCommentActionMenu(ComicComment comment) async {
+    final content = comment.comment.trim();
+    if (content.isEmpty) return;
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+      ),
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        final tt = Theme.of(sheetContext).textTheme;
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '评论操作',
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: '关闭',
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.outlineVariant),
+                  ),
+                  child: Text(
+                    content,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  leading: const Icon(Icons.copy_outlined),
+                  title: const Text('复制'),
+                  onTap: () => Navigator.of(sheetContext).pop('copy'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.add_comment_outlined),
+                  title: const Text('+1'),
+                  subtitle: const Text('发送一条相同评论'),
+                  onTap: () => Navigator.of(sheetContext).pop('plus_one'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.block_outlined),
+                  title: const Text('屏蔽用户'),
+                  subtitle: Text(
+                    '隐藏 ${comment.userName} 的评论',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => Navigator.of(sheetContext).pop('block'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+    if (action == 'copy') {
+      await Clipboard.setData(ClipboardData(text: content));
+      if (!mounted) return;
+      showToast(context, '评论已复制');
+    } else if (action == 'plus_one') {
+      await _plusOneComment(content);
+    } else if (action == 'block') {
+      await _blockCommentUser(comment);
+    }
+  }
+
+  Future<void> _blockCommentUser(ComicComment comment) async {
+    final name = comment.userName.trim();
+    if (_user.commentBlockNoRemind) {
+      await _user.blockCommentUser(comment.userId, name);
+      if (!mounted) return;
+      _applyBlockedFilter();
+      showToast(context, '已屏蔽该用户');
+      return;
+    }
+
+    var noRemind = false;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('屏蔽用户'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isEmpty
+                    ? '确定屏蔽该用户吗？屏蔽后将不再显示其评论。'
+                    : '确定屏蔽「$name」吗？屏蔽后将不再显示其评论。\n可在黑名单中解除。',
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => setLocal(() => noRemind = !noRemind),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Checkbox(
+                        value: noRemind,
+                        onChanged: (v) =>
+                            setLocal(() => noRemind = v ?? false),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '不再提醒',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('屏蔽'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    if (noRemind) await _user.setCommentBlockNoRemind(true);
+    await _user.blockCommentUser(comment.userId, name);
+    if (!mounted) return;
+    _applyBlockedFilter();
+    showToast(context, '已屏蔽该用户');
+  }
+
+  void _applyBlockedFilter() {
+    setState(() {
+      _comments = _comments
+          .where(
+            (c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()),
+          )
+          .toList();
+      // 已展开的回复也需过滤
+      for (final id in _replyStates.keys.toList()) {
+        final s = _replyStates[id]!;
+        if (s.replies.isEmpty) continue;
+        final filtered = s.replies
+            .where(
+              (r) => !_user.isCommentUserBlocked(r.userId, r.userName.trim()),
+            )
+            .toList();
+        if (filtered.length != s.replies.length) {
+          _replyStates[id] = s.copyWith(replies: filtered);
+        }
+      }
+    });
+  }
+
+  void _showCommentSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      ),
+      builder: (sheetContext) {
+        final sheetSize = MediaQuery.sizeOf(sheetContext);
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: SizedBox(
+            width: sheetSize.width,
+            height: sheetSize.height * 0.85,
+            child: ExcludeSemantics(
+              child: CommentSettingsPanel(
+                isChapterComments: false,
+                useCompactLayout: _user.commentCompactLayout,
+                showUserAvatar: _user.commentShowAvatar,
+                showUserName: _user.commentShowUserName,
+                showCommentTime: _user.commentShowTime,
+                commentFontScale: _user.commentFontScale,
+                commentPreload: _user.commentPreload,
+                commentAutoLoadAll: _user.commentAutoLoadAll,
+                onLayoutChanged: (_) {},
+                onShowAvatarChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentShowAvatar(v);
+                },
+                onShowUserNameChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentShowUserName(v);
+                },
+                onShowCommentTimeChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentShowTime(v);
+                },
+                onFontScaleChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentFontScale(v);
+                },
+                onPreloadChanged: (v) => _user.setCommentPreload(v),
+                onAutoLoadAllChanged: (v) => _user.setCommentAutoLoadAll(v),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _plusOneComment(String content) async {
+    if (!_user.isLoggedIn) {
+      showToast(context, '请先登录后再发表评论', isError: true);
+      return;
+    }
+
+    final length = _commentTextLength(content);
+    if (length < 3 || length > 200) {
+      showToast(context, '评论字数需在 3-200 之间，无法 +1', isError: true);
+      return;
+    }
+
+    try {
+      await _api.manga.postComicComment(widget.comicId, content);
+      if (!mounted) return;
+      showToast(context, '+1 已发送');
+      unawaited(_loadComments());
+    } catch (e) {
+      if (!mounted) return;
+      showToast(context, NetworkError.message(e), isError: true);
+    }
+  }
+
   Future<void> _showPostCommentDialog({ComicComment? replyTo}) async {
     if (!_user.isLoggedIn) {
       showToast(context, '请先登录后再发表评论', isError: true);
@@ -847,7 +1136,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       });
 
       try {
-        await _api.postComicComment(
+        await _api.manga.postComicComment(
           widget.comicId,
           content,
           replyId: isReply ? replyTo.id : null,
@@ -880,14 +1169,16 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               total: currentState.total > 0 ? currentState.total + 1 : 0,
             );
           });
-          _loadReplies(
-            _comments.firstWhere(
-              (c) => c.id == replyTo.id,
-              orElse: () => replyTo,
+          unawaited(
+            _loadReplies(
+              _comments.firstWhere(
+                (c) => c.id == replyTo.id,
+                orElse: () => replyTo,
+              ),
             ),
           );
         } else {
-          _loadComments();
+          unawaited(_loadComments());
         }
       } catch (e) {
         if (!dialogContext.mounted) return;
@@ -978,7 +1269,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         },
       );
     } finally {
-      controller.dispose();
+      // ponytail: 延后一帧 dispose，避免弹窗退出动画期间
+      // 还在读取 controller.text 导致 used-after-dispose
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
     }
   }
 

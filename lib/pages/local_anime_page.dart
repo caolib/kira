@@ -1,13 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:go_router/go_router.dart';
 
-import '../utils/cover_brightness_filter.dart';
+import '../l10n/app_localizations.dart';
+import '../routing/app_router.dart';
 import '../utils/anime_download_manager.dart';
+import '../utils/cover_brightness_filter.dart';
 import '../utils/toast.dart';
-import 'anime_detail_page.dart';
-import 'anime_player_page.dart';
+import '../widgets/detail_chip.dart';
+import '../widgets/local_content_list_page.dart';
 
 class LocalAnimePage extends StatefulWidget {
   final bool embedded;
@@ -19,364 +21,34 @@ class LocalAnimePage extends StatefulWidget {
 }
 
 class _LocalAnimePageState extends State<LocalAnimePage> {
-  static const _downloadFolderName = 'anime_downloads';
-
   final _downloads = AnimeDownloadManager();
-  final Set<String> _selectedPathWords = {};
-  bool _selectionMode = false;
-  bool _loading = true;
-
-  bool get _isDesktopPlatform =>
-      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-
-  @override
-  void initState() {
-    super.initState();
-    _downloads.addListener(_handleChanged);
-    _initialize();
-  }
-
-  @override
-  void dispose() {
-    _downloads.removeListener(_handleChanged);
-    super.dispose();
-  }
-
-  void _handleChanged() {
-    if (!mounted) return;
-    final valid = _downloads
-        .localAnimes()
-        .map((item) => item.info.anime.pathWord)
-        .toSet();
-    _selectedPathWords.removeWhere((pathWord) => !valid.contains(pathWord));
-    if (_selectedPathWords.isEmpty) _selectionMode = false;
-    setState(() {});
-  }
-
-  Future<void> _initialize() async {
-    await _downloads.init();
-    if (!mounted) return;
-    setState(() => _loading = false);
-  }
-
-  Future<void> _openDownloadFolder() async {
-    try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final folder = Directory(
-        '${docsDir.path}${Platform.pathSeparator}$_downloadFolderName',
-      );
-      if (!await folder.exists()) {
-        await folder.create(recursive: true);
-      }
-      final path = folder.path;
-      if (Platform.isWindows) {
-        await Process.run('explorer', [path]);
-      } else if (Platform.isMacOS) {
-        await Process.run('open', [path]);
-      } else if (Platform.isLinux) {
-        await Process.run('xdg-open', [path]);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      showToast(context, '打开文件夹失败：$e', isError: true);
-    }
-  }
-
-  Future<void> _deleteSelected() async {
-    if (_selectedPathWords.isEmpty) return;
-    final count = _selectedPathWords.length;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除本地动漫'),
-        content: Text('确定删除选中的 $count 部本地动漫吗？已下载视频和封面都会被删除。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    await _downloads.deleteLocalAnimes(_selectedPathWords);
-    if (!mounted) return;
-    setState(() {
-      _selectedPathWords.clear();
-      _selectionMode = false;
-    });
-    showToast(context, '已删除 $count 部本地动漫');
-  }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final items = _downloads.localAnimes();
-
-    final body = _loading
-        ? const Center(child: CircularProgressIndicator())
-        : items.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.download_done_outlined,
-                  size: 56,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(height: 12),
-                Text('还没有本地动漫', style: tt.titleMedium),
-                const SizedBox(height: 6),
-                Text(
-                  '去动漫详情页下载剧集后，这里会显示离线内容',
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-          )
-        : GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 150,
-              childAspectRatio: 0.6,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-            ),
-            itemCount: items.length,
-            itemBuilder: (_, index) {
-              final item = items[index];
-              final pathWord = item.info.anime.pathWord;
-              final selected = _selectedPathWords.contains(pathWord);
-              return _LocalAnimeCard(
-                entry: item,
-                selected: selected,
-                selectionMode: _selectionMode,
-                onTap: () {
-                  if (_selectionMode) {
-                    setState(() {
-                      if (selected) {
-                        _selectedPathWords.remove(pathWord);
-                      } else {
-                        _selectedPathWords.add(pathWord);
-                      }
-                      if (_selectedPathWords.isEmpty) _selectionMode = false;
-                    });
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LocalAnimeDetailPage(pathWord: pathWord),
-                    ),
-                  );
-                },
-                onLongPress: () => setState(() {
-                  _selectionMode = true;
-                  _selectedPathWords.add(pathWord);
-                }),
-              );
-            },
-          );
-
-    if (widget.embedded) {
-      if (!_isDesktopPlatform) return body;
-      return Stack(
-        children: [
-          body,
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton.extended(
-              heroTag: 'local_anime_open_folder',
-              onPressed: _openDownloadFolder,
-              icon: const Icon(Icons.folder_open, size: 20),
-              label: const Text('打开下载位置', style: TextStyle(fontSize: 13)),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _selectionMode ? '已选 ${_selectedPathWords.length} 部' : '本地动漫',
-        ),
-        actions: [
-          if (!_selectionMode && items.isNotEmpty)
-            IconButton(
-              onPressed: () => setState(() => _selectionMode = true),
-              icon: const Icon(Icons.checklist),
-              tooltip: '批量管理',
-            ),
-          if (_selectionMode) ...[
-            IconButton(
-              onPressed: items.isEmpty
-                  ? null
-                  : () => setState(() {
-                      _selectedPathWords
-                        ..clear()
-                        ..addAll(items.map((item) => item.info.anime.pathWord));
-                    }),
-              icon: const Icon(Icons.select_all),
-              tooltip: '全选',
-            ),
-            IconButton(
-              onPressed: _selectedPathWords.isEmpty ? null : _deleteSelected,
-              icon: const Icon(Icons.delete_outline),
-              tooltip: '删除',
-            ),
-            IconButton(
-              onPressed: () => setState(() {
-                _selectionMode = false;
-                _selectedPathWords.clear();
-              }),
-              icon: const Icon(Icons.close),
-              tooltip: '取消',
-            ),
-          ],
-        ],
-      ),
-      body: body,
-    );
-  }
-}
-
-class _LocalAnimeCard extends StatelessWidget {
-  final LocalAnimeEntry entry;
-  final bool selected;
-  final bool selectionMode;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-
-  const _LocalAnimeCard({
-    required this.entry,
-    required this.selected,
-    required this.selectionMode,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final anime = entry.info.anime;
-    final coverPath = entry.info.coverPath;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected ? cs.primary : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox.expand(
-                        child: coverPath != null && File(coverPath).existsSync()
-                            ? CoverBrightnessFilter(
-                                child: Image.file(
-                                  File(coverPath),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : ColoredBox(
-                                color: cs.surfaceContainerHighest,
-                                child: Icon(
-                                  Icons.movie_outlined,
-                                  color: cs.onSurfaceVariant,
-                                  size: 32,
-                                ),
-                              ),
-                      ),
-                    ),
-                    if (selectionMode)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: selected ? cs.primary : Colors.black45,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              selected ? Icons.check : Icons.circle_outlined,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    Positioned(
-                      left: 8,
-                      bottom: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '已下载 ${entry.downloadedCount} 集',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  anime.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: tt.bodySmall,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  anime.pathWord,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-        ),
+    final l10n = AppLocalizations.of(context)!;
+    return LocalContentListPage(
+      embedded: widget.embedded,
+      title: l10n.localAnimeTitle,
+      emptyTitle: l10n.noLocalAnimeTitle,
+      emptySubtitle: l10n.noLocalAnimeSubtitle,
+      downloadFolderName: 'anime_downloads',
+      deleteDialogTitle: l10n.deleteLocalAnimeTitle,
+      deleteDialogContent: l10n.deleteLocalAnimeContent,
+      deleteToastPrefix: l10n.deleteToastPrefix,
+      deleteToastSuffix: l10n.deleteToastSuffixAnime,
+      heroTagPrefix: 'local_anime',
+      gridAspectRatio: 0.6,
+      unitLabel: l10n.episodeUnit,
+      downloadManager: _downloads,
+      initDownloads: _downloads.init,
+      getLocalItems: () => _downloads
+          .localAnimes()
+          .map((entry) => AnimeLocalContentEntry(entry))
+          .toList(),
+      deleteLocalItems: (pathWords) => _downloads.deleteLocalAnimes(pathWords),
+      onOpenDetail: (context, pathWord) => context.pushNamed(
+        AppRoutes.localAnimeDetail,
+        pathParameters: {'pathWord': pathWord},
       ),
     );
   }
@@ -431,19 +103,20 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
   Future<void> _deleteSelected() async {
     if (_selectedChapterIds.isEmpty) return;
     final count = _selectedChapterIds.length;
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除本地剧集'),
-        content: Text('确定删除选中的 $count 个剧集吗？'),
+        title: Text(l10n.deleteLocalEpisodesTitle),
+        content: Text(l10n.deleteEpisodesConfirm(count)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+            child: Text(l10n.deleteButton),
           ),
         ],
       ),
@@ -452,7 +125,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
 
     await _downloads.deleteChapters(widget.pathWord, _selectedChapterIds);
     if (!mounted) return;
-    showToast(context, '已删除 $count 个剧集');
+    showToast(context, l10n.deletedEpisodesCount(count));
     final remain = _downloads.downloadedChapters(widget.pathWord);
     if (remain.isEmpty) return;
     setState(() {
@@ -467,21 +140,25 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
       summary.chapterUuid,
     );
     if (videoPath == null || !File(videoPath).existsSync()) {
-      showToast(context, '视频文件不存在', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.videoFileNotFound,
+        isError: true,
+      );
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnimePlayerPage(
-          animeName:
-              _downloads.getLocalAnimeInfo(widget.pathWord)?.anime.name ?? '',
-          pathWord: widget.pathWord,
-          chapterUuid: summary.chapterUuid,
-          chapterName: summary.chapterName,
-          line: '',
-          localVideoPath: videoPath,
-        ),
+    context.pushNamed(
+      AppRoutes.animePlayer,
+      pathParameters: {
+        'pathWord': widget.pathWord,
+        'chapterUuid': summary.chapterUuid,
+      },
+      extra: AnimePlayerExtra(
+        animeName:
+            _downloads.getLocalAnimeInfo(widget.pathWord)?.anime.name ?? '',
+        chapterName: summary.chapterName,
+        line: '',
+        localVideoPath: videoPath,
       ),
     );
   }
@@ -497,33 +174,32 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final anime = info.anime;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectionMode ? '已选 ${_selectedChapterIds.length} 集' : anime.name,
+          _selectionMode
+              ? l10n.selectedCount(_selectedChapterIds.length, l10n.episodeUnit)
+              : anime.name,
         ),
         actions: [
           if (!_selectionMode)
             IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AnimeDetailPage(
-                    pathWord: widget.pathWord,
-                    initialAnime: anime,
-                  ),
-                ),
+              onPressed: () => context.pushNamed(
+                AppRoutes.animeDetail,
+                pathParameters: {'pathWord': widget.pathWord},
+                extra: AnimeDetailExtra(initialAnime: anime),
               ),
               icon: const Icon(Icons.public),
-              tooltip: '查看在线详情',
+              tooltip: l10n.viewOnlineDetail,
             ),
           if (!_selectionMode)
             IconButton(
               onPressed: () => setState(() => _selectionMode = true),
               icon: const Icon(Icons.checklist),
-              tooltip: '管理剧集',
+              tooltip: l10n.manageEpisodes,
             ),
           if (_selectionMode) ...[
             IconButton(
@@ -533,12 +209,12 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
                   ..addAll(chapters.map((item) => item.chapterUuid));
               }),
               icon: const Icon(Icons.select_all),
-              tooltip: '全选',
+              tooltip: l10n.selectAll,
             ),
             IconButton(
               onPressed: _selectedChapterIds.isEmpty ? null : _deleteSelected,
               icon: const Icon(Icons.delete_outline),
-              tooltip: '删除',
+              tooltip: l10n.deleteButton,
             ),
             IconButton(
               onPressed: () => setState(() {
@@ -546,7 +222,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
                 _selectedChapterIds.clear();
               }),
               icon: const Icon(Icons.close),
-              tooltip: '取消',
+              tooltip: l10n.cancelButton,
             ),
           ],
         ],
@@ -595,21 +271,26 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
                           runSpacing: 6,
                           children: [
                             if (anime.category?['display'] != null)
-                              _DetailChip(
+                              DetailChip(
                                 label: anime.category!['display'].toString(),
+                                borderRadius: 999,
                               ),
                             if (anime.grade?['display'] != null)
-                              _DetailChip(
+                              DetailChip(
                                 label: anime.grade!['display'].toString(),
+                                borderRadius: 999,
                               ),
                             ...anime.themes.map(
-                              (item) => _DetailChip(label: item.name),
+                              (item) => DetailChip(
+                                label: item.name,
+                                borderRadius: 999,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          '已下载 ${chapters.length} 集',
+                          l10n.downloadedEpisodeCount(chapters.length),
                           style: tt.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -638,7 +319,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                '本地剧集 (${chapters.length})',
+                l10n.localEpisodesTitle(chapters.length),
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
@@ -748,30 +429,6 @@ class _LocalAnimeChapterCard extends StatelessWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _DetailChip extends StatelessWidget {
-  final String label;
-
-  const _DetailChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(color: cs.onSecondaryContainer),
       ),
     );
   }

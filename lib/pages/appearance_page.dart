@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+
 import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:system_fonts/system_fonts.dart';
+
 import '../main.dart' show isDesktop;
 import '../models/app_theme_option.dart';
 import '../models/user_manager.dart';
@@ -75,8 +77,6 @@ class _AppearancePageState extends State<AppearancePage> {
             ColorPickerType.wheel: true,
           },
           enableShadesSelection: false,
-          enableTonalPalette: false,
-          enableOpacity: false,
           showColorCode: true,
           colorCodeHasColor: true,
           showEditIconButton: true,
@@ -312,7 +312,6 @@ class _AppearancePageState extends State<AppearancePage> {
                         child: Slider(
                           value: _user.darkModeCoverBrightness,
                           min: UserManager.minDarkModeCoverBrightness,
-                          max: UserManager.maxDarkModeCoverBrightness,
                           divisions:
                               ((UserManager.maxDarkModeCoverBrightness -
                                           UserManager
@@ -587,10 +586,10 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          RadioListTile<int>(
+                          const RadioListTile<int>(
                             contentPadding: EdgeInsets.zero,
                             value: UserManager.defaultDisplayModeRefreshRate,
-                            title: const Text('自动（跟随系统）'),
+                            title: Text('自动（跟随系统）'),
                           ),
                           for (final rate in rates)
                             RadioListTile<int>(

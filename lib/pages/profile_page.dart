@@ -1,23 +1,18 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../api/api_client.dart';
 import '../models/user_manager.dart';
+import '../routing/app_router.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
-import 'acknowledgement_page.dart';
-import 'app_log_page.dart';
-import 'appearance_page.dart';
-import 'browse_history_page.dart';
-import 'download_center_page.dart';
-import 'general_page.dart';
-import 'license_page.dart';
-import 'network_page.dart';
-import 'ai_config_page.dart';
+import 'register_page.dart' show RegisterPrefill;
 
 const _appDisclaimerItems = [
   '本应用（以下简称"本软件"）系独立开发的非官方第三方客户端，与任何内容平台、出版商或权利人均无隶属、合作或代理关系。',
@@ -93,10 +88,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _goLogin() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
+    final result = await context.pushNamed<bool>(AppRoutes.login);
     if (result == true && mounted) setState(() {});
   }
 
@@ -111,10 +103,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     // 没有其他账号或没有存储令牌，回退到登录页
     if (otherAccounts.isEmpty || !hasToken) {
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
+      final result = await context.pushNamed<bool>(AppRoutes.login);
       if (result == true && mounted) {
         showToast(context, '账号已切换');
         setState(() {});
@@ -219,10 +208,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (selected == null || !mounted) return;
 
     if (selected == _SwitchAccountSheetAction.addAccount) {
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
+      final result = await context.pushNamed<bool>(AppRoutes.login);
       if (result == true && mounted) {
         showToast(context, '账号已切换');
         setState(() {});
@@ -243,10 +229,7 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } else {
       // 该账号无令牌，回退到登录页
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
+      final result = await context.pushNamed<bool>(AppRoutes.login);
       if (result == true && mounted) {
         showToast(context, '账号已切换');
         setState(() {});
@@ -274,7 +257,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
     if (confirm == true) {
       try {
-        await ApiClient().logout();
+        await ApiClient().user.logout();
       } catch (e) {
         debugPrint('ProfilePage logout error: $e');
       } finally {
@@ -348,12 +331,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             title: const Text('通用'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const GeneralPage(),
-                              ),
-                            ),
+                            onTap: () => context.pushNamed(AppRoutes.general),
                           ),
                           const Divider(height: 1, indent: 16, endIndent: 16),
                           ListTile(
@@ -363,12 +341,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             title: const Text('外观'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AppearancePage(),
-                              ),
-                            ),
+                            onTap: () =>
+                                context.pushNamed(AppRoutes.appearance),
                           ),
                           const Divider(height: 1, indent: 16, endIndent: 16),
                           ListTile(
@@ -378,12 +352,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             title: const Text('网络'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const NetworkPage(),
-                              ),
-                            ),
+                            onTap: () => context.pushNamed(AppRoutes.network),
                           ),
                           const Divider(height: 1, indent: 16, endIndent: 16),
                           ListTile(
@@ -393,12 +362,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             title: const Text('AI配置'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AiConfigPage(),
-                              ),
-                            ),
+                            onTap: () => context.pushNamed(AppRoutes.aiConfig),
                           ),
                         ],
                       ),
@@ -420,12 +384,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             title: const Text('下载中心'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const DownloadCenterPage(),
-                              ),
-                            ),
+                            onTap: () =>
+                                context.pushNamed(AppRoutes.downloadCenter),
                           ),
                           const Divider(height: 1, indent: 16, endIndent: 16),
                           ListTile(
@@ -435,14 +395,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             title: const Text('浏览记录'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BrowseHistoryPage(
-                                  loginPageBuilder: (_) => const LoginPage(),
-                                ),
-                              ),
-                            ),
+                            onTap: () =>
+                                context.pushNamed(AppRoutes.browseHistory),
                           ),
                         ],
                       ),
@@ -462,10 +416,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         title: const Text('关于'),
                         trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AboutPage()),
-                        ),
+                        onTap: () => context.pushNamed(AppRoutes.about),
                       ),
                     ),
                   ),
@@ -538,7 +489,6 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   CircleAvatar(
                     radius: 32,
@@ -931,10 +881,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _goRegister() async {
-    final result = await Navigator.push<_RegisterPrefill>(
-      context,
-      MaterialPageRoute(builder: (_) => const RegisterPage()),
-    );
+    final result = await context.pushNamed<RegisterPrefill>(AppRoutes.register);
     if (result == null || !mounted) return;
 
     await UserManager().saveCredentials(result.username, result.password);
@@ -964,8 +911,8 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = _useCopyLogin
-          ? await _api.copyLogin(username, password)
-          : await _api.login(username, password);
+          ? await _api.user.copyLogin(username, password)
+          : await _api.user.login(username, password);
       await UserManager().setLoginSource(_useCopyLogin ? 'copy' : 'hotmanga');
       if (_rememberMe) {
         await UserManager().saveCredentials(username, password);
@@ -1019,7 +966,7 @@ class _LoginPageState extends State<LoginPage> {
         avatar: '',
       );
       // 用 token 拉取用户信息验证有效性
-      final info = await _api.getUserInfo();
+      final info = await _api.user.getUserInfo();
       await UserManager().saveLogin(
         token: token,
         userId: info['user_id']?.toString() ?? '',
@@ -1294,7 +1241,7 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      final questions = await _api.getSecurityQuestions();
+      final questions = await _api.user.getSecurityQuestions();
       if (!mounted) return;
       final availableQuestions = questions.isNotEmpty
           ? questions
@@ -1343,7 +1290,7 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      await _api.register(
+      await _api.user.register(
         username: username,
         password: password,
         question: _selectedQuestion!,
@@ -1903,20 +1850,20 @@ class _AboutPageState extends State<AboutPage> {
                     onChanged: (value) {
                       if (value != null) setState(() => selected = value);
                     },
-                    child: Column(
+                    child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'stable',
-                          title: const Text('稳定版 (Stable)'),
-                          subtitle: const Text('仅检查正式发布版本'),
+                          title: Text('稳定版 (Stable)'),
+                          subtitle: Text('仅检查正式发布版本'),
                         ),
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'beta',
-                          title: const Text('预览版（Beta）'),
-                          subtitle: const Text('从最新提交构建的版本，可能不稳定'),
+                          title: Text('预览版（Beta）'),
+                          subtitle: Text('从最新提交构建的版本，可能不稳定'),
                         ),
                       ],
                     ),
@@ -2115,12 +2062,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.gavel_outlined),
                       title: const Text('免责声明'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DisclaimerPage(),
-                        ),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.disclaimer),
                     ),
                     Divider(
                       height: 1,
@@ -2130,10 +2072,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.bug_report_outlined),
                       title: const Text('日志'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AppLogPage()),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.appLog),
                     ),
                     Divider(
                       height: 1,
@@ -2143,12 +2082,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.favorite_outline),
                       title: const Text('致谢'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AcknowledgementPage(),
-                        ),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.acknowledgement),
                     ),
                     Divider(
                       height: 1,
@@ -2158,12 +2092,7 @@ class _AboutPageState extends State<AboutPage> {
                       leading: const Icon(Icons.copyright_outlined),
                       title: const Text('许可证'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ProjectLicensePage(),
-                        ),
-                      ),
+                      onTap: () => context.pushNamed(AppRoutes.license),
                     ),
                   ],
                 ),

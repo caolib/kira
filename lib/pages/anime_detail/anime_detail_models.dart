@@ -85,7 +85,7 @@ class _AnimeIntroViewData {
         : '最新：${anime.lastChapter!['name']}',
     primaryStat: (
       icon: Icons.local_fire_department,
-      text: ComicCard.formatPopular(anime.popular),
+      text: ComicCoverCard.formatPopular(anime.popular),
     ),
     secondaryStat: anime.count > 0
         ? (icon: Icons.video_collection_outlined, text: '共 ${anime.count} 集')
@@ -155,7 +155,7 @@ class _AnimeIntroViewData {
           : (fallbackAnime != null
                 ? (
                     icon: Icons.local_fire_department,
-                    text: ComicCard.formatPopular(fallbackAnime.popular),
+                    text: ComicCoverCard.formatPopular(fallbackAnime.popular),
                   )
                 : null),
       secondaryStat: episodeCountLabel != null

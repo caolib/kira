@@ -2,28 +2,28 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
 import '../models/anime.dart';
-import '../utils/cover_brightness_filter.dart';
+import '../routing/app_router.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/anime_playback_history.dart';
 import '../utils/chinese_converter.dart';
-import '../utils/data_cache.dart';
+import '../utils/cover_brightness_filter.dart';
 import '../utils/dandanplay_binding_store.dart';
 import '../utils/dandanplay_episode_binding.dart';
+import '../utils/data_cache.dart';
 import '../utils/toast.dart';
-import 'anime_player_page.dart';
+import '../widgets/comic_cover_card.dart' show ComicCoverCard;
 import 'bangumi_comments_section.dart';
-import 'download_center_page.dart';
-import 'home_page.dart';
 
 part 'anime_detail/anime_detail_models.dart';
 part 'anime_detail/anime_detail_widgets.dart';
 part 'anime_detail/anime_episode_widgets.dart';
-part 'anime_detail/dandanplay_binding_dialog.dart';
 part 'anime_detail/dandanplay_alignment_dialog.dart';
+part 'anime_detail/dandanplay_binding_dialog.dart';
 
 class AnimeDetailPage extends StatefulWidget {
   final String pathWord;
@@ -221,10 +221,10 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         _loadingDetail = true;
         _detailError = null;
       });
-      final detail = await _api.getAnimeDetail(widget.pathWord);
+      final detail = await _api.anime.getAnimeDetail(widget.pathWord);
       AnimeQuery? query;
       try {
-        query = await _api.getAnimeQuery(widget.pathWord);
+        query = await _api.anime.getAnimeQuery(widget.pathWord);
       } catch (_) {
         query = null;
       }
@@ -259,7 +259,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       _chapterError = null;
     });
     try {
-      final chapters = await _api.getAnimeChapters(widget.pathWord);
+      final chapters = await _api.anime.getAnimeChapters(widget.pathWord);
       if (!mounted) return;
       setState(() {
         _chapters = chapters.list;
@@ -297,7 +297,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       return;
     }
     if (_isCommentsTab) {
-      await (_bangumiCommentsKey.currentState?.reload(forceRefresh: true) ??
+      await (_bangumiCommentsKey.currentState?.reload() ??
           Future<void>.value());
       return;
     }
@@ -307,7 +307,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
 
   Future<void> _clearEpisodeRefreshCaches() async {
     final binding = _dandanplayBinding;
-    await _api.clearAnimePlaybackCache(widget.pathWord);
+    await _api.anime.clearAnimePlaybackCache(widget.pathWord);
     if (binding != null) {
       await DandanplayApi().clearBangumiCache(binding.animeId);
     }
@@ -825,18 +825,17 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       return;
     }
 
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnimePlayerPage(
-          animeName:
-              widget.initialAnime?.name ?? _anime?.name ?? widget.pathWord,
-          pathWord: widget.pathWord,
-          chapterUuid: chapter.uuid,
-          chapterName: chapter.name,
-          line: line,
-          chapters: _chapters,
-        ),
+    await context.pushNamed(
+      AppRoutes.animePlayer,
+      pathParameters: {
+        'pathWord': widget.pathWord,
+        'chapterUuid': chapter.uuid,
+      },
+      extra: AnimePlayerExtra(
+        animeName: widget.initialAnime?.name ?? _anime?.name ?? widget.pathWord,
+        chapterName: chapter.name,
+        line: line,
+        chapters: _chapters,
       ),
     );
     if (!mounted) return;
@@ -983,7 +982,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     });
 
     try {
-      await _api.toggleAnimeCollect(cartoonId, collect: nextState);
+      await _api.anime.toggleAnimeCollect(cartoonId, collect: nextState);
       await _saveDetailCache();
       if (!mounted) return;
       showToast(context, nextState ? '已收藏' : '已取消收藏');
@@ -1006,11 +1005,9 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     if (count == 0) return null;
     return FloatingActionButton.extended(
       heroTag: 'anime_download_tasks_${widget.pathWord}',
-      onPressed: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DownloadCenterPage(initialTab: 2),
-        ),
+      onPressed: () => context.pushNamed(
+        AppRoutes.downloadCenter,
+        queryParameters: {'tab': '2'},
       ),
       icon: const Icon(Icons.downloading_outlined),
       label: Text('$count 个任务'),
@@ -1211,7 +1208,6 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
                     spacing: 8,
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
-                    alignment: WrapAlignment.start,
                     children: [
                       Text(
                         '已选 ${_selectedUuids.length} 集',

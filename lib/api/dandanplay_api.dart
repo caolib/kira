@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -346,10 +347,10 @@ class DandanplayApi {
       if (response.data['success'] == true) {
         final animes = response.data['animes'] as List;
         final results = <DandanplayEpisode>[];
-        for (var anime in animes) {
+        for (final anime in animes) {
           final animeTitle = anime['animeTitle'] as String;
           final episodes = anime['episodes'] as List;
-          for (var ep in episodes) {
+          for (final ep in episodes) {
             results.add(
               DandanplayEpisode(
                 episodeId: ep['episodeId'] as int,
@@ -426,7 +427,7 @@ class DandanplayApi {
     try {
       return await request;
     } finally {
-      _bangumiInFlight.remove(animeId);
+      unawaited(_bangumiInFlight.remove(animeId));
     }
   }
 
@@ -456,7 +457,7 @@ class DandanplayApi {
 
   Future<void> clearBangumiCache(int animeId) async {
     _cache.remove(_cacheKey('/api/v2/bangumi/$animeId'));
-    _bangumiInFlight.remove(animeId);
+    unawaited(_bangumiInFlight.remove(animeId));
     await _dataCache.remove(_bangumiCacheKey(animeId));
   }
 
@@ -501,7 +502,7 @@ class DandanplayApi {
       if (data is Map && data['comments'] is List) {
         final comments = data['comments'] as List;
         final results = <DandanplayComment>[];
-        for (var c in comments) {
+        for (final c in comments) {
           try {
             final p = c['p'].toString().split(',');
             if (p.length < 3) continue;

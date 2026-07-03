@@ -1,18 +1,21 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../models/api_ordering.dart';
-import '../models/comic.dart' hide Theme;
 import '../models/comic.dart' as m;
+import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
+import '../repositories/search_init_repository.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/comic_card_skeleton.dart';
-import '../utils/comic_hero_tags.dart';
-import '../utils/data_cache.dart';
-import 'anime_detail_page.dart';
-import 'comic_detail_page.dart';
+import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_hero_tags.dart';
 import 'home_page.dart' show ComicCard;
 
 enum _SearchMode { comic, anime }
@@ -25,13 +28,11 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  static const _searchInitCacheKey = 'search_init_v2';
-  static const _searchInitCacheTtl = Duration(hours: 1);
   static const _tagSpacing = 8.0;
   bool _refreshing = false;
 
   final _api = ApiClient();
-  final _cache = DataCache();
+  final _searchInitRepo = SearchInitRepository();
   final _user = UserManager();
   final _searchController = TextEditingController();
 
@@ -52,7 +53,8 @@ class _SearchPageState extends State<SearchPage> {
 
   bool get _animeFeatureEnabled => _user.animeFeatureEnabled;
   bool get _isAnimeMode => _animeFeatureEnabled && _mode == _SearchMode.anime;
-  String get _modeLabel => _isAnimeMode ? '动漫' : '漫画';
+  String _modeLabel(AppLocalizations l10n) =>
+      _isAnimeMode ? l10n.animeLabel : l10n.comicLabel;
   bool get _hasResults => _comics.isNotEmpty || _animes.isNotEmpty;
 
   @override
@@ -80,13 +82,11 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _loadFromCache() async {
-    final cached = await _cache.get(_searchInitCacheKey);
+    final cached = await _searchInitRepo.loadFromCache();
     if (!mounted || cached == null || !_loading) return;
     setState(() {
-      _keywords = List<String>.from(cached['keywords'] ?? []);
-      _tags =
-          (cached['tags'] as List?)?.map((t) => m.Theme.fromJson(t)).toList() ??
-          [];
+      _keywords = cached.keywords;
+      _tags = cached.tags;
       _loading = false;
     });
   }
@@ -98,21 +98,14 @@ class _SearchPageState extends State<SearchPage> {
       setState(() => _refreshing = true);
     }
     try {
-      final keywordsFuture = _api.getHotKeywords();
-      final tagsFuture = _api.getComicTags();
-      final keywords = await keywordsFuture;
-      final tags = await tagsFuture;
+      final data = await _searchInitRepo.load();
       if (!mounted) return;
       setState(() {
-        _keywords = keywords;
-        _tags = tags;
+        _keywords = data.keywords;
+        _tags = data.tags;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_searchInitCacheKey, {
-        'keywords': keywords,
-        'tags': tags.map((t) => t.toJson()).toList(),
-      }, ttl: _searchInitCacheTtl);
     } catch (e) {
       debugPrint('SearchPage loadInit error: $e');
       if (mounted) {
@@ -141,7 +134,7 @@ class _SearchPageState extends State<SearchPage> {
 
     try {
       if (mode == _SearchMode.anime) {
-        final result = await _api.searchAnimes(keyword);
+        final result = await _api.anime.searchAnimes(keyword);
         if (!mounted || _mode != mode || _searchQuery != keyword) return;
         setState(() {
           _animes = result.list;
@@ -150,7 +143,7 @@ class _SearchPageState extends State<SearchPage> {
           _searching = false;
         });
       } else {
-        final result = await _api.searchComics(keyword);
+        final result = await _api.manga.searchComics(keyword);
         if (!mounted || _mode != mode || _searchQuery != keyword) return;
         setState(() {
           _comics = result.list;
@@ -178,7 +171,7 @@ class _SearchPageState extends State<SearchPage> {
       });
     }
     try {
-      final result = await _api.getComicList(
+      final result = await _api.manga.getComicList(
         ordering: _ordering,
         offset: _offset,
         theme: _selectedTag,
@@ -206,7 +199,7 @@ class _SearchPageState extends State<SearchPage> {
     try {
       if (_searchQuery != null) {
         if (_isAnimeMode) {
-          final result = await _api.searchAnimes(
+          final result = await _api.anime.searchAnimes(
             _searchQuery!,
             offset: _offset,
           );
@@ -216,7 +209,7 @@ class _SearchPageState extends State<SearchPage> {
             _offset = _animes.length;
           });
         } else {
-          final result = await _api.searchComics(
+          final result = await _api.manga.searchComics(
             _searchQuery!,
             offset: _offset,
           );
@@ -296,17 +289,16 @@ class _SearchPageState extends State<SearchPage> {
   void _openAnime(Anime anime) {
     if (!_animeFeatureEnabled) return;
     if (anime.pathWord.isEmpty) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            AnimeDetailPage(pathWord: anime.pathWord, initialAnime: anime),
-      ),
+    context.pushNamed(
+      AppRoutes.animeDetail,
+      pathParameters: {'pathWord': anime.pathWord},
+      extra: AnimeDetailExtra(initialAnime: anime),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -339,7 +331,7 @@ class _SearchPageState extends State<SearchPage> {
                 padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
                 child: SearchBar(
                   controller: _searchController,
-                  hintText: '搜索$_modeLabel...',
+                  hintText: l10n.searchHint(_modeLabel(l10n)),
                   leading: const Padding(
                     padding: EdgeInsets.only(left: 8),
                     child: Icon(Icons.search),
@@ -361,16 +353,16 @@ class _SearchPageState extends State<SearchPage> {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(hp, 0, hp, 8),
                   child: SegmentedButton<_SearchMode>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: _SearchMode.comic,
-                        label: Text('漫画'),
-                        icon: Icon(Icons.menu_book_outlined),
+                        label: Text(l10n.comicLabel),
+                        icon: const Icon(Icons.menu_book_outlined),
                       ),
                       ButtonSegment(
                         value: _SearchMode.anime,
-                        label: Text('动漫'),
-                        icon: Icon(Icons.movie_outlined),
+                        label: Text(l10n.animeLabel),
+                        icon: const Icon(Icons.movie_outlined),
                       ),
                     ],
                     selected: {_mode},
@@ -413,7 +405,7 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '热门搜索',
+                            l10n.hotSearchTitle,
                             style: tt.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -458,14 +450,14 @@ class _SearchPageState extends State<SearchPage> {
                           Icon(Icons.category, size: 20, color: cs.primary),
                           const SizedBox(width: 6),
                           Text(
-                            '全部标签',
+                            l10n.allTagsTitle,
                             style: tt.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${_tags.length} 个',
+                            l10n.tagCount(_tags.length),
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -503,16 +495,16 @@ class _SearchPageState extends State<SearchPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SegmentedButton<String>(
-                        segments: const [
+                        segments: [
                           ButtonSegment(
                             value: ApiOrdering.popular,
-                            label: Text('热度'),
-                            icon: Icon(Icons.whatshot),
+                            label: Text(l10n.popularOrder),
+                            icon: const Icon(Icons.whatshot),
                           ),
                           ButtonSegment(
                             value: ApiOrdering.datetimeUpdated,
-                            label: Text('更新'),
-                            icon: Icon(Icons.schedule),
+                            label: Text(l10n.updateOrder),
+                            icon: const Icon(Icons.schedule),
                           ),
                         ],
                         selected: {_ordering},
@@ -547,7 +539,11 @@ class _SearchPageState extends State<SearchPage> {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(hp, 4, hp, 12),
                   child: Text(
-                    '搜索 "$_searchQuery" 找到 $_total 个$_modeLabel结果',
+                    l10n.searchResultSummary(
+                      _searchQuery!,
+                      _total,
+                      _modeLabel(l10n),
+                    ),
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),
@@ -557,10 +553,10 @@ class _SearchPageState extends State<SearchPage> {
                 comics: _comics,
                 hp: hp,
                 loadingMore: _loadingMore,
-                onOpen: (comic, heroTagBase) => Navigator.push(
-                  context,
-                  ComicDetailPage.route(
-                    pathWord: comic.pathWord,
+                onOpen: (comic, heroTagBase) => context.pushNamed(
+                  AppRoutes.comicDetail,
+                  pathParameters: {'pathWord': comic.pathWord},
+                  extra: ComicDetailExtra(
                     initialComic: comic,
                     heroTagBase: heroTagBase,
                   ),

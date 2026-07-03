@@ -1,15 +1,26 @@
-part of '../api_client.dart';
+import 'dart:convert';
+import 'dart:io';
 
-mixin _NetworkApi on _ApiClientBase {
+import 'package:dio/dio.dart';
+
+import '../../utils/app_dio.dart';
+import '../../utils/network_error.dart';
+import '../api_transport.dart';
+
+class NetworkApi {
+  final ApiTransport _t;
+
+  NetworkApi(this._t);
+
   // ── 线路延迟测试 ──
 
   /// 获取指定线路的所有 host
-  List<String> getRouteHosts(int routeIndex) => _routes[routeIndex];
+  List<String> getRouteHosts(int routeIndex) => routes[routeIndex];
 
   /// 获取线路以外的固定 API / Web host，去重后用于延迟测试展示。
   List<String> getExtraApiHosts() {
     final hosts = <String>[];
-    for (final host in <String>[_user.copyApiHost, ..._extraApiHosts]) {
+    for (final host in <String>[_t.user.copyApiHost, ...extraApiHosts]) {
       if (!hosts.contains(host)) hosts.add(host);
     }
     return hosts;
@@ -17,10 +28,10 @@ mixin _NetworkApi on _ApiClientBase {
 
   /// 获取固定 API / Web host 在诊断结果中的展示名称。
   String getExtraApiHostLabel(String host) {
-    if (host == _user.copyApiHost || host == defaultCopyApiHost) {
+    if (host == _t.user.copyApiHost || host == defaultCopyApiHost) {
       return 'COPY API';
     }
-    return _extraApiHostLabels[host] ?? '固定接口';
+    return extraApiHostLabels[host] ?? '固定接口';
   }
 
   /// 测试指定线路所有 host 的延迟，返回 {host: 毫秒数，超时为 null}
@@ -35,9 +46,9 @@ mixin _NetworkApi on _ApiClientBase {
 
     for (final entry in results.entries) {
       if (entry.value == null || entry.value! <= 0) {
-        _hostWeights[entry.key] = 0.0;
+        _t.setHostWeight(entry.key, 0.0);
       } else {
-        _hostWeights[entry.key] = 1000.0 / entry.value!;
+        _t.setHostWeight(entry.key, 1000.0 / entry.value!);
       }
     }
 
@@ -53,7 +64,7 @@ mixin _NetworkApi on _ApiClientBase {
 
   /// 从 network2 接口获取当前 COPY API 地址（取路由 0 的第一个 host）。
   Future<String> fetchCopyApiHost() async {
-    final version = _user.copyAppVersion;
+    final version = _t.user.copyAppVersion;
     final dio = AppDio.create(
       source: 'copy_api',
       options: BaseOptions(
@@ -69,7 +80,7 @@ mixin _NetworkApi on _ApiClientBase {
     );
     try {
       final resp = await dio.get(
-        'https://${_user.copyApiHost}/api/v3/system/network2',
+        'https://${_t.user.copyApiHost}/api/v3/system/network2',
         queryParameters: {'platform': 3},
       );
       final data = resp.data is String && (resp.data as String).isNotEmpty

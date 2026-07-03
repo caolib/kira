@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../models/user_manager.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/cover_brightness_filter.dart';
-import 'local_comics_page.dart';
+import '../utils/download_manager.dart';
 import 'local_anime_page.dart';
+import 'local_comics_page.dart';
 
 String _formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';
@@ -29,32 +30,52 @@ class DownloadCenterPage extends StatefulWidget {
 
 class _DownloadCenterPageState extends State<DownloadCenterPage>
     with TickerProviderStateMixin {
-  late final TabController _tabController;
+  TabController? _tabController;
   final _user = UserManager();
   final _animeDownloads = AnimeDownloadManager();
+  final _comicDownloads = DownloadManager();
+
+  /// 当前动画功能是否开启，用于检测变化并重建 TabController
+  bool _wasAnimeEnabled = true;
+
+  int get _tabCount => _user.animeFeatureEnabled ? 3 : 2;
 
   @override
   void initState() {
     super.initState();
+    _wasAnimeEnabled = _user.animeFeatureEnabled;
     _tabController = TabController(
-      length: 3,
+      length: _tabCount,
       vsync: this,
-      initialIndex: widget.initialTab.clamp(0, 2),
+      initialIndex: widget.initialTab.clamp(0, _tabCount - 1),
     );
     _user.addListener(_onSettingsChanged);
     _animeDownloads.addListener(_onQueueChanged);
+    _comicDownloads.addListener(_onQueueChanged);
   }
 
   @override
   void dispose() {
     _user.removeListener(_onSettingsChanged);
     _animeDownloads.removeListener(_onQueueChanged);
-    _tabController.dispose();
+    _comicDownloads.removeListener(_onQueueChanged);
+    _tabController?.dispose();
     super.dispose();
   }
 
   void _onSettingsChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final animeEnabled = _user.animeFeatureEnabled;
+    if (animeEnabled != _wasAnimeEnabled) {
+      _wasAnimeEnabled = animeEnabled;
+      _tabController?.dispose();
+      _tabController = TabController(
+        length: _tabCount,
+        vsync: this,
+        initialIndex: widget.initialTab.clamp(0, _tabCount - 1),
+      );
+    }
+    setState(() {});
   }
 
   void _onQueueChanged() {
@@ -63,28 +84,60 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
 
   @override
   Widget build(BuildContext context) {
-    if (!_user.animeFeatureEnabled) {
+    final controller = _tabController!;
+
+    if (_user.animeFeatureEnabled) {
+      final animeTasks = _animeDownloads.tasks;
+      final animeQueueCount = animeTasks.length;
+      final comicTasks = _comicDownloads.tasks;
+      final comicQueueCount = comicTasks.length;
+      final totalQueueCount = animeQueueCount + comicQueueCount;
+
       return Scaffold(
-        appBar: AppBar(title: const Text('下载中心')),
-        body: const LocalComicsPage(embedded: true),
+        appBar: AppBar(
+          title: const Text('下载中心'),
+          bottom: TabBar(
+            controller: controller,
+            tabs: [
+              const Tab(icon: Icon(Icons.menu_book_outlined), text: '漫画'),
+              const Tab(icon: Icon(Icons.movie_outlined), text: '动漫'),
+              Tab(
+                icon: Badge(
+                  isLabelVisible: totalQueueCount > 0,
+                  label: Text('$totalQueueCount'),
+                  child: const Icon(Icons.downloading_outlined),
+                ),
+                text: '队列',
+              ),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          controller: controller,
+          children: [
+            const LocalComicsPage(embedded: true),
+            const LocalAnimePage(embedded: true),
+            _CombinedDownloadQueueView(),
+          ],
+        ),
       );
     }
 
-    final tasks = _animeDownloads.tasks;
-    final queueCount = tasks.length;
+    // 动漫功能关闭：漫画 + 队列 两 tab
+    final comicTasks = _comicDownloads.tasks;
+    final comicQueueCount = comicTasks.length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('下载中心'),
         bottom: TabBar(
-          controller: _tabController,
+          controller: controller,
           tabs: [
             const Tab(icon: Icon(Icons.menu_book_outlined), text: '漫画'),
-            const Tab(icon: Icon(Icons.movie_outlined), text: '动漫'),
             Tab(
               icon: Badge(
-                isLabelVisible: queueCount > 0,
-                label: Text('$queueCount'),
+                isLabelVisible: comicQueueCount > 0,
+                label: Text('$comicQueueCount'),
                 child: const Icon(Icons.downloading_outlined),
               ),
               text: '队列',
@@ -93,21 +146,20 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
         ),
       ),
       body: TabBarView(
-        controller: _tabController,
+        controller: controller,
         children: [
           const LocalComicsPage(embedded: true),
-          const LocalAnimePage(embedded: true),
-          _AnimeDownloadQueueView(),
+          _ComicDownloadQueueView(),
         ],
       ),
     );
   }
 }
 
-class _AnimeDownloadQueueView extends StatelessWidget {
+class _ComicDownloadQueueView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final downloads = AnimeDownloadManager();
+    final downloads = DownloadManager();
     final tasks = downloads.tasks;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -126,7 +178,7 @@ class _AnimeDownloadQueueView extends StatelessWidget {
             Text('下载队列为空', style: tt.titleMedium),
             const SizedBox(height: 6),
             Text(
-              '去动漫详情页添加下载任务',
+              '去漫画详情页添加下载任务',
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -140,16 +192,65 @@ class _AnimeDownloadQueueView extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final task = tasks[i];
-        return _QueueTaskCard(task: task);
+        return _ComicQueueTaskCard(task: task);
       },
     );
   }
 }
 
-class _QueueTaskCard extends StatelessWidget {
+/// 动漫功能开启时，合并展示漫画+动漫下载队列
+class _CombinedDownloadQueueView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final comicDownloads = DownloadManager();
+    final animeDownloads = AnimeDownloadManager();
+    final comicTasks = comicDownloads.tasks;
+    final animeTasks = animeDownloads.tasks;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    final totalTasks = comicTasks.length + animeTasks.length;
+
+    if (totalTasks == 0) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.download_done_outlined,
+              size: 56,
+              color: cs.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text('下载队列为空', style: tt.titleMedium),
+            const SizedBox(height: 6),
+            Text(
+              '去漫画或动漫详情页添加下载任务',
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: totalTasks,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (_, i) {
+        if (i < comicTasks.length) {
+          return _ComicQueueTaskCard(task: comicTasks[i]);
+        }
+        return _AnimeQueueTaskCard(task: animeTasks[i - comicTasks.length]);
+      },
+    );
+  }
+}
+
+class _AnimeQueueTaskCard extends StatelessWidget {
   final AnimeDownloadTaskInfo task;
 
-  const _QueueTaskCard({required this.task});
+  const _AnimeQueueTaskCard({required this.task});
 
   @override
   Widget build(BuildContext context) {
@@ -277,7 +378,11 @@ class _QueueTaskCard extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.pause_circle_outline, size: 14, color: Colors.orange),
+            const Icon(
+              Icons.pause_circle_outline,
+              size: 14,
+              color: Colors.orange,
+            ),
             const SizedBox(width: 6),
             Text('已暂停', style: tt.labelSmall?.copyWith(color: Colors.orange)),
           ],
@@ -348,6 +453,141 @@ class _QueueTaskCard extends StatelessWidget {
                   downloads.cancelTask(task.pathWord, task.chapterUuid),
               icon: Icon(Icons.close, color: cs.error),
               tooltip: '取消',
+            ),
+          ],
+        );
+    }
+  }
+}
+
+/// 漫画下载队列任务卡片（只读展示，漫画队列不支持暂停/取消）
+class _ComicQueueTaskCard extends StatelessWidget {
+  final ComicDownloadTaskInfo task;
+
+  const _ComicQueueTaskCard({required this.task});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return Card(
+      color: cs.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 48,
+                    height: 64,
+                    child: task.cover != null && task.cover!.isNotEmpty
+                        ? CoverBrightnessFilter(
+                            child: Image.network(
+                              task.cover!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _placeholder(cs),
+                            ),
+                          )
+                        : _placeholder(cs),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.comicName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.labelMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        task.chapterName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildStatusLabel(cs, tt),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.menu_book_outlined,
+                  size: 20,
+                  color: Colors.amber,
+                ),
+              ],
+            ),
+            if (task.status == ComicDownloadTaskStatus.downloading &&
+                task.progress != null) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(value: task.progress!.ratio),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _buildProgressText(task.progress!),
+                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder(ColorScheme cs) => ColoredBox(
+    color: cs.surfaceContainerHighest,
+    child: Icon(Icons.menu_book_outlined, size: 24, color: cs.onSurfaceVariant),
+  );
+
+  String _buildProgressText(ChapterDownloadProgress progress) {
+    final percent = (progress.ratio * 100).toStringAsFixed(0);
+    final completed = progress.completed;
+    final total = progress.total;
+    return '$percent% ($completed/$total)';
+  }
+
+  Widget _buildStatusLabel(ColorScheme cs, TextTheme tt) {
+    switch (task.status) {
+      case ComicDownloadTaskStatus.downloading:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: cs.primary,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text('下载中', style: tt.labelSmall?.copyWith(color: cs.primary)),
+          ],
+        );
+      case ComicDownloadTaskStatus.pending:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule, size: 14, color: cs.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(
+              '等待中',
+              style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         );

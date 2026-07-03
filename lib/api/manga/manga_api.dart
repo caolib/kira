@@ -1,11 +1,27 @@
-part of '../api_client.dart';
+import 'dart:convert';
+import 'dart:io';
 
-mixin _MangaApi on _ApiClientBase {
+import 'package:dio/dio.dart';
+
+import '../../models/api_ordering.dart';
+import '../../models/chapter.dart';
+import '../../models/chapter_comment.dart';
+import '../../models/comic.dart';
+import '../../models/comic_comment.dart';
+import '../../utils/app_dio.dart';
+import '../../utils/network_error.dart';
+import '../api_transport.dart';
+
+class MangaApi {
+  final ApiTransport _t;
+
+  MangaApi(this._t);
+
   // ── 漫画相关 ──
 
   /// 漫画主页
   Future<MangaHome> getMangaHome() async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/h5/discoverIndex/freeComic',
       params: {'platform': 3, '_update': true},
     );
@@ -93,7 +109,7 @@ mixin _MangaApi on _ApiClientBase {
   /// 自动获取 COPY App 最新版本号。
   Future<String> fetchCopyLatestAppVersion() async {
     final resp = await _copyMinimalDio().get(
-      'https://${_user.copyApiHost}/api/v3/system/appVersion/last',
+      'https://${_t.user.copyApiHost}/api/v3/system/appVersion/last',
       queryParameters: {'platform': 3},
     );
     final data = _decodeCopyResponse(resp.data);
@@ -113,7 +129,7 @@ mixin _MangaApi on _ApiClientBase {
   }
 
   Map<String, String> _copyBasicHeaders() {
-    final version = _user.copyAppVersion;
+    final version = _t.user.copyAppVersion;
     return {
       'User-Agent': 'COPY/$version',
       'Accept': 'application/json',
@@ -154,7 +170,7 @@ mixin _MangaApi on _ApiClientBase {
     required String errorMessage,
   }) async {
     final resp = await _copyDio().get(
-      'https://${_user.copyApiHost}$path',
+      'https://${_t.user.copyApiHost}$path',
       queryParameters: params,
     );
 
@@ -253,7 +269,7 @@ mixin _MangaApi on _ApiClientBase {
 
   // 1. 热门搜索关键词
   Future<List<String>> getHotKeywords() async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/search/key',
       params: {'limit': 20, 'offset': 0},
     );
@@ -262,7 +278,7 @@ mixin _MangaApi on _ApiClientBase {
 
   // 2. 全部漫画标签
   Future<List<Theme>> getComicTags() async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/theme/comic/count',
       params: {'free_type': 1, 'limit': 500, 'offset': 0, '_update': true},
     );
@@ -275,7 +291,7 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 24,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/recs',
       params: {'pos': pos, 'limit': limit, 'offset': offset, 'free_type': 1},
     );
@@ -301,14 +317,14 @@ mixin _MangaApi on _ApiClientBase {
     };
     if (theme != null) params['theme'] = theme;
     if (author != null) params['author'] = author;
-    final data = await _get('/api/v3/comics', params: params);
+    final data = await _t.get('/api/v3/comics', params: params);
     final list = (data['list'] as List).map((e) => Comic.fromJson(e)).toList();
     return (list: list, total: data['total'] as int);
   }
 
   // 5. 漫画详情
   Future<Comic> getComicDetail(String pathWord) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/comic2/$pathWord',
       params: {'platform': 3},
     );
@@ -317,7 +333,7 @@ mixin _MangaApi on _ApiClientBase {
 
   // 6. 用户状态查询
   Future<Map<String, dynamic>> getComicQuery(String pathWord) async {
-    return await _get('/api/v3/comic2/$pathWord/query');
+    return _t.get('/api/v3/comic2/$pathWord/query');
   }
 
   // 7. 章节列表
@@ -327,7 +343,7 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 100,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/comic/$pathWord/group/$group/chapters',
       params: {'limit': limit, 'offset': offset},
     );
@@ -343,7 +359,7 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 20,
     int offset = 0,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/search/comic',
       params: {
         'platform': 3,
@@ -366,7 +382,7 @@ mixin _MangaApi on _ApiClientBase {
   }) async {
     final cacheKey = _chapterDetailCacheKey(pathWord, chapterUuid);
     if (!forceRefresh) {
-      final cached = await _cache.get(cacheKey);
+      final cached = await _t.cache.get(cacheKey);
       if (cached is Map) {
         try {
           final detail = ChapterDetail.fromJson(
@@ -375,9 +391,9 @@ mixin _MangaApi on _ApiClientBase {
           if (detail.contents.isNotEmpty) {
             return detail;
           }
-          await _cache.remove(cacheKey);
+          await _t.cache.remove(cacheKey);
         } catch (_) {
-          await _cache.remove(cacheKey);
+          await _t.cache.remove(cacheKey);
         }
       }
     }
@@ -385,13 +401,13 @@ mixin _MangaApi on _ApiClientBase {
     final params = <String, dynamic>{'platform': 3};
     if (forceRefresh) params['_update'] = true;
 
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/comic/$pathWord/chapter/$chapterUuid',
       params: params,
     );
     final detail = ChapterDetail.fromJson(data);
     if (detail.contents.isNotEmpty) {
-      await _cache.put(cacheKey, data);
+      await _t.cache.put(cacheKey, data);
     }
     return detail;
   }
@@ -407,8 +423,8 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 30,
     int offset = 0,
   }) async {
-    final host = _user.copyApiHost;
-    final resp = await _commentDio.get(
+    final host = _t.user.copyApiHost;
+    final resp = await _t.commentDio.get(
       'https://$host/api/v3/roasts',
       queryParameters: {
         'chapter_id': chapterId,
@@ -416,7 +432,7 @@ mixin _MangaApi on _ApiClientBase {
         'offset': offset,
         '_update': true,
       },
-      options: _browserRequestOptions(host),
+      options: _t.browserRequestOptions(host),
     );
     final results = resp.data['results'] as Map<String, dynamic>;
     final list = (results['list'] as List)
@@ -433,16 +449,16 @@ mixin _MangaApi on _ApiClientBase {
       throw ArgumentError('评论字数需在 3-200 之间');
     }
 
-    final token = _user.token;
+    final token = _t.user.token;
     if (token == null || token.isEmpty) {
       throw const HttpException('请先登录后再发表评论');
     }
 
-    final host = _user.copyApiHost;
-    final resp = await _commentDio.post(
+    final host = _t.user.copyApiHost;
+    final resp = await _t.commentDio.post(
       'https://$host/api/v3/member/roast',
       data: {'chapter_id': chapterId, 'roast': trimmed, '_update': true},
-      options: _browserRequestOptions(
+      options: _t.browserRequestOptions(
         host,
         contentType: Headers.formUrlEncodedContentType,
         headers: {'Authorization': 'Token $token'},
@@ -475,22 +491,22 @@ mixin _MangaApi on _ApiClientBase {
       throw ArgumentError('评论字数需在 3-200 之间');
     }
 
-    final token = _user.token;
+    final token = _t.user.token;
     if (token == null || token.isEmpty) {
       throw const HttpException('请先登录后再发表评论');
     }
 
-    final host = _user.copyApiHost;
+    final host = _t.user.copyApiHost;
     final data = <String, dynamic>{'comic_id': comicId, 'comment': trimmed};
     if (replyId != null) {
       data['reply_id'] = replyId.toString();
     }
 
-    final resp = await _commentDio.post(
+    final resp = await _t.commentDio.post(
       'https://$host/api/v3/member/comment',
       data: data,
       queryParameters: {'platform': 3},
-      options: _browserRequestOptions(
+      options: _t.browserRequestOptions(
         host,
         contentType: Headers.formUrlEncodedContentType,
         headers: {'Authorization': 'Token $token'},
@@ -518,8 +534,8 @@ mixin _MangaApi on _ApiClientBase {
     int limit = 10,
     int offset = 0,
   }) async {
-    final host = _user.copyApiHost;
-    final resp = await _commentDio.get(
+    final host = _t.user.copyApiHost;
+    final resp = await _t.commentDio.get(
       'https://$host/api/v3/comments',
       queryParameters: {
         'comic_id': comicId,
@@ -528,7 +544,7 @@ mixin _MangaApi on _ApiClientBase {
         'offset': offset,
         'platform': 3,
       },
-      options: _browserRequestOptions(host, secFetchSite: 'cross-site'),
+      options: _t.browserRequestOptions(host, secFetchSite: 'cross-site'),
     );
     final results = resp.data['results'] as Map<String, dynamic>;
     final list = (results['list'] as List)
@@ -543,7 +559,7 @@ mixin _MangaApi on _ApiClientBase {
     int offset = 0,
     String ordering = ApiOrdering.datetimeModifier,
   }) async {
-    final data = await _get(
+    final data = await _t.get(
       '/api/v3/member/collect/comics',
       params: {
         'free_type': 1,
@@ -571,8 +587,8 @@ mixin _MangaApi on _ApiClientBase {
 
   // 11. 收藏/取消收藏漫画
   Future<void> toggleCollect(String comicId, {required bool collect}) async {
-    await _dio.post(
-      _url('/api/v3/member/collect/comic'),
+    await _t.dio.post(
+      _t.url('/api/v3/member/collect/comic'),
       data: 'comic_id=$comicId&is_collect=${collect ? 1 : 0}',
       options: Options(contentType: 'application/x-www-form-urlencoded'),
     );

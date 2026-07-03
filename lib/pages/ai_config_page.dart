@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -581,7 +582,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('未选择')),
+                    const DropdownMenuItem(child: Text('未选择')),
                     ...models.map(
                       (model) =>
                           DropdownMenuItem(value: model, child: Text(model)),
@@ -721,7 +722,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
     if (text.isEmpty || _sending) return;
     if (!_settings.hasConfig) {
       showToast(context, '请先配置 Base URL 和 API 密钥', isError: true);
-      _openProviderConfigDialog();
+      unawaited(_openProviderConfigDialog());
       return;
     }
 
@@ -1254,7 +1255,6 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 else
                   MarkdownBody(
                     data: msg.content,
-                    selectable: false,
                     onTapLink: (text, href, title) async {
                       if (href == null) return;
                       final uri = Uri.tryParse(href);
@@ -1370,9 +1370,9 @@ class _AiConfigPageState extends State<AiConfigPage> {
       listBullet: base,
       tableBody: base,
       tableHead: base?.copyWith(fontWeight: FontWeight.bold),
-      tableBorder: TableBorder.all(color: cs.outlineVariant, width: 1),
+      tableBorder: TableBorder.all(color: cs.outlineVariant),
       horizontalRuleDecoration: BoxDecoration(
-        border: Border(top: BorderSide(color: cs.outlineVariant, width: 1)),
+        border: Border(top: BorderSide(color: cs.outlineVariant)),
       ),
     );
   }

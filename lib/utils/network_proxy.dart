@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:native_flutter_proxy/native_flutter_proxy.dart';
 
 import '../models/user_manager.dart';
+import 'app_logger.dart';
 
 class NetworkProxyEndpoint {
   final String host;
@@ -177,7 +178,12 @@ class NetworkProxy {
   static NetworkProxyEndpoint? _readEnvironmentProxy(Uri uri) {
     try {
       return _parseFindProxyResult(HttpClient.findProxyFromEnvironment(uri));
-    } catch (_) {
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'network_proxy.read_env_proxy',
+      );
       return null;
     }
   }
@@ -202,7 +208,13 @@ class NetworkProxy {
           _systemProxy = null;
         }
       });
-    } catch (_) {}
+    } catch (e, stack) {
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'network_proxy.native_proxy_callback',
+      );
+    }
   }
 
   static bool _windowsProxyEnabled(String output) {

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
+import '../api/api_transport.dart';
 import '../models/user_manager.dart';
 import '../utils/network_proxy.dart';
 import '../utils/toast.dart';
@@ -85,7 +86,7 @@ class _NetworkPageState extends State<NetworkPage> {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: cs.outlineVariant, width: 1),
+              side: BorderSide(color: cs.outlineVariant),
             ),
             color: cs.surfaceContainerLow,
             child: Column(
@@ -291,7 +292,7 @@ class _NetworkPageState extends State<NetworkPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: cs.outlineVariant, width: 1),
+          side: BorderSide(color: cs.outlineVariant),
         ),
         color: cs.surfaceContainerLow,
         child: Padding(
@@ -469,7 +470,7 @@ class _NetworkPageState extends State<NetworkPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: cs.outlineVariant, width: 1),
+          side: BorderSide(color: cs.outlineVariant),
         ),
         color: cs.surfaceContainerLow,
         child: Material(
@@ -547,7 +548,7 @@ class _NetworkPageState extends State<NetworkPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: cs.outlineVariant, width: 1),
+          side: BorderSide(color: cs.outlineVariant),
         ),
         color: cs.surfaceContainerLow,
         child: Column(
@@ -728,7 +729,9 @@ class _NetworkPageState extends State<NetworkPage> {
                     runSpacing: spacing,
                     children: List.generate(hostEntries.length, (i) {
                       final title = index < 0
-                          ? ApiClient().getExtraApiHostLabel(hostEntries[i].key)
+                          ? ApiClient().network.getExtraApiHostLabel(
+                              hostEntries[i].key,
+                            )
                           : '节点 ${i + 1}';
                       final latency = hostEntries[i].value;
                       final isPending = _isLatencyPending(
@@ -818,16 +821,18 @@ class _NetworkPageState extends State<NetworkPage> {
     final pendingResults = <int, Map<String, int?>>{};
     final pendingHosts = <String>{};
     for (var i = 0; i < ApiClient.routeLabels.length; i++) {
-      pendingResults[i] = {for (final host in api.getRouteHosts(i)) host: null};
+      pendingResults[i] = {
+        for (final host in api.network.getRouteHosts(i)) host: null,
+      };
       pendingHosts.addAll(
-        api.getRouteHosts(i).map((host) => _latencyHostKey(i, host)),
+        api.network.getRouteHosts(i).map((host) => _latencyHostKey(i, host)),
       );
     }
     pendingResults[-1] = {
-      for (final host in api.getExtraApiHosts()) host: null,
+      for (final host in api.network.getExtraApiHosts()) host: null,
     };
     pendingHosts.addAll(
-      api.getExtraApiHosts().map((host) => _latencyHostKey(-1, host)),
+      api.network.getExtraApiHosts().map((host) => _latencyHostKey(-1, host)),
     );
 
     void updateHostLatency(int index, String host, int? latency) {
@@ -846,21 +851,21 @@ class _NetworkPageState extends State<NetworkPage> {
     });
     try {
       final results = await Future.wait([
-        api
+        api.network
             .testRouteLatency(
               0,
               onHostResult: (host, latency) =>
                   updateHostLatency(0, host, latency),
             )
             .then((r) => MapEntry(0, r)),
-        api
+        api.network
             .testRouteLatency(
               1,
               onHostResult: (host, latency) =>
                   updateHostLatency(1, host, latency),
             )
             .then((r) => MapEntry(1, r)),
-        api
+        api.network
             .testExtraApiLatency(
               onHostResult: (host, latency) =>
                   updateHostLatency(-1, host, latency),
@@ -948,8 +953,8 @@ class _NetworkPageState extends State<NetworkPage> {
     setState(() => _autoFillingCopySettings = true);
 
     try {
-      final apiHost = await ApiClient().fetchCopyApiHost();
-      final version = await ApiClient().fetchCopyLatestAppVersion();
+      final apiHost = await ApiClient().network.fetchCopyApiHost();
+      final version = await ApiClient().manga.fetchCopyLatestAppVersion();
       if (!mounted) return;
       _copyApiHostController.text = apiHost;
       _copyAppVersionController.text = version;
@@ -1110,7 +1115,7 @@ class _ConnectedButtonGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final border = BorderSide(color: cs.outline, width: 1);
+    final border = BorderSide(color: cs.outline);
 
     return IntrinsicHeight(
       child: Row(

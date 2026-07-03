@@ -165,7 +165,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                   Slider(
                     value: _user.readerImageGap,
-                    min: 0,
                     max: 20,
                     divisions: 20,
                     onChanged: (v) {
@@ -214,7 +213,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     Slider(
                       value: _user.readerAutoScrollDistance,
                       min: 0.2,
-                      max: 1.0,
                       divisions: 16,
                       label:
                           '${(_user.readerAutoScrollDistance * 100).round()}%',
@@ -336,7 +334,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                   Slider(
                     value: _user.readerDimming,
-                    min: 0,
                     max: 0.7,
                     divisions: 14,
                     onChangeStart: (_) =>
@@ -424,7 +421,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 ),
                 Slider(
                   value: _user.imageRetryCount.toDouble(),
-                  min: 0,
                   max: 5,
                   divisions: 5,
                   label: _user.imageRetryCount == 0

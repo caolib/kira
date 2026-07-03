@@ -2,32 +2,32 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../api/api_client.dart';
 import '../models/anime.dart';
 import '../models/user_manager.dart';
+import '../providers/app_providers.dart';
+import '../providers/repository_providers.dart';
+import '../repositories/anime_home_repository.dart';
+import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
-import '../utils/data_cache.dart';
 import '../utils/toast.dart';
-import 'anime_detail_page.dart';
 import 'anime_list_page.dart';
 import 'home_page.dart';
 
-class AnimeHomePage extends StatefulWidget {
+class AnimeHomePage extends ConsumerStatefulWidget {
   const AnimeHomePage({super.key});
 
   @override
-  State<AnimeHomePage> createState() => _AnimeHomePageState();
+  ConsumerState<AnimeHomePage> createState() => _AnimeHomePageState();
 }
 
 const _animeHomeCardWidth = 112.0;
 
-class _AnimeHomePageState extends State<AnimeHomePage> {
-  static const _cacheKey = 'anime_home_v1';
-
-  final _api = ApiClient();
-  final _cache = DataCache();
-  final _user = UserManager();
+class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
+  AnimeHomeRepository get _repo => ref.read(animeHomeRepositoryProvider);
+  UserManager get _user => ref.read(userManagerProvider);
   AnimeHome? _home;
   bool _loading = true;
   bool _refreshing = false;
@@ -52,10 +52,10 @@ class _AnimeHomePageState extends State<AnimeHomePage> {
   }
 
   Future<void> _loadFromCache() async {
-    final cached = await _cache.get(_cacheKey);
+    final cached = await _repo.loadFromCache();
     if (!mounted || cached == null || !_loading) return;
     setState(() {
-      _home = AnimeHome.fromJson(Map<String, dynamic>.from(cached));
+      _home = cached;
       _loading = false;
     });
   }
@@ -72,14 +72,13 @@ class _AnimeHomePageState extends State<AnimeHomePage> {
     }
 
     try {
-      final home = await _api.getAnimeHome();
+      final home = await _repo.load();
       if (!mounted) return;
       setState(() {
         _home = home;
         _loading = false;
         _refreshing = false;
       });
-      _cache.put(_cacheKey, home.toJson());
     } catch (e) {
       debugPrint('AnimeHomePage load error: $e');
       if (!mounted) return;
@@ -96,22 +95,15 @@ class _AnimeHomePageState extends State<AnimeHomePage> {
       showToast(context, '当前动漫暂时无法打开', isError: true);
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnimeDetailPage(
-          pathWord: anime.pathWord,
-          initialAnime: anime.cover.isEmpty ? null : anime,
-        ),
-      ),
+    context.pushNamed(
+      AppRoutes.animeDetail,
+      pathParameters: {'pathWord': anime.pathWord},
+      extra: AnimeDetailExtra(initialAnime: anime.cover.isEmpty ? null : anime),
     );
   }
 
   void _openList(AnimeListType type) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => AnimeListPage(type: type)),
-    );
+    context.pushNamed(AppRoutes.animeList, pathParameters: {'type': type.name});
   }
 
   @override
@@ -464,9 +456,10 @@ class _AnimeBannerCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => _ImagePlaceholder(icon: Icons.movie),
+                placeholder: (_, _) =>
+                    const _ImagePlaceholder(icon: Icons.movie),
                 errorWidget: (_, _, _) =>
-                    _ImagePlaceholder(icon: Icons.broken_image),
+                    const _ImagePlaceholder(icon: Icons.broken_image),
               ),
             ),
             DecoratedBox(
@@ -612,9 +605,9 @@ class _AnimeCard extends StatelessWidget {
                         fadeInDuration: Duration.zero,
                         fadeOutDuration: Duration.zero,
                         placeholder: (_, _) =>
-                            _ImagePlaceholder(icon: Icons.movie_outlined),
+                            const _ImagePlaceholder(icon: Icons.movie_outlined),
                         errorWidget: (_, _, _) =>
-                            _ImagePlaceholder(icon: Icons.broken_image),
+                            const _ImagePlaceholder(icon: Icons.broken_image),
                       ),
                     ),
                   ],
