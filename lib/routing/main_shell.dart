@@ -57,7 +57,17 @@ class _MainShellState extends State<MainShell> {
   Future<void> _runStartupFlow() async {
     await _ensureDisclaimerAccepted();
     if (!mounted) return;
+    _restoreLastBranch();
     await _maybeAutoCheckUpdate();
+  }
+
+  void _restoreLastBranch() {
+    final lastKey = _user.lastNavKey;
+    final branchIndex = _navKeyToBranchIndex[lastKey];
+    if (branchIndex != null &&
+        branchIndex != widget.navigationShell.currentIndex) {
+      widget.navigationShell.goBranch(branchIndex);
+    }
   }
 
   Future<void> _ensureDisclaimerAccepted() async {
