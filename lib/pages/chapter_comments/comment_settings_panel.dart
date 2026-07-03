@@ -1,6 +1,6 @@
 part of '../chapter_comments_sheet.dart';
 
-class _CommentSettingsPanel extends StatefulWidget {
+class CommentSettingsPanel extends StatefulWidget {
   final bool useCompactLayout;
   final bool showUserAvatar;
   final bool showUserName;
@@ -8,6 +8,9 @@ class _CommentSettingsPanel extends StatefulWidget {
   final double commentFontScale;
   final bool commentPreload;
   final bool commentAutoLoadAll;
+  /// 章节评论专属区块（布局/预加载/自动加载全部/AI 总结）仅在此为 true 时显示。
+  /// 漫画评论复用本面板时传 false。
+  final bool isChapterComments;
   final ValueChanged<bool> onLayoutChanged;
   final ValueChanged<bool> onShowAvatarChanged;
   final ValueChanged<bool> onShowUserNameChanged;
@@ -16,7 +19,8 @@ class _CommentSettingsPanel extends StatefulWidget {
   final ValueChanged<bool> onPreloadChanged;
   final ValueChanged<bool> onAutoLoadAllChanged;
 
-  const _CommentSettingsPanel({
+  const CommentSettingsPanel({
+    super.key,
     required this.useCompactLayout,
     required this.showUserAvatar,
     required this.showUserName,
@@ -24,6 +28,7 @@ class _CommentSettingsPanel extends StatefulWidget {
     required this.commentFontScale,
     required this.commentPreload,
     required this.commentAutoLoadAll,
+    this.isChapterComments = true,
     required this.onLayoutChanged,
     required this.onShowAvatarChanged,
     required this.onShowUserNameChanged,
@@ -34,10 +39,10 @@ class _CommentSettingsPanel extends StatefulWidget {
   });
 
   @override
-  State<_CommentSettingsPanel> createState() => _CommentSettingsPanelState();
+  State<CommentSettingsPanel> createState() => _CommentSettingsPanelState();
 }
 
-class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
+class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
   late bool _useCompactLayout;
   late bool _showUserAvatar;
   late bool _showUserName;
@@ -276,31 +281,33 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                 '评论区设置',
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              _buildSectionHeader('布局', cs, tt),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: true,
-                      icon: Icon(Icons.dashboard_outlined),
-                      label: Text('紧凑布局'),
-                    ),
-                    ButtonSegment(
-                      value: false,
-                      icon: Icon(Icons.view_agenda_outlined),
-                      label: Text('列表布局'),
-                    ),
-                  ],
-                  selected: {_useCompactLayout},
-                  onSelectionChanged: (values) {
-                    final value = values.first;
-                    setState(() => _useCompactLayout = value);
-                    widget.onLayoutChanged(value);
-                  },
+              if (widget.isChapterComments) ...[
+                _buildSectionHeader('布局', cs, tt),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.dashboard_outlined),
+                        label: Text('紧凑布局'),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.view_agenda_outlined),
+                        label: Text('列表布局'),
+                      ),
+                    ],
+                    selected: {_useCompactLayout},
+                    onSelectionChanged: (values) {
+                      final value = values.first;
+                      setState(() => _useCompactLayout = value);
+                      widget.onLayoutChanged(value);
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('显示头像'),
@@ -328,26 +335,28 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                   widget.onShowCommentTimeChanged(value);
                 },
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('预加载评论'),
-                subtitle: const Text('进入章节时提前加载评论并显示数量'),
-                value: _commentPreload,
-                onChanged: (value) {
-                  setState(() => _commentPreload = value);
-                  widget.onPreloadChanged(value);
-                },
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('自动加载全部评论'),
-                subtitle: const Text('打开评论区时自动加载所有评论'),
-                value: _commentAutoLoadAll,
-                onChanged: (value) {
-                  setState(() => _commentAutoLoadAll = value);
-                  widget.onAutoLoadAllChanged(value);
-                },
-              ),
+              if (widget.isChapterComments) ...[
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('预加载评论'),
+                  subtitle: const Text('进入章节时提前加载评论并显示数量'),
+                  value: _commentPreload,
+                  onChanged: (value) {
+                    setState(() => _commentPreload = value);
+                    widget.onPreloadChanged(value);
+                  },
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('自动加载全部评论'),
+                  subtitle: const Text('打开评论区时自动加载所有评论'),
+                  value: _commentAutoLoadAll,
+                  onChanged: (value) {
+                    setState(() => _commentAutoLoadAll = value);
+                    widget.onAutoLoadAllChanged(value);
+                  },
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -375,10 +384,11 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                 },
               ),
               // AI 总结设置
-              ListenableBuilder(
-                listenable: AiSettings(),
-                builder: (context, _) {
-                  final zhipu = AiSettings();
+              if (widget.isChapterComments)
+                ListenableBuilder(
+                  listenable: AiSettings(),
+                  builder: (context, _) {
+                    final zhipu = AiSettings();
                   final hasKey = zhipu.hasApiKey;
                   final enabled = zhipu.summaryEnabled;
                   final spoiler = zhipu.spoilerAnalysis;
@@ -393,7 +403,7 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                         subtitle: Text(
                           hasKey
                               ? (enabled ? '评论顶部显示 AI 总结按钮' : '未启用')
-                              : '请先在「我的 → 智谱清言」中配置 API 密钥',
+                              : '请先在「我的 → AI配置」中配置 API 密钥',
                           style: tt.bodySmall?.copyWith(
                             color: hasKey ? null : cs.error,
                           ),
@@ -588,9 +598,98 @@ class _CommentSettingsPanelState extends State<_CommentSettingsPanel> {
                 },
               ),
               const SizedBox(height: 8),
+              _buildBlockedUsersSection(cs, tt),
+              const SizedBox(height: 8),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBlockedUsersSection(ColorScheme cs, TextTheme tt) {
+    final user = UserManager();
+
+    return ListenableBuilder(
+      listenable: user,
+      builder: (context, _) {
+        final list = user.commentBlockedUsers;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('黑名单', cs, tt),
+            if (list.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Text(
+                  '长按评论可选择「屏蔽用户」，被屏蔽的评论将不再显示。',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              )
+            else ...[
+              for (final raw in list)
+                _BlockedUserTile(
+                  rawKey: raw,
+                  onRemove: () => user.unblockCommentUser(raw),
+                ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                  label: const Text('清空黑名单'),
+                  style: TextButton.styleFrom(foregroundColor: cs.error),
+                  onPressed: () => user.clearCommentBlockedUsers(),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BlockedUserTile extends StatelessWidget {
+  final String rawKey;
+  final VoidCallback onRemove;
+
+  const _BlockedUserTile({required this.rawKey, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final sep = rawKey.indexOf('|');
+    final userId = sep < 0 ? rawKey : rawKey.substring(0, sep);
+    final userName = sep < 0 ? '' : rawKey.substring(sep + 1);
+    final displayName = userName.isNotEmpty ? userName : '匿名用户';
+    final subtitle = userId.isEmpty ? null : 'ID: $userId';
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      leading: CircleAvatar(
+        backgroundColor: cs.surfaceContainerHighest,
+        child: Icon(Icons.person, size: 20, color: cs.onSurfaceVariant),
+      ),
+      title: Text(
+        displayName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+      trailing: IconButton(
+        tooltip: '移出黑名单',
+        icon: const Icon(Icons.remove_circle_outline, size: 22),
+        color: cs.error,
+        onPressed: onRemove,
       ),
     );
   }

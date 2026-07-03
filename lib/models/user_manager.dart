@@ -190,6 +190,8 @@ class UserManager extends ChangeNotifier {
   static const _keyDanmakuHideTop = 'danmaku_hide_top';
   static const _keyDanmakuHideBottom = 'danmaku_hide_bottom';
   static const _keyDanmakuBlocklist = 'danmaku_blocklist';
+  static const _keyCommentBlockedUsers = 'comment_blocked_users';
+  static const _keyCommentBlockNoRemind = 'comment_block_no_remind';
   static const _keyLogoIndex = 'logo_index';
 
   String? _token;
@@ -267,6 +269,9 @@ class UserManager extends ChangeNotifier {
   bool _danmakuHideTop = false;
   bool _danmakuHideBottom = false;
   List<String> _danmakuBlocklist = [];
+  /// 评论屏蔽用户黑名单，元素为 `userId|userName` 形式
+  List<String> _commentBlockedUsers = [];
+  bool _commentBlockNoRemind = false;
   int _logoIndex = 1;
 
   String? get token => _token;
@@ -365,6 +370,8 @@ class UserManager extends ChangeNotifier {
   bool get danmakuHideTop => _danmakuHideTop;
   bool get danmakuHideBottom => _danmakuHideBottom;
   List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
+  List<String> get commentBlockedUsers => List.unmodifiable(_commentBlockedUsers);
+  bool get commentBlockNoRemind => _commentBlockNoRemind;
   int get logoIndex => _logoIndex;
   String get appLogoPath =>
       appLogoPaths[_logoIndex.clamp(0, appLogoPaths.length - 1)];
@@ -578,6 +585,10 @@ class UserManager extends ChangeNotifier {
     _danmakuHideTop = prefs.getBool(_keyDanmakuHideTop) ?? false;
     _danmakuHideBottom = prefs.getBool(_keyDanmakuHideBottom) ?? false;
     _danmakuBlocklist = prefs.getStringList(_keyDanmakuBlocklist) ?? [];
+    _commentBlockedUsers =
+        prefs.getStringList(_keyCommentBlockedUsers) ?? [];
+    _commentBlockNoRemind =
+        prefs.getBool(_keyCommentBlockNoRemind) ?? false;
     _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(
       0,
       appLogoPaths.length - 1,
@@ -1342,6 +1353,57 @@ class UserManager extends ChangeNotifier {
     _danmakuBlocklist = List.from(list);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_keyDanmakuBlocklist, list);
+    notifyListeners();
+  }
+
+  /// `entry` 格式：`userId|userName`（userId 可为空字符串，userName 作为兜底标识）。
+  bool isCommentUserBlocked(String userId, String userName) {
+    if (userId.isEmpty && userName.isEmpty) return false;
+    for (final raw in _commentBlockedUsers) {
+      final sep = raw.indexOf('|');
+      if (sep < 0) {
+        if (userId.isNotEmpty && raw == userId) return true;
+        continue;
+      }
+      final bId = raw.substring(0, sep);
+      final bName = raw.substring(sep + 1);
+      if (userId.isNotEmpty && bId == userId) return true;
+      if (userId.isEmpty && userName.isNotEmpty && bName == userName) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> blockCommentUser(String userId, String userName) async {
+    final key = '$userId|$userName';
+    if (_commentBlockedUsers.any((e) => e == key)) return;
+    _commentBlockedUsers = [..._commentBlockedUsers, key];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCommentBlockedUsers, _commentBlockedUsers);
+    notifyListeners();
+  }
+
+  Future<void> unblockCommentUser(String rawKey) async {
+    _commentBlockedUsers = _commentBlockedUsers
+        .where((e) => e != rawKey)
+        .toList(growable: true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCommentBlockedUsers, _commentBlockedUsers);
+    notifyListeners();
+  }
+
+  Future<void> clearCommentBlockedUsers() async {
+    _commentBlockedUsers = const [];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyCommentBlockedUsers);
+    notifyListeners();
+  }
+
+  Future<void> setCommentBlockNoRemind(bool value) async {
+    _commentBlockNoRemind = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCommentBlockNoRemind, value);
     notifyListeners();
   }
 

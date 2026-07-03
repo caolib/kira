@@ -101,9 +101,19 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
   /// 在 _comments 变化后调用，重建分组缓存。
   void _rebuildGroupedEntries() {
-    _groupedEntries = _comments.isEmpty
-        ? const []
-        : groupChapterComments(_comments);
+    if (_comments.isEmpty) {
+      _groupedEntries = const [];
+      return;
+    }
+    final blocked = _user.commentBlockedUsers;
+    if (blocked.isEmpty) {
+      _groupedEntries = groupChapterComments(_comments);
+      return;
+    }
+    final filtered = _comments.where(
+      (c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()),
+    ).toList();
+    _groupedEntries = groupChapterComments(filtered);
   }
 
   late final ChapterSummaryProgress _summaryProgress;
@@ -1000,11 +1010,15 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+      ),
       builder: (sheetContext) {
         final cs = Theme.of(sheetContext).colorScheme;
         final tt = Theme.of(sheetContext).textTheme;
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1053,6 +1067,16 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                   subtitle: const Text('发送一条相同评论'),
                   onTap: () => Navigator.of(sheetContext).pop('plus_one'),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.block_outlined),
+                  title: const Text('屏蔽用户'),
+                  subtitle: Text(
+                    '隐藏 ${entry.primaryComment.userName} 的评论',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => Navigator.of(sheetContext).pop('block'),
+                ),
               ],
             ),
           ),
@@ -1067,7 +1091,81 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       showToast(context, '评论已复制');
     } else if (action == 'plus_one') {
       await _plusOneComment(content);
+    } else if (action == 'block') {
+      await _blockCommentUser(entry.primaryComment);
     }
+  }
+
+  Future<void> _blockCommentUser(ChapterComment comment) async {
+    final name = comment.userName.trim();
+    if (_user.commentBlockNoRemind) {
+      await _user.blockCommentUser(comment.userId, name);
+      if (!mounted) return;
+      setState(_rebuildGroupedEntries);
+      showToast(context, '已屏蔽该用户');
+      return;
+    }
+
+    var noRemind = false;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('屏蔽用户'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isEmpty
+                    ? '确定屏蔽该用户吗？屏蔽后将不再显示其评论。'
+                    : '确定屏蔽「$name」吗？屏蔽后将不再显示其评论。\n可在评论区设置 → 黑名单中解除。',
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => setLocal(() => noRemind = !noRemind),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Checkbox(
+                        value: noRemind,
+                        onChanged: (v) =>
+                            setLocal(() => noRemind = v ?? false),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '不再提醒',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('屏蔽'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    if (noRemind) await _user.setCommentBlockNoRemind(true);
+    await _user.blockCommentUser(comment.userId, name);
+    if (!mounted) return;
+    setState(_rebuildGroupedEntries);
+    showToast(context, '已屏蔽该用户');
   }
 
   Future<void> _plusOneComment(String content) async {
@@ -1138,7 +1236,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             width: sheetSize.width,
             height: sheetSize.height * _sheetMaxHeightFactor,
             child: ExcludeSemantics(
-              child: _CommentSettingsPanel(
+              child: CommentSettingsPanel(
                 useCompactLayout: _useCompactLayout,
                 showUserAvatar: _showUserAvatar,
                 showUserName: _showUserName,

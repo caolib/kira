@@ -10,6 +10,7 @@ import '../models/user_manager.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import 'chapter_comments_sheet.dart' show CommentSettingsPanel;
 
 class ComicCommentsSheet extends StatefulWidget {
   final String comicId;
@@ -85,14 +86,21 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       );
       if (!mounted) return;
 
-      final mergedComments = loadMore
+      final mergedComments = (loadMore
           ? [
               ..._comments,
               ...data.list.where(
                 (item) => !_comments.any((existing) => existing.id == item.id),
               ),
             ]
-          : data.list;
+          : data.list)
+          .where(
+            (item) => !_user.isCommentUserBlocked(
+              item.userId,
+              item.userName.trim(),
+            ),
+          )
+          .toList();
 
       setState(() {
         _comments = mergedComments;
@@ -192,7 +200,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       );
       if (!mounted) return;
 
-      final mergedReplies = loadMore
+      final mergedReplies = (loadMore
           ? [
               ...currentState.replies,
               ...data.list.where(
@@ -201,7 +209,14 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 ),
               ),
             ]
-          : data.list;
+          : data.list)
+          .where(
+            (item) => !_user.isCommentUserBlocked(
+              item.userId,
+              item.userName.trim(),
+            ),
+          )
+          .toList();
 
       // 回复按时间正序（从旧到新）
       mergedReplies.sort((a, b) => a.createAt.compareTo(b.createAt));
@@ -299,6 +314,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
+                          ),
+                          IconButton(
+                            onPressed: _showCommentSettings,
+                            tooltip: '评论设置',
+                            icon: const Icon(Icons.tune),
                           ),
                           IconButton(
                             onPressed: () => Navigator.of(context).maybePop(),
@@ -825,11 +845,15 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+      ),
       builder: (sheetContext) {
         final cs = Theme.of(sheetContext).colorScheme;
         final tt = Theme.of(sheetContext).textTheme;
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -878,6 +902,16 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                   subtitle: const Text('发送一条相同评论'),
                   onTap: () => Navigator.of(sheetContext).pop('plus_one'),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.block_outlined),
+                  title: const Text('屏蔽用户'),
+                  subtitle: Text(
+                    '隐藏 ${comment.userName} 的评论',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => Navigator.of(sheetContext).pop('block'),
+                ),
               ],
             ),
           ),
@@ -892,7 +926,160 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       showToast(context, '评论已复制');
     } else if (action == 'plus_one') {
       await _plusOneComment(content);
+    } else if (action == 'block') {
+      await _blockCommentUser(comment);
     }
+  }
+
+  Future<void> _blockCommentUser(ComicComment comment) async {
+    final name = comment.userName.trim();
+    if (_user.commentBlockNoRemind) {
+      await _user.blockCommentUser(comment.userId, name);
+      if (!mounted) return;
+      _applyBlockedFilter();
+      showToast(context, '已屏蔽该用户');
+      return;
+    }
+
+    var noRemind = false;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('屏蔽用户'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isEmpty
+                    ? '确定屏蔽该用户吗？屏蔽后将不再显示其评论。'
+                    : '确定屏蔽「$name」吗？屏蔽后将不再显示其评论。\n可在黑名单中解除。',
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => setLocal(() => noRemind = !noRemind),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Checkbox(
+                        value: noRemind,
+                        onChanged: (v) =>
+                            setLocal(() => noRemind = v ?? false),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '不再提醒',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('屏蔽'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    if (noRemind) await _user.setCommentBlockNoRemind(true);
+    await _user.blockCommentUser(comment.userId, name);
+    if (!mounted) return;
+    _applyBlockedFilter();
+    showToast(context, '已屏蔽该用户');
+  }
+
+  void _applyBlockedFilter() {
+    setState(() {
+      _comments = _comments
+          .where(
+            (c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()),
+          )
+          .toList();
+      // 已展开的回复也需过滤
+      for (final id in _replyStates.keys.toList()) {
+        final s = _replyStates[id]!;
+        if (s.replies.isEmpty) continue;
+        final filtered = s.replies
+            .where(
+              (r) => !_user.isCommentUserBlocked(r.userId, r.userName.trim()),
+            )
+            .toList();
+        if (filtered.length != s.replies.length) {
+          _replyStates[id] = s.copyWith(replies: filtered);
+        }
+      }
+    });
+  }
+
+  void _showCommentSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      ),
+      builder: (sheetContext) {
+        final sheetSize = MediaQuery.sizeOf(sheetContext);
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: SizedBox(
+            width: sheetSize.width,
+            height: sheetSize.height * 0.85,
+            child: ExcludeSemantics(
+              child: CommentSettingsPanel(
+                isChapterComments: false,
+                useCompactLayout: _user.commentCompactLayout,
+                showUserAvatar: _user.commentShowAvatar,
+                showUserName: _user.commentShowUserName,
+                showCommentTime: _user.commentShowTime,
+                commentFontScale: _user.commentFontScale,
+                commentPreload: _user.commentPreload,
+                commentAutoLoadAll: _user.commentAutoLoadAll,
+                onLayoutChanged: (_) {},
+                onShowAvatarChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentShowAvatar(v);
+                },
+                onShowUserNameChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentShowUserName(v);
+                },
+                onShowCommentTimeChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentShowTime(v);
+                },
+                onFontScaleChanged: (v) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _user.setCommentFontScale(v);
+                },
+                onPreloadChanged: (v) => _user.setCommentPreload(v),
+                onAutoLoadAllChanged: (v) => _user.setCommentAutoLoadAll(v),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _plusOneComment(String content) async {
