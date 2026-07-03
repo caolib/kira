@@ -21,6 +21,14 @@ import 'utils/network_proxy.dart';
 bool get isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+Locale _parseLocale(String raw) {
+  // 仅支持 'zh' 和 'zh-Hant'
+  if (raw == 'zh-Hant') {
+    return const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant');
+  }
+  return const Locale('zh');
+}
+
 void main() {
   runZonedGuarded(
     () async {
@@ -43,7 +51,9 @@ void main() {
         return true;
       };
 
-      MediaKit.ensureInitialized();
+      if (!Platform.isWindows) {
+        MediaKit.ensureInitialized();
+      }
       await UserManager().init();
       await NetworkProxy.init();
       if (isDesktop) {
@@ -183,12 +193,15 @@ class _KiraAppState extends ConsumerState<KiraApp> {
       debugShowCheckedModeBanner: false,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('zh'),
       scrollBehavior: _AppScrollBehavior(),
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _user.themeMode,
       routerConfig: _router,
+      locale:
+          _user.locale.isEmpty
+              ? null
+              : _parseLocale(_user.locale),
     );
   }
 }
