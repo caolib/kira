@@ -985,7 +985,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         },
       );
     } finally {
-      controller.dispose();
+      // ponytail: 延后一帧 dispose，避免弹窗退出动画期间
+      // 还在读取 controller.text 导致 used-after-dispose
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
     }
   }
 

@@ -470,6 +470,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
 
     return GestureDetector(
       onTap: () => _showPostCommentDialog(replyTo: comment),
+      onLongPress: () => _showCommentActionMenu(comment),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         decoration: BoxDecoration(
@@ -731,6 +732,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
 
     return GestureDetector(
       onTap: () => _showPostCommentDialog(replyTo: reply),
+      onLongPress: () => _showCommentActionMenu(reply),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -815,6 +817,106 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   }
 
   int _commentTextLength(String text) => text.trim().runes.length;
+
+  Future<void> _showCommentActionMenu(ComicComment comment) async {
+    final content = comment.comment.trim();
+    if (content.isEmpty) return;
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        final tt = Theme.of(sheetContext).textTheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '评论操作',
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: '关闭',
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.outlineVariant),
+                  ),
+                  child: Text(
+                    content,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  leading: const Icon(Icons.copy_outlined),
+                  title: const Text('复制'),
+                  onTap: () => Navigator.of(sheetContext).pop('copy'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.add_comment_outlined),
+                  title: const Text('+1'),
+                  subtitle: const Text('发送一条相同评论'),
+                  onTap: () => Navigator.of(sheetContext).pop('plus_one'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+    if (action == 'copy') {
+      await Clipboard.setData(ClipboardData(text: content));
+      if (!mounted) return;
+      showToast(context, '评论已复制');
+    } else if (action == 'plus_one') {
+      await _plusOneComment(content);
+    }
+  }
+
+  Future<void> _plusOneComment(String content) async {
+    if (!_user.isLoggedIn) {
+      showToast(context, '请先登录后再发表评论', isError: true);
+      return;
+    }
+
+    final length = _commentTextLength(content);
+    if (length < 3 || length > 200) {
+      showToast(context, '评论字数需在 3-200 之间，无法 +1', isError: true);
+      return;
+    }
+
+    try {
+      await _api.manga.postComicComment(widget.comicId, content);
+      if (!mounted) return;
+      showToast(context, '+1 已发送');
+      unawaited(_loadComments());
+    } catch (e) {
+      if (!mounted) return;
+      showToast(context, NetworkError.message(e), isError: true);
+    }
+  }
 
   Future<void> _showPostCommentDialog({ComicComment? replyTo}) async {
     if (!_user.isLoggedIn) {
@@ -980,7 +1082,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         },
       );
     } finally {
-      controller.dispose();
+      // ponytail: 延后一帧 dispose，避免弹窗退出动画期间
+      // 还在读取 controller.text 导致 used-after-dispose
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
     }
   }
 
