@@ -111,7 +111,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     _officialLastBrowseName = widget.lastBrowseName;
     _lastBrowseId = widget.lastBrowseId;
     _lastBrowseName = widget.lastBrowseName;
-    if (_lastBrowseId != null) _reversed = true;
     _downloads.addListener(_handleDownloadChanged);
     _initializePage();
   }
@@ -154,7 +153,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _lastBrowsePage = record?.page ?? 1;
       _lastBrowseTotalPage = record?.totalPage ?? 0;
       _readChapterUuids = <String>{...?record?.readChapterUuids};
-      if (_lastBrowseId != null) _reversed = true;
     });
     await _syncNextBrowseChapter();
   }
@@ -280,6 +278,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       if (cached != null) {
         setState(() {
           _chapters = cached.list;
+          _reversed = _shouldReverseForCurrentPage();
           _chapterTotal = cached.total;
           _chapterPage = page;
           _selectedGroup = targetGroup;
@@ -315,6 +314,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _chapterPageCache[cacheKey] = result;
       setState(() {
         _chapters = result.list;
+        _reversed = _shouldReverseForCurrentPage();
         _chapterTotal = result.total;
         _chapterPage = page;
         _selectedGroup = targetGroup;
@@ -381,6 +381,17 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       if (chapter.uuid == uuid) return chapter;
     }
     return null;
+  }
+
+  /// 根据上次阅读章节在当前页中的位置决定是否逆序。
+  /// 仅当章节在当前页的后半部分时才设为逆序，否则正序。
+  /// 若上次阅读章节不在当前页，保持当前状态不变。
+  bool _shouldReverseForCurrentPage() {
+    final lastBrowseId = _lastBrowseId;
+    if (lastBrowseId == null || lastBrowseId.isEmpty) return false;
+    final index = _chapters.indexWhere((c) => c.uuid == lastBrowseId);
+    if (index < 0) return _reversed; // 不在当前页，保持现状
+    return index >= _chapters.length / 2;
   }
 
   bool get _isLastBrowseComplete {
