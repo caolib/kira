@@ -223,12 +223,15 @@ class _ReaderPageState extends State<ReaderPage> {
     List<ChapterComment> comments,
     int total, {
     bool rebuild = false,
+    bool replaceFirstPage = false,
   }) {
     var nextComments = List<ChapterComment>.from(comments);
     var nextTotal = total < nextComments.length ? nextComments.length : total;
 
     final existing = _commentCache[chapterUuid];
-    if (existing != null && existing.length > nextComments.length) {
+    if (!replaceFirstPage &&
+        existing != null &&
+        existing.length > nextComments.length) {
       nextComments = List<ChapterComment>.from(existing);
     }
     final existingTotal = _commentTotalCache[chapterUuid];
@@ -1860,6 +1863,7 @@ class _ReaderPageState extends State<ReaderPage> {
                   comments,
                   total,
                   rebuild: true,
+                  replaceFirstPage: true,
                 );
               },
         hasNextChapter: detail.next != null,

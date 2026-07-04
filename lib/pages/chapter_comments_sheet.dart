@@ -495,6 +495,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _total = data.total;
         _error = null;
       });
+      _rebuildGroupedEntries();
       _notifyCommentsUpdated();
       _maybeAutoSummary();
       WidgetsBinding.instance.addPostFrameCallback((_) {
