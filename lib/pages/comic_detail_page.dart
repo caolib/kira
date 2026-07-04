@@ -385,10 +385,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   bool get _isLastBrowseComplete {
     if (_lastBrowseTotalPage <= 0) return false;
-    final unreadThreshold = _lastBrowseTotalPage <= 1
-        ? 1
-        : _lastBrowseTotalPage - 1;
-    return _lastBrowsePage >= unreadThreshold;
+    return _lastBrowsePage / _lastBrowseTotalPage >= 0.8;
   }
 
   bool get _canShowLastBrowseAction {
