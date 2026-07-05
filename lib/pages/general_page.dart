@@ -39,34 +39,33 @@ class _GeneralPageState extends State<GeneralPage> {
 
   Future<void> _exportSettings() async {
     try {
-      final backup = await _settingsBackup.exportPlainText();
-      final summary = _settingsBackup.inspectPlainText(backup);
+      final safeBackup = await _settingsBackup.exportPlainText();
+      final safeSummary = _settingsBackup.inspectPlainText(safeBackup);
+      final sensitiveBackup = await _settingsBackup.exportPlainText(
+        options: const SettingsBackupOptions(includeSensitive: true),
+      );
+      final sensitiveSummary = _settingsBackup.inspectPlainText(
+        sensitiveBackup,
+      );
       if (!mounted) return;
 
-      final confirmed = await showDialog<bool>(
+      final includeSensitive = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('导出设置'),
-          content: Text(
-            '将复制 ${summary.preferenceCount} 项持久化配置到剪贴板，包含账号、密码、令牌和本地阅读记录。导出内容为明文，请谨慎保管。',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('复制'),
-            ),
-          ],
+        builder: (ctx) => _ExportSettingsDialog(
+          safeSummary: safeSummary,
+          sensitiveSummary: sensitiveSummary,
         ),
       );
 
-      if (confirmed != true) return;
-      await Clipboard.setData(ClipboardData(text: backup));
+      if (includeSensitive == null) return;
+      await Clipboard.setData(
+        ClipboardData(text: includeSensitive ? sensitiveBackup : safeBackup),
+      );
       if (mounted) {
-        showToast(context, '设置已复制到剪贴板，内容为明文');
+        showToast(
+          context,
+          includeSensitive ? '设置已复制，包含敏感信息' : '设置已复制，未包含敏感信息',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -338,6 +337,71 @@ class _GeneralPageState extends State<GeneralPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ExportSettingsDialog extends StatefulWidget {
+  final SettingsBackupSummary safeSummary;
+  final SettingsBackupSummary sensitiveSummary;
+
+  const _ExportSettingsDialog({
+    required this.safeSummary,
+    required this.sensitiveSummary,
+  });
+
+  @override
+  State<_ExportSettingsDialog> createState() => _ExportSettingsDialogState();
+}
+
+class _ExportSettingsDialogState extends State<_ExportSettingsDialog> {
+  bool _includeSensitive = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final exportedCount = _includeSensitive
+        ? widget.sensitiveSummary.preferenceCount
+        : widget.safeSummary.preferenceCount;
+    final sensitiveCount = widget.sensitiveSummary.sensitivePreferenceCount;
+
+    return AlertDialog(
+      title: const Text('导出设置'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '将复制 $exportedCount 项持久化配置到剪贴板，导出内容为明文，请谨慎保管。',
+          ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('包含密码和 API 重要信息'),
+            subtitle: Text(
+              sensitiveCount == 0
+                  ? '当前没有检测到已保存的敏感项'
+                  : '将额外包含 $sensitiveCount 项令牌、密码、API Key 或凭据信息',
+            ),
+            value: _includeSensitive,
+            onChanged: sensitiveCount == 0
+                ? null
+                : (value) {
+                    setState(() {
+                      _includeSensitive = value ?? false;
+                    });
+                  },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _includeSensitive),
+          child: const Text('复制'),
+        ),
+      ],
     );
   }
 }

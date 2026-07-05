@@ -13,12 +13,20 @@ class SettingsBackupException implements Exception {
 
 class SettingsBackupSummary {
   final int preferenceCount;
+  final int sensitivePreferenceCount;
   final DateTime? exportedAt;
 
   const SettingsBackupSummary({
     required this.preferenceCount,
+    required this.sensitivePreferenceCount,
     required this.exportedAt,
   });
+}
+
+class SettingsBackupOptions {
+  final bool includeSensitive;
+
+  const SettingsBackupOptions({this.includeSensitive = false});
 }
 
 class SettingsBackupService {
@@ -30,13 +38,28 @@ class SettingsBackupService {
     'local_bookshelf_show_update_only',
     'bookshelf_show_update_only',
   };
+  static const _sensitivePreferenceKeys = <String>{
+    'user_token',
+    'saved_username',
+    'saved_password',
+    'saved_credentials',
+    'zhipu_api_key',
+    'ai_providers',
+  };
 
-  Future<String> exportPlainText() async {
+  Future<String> exportPlainText({
+    SettingsBackupOptions options = const SettingsBackupOptions(),
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final entries = <String, Map<String, dynamic>>{};
+    final skippedSensitiveKeys = <String>[];
     final keys = prefs.getKeys().where(_isUserPreferenceKey).toList()..sort();
 
     for (final key in keys) {
+      if (!options.includeSensitive && _isSensitivePreferenceKey(key)) {
+        skippedSensitiveKeys.add(key);
+        continue;
+      }
       final entry = _encodePreference(prefs.get(key));
       if (entry != null) {
         entries[key] = entry;
@@ -48,8 +71,12 @@ class SettingsBackupService {
       'kind': _kind,
       'version': _version,
       'exported_at': DateTime.now().toUtc().toIso8601String(),
+      'includes_sensitive': options.includeSensitive,
+      'skipped_sensitive_count': skippedSensitiveKeys.length,
       'warning':
-          'This backup is plain text and may contain tokens, accounts, passwords, and reading history.',
+          options.includeSensitive
+          ? 'This backup is plain text and may contain tokens, accounts, passwords, API keys, and reading history.'
+          : 'This backup is plain text and excludes known tokens, passwords, and API keys.',
       'preferences': entries,
     });
   }
@@ -58,6 +85,7 @@ class SettingsBackupService {
     final backup = _parseBackup(raw);
     return SettingsBackupSummary(
       preferenceCount: backup.preferences.length,
+      sensitivePreferenceCount: backup.sensitivePreferenceCount,
       exportedAt: backup.exportedAt,
     );
   }
@@ -77,6 +105,7 @@ class SettingsBackupService {
 
     return SettingsBackupSummary(
       preferenceCount: backup.preferences.length,
+      sensitivePreferenceCount: backup.sensitivePreferenceCount,
       exportedAt: backup.exportedAt,
     );
   }
@@ -94,6 +123,18 @@ class SettingsBackupService {
 
   static bool _isUserPreferenceKey(String key) =>
       !key.startsWith(_cachePrefix) && !_excludedPreferenceKeys.contains(key);
+
+  static bool _isSensitivePreferenceKey(String key) {
+    if (_sensitivePreferenceKeys.contains(key)) return true;
+
+    final normalized = key.toLowerCase();
+    return normalized.contains('password') ||
+        normalized.contains('token') ||
+        normalized.contains('api_key') ||
+        normalized.contains('apikey') ||
+        normalized.contains('secret') ||
+        normalized.contains('credential');
+  }
 
   static Map<String, dynamic>? _encodePreference(Object? value) {
     if (value is String) {
@@ -145,6 +186,7 @@ class SettingsBackupService {
     }
 
     final preferences = <String, _PreferenceValue>{};
+    var sensitivePreferenceCount = 0;
     for (final rawEntry in rawPreferences.entries) {
       final key = rawEntry.key.toString();
       if (key.isEmpty || key.startsWith(_cachePrefix)) {
@@ -153,12 +195,14 @@ class SettingsBackupService {
       if (_excludedPreferenceKeys.contains(key)) {
         continue;
       }
-      if (rawEntry.value is! Map) {
+      final rawValue = rawEntry.value;
+      if (rawValue is! Map) {
         throw const SettingsBackupException('配置字段格式不正确');
       }
-      preferences[key] = _decodePreference(
-        Map<String, dynamic>.from(rawEntry.value as Map),
-      );
+      if (_isSensitivePreferenceKey(key)) {
+        sensitivePreferenceCount += 1;
+      }
+      preferences[key] = _decodePreference(Map<String, dynamic>.from(rawValue));
     }
 
     final exportedAtRaw = map['exported_at'];
@@ -168,6 +212,7 @@ class SettingsBackupService {
 
     return _ParsedSettingsBackup(
       preferences: preferences,
+      sensitivePreferenceCount: sensitivePreferenceCount,
       exportedAt: exportedAt,
     );
   }
@@ -236,10 +281,12 @@ class SettingsBackupService {
 
 class _ParsedSettingsBackup {
   final Map<String, _PreferenceValue> preferences;
+  final int sensitivePreferenceCount;
   final DateTime? exportedAt;
 
   const _ParsedSettingsBackup({
     required this.preferences,
+    required this.sensitivePreferenceCount,
     required this.exportedAt,
   });
 }
