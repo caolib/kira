@@ -60,7 +60,7 @@ class _MainShellState extends State<MainShell> {
     await _ensureDisclaimerAccepted();
     if (!mounted) return;
     _restoreLastBranch();
-    await _maybeCheckRemoteNotice();
+    _maybeCheckRemoteNotice();
     if (!mounted) return;
     await _maybeAutoCheckUpdate();
   }
@@ -99,10 +99,10 @@ class _MainShellState extends State<MainShell> {
     await AppUpdateService.checkAndPrompt(context, auto: true);
   }
 
-  Future<void> _maybeCheckRemoteNotice() async {
+  void _maybeCheckRemoteNotice() {
     if (!mounted || _didCheckRemoteNotice) return;
     _didCheckRemoteNotice = true;
-    await RemoteNoticeService.syncSilently();
+    unawaited(RemoteNoticeService.syncSilently());
   }
 
   // Navigation key → branch index mapping.

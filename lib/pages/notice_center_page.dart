@@ -86,7 +86,10 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
   }
 
   Future<void> _markAllSeen() async {
-    await _service.markSeen(_notices);
+    final notices = _activeUnreadNotices().toList();
+    if (notices.isEmpty) return;
+
+    await _service.markSeen(notices);
     final seenKeys = await _service.loadSeenKeys();
     await _service.updateUnreadActiveCount(_notices);
     if (!mounted) return;
@@ -121,7 +124,7 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _notices.where((notice) => !_isSeen(notice)).length;
+    final unreadCount = _activeUnreadNotices().length;
 
     return Scaffold(
       appBar: AppBar(
@@ -218,7 +221,7 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
           builder: (context) {
             final notice = notices[i];
             final seenKey = RemoteNoticeService.seenKeyFor(notice);
-            final unread = !_seenKeys.contains(seenKey);
+            final unread = _isUnreadActive(notice);
             return _NoticeTimelineItem(
               notice: notice,
               unread: unread,
@@ -235,6 +238,14 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
 
   bool _isSeen(RemoteNotice notice) {
     return _seenKeys.contains(RemoteNoticeService.seenKeyFor(notice));
+  }
+
+  bool _isUnreadActive(RemoteNotice notice) {
+    return notice.isActive(DateTime.now()) && !_isSeen(notice);
+  }
+
+  Iterable<RemoteNotice> _activeUnreadNotices() {
+    return _notices.where(_isUnreadActive);
   }
 }
 

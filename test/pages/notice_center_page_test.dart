@@ -256,6 +256,35 @@ void main() {
     expect(find.text('过期通知标题'), findsOneWidget);
   });
 
+  testWidgets('does not badge expired unread notices', (tester) async {
+    final now = DateTime.now();
+    final expiredNotice = RemoteNotice(
+      id: 'expired-unread-notice',
+      title: '过期未读通知标题',
+      content: '过期未读内容',
+      publishedAt: now.subtract(const Duration(days: 3)),
+      expiresAt: now.subtract(const Duration(days: 1)),
+    );
+    final service = _FakeNoticeService(notices: [expiredNotice]);
+
+    await tester.pumpWidget(
+      MaterialApp(home: NoticeCenterPage(service: service)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('全部已读'), findsNothing);
+    expect(RemoteNoticeService.unreadActiveCount.value, 0);
+
+    await tester.tap(find.text('过期通知'));
+    await tester.pump();
+
+    expect(find.text('过期未读通知标题'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('notice-unread-dot-expired-unread-notice')),
+      findsNothing,
+    );
+  });
+
   testWidgets('shows only relative time on notice cards', (tester) async {
     final notice = RemoteNotice(
       id: 'relative-time',
