@@ -26,6 +26,7 @@ import '../pages/local_anime_page.dart';
 import '../pages/local_comics_page.dart';
 import '../pages/login_page.dart' show LoginPage;
 import '../pages/network_page.dart';
+import '../pages/notice_center_page.dart';
 import '../pages/profile_page.dart'
     hide LoginPage, RegisterPage, DisclaimerPage, AboutPage;
 import '../pages/ranking_page.dart';
@@ -68,6 +69,7 @@ final class AppRoutes {
   static const aiConfig = 'ai_config';
   static const downloadCenter = 'download_center';
   static const browseHistory = 'browse_history';
+  static const noticeCenter = 'notice_center';
   static const about = 'about';
   static const disclaimer = 'disclaimer';
   static const appLog = 'app_log';
@@ -390,6 +392,11 @@ GoRouter createAppRouter() {
         name: AppRoutes.browseHistory,
         builder: (_, _) =>
             BrowseHistoryPage(loginPageBuilder: (_) => const LoginPage()),
+      ),
+      GoRoute(
+        path: '/notices',
+        name: AppRoutes.noticeCenter,
+        builder: (_, _) => const NoticeCenterPage(),
       ),
       GoRoute(
         path: '/about',

@@ -1183,7 +1183,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              _settings.hasConfig ? '开始一段对话吧' : '先在右上角配置接口',
+              _settings.hasConfig ? '配置AI后可以在章节评论中用于总结评论和屏蔽剧透' : '先在右上角配置接口',
               style: TextStyle(color: cs.onSurfaceVariant),
             ),
           ],

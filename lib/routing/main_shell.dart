@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/app_update.dart';
+import '../utils/remote_notice_service.dart';
 
 /// Shell widget that wraps the bottom navigation bar around the
 /// [StatefulNavigationShell] provided by GoRouter's [StatefulShellRoute].
@@ -23,6 +24,7 @@ class _MainShellState extends State<MainShell> {
   final _user = UserManager();
   bool _didAutoCheckUpdate = false;
   bool _didCheckDisclaimer = false;
+  bool _didCheckRemoteNotice = false;
 
   static const _disclaimerItems = [
     '本应用（以下简称"本软件"）系独立开发的非官方第三方客户端，与任何内容平台、出版商或权利人均无隶属、合作或代理关系。',
@@ -58,6 +60,8 @@ class _MainShellState extends State<MainShell> {
     await _ensureDisclaimerAccepted();
     if (!mounted) return;
     _restoreLastBranch();
+    await _maybeCheckRemoteNotice();
+    if (!mounted) return;
     await _maybeAutoCheckUpdate();
   }
 
@@ -93,6 +97,12 @@ class _MainShellState extends State<MainShell> {
     if (!mounted || _didAutoCheckUpdate || !_user.autoCheckUpdate) return;
     _didAutoCheckUpdate = true;
     await AppUpdateService.checkAndPrompt(context, auto: true);
+  }
+
+  Future<void> _maybeCheckRemoteNotice() async {
+    if (!mounted || _didCheckRemoteNotice) return;
+    _didCheckRemoteNotice = true;
+    await RemoteNoticeService.syncSilently();
   }
 
   // Navigation key → branch index mapping.
@@ -183,11 +193,7 @@ class _MainShellState extends State<MainShell> {
     final orderedKeys = _visibleNavKeys();
     final destinations = [
       for (final key in orderedKeys)
-        NavigationDestination(
-          icon: _navItemData[key]!.icon,
-          selectedIcon: _navItemData[key]!.selectedIcon,
-          label: _navLabel(l10n, key),
-        ),
+        _buildDestination(key: key, label: _navLabel(l10n, key)),
     ];
     final selectedIndex = _selectedIndex(orderedKeys);
 
@@ -215,6 +221,26 @@ class _MainShellState extends State<MainShell> {
       ),
     );
   }
+
+  NavigationDestination _buildDestination({
+    required String key,
+    required String label,
+  }) {
+    final item = _navItemData[key]!;
+    if (key != 'profile') {
+      return NavigationDestination(
+        icon: item.icon,
+        selectedIcon: item.selectedIcon,
+        label: label,
+      );
+    }
+
+    return NavigationDestination(
+      icon: _NoticeBadgeIcon(child: item.icon),
+      selectedIcon: _NoticeBadgeIcon(child: item.selectedIcon),
+      label: label,
+    );
+  }
 }
 
 class _NavItem {
@@ -226,6 +252,55 @@ class _NavItem {
     required this.selectedIcon,
     required this.labelKey,
   });
+}
+
+class _BadgeIcon extends StatelessWidget {
+  const _BadgeIcon({required this.showBadge, required this.child});
+
+  final bool showBadge;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!showBadge) return child;
+    final cs = Theme.of(context).colorScheme;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          right: -2,
+          top: -2,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: cs.primary,
+              shape: BoxShape.circle,
+              border: Border.all(color: cs.surface, width: 1.2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NoticeBadgeIcon extends StatelessWidget {
+  const _NoticeBadgeIcon({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: RemoteNoticeService.unreadActiveCount,
+      builder: (_, count, _) {
+        return _BadgeIcon(showBadge: count > 0, child: child);
+      },
+    );
+  }
 }
 
 class _DisclaimerDialog extends StatefulWidget {

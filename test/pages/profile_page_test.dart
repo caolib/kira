@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/profile_page.dart';
+import 'package:kira/utils/remote_notice_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +12,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<void> pumpProfilePage(WidgetTester tester) async {
+    RemoteNoticeService.unreadActiveCount.value = 0;
     SharedPreferences.setMockInitialValues({
       'user_token': 'current-token',
       'user_user_id': '1',
@@ -62,6 +64,36 @@ void main() {
     await pumpProfilePage(tester);
 
     expect(find.text('通用'), findsOneWidget);
+  });
+
+  testWidgets('notice center is below AI config in the first settings group', (
+    tester,
+  ) async {
+    await pumpProfilePage(tester);
+
+    final aiTop = tester.getTopLeft(find.text('AI配置')).dy;
+    final noticeTop = tester.getTopLeft(find.text('通知中心')).dy;
+    final downloadTop = tester.getTopLeft(find.text('下载中心')).dy;
+
+    expect(noticeTop, greaterThan(aiTop));
+    expect(noticeTop, lessThan(downloadTop));
+  });
+
+  testWidgets('notice red dot uses notice icon color', (tester) async {
+    await pumpProfilePage(tester);
+
+    RemoteNoticeService.unreadActiveCount.value = 1;
+    await tester.pump();
+
+    expect(
+      find.byWidgetPredicate((widget) {
+        final decoration = widget is Container ? widget.decoration : null;
+        return widget is Container &&
+            decoration is BoxDecoration &&
+            decoration.color == const Color(0xFFEB6F92);
+      }),
+      findsOneWidget,
+    );
   });
 
   testWidgets('about page shows error log entry', (tester) async {

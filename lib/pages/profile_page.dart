@@ -11,6 +11,7 @@ import '../api/api_client.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../utils/app_update.dart';
+import '../utils/remote_notice_service.dart';
 import '../utils/toast.dart';
 import 'register_page.dart' show RegisterPrefill;
 
@@ -25,6 +26,8 @@ const _appDisclaimerItems = [
 
 const _appDisclaimerFooter =
     '继续使用本软件，即表示您已仔细阅读、充分理解并同意接受上述全部条款的约束。如您不同意任一条款，请立即停止使用并卸载本软件。';
+
+const _noticeCenterColor = Color(0xFFEB6F92);
 
 List<BoxShadow> _profileCardShadow(ColorScheme cs) => [
   BoxShadow(
@@ -364,6 +367,37 @@ class _ProfilePageState extends State<ProfilePage> {
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => context.pushNamed(AppRoutes.aiConfig),
                           ),
+                          const Divider(height: 1, indent: 16, endIndent: 16),
+                          ValueListenableBuilder<int>(
+                            valueListenable:
+                                RemoteNoticeService.unreadActiveCount,
+                            builder: (context, count, _) {
+                              return ListTile(
+                                leading: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    const _SettingIcon(
+                                      icon: Icons.notifications_active_outlined,
+                                      color: _noticeCenterColor,
+                                    ),
+                                    if (count > 0)
+                                      Positioned(
+                                        right: -1,
+                                        top: -1,
+                                        child: _NoticeRedDot(
+                                          color: _noticeCenterColor,
+                                          borderColor: cs.surfaceContainerLow,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                title: const Text('通知中心'),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () =>
+                                    context.pushNamed(AppRoutes.noticeCenter),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -610,6 +644,26 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _NoticeRedDot extends StatelessWidget {
+  const _NoticeRedDot({required this.color, required this.borderColor});
+
+  final Color color;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 9,
+      height: 9,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor, width: 1.2),
       ),
     );
   }
