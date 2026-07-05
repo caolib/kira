@@ -22,30 +22,32 @@ List<ChapterCommentDisplayEntry> groupChapterComments(
 ) {
   final groupedByNormalized = <String, List<ChapterComment>>{};
   final orderedKeys = <String>[];
-  final duplicates = <ChapterComment>[];
+  final unmergeableComments = <ChapterComment>[];
+  final seenExactUserComments = <String>{};
 
   for (final comment in comments) {
+    final duplicateKey = _exactUserCommentKey(comment);
+    if (duplicateKey != null && !seenExactUserComments.add(duplicateKey)) {
+      continue;
+    }
+
     final normalizedKey = _normalizeComment(comment.comment);
     if (normalizedKey.isEmpty) {
-      duplicates.add(comment);
+      unmergeableComments.add(comment);
       continue;
     }
     final bucket = groupedByNormalized.putIfAbsent(normalizedKey, () {
       orderedKeys.add(normalizedKey);
       return <ChapterComment>[];
     });
-    // 同一用户重复发相同内容的评论不参与合并，保留为独立条目
-    if (bucket.any((c) => c.userId == comment.userId && c.userId.isNotEmpty)) {
-      duplicates.add(comment);
-      continue;
-    }
     bucket.add(comment);
   }
 
   final entries = [
     for (final normalizedKey in orderedKeys)
       ChapterCommentDisplayEntry(comments: groupedByNormalized[normalizedKey]!),
-    for (final dup in duplicates) ChapterCommentDisplayEntry(comments: [dup]),
+    for (final comment in unmergeableComments)
+      ChapterCommentDisplayEntry(comments: [comment]),
   ];
 
   final firstAppearanceOrder = <String, int>{
@@ -64,6 +66,12 @@ List<ChapterCommentDisplayEntry> groupChapterComments(
   final singleEntries = entries.where((entry) => !entry.isMerged).toList();
 
   return [...mergedEntries, ...singleEntries];
+}
+
+String? _exactUserCommentKey(ChapterComment comment) {
+  final userId = comment.userId.trim();
+  if (userId.isEmpty) return null;
+  return '$userId\u0000${comment.comment}';
 }
 
 class ChapterCommentDisplayEntry {

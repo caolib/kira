@@ -62,7 +62,7 @@ void main() {
     expect(entries.last.isMerged, isTrue);
   });
 
-  test('merge avatars are deduplicated by user and capped at five', () {
+  test('exact duplicate comments from the same user are kept once', () {
     final entries = groupChapterComments([
       comment(id: 1, userId: 'u1', userName: 'A', content: '哈哈哈'),
       comment(id: 2, userId: 'u1', userName: 'A', content: '哈哈哈'),
@@ -72,9 +72,24 @@ void main() {
       comment(id: 6, userId: 'u5', userName: 'E', content: '哈哈哈'),
       comment(id: 7, userId: 'u6', userName: 'F', content: '哈哈哈'),
     ]);
+
+    expect(entries, hasLength(1));
+    expect(entries.single.count, 6);
+    expect(entries.single.isMerged, isTrue);
+  });
+
+  test('merge avatars are deduplicated by user and capped at five', () {
+    final entries = groupChapterComments([
+      comment(id: 1, userId: 'u1', userName: 'A', content: '哈哈哈'),
+      comment(id: 2, userId: 'u2', userName: 'B', content: '哈哈哈'),
+      comment(id: 3, userId: 'u3', userName: 'C', content: '哈哈哈'),
+      comment(id: 4, userId: 'u4', userName: 'D', content: '哈哈哈'),
+      comment(id: 5, userId: 'u5', userName: 'E', content: '哈哈哈'),
+      comment(id: 6, userId: 'u6', userName: 'F', content: '哈哈哈'),
+    ]);
     final entry = entries.singleWhere((item) => item.isMerged);
 
-    expect(entries, hasLength(2));
+    expect(entries, hasLength(1));
     expect(entry.count, 6);
     expect(entry.avatarComments(), hasLength(5));
     expect(entry.avatarComments().map((comment) => comment.userId).toList(), [
