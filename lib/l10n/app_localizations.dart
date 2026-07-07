@@ -835,6 +835,12 @@ abstract class AppLocalizations {
   /// **'开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取'**
   String get remoteNoticeDesc;
 
+  /// No description provided for @noticeSettingsTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知设置'**
+  String get noticeSettingsTooltip;
+
   /// No description provided for @bannerVisibleTitle.
   ///
   /// In zh, this message translates to:

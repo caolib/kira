@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/remote_notice.dart';
 import 'package:kira/pages/notice_center_page.dart';
 import 'package:kira/utils/remote_notice_service.dart';
+
+Widget _buildTestApp(Widget child) {
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: child,
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +30,7 @@ void main() {
     final service = _FakeNoticeService(notices: [notice]);
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -48,7 +57,7 @@ void main() {
     final service = _FakeNoticeService(notices: [notice]);
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -85,7 +94,7 @@ void main() {
     final service = _FakeNoticeService(notices: [first, second]);
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -121,7 +130,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -181,7 +190,7 @@ void main() {
     final service = _FakeNoticeService(notices: notices);
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -212,7 +221,7 @@ void main() {
     final service = _FakeNoticeService(notices: [notice]);
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -241,7 +250,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -268,7 +277,7 @@ void main() {
     final service = _FakeNoticeService(notices: [expiredNotice]);
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 
@@ -295,7 +304,7 @@ void main() {
     final service = _FakeNoticeService(notices: [notice]);
 
     await tester.pumpWidget(
-      MaterialApp(home: NoticeCenterPage(service: service)),
+      _buildTestApp(NoticeCenterPage(service: service)),
     );
     await tester.pumpAndSettle();
 

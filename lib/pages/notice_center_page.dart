@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/remote_notice.dart';
+import '../models/user_manager.dart';
 import '../utils/app_logger.dart';
 import '../utils/remote_notice_service.dart';
 import '../utils/time_format.dart';
@@ -24,6 +25,7 @@ class NoticeCenterPage extends StatefulWidget {
 class _NoticeCenterPageState extends State<NoticeCenterPage> {
   late final RemoteNoticeService _service =
       widget._service ?? RemoteNoticeService();
+  final _user = UserManager();
 
   List<RemoteNotice> _notices = const [];
   Set<String> _seenKeys = const {};
@@ -36,7 +38,18 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
   @override
   void initState() {
     super.initState();
+    _user.addListener(_onUserChanged);
     unawaited(_load(refreshRemote: true));
+  }
+
+  @override
+  void dispose() {
+    _user.removeListener(_onUserChanged);
+    super.dispose();
+  }
+
+  void _onUserChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load({bool refreshRemote = false}) async {
@@ -129,6 +142,34 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
     });
   }
 
+  Future<void> _openNoticeSettings() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final l10n = AppLocalizations.of(context)!;
+          final tt = Theme.of(context).textTheme;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SwitchListTile(
+                secondary: const Icon(Icons.notifications_outlined),
+                title: Text(l10n.remoteNoticeTitle),
+                subtitle: Text(l10n.remoteNoticeDesc, style: tt.bodySmall),
+                value: _user.remoteNoticeEnabled,
+                onChanged: (value) async {
+                  await _user.setRemoteNoticeEnabled(value);
+                  setModalState(() {});
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final unreadCount = _activeUnreadNotices().length;
@@ -137,6 +178,11 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.noticeCenterTitle),
         actions: [
+          IconButton(
+            tooltip: AppLocalizations.of(context)!.noticeSettingsTooltip,
+            onPressed: _openNoticeSettings,
+            icon: const Icon(Icons.settings_outlined),
+          ),
           if (unreadCount > 0)
             IconButton(
               tooltip: AppLocalizations.of(context)!.noticeMarkAllReadTooltip,

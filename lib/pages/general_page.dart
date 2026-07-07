@@ -259,14 +259,6 @@ class _GeneralPageState extends State<GeneralPage> {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   SwitchListTile(
-                    secondary: const Icon(Icons.notifications_outlined),
-                    title: Text(l10n.remoteNoticeTitle),
-                    subtitle: Text(l10n.remoteNoticeDesc, style: tt.bodySmall),
-                    value: _user.remoteNoticeEnabled,
-                    onChanged: _user.setRemoteNoticeEnabled,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  SwitchListTile(
                     secondary: const Icon(Icons.view_carousel_outlined),
                     title: Text(l10n.bannerVisibleTitle),
                     subtitle: Text(l10n.bannerVisibleDesc, style: tt.bodySmall),

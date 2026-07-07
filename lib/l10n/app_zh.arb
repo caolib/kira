@@ -317,6 +317,7 @@
   "animeFeatureDesc": "关闭后隐藏动漫相关功能",
   "remoteNoticeTitle": "通知",
   "remoteNoticeDesc": "开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取",
+  "noticeSettingsTooltip": "通知设置",
   "bannerVisibleTitle": "显示Banner",
   "bannerVisibleDesc": "关闭后漫画和动漫主页顶部Banner不显示",
   "languageTitle": "语言",
