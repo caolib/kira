@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../models/user_manager.dart';
 import '../providers/app_providers.dart';
@@ -92,7 +93,11 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
 
   void _openAnime(Anime anime) {
     if (anime.pathWord.isEmpty) {
-      showToast(context, '当前动漫暂时无法打开', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.animeUnavailableToast,
+        isError: true,
+      );
       return;
     }
     context.pushNamed(
@@ -108,6 +113,7 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -130,9 +136,9 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
           children: [
             Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
             const SizedBox(height: 16),
-            Text('加载失败', style: tt.titleMedium),
+            Text(l10n.loadingFailed, style: tt.titleMedium),
             const SizedBox(height: 8),
-            FilledButton.tonal(onPressed: _load, child: const Text('重试')),
+            FilledButton.tonal(onPressed: _load, child: Text(l10n.retryButton)),
           ],
         ),
       );
@@ -159,7 +165,7 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
             ),
           if (home != null && home.recommendations.isNotEmpty)
             _AnimeSection(
-              title: '编辑推荐',
+              title: l10n.animeEditorRecommend,
               icon: Icons.auto_awesome,
               hp: hp,
               onMore: () => _openList(AnimeListType.editor),
@@ -170,7 +176,7 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
             ),
           if (home != null && home.updates.isNotEmpty)
             _AnimeSection(
-              title: '最近更新',
+              title: l10n.animeRecentUpdate,
               icon: Icons.update,
               hp: hp,
               onMore: () => _openList(AnimeListType.updates),
@@ -178,7 +184,7 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
             ),
           if (home != null && home.classics.isNotEmpty)
             _AnimeSection(
-              title: '经典推荐',
+              title: l10n.animeClassicRecommend,
               icon: Icons.workspace_premium,
               hp: hp,
               onMore: () => _openList(AnimeListType.classics),
@@ -189,7 +195,7 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
             ),
           if (home != null && home.hots.isNotEmpty)
             _AnimeSection(
-              title: '热门动漫',
+              title: l10n.animeHotAnime,
               icon: Icons.local_fire_department,
               hp: hp,
               onMore: () => _openList(AnimeListType.hots),
@@ -392,6 +398,7 @@ class _AnimeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return SliverToBoxAdapter(
@@ -415,7 +422,10 @@ class _AnimeSection extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('更多', style: TextStyle(color: cs.primary)),
+                        Text(
+                          l10n.moreButton,
+                          style: TextStyle(color: cs.primary),
+                        ),
                         Icon(Icons.chevron_right, size: 18, color: cs.primary),
                       ],
                     ),
@@ -577,10 +587,11 @@ class _AnimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final meta = anime.count > 0
-        ? '共 ${anime.count} 集'
+        ? l10n.totalEpisodes(anime.count)
         : (anime.company?.name ?? anime.years ?? '');
 
     return GestureDetector(
@@ -627,7 +638,10 @@ class _AnimeCard extends StatelessWidget {
                 Icon(Icons.local_fire_department, size: 12, color: cs.primary),
                 const SizedBox(width: 2),
                 Text(
-                  ComicCard.formatPopular(anime.popular),
+                  ComicCard.formatPopular(
+                    anime.popular,
+                    AppLocalizations.of(context)!,
+                  ),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontSize: 10,

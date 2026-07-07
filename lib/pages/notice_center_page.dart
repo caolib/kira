@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/remote_notice.dart';
 import '../utils/app_logger.dart';
 import '../utils/remote_notice_service.dart';
@@ -70,10 +71,16 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
       setState(() {
         _notices = const [];
         _seenKeys = const {};
-        _error = refreshRemote ? '刷新通知失败，请稍后重试' : '读取通知失败';
+        _error = refreshRemote
+            ? AppLocalizations.of(context)!.noticeRefreshFailed
+            : AppLocalizations.of(context)!.noticeReadFailed;
       });
       if (refreshRemote) {
-        showToast(context, '刷新通知失败，请稍后重试', isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.noticeRefreshFailed,
+          isError: true,
+        );
       }
     } finally {
       if (mounted) {
@@ -96,7 +103,7 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
     setState(() {
       _seenKeys = seenKeys;
     });
-    showToast(context, '所有通知已标记为已读');
+    showToast(context, AppLocalizations.of(context)!.noticeAllMarkedRead);
   }
 
   Future<void> _handleNoticeTap(RemoteNotice notice) async {
@@ -128,16 +135,16 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('通知中心'),
+        title: Text(AppLocalizations.of(context)!.noticeCenterTitle),
         actions: [
           if (unreadCount > 0)
             IconButton(
-              tooltip: '全部已读',
+              tooltip: AppLocalizations.of(context)!.noticeMarkAllReadTooltip,
               onPressed: _markAllSeen,
               icon: const Icon(Icons.done_all_rounded),
             ),
           IconButton(
-            tooltip: '刷新通知',
+            tooltip: AppLocalizations.of(context)!.noticeRefreshTooltip,
             onPressed: _refreshing ? null : () => _load(refreshRemote: true),
             icon: _refreshing
                 ? const SizedBox(
@@ -163,7 +170,7 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
       return _NoticeEmptyState(
         icon: Icons.error_outline_rounded,
         title: error,
-        actionLabel: '重试',
+        actionLabel: AppLocalizations.of(context)!.retryButton,
         onAction: () => _load(refreshRemote: true),
       );
     }
@@ -171,8 +178,8 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
     if (_notices.isEmpty) {
       return _NoticeEmptyState(
         icon: Icons.notifications_none_rounded,
-        title: '暂无通知',
-        actionLabel: '刷新',
+        title: AppLocalizations.of(context)!.noticeEmptyTitle,
+        actionLabel: AppLocalizations.of(context)!.refreshButton,
         onAction: () => _load(refreshRemote: true),
       );
     }
@@ -199,7 +206,7 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
           ..._buildNoticeItems(active),
           if (expired.isNotEmpty)
             _NoticeFoldSection(
-              title: '过期通知',
+              title: AppLocalizations.of(context)!.noticeExpiredTitle,
               count: expired.length,
               expanded: _expiredExpanded,
               onToggle: () {
@@ -481,7 +488,9 @@ class _TimelineDot extends StatelessWidget {
     );
 
     return Semantics(
-      label: notice.isPinned ? '置顶通知节点' : '通知节点',
+      label: notice.isPinned
+          ? AppLocalizations.of(context)!.noticePinnedNodeSemantics
+          : AppLocalizations.of(context)!.noticeNodeSemantics,
       child: notice.isPinned
           ? Transform.rotate(angle: 0.785398, child: dot)
           : dot,
@@ -530,7 +539,10 @@ class _NoticeContent extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              TimeFormat.relative(notice.publishedAt),
+              TimeFormat.relative(
+                notice.publishedAt,
+                AppLocalizations.of(context)!,
+              ),
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -554,7 +566,7 @@ class _NoticeContent extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: () => _openUrl(notice.url!),
                 icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                label: const Text('打开链接'),
+                label: Text(AppLocalizations.of(context)!.noticeOpenLink),
               ),
             ),
           ],
@@ -573,7 +585,7 @@ class _UnreadDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '未读通知',
+      label: AppLocalizations.of(context)!.noticeUnreadSemantics,
       child: Container(
         key: ValueKey('notice-unread-dot-$noticeId'),
         width: 8,
@@ -603,7 +615,7 @@ class _ExpiredChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        '已过期',
+        AppLocalizations.of(context)!.noticeExpiredBadge,
         style: TextStyle(
           color: cs.onSurfaceVariant,
           fontSize: 12,

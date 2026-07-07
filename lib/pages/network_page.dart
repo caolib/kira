@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/api_transport.dart';
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/network_proxy.dart';
 import '../utils/toast.dart';
@@ -71,13 +72,14 @@ class _NetworkPageState extends State<NetworkPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
     final avgLatency = _averageLatency(_latencyResults[_user.apiRoute]);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('网络')),
+      appBar: AppBar(title: Text(l10n.networkTitle)),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
@@ -105,7 +107,7 @@ class _NetworkPageState extends State<NetworkPage> {
                           Icon(Icons.dns_outlined, color: cs.primary),
                           const SizedBox(width: 12),
                           Text(
-                            'API 线路',
+                            l10n.networkApiRouteTitle,
                             style: tt.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -116,9 +118,15 @@ class _NetworkPageState extends State<NetworkPage> {
                       SizedBox(
                         width: double.infinity,
                         child: SegmentedButton<int>(
-                          segments: const [
-                            ButtonSegment(value: 0, label: Text('线路 1')),
-                            ButtonSegment(value: 1, label: Text('线路 2')),
+                          segments: [
+                            ButtonSegment(
+                              value: 0,
+                              label: Text(l10n.networkRouteLabel(1)),
+                            ),
+                            ButtonSegment(
+                              value: 1,
+                              label: Text(l10n.networkRouteLabel(2)),
+                            ),
                           ],
                           selected: {_user.apiRoute},
                           onSelectionChanged: (v) => _user.setApiRoute(v.first),
@@ -145,7 +153,10 @@ class _NetworkPageState extends State<NetworkPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('测试线路延迟', style: tt.bodyLarge),
+                                Text(
+                                  l10n.networkTestLatency,
+                                  style: tt.bodyLarge,
+                                ),
                                 if (_testingLatency) ...[
                                   const SizedBox(height: 4),
                                   Row(
@@ -160,13 +171,16 @@ class _NetworkPageState extends State<NetworkPage> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text('正在检测各节点...', style: tt.bodySmall),
+                                      Text(
+                                        l10n.networkTestingNodes,
+                                        style: tt.bodySmall,
+                                      ),
                                     ],
                                   ),
                                 ] else if (_latencyResults.isEmpty) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    '尚未进行检测',
+                                    l10n.networkNotTested,
                                     style: tt.bodySmall?.copyWith(
                                       color: cs.onSurfaceVariant,
                                     ),
@@ -210,7 +224,7 @@ class _NetworkPageState extends State<NetworkPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          '当前延迟较大，建议开启代理',
+                          l10n.networkHighLatencyProxySuggestion,
                           style: tt.bodyMedium?.copyWith(
                             color: cs.onErrorContainer,
                             fontWeight: FontWeight.w500,
@@ -229,10 +243,11 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   String _latencyGroupLabel(int index) {
-    if (index >= 0 && index < ApiClient.routeLabels.length) {
-      return ApiClient.routeLabels[index];
+    final l10n = AppLocalizations.of(context)!;
+    if (index >= 0 && index < ApiClient.routeCount) {
+      return l10n.networkRouteLabel(index + 1);
     }
-    return '其他';
+    return l10n.networkOtherRouteGroup;
   }
 
   double? _averageLatency(Map<String, int?>? results) {
@@ -245,7 +260,7 @@ class _NetworkPageState extends State<NetworkPage> {
     int? bestRoute;
     double? bestAverage;
 
-    for (var i = 0; i < ApiClient.routeLabels.length; i++) {
+    for (var i = 0; i < ApiClient.routeCount; i++) {
       final average = _averageLatency(results[i]);
       if (average == null) continue;
       if (bestAverage == null || average < bestAverage) {
@@ -264,12 +279,15 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildLatencyTrailingIcon(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     if (_latencyResults.isEmpty) {
       return Icon(Icons.chevron_right, color: cs.onSurfaceVariant);
     }
 
     return IconButton(
-      tooltip: _latencyExpanded ? '收起测试结果' : '展开测试结果',
+      tooltip: _latencyExpanded
+          ? l10n.networkCollapseTestResults
+          : l10n.networkExpandTestResults,
       onPressed: () {
         setState(() => _latencyExpanded = !_latencyExpanded);
       },
@@ -283,6 +301,7 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildProxyCard(TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final isManualMode = _user.networkProxyMode == NetworkProxyMode.manual;
 
     return Padding(
@@ -306,14 +325,14 @@ class _NetworkPageState extends State<NetworkPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '代理设置',
+                      l10n.networkProxySettings,
                       style: tt.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: '重新检测系统代理',
+                    tooltip: l10n.networkRefreshSystemProxy,
                     onPressed: _refreshingSystemProxy
                         ? null
                         : _refreshSystemProxy,
@@ -334,14 +353,14 @@ class _NetworkPageState extends State<NetworkPage> {
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<NetworkProxyMode>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: NetworkProxyMode.system,
-                      label: Text('系统'),
+                      label: Text(l10n.networkProxySystem),
                     ),
                     ButtonSegment(
                       value: NetworkProxyMode.manual,
-                      label: Text('手动'),
+                      label: Text(l10n.networkProxyManual),
                     ),
                   ],
                   selected: {_user.networkProxyMode},
@@ -351,8 +370,8 @@ class _NetworkPageState extends State<NetworkPage> {
               const SizedBox(height: 12),
               _buildProxyStatusRow(
                 icon: Icons.route_outlined,
-                label: '当前代理',
-                value: NetworkProxy.activeProxyDescription,
+                label: l10n.networkCurrentProxy,
+                value: NetworkProxy.activeProxyDescription(l10n),
                 tt: tt,
                 cs: cs,
               ),
@@ -377,10 +396,10 @@ class _NetworkPageState extends State<NetworkPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _proxyAddressController,
-                  decoration: const InputDecoration(
-                    labelText: '代理地址',
-                    hintText: '127.0.0.1:7890 或 http://127.0.0.1:7890',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.networkProxyAddress,
+                    hintText: l10n.networkProxyAddressHint,
+                    border: const OutlineInputBorder(),
                   ),
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _saveManualProxy(),
@@ -391,7 +410,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   child: FilledButton.icon(
                     onPressed: _saveManualProxy,
                     icon: const Icon(Icons.save_outlined),
-                    label: const Text('保存并启用手动代理'),
+                    label: Text(l10n.networkSaveAndEnableManualProxy),
                   ),
                 ),
               ],
@@ -421,7 +440,7 @@ class _NetworkPageState extends State<NetworkPage> {
       children: [
         Icon(icon, size: 18, color: cs.onSurfaceVariant),
         const SizedBox(width: 8),
-        Text('$label：', style: tt.bodySmall),
+        Text('$label: ', style: tt.bodySmall),
         const Spacer(),
         if (hasProxy)
           Container(
@@ -452,6 +471,7 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildGoogleConnectivityCard(TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final hasResult = _googleConnectivityMessage != null;
     final ok = _googleConnectivityOk == true;
     final statusColor = _testingGoogleConnectivity
@@ -460,7 +480,7 @@ class _NetworkPageState extends State<NetworkPage> {
         ? (ok ? Colors.green : cs.error)
         : cs.onSurfaceVariant;
     final subtitle = _testingGoogleConnectivity
-        ? '正在通过 ${NetworkProxy.activeProxyDescription} 访问 Google ...'
+        ? l10n.networkTestingGoogle(NetworkProxy.activeProxyDescription(l10n))
         : _googleConnectivityMessage;
 
     return Padding(
@@ -495,7 +515,12 @@ class _NetworkPageState extends State<NetworkPage> {
                           color: statusColor,
                         ),
                   const SizedBox(width: 12),
-                  Expanded(child: Text('Google 连通性', style: tt.bodyLarge)),
+                  Expanded(
+                    child: Text(
+                      l10n.networkGoogleConnectivity,
+                      style: tt.bodyLarge,
+                    ),
+                  ),
                   if (subtitle != null)
                     Flexible(
                       child: Text(
@@ -541,6 +566,7 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildAdvancedSettingsCard(TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 16),
       child: Card(
@@ -573,7 +599,7 @@ class _NetworkPageState extends State<NetworkPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          '高级设置',
+                          l10n.networkAdvancedSettings,
                           style: tt.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -599,7 +625,7 @@ class _NetworkPageState extends State<NetworkPage> {
                     TextField(
                       controller: _copyApiHostController,
                       decoration: const InputDecoration(
-                        labelText: 'COPY API 地址',
+                        labelText: 'COPY API URL',
                         hintText: defaultCopyApiHost,
                         border: OutlineInputBorder(),
                       ),
@@ -609,10 +635,10 @@ class _NetworkPageState extends State<NetworkPage> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: _copyAppVersionController,
-                      decoration: const InputDecoration(
-                        labelText: 'COPY 请求版本号',
+                      decoration: InputDecoration(
+                        labelText: l10n.networkCopyAppVersion,
                         hintText: defaultCopyAppVersion,
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                       ),
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _saveCopyAdvancedSettings(),
@@ -630,6 +656,7 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildAdvancedSettingsActions(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     return SizedBox(
       width: double.infinity,
       child: _ConnectedButtonGroup(
@@ -647,19 +674,19 @@ class _NetworkPageState extends State<NetworkPage> {
                   )
                 : null,
             icon: _autoFillingCopySettings ? null : Icons.auto_fix_high,
-            label: '填充',
+            label: l10n.networkFill,
           ),
           _ConnectedButtonGroupItem(
             onPressed: _autoFillingCopySettings
                 ? null
                 : _resetCopyAdvancedSettings,
             icon: Icons.restart_alt,
-            label: '重置',
+            label: l10n.commentSettingsResetButton,
           ),
           _ConnectedButtonGroupItem(
             onPressed: _saveCopyAdvancedSettings,
             icon: Icons.save_outlined,
-            label: '保存',
+            label: l10n.commentSettingsSaveButton,
             isPrimary: true,
           ),
         ],
@@ -668,6 +695,7 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildLatencyDetail(TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     if (_latencyResults.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -680,8 +708,10 @@ class _NetworkPageState extends State<NetworkPage> {
           (entry) => _isLatencyPending(index, entry.key),
         );
         final averageLabel = average == null
-            ? (hasPending ? '平均：检测中' : '平均：超时')
-            : '平均：${average.round()} ms';
+            ? (hasPending
+                  ? l10n.networkAverageTesting
+                  : l10n.networkAverageTimeout)
+            : l10n.networkAverageLatency(average.round());
         final averageColor = average == null
             ? (hasPending ? cs.onSurfaceVariant : cs.error)
             : average <= 800
@@ -731,8 +761,9 @@ class _NetworkPageState extends State<NetworkPage> {
                       final title = index < 0
                           ? ApiClient().network.getExtraApiHostLabel(
                               hostEntries[i].key,
+                              l10n,
                             )
-                          : '节点 ${i + 1}';
+                          : l10n.networkNodeLabel(i + 1);
                       final latency = hostEntries[i].value;
                       final isPending = _isLatencyPending(
                         index,
@@ -791,10 +822,10 @@ class _NetworkPageState extends State<NetworkPage> {
                                 fit: BoxFit.scaleDown,
                                 child: Text(
                                   isPending
-                                      ? '检测中'
+                                      ? l10n.networkTesting
                                       : latency != null
                                       ? '$latency ms'
-                                      : '超时',
+                                      : l10n.networkTimeout,
                                   style: tt.labelMedium?.copyWith(
                                     color: statusColor,
                                     fontWeight: FontWeight.bold,
@@ -820,7 +851,7 @@ class _NetworkPageState extends State<NetworkPage> {
     final api = ApiClient();
     final pendingResults = <int, Map<String, int?>>{};
     final pendingHosts = <String>{};
-    for (var i = 0; i < ApiClient.routeLabels.length; i++) {
+    for (var i = 0; i < ApiClient.routeCount; i++) {
       pendingResults[i] = {
         for (final host in api.network.getRouteHosts(i)) host: null,
       };
@@ -897,7 +928,12 @@ class _NetworkPageState extends State<NetworkPage> {
     final proxy = await NetworkProxy.refreshSystemProxy();
     if (!mounted) return;
     setState(() => _refreshingSystemProxy = false);
-    _showToast(proxy == null ? '未检测到系统代理' : '已检测到 ${proxy.label}');
+    final l10n = AppLocalizations.of(context)!;
+    _showToast(
+      proxy == null
+          ? l10n.networkNoSystemProxyDetected
+          : l10n.networkSystemProxyDetected(proxy.label),
+    );
   }
 
   Future<void> _setProxyMode(NetworkProxyMode mode) async {
@@ -926,7 +962,7 @@ class _NetworkPageState extends State<NetworkPage> {
         _pendingLatencyHosts = {};
       });
     }
-    _showToast('已保存 COPY 高级设置');
+    _showToast(AppLocalizations.of(context)!.networkCopyAdvancedSaved);
   }
 
   Future<void> _resetCopyAdvancedSettings() async {
@@ -944,7 +980,7 @@ class _NetworkPageState extends State<NetworkPage> {
         _pendingLatencyHosts = {};
       });
     }
-    _showToast('已重置 COPY 高级设置');
+    _showToast(AppLocalizations.of(context)!.networkCopyAdvancedReset);
   }
 
   Future<void> _autoFillCopySettings() async {
@@ -958,10 +994,15 @@ class _NetworkPageState extends State<NetworkPage> {
       if (!mounted) return;
       _copyApiHostController.text = apiHost;
       _copyAppVersionController.text = version;
-      _showToast('已自动填充 COPY API 地址：$apiHost，版本号：$version');
+      _showToast(
+        AppLocalizations.of(context)!.networkCopyAutoFilled(apiHost, version),
+      );
     } catch (e) {
       if (!mounted) return;
-      _showToast('自动填充失败：${_errorMessage(e)}', isError: true);
+      _showToast(
+        AppLocalizations.of(context)!.networkAutoFillFailed(_errorMessage(e)),
+        isError: true,
+      );
     } finally {
       if (mounted) {
         setState(() => _autoFillingCopySettings = false);
@@ -996,7 +1037,10 @@ class _NetworkPageState extends State<NetworkPage> {
       type: _manualProxyType,
     );
     if (proxy == null) {
-      _showToast('请输入有效的代理地址，例如 127.0.0.1:7890', isError: true);
+      _showToast(
+        AppLocalizations.of(context)!.networkInvalidProxyAddress,
+        isError: true,
+      );
       return;
     }
 
@@ -1012,7 +1056,7 @@ class _NetworkPageState extends State<NetworkPage> {
     );
     if (!mounted) return;
     setState(_clearGoogleConnectivityResult);
-    _showToast('已启用 ${proxy.label}');
+    _showToast(AppLocalizations.of(context)!.networkProxyEnabled(proxy.label));
   }
 
   void _showToast(String message, {bool isError = false}) {
@@ -1050,40 +1094,50 @@ class _NetworkPageState extends State<NetworkPage> {
       final statusCode = response.statusCode;
       final ok = statusCode >= 200 && statusCode < 400;
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _testingGoogleConnectivity = false;
         _googleConnectivityOk = ok;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
         _googleConnectivityMessage = ok
-            ? '连接成功，HTTP $statusCode，$proxyRule'
-            : '连接失败，HTTP $statusCode，$proxyRule';
+            ? l10n.networkConnectionSuccess(statusCode, proxyRule)
+            : l10n.networkConnectionFailed(statusCode, proxyRule);
       });
     } on TimeoutException {
       stopwatch.stop();
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _testingGoogleConnectivity = false;
         _googleConnectivityOk = false;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = '连接超时，$proxyRule';
+        _googleConnectivityMessage = l10n.networkConnectionTimeout(proxyRule);
       });
     } on SocketException catch (e) {
       stopwatch.stop();
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _testingGoogleConnectivity = false;
         _googleConnectivityOk = false;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = '$proxyRule：${e.message}';
+        _googleConnectivityMessage = l10n.networkProxyRuleError(
+          proxyRule,
+          e.message,
+        );
       });
     } catch (e) {
       stopwatch.stop();
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _testingGoogleConnectivity = false;
         _googleConnectivityOk = false;
         _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = '测试失败，$proxyRule：$e';
+        _googleConnectivityMessage = l10n.networkTestFailed(
+          proxyRule,
+          e.toString(),
+        );
       });
     } finally {
       client.close(force: true);

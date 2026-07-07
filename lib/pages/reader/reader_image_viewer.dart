@@ -178,7 +178,12 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
   Future<void> _copyImageSource() async {
     await Clipboard.setData(ClipboardData(text: widget.imageSource));
     if (!mounted) return;
-    showToast(context, widget.isDownloaded ? '图片路径已复制到剪贴板' : '图片链接已复制到剪贴板');
+    showToast(
+      context,
+      widget.isDownloaded
+          ? AppLocalizations.of(context)!.readerImagePathCopied
+          : AppLocalizations.of(context)!.readerImageUrlCopied,
+    );
   }
 
   void _showViewerSettings() {
@@ -347,32 +352,38 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
                     children: [
                       _buildIconButton(
                         icon: Icons.copy_all_outlined,
-                        tooltip: widget.isDownloaded ? '复制图片路径' : '复制图片链接',
+                        tooltip: widget.isDownloaded
+                            ? AppLocalizations.of(context)!.readerCopyImagePath
+                            : AppLocalizations.of(context)!.readerCopyImageUrl,
                         onPressed: _copyImageSource,
                       ),
                       _buildIconButton(
                         icon: Icons.settings,
-                        tooltip: '查看器设置',
+                        tooltip: AppLocalizations.of(
+                          context,
+                        )!.readerImageViewerSettingsTooltip,
                         onPressed: _showViewerSettings,
                       ),
                       _buildIconButton(
                         icon: Icons.center_focus_strong,
-                        tooltip: '重置',
+                        tooltip: AppLocalizations.of(context)!.resetButton,
                         onPressed: _resetView,
                       ),
                       _buildIconButton(
                         icon: Icons.rotate_left,
-                        tooltip: '向左旋转',
+                        tooltip: AppLocalizations.of(context)!.readerRotateLeft,
                         onPressed: () => _rotate(-1),
                       ),
                       _buildIconButton(
                         icon: Icons.rotate_right,
-                        tooltip: '向右旋转',
+                        tooltip: AppLocalizations.of(
+                          context,
+                        )!.readerRotateRight,
                         onPressed: () => _rotate(1),
                       ),
                       _buildIconButton(
                         icon: Icons.close,
-                        tooltip: '关闭',
+                        tooltip: AppLocalizations.of(context)!.closeButton,
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -442,14 +453,18 @@ class _ReaderImageViewerSettingsPanelState
               ),
               const SizedBox(height: 16),
               Text(
-                '图片查看器设置',
+                AppLocalizations.of(context)!.readerImageViewerSettingsTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('横向图片自动旋转'),
-                subtitle: const Text('打开宽图时自动旋转 90 度'),
+                title: Text(
+                  AppLocalizations.of(context)!.readerAutoRotateLandscape,
+                ),
+                subtitle: Text(
+                  AppLocalizations.of(context)!.readerAutoRotateLandscapeDesc,
+                ),
                 value: _user.imageViewerAutoRotateLandscape,
                 onChanged: (value) {
                   _user.setImageViewerAutoRotateLandscape(value);
@@ -466,21 +481,32 @@ class _ReaderImageViewerSettingsPanelState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 8),
-                      Text('旋转方向', style: tt.bodyMedium),
+                      Text(
+                        AppLocalizations.of(context)!.readerRotationDirection,
+                        style: tt.bodyMedium,
+                      ),
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         child: SegmentedButton<int>(
-                          segments: const [
+                          segments: [
                             ButtonSegment(
                               value: -1,
-                              icon: Icon(Icons.rotate_left),
-                              label: Text('向左'),
+                              icon: const Icon(Icons.rotate_left),
+                              label: Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.readerRotateLeftShort,
+                              ),
                             ),
                             ButtonSegment(
                               value: 1,
-                              icon: Icon(Icons.rotate_right),
-                              label: Text('向右'),
+                              icon: const Icon(Icons.rotate_right),
+                              label: Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.readerRotateRightShort,
+                              ),
                             ),
                           ],
                           selected: {_user.imageViewerLandscapeRotation},

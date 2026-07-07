@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/comic_comment.dart';
 import '../models/user_manager.dart';
 import '../utils/network_error.dart';
@@ -251,6 +252,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final width = MediaQuery.sizeOf(context).width;
@@ -292,7 +294,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '漫画评论',
+                                  l10n.comicCommentTitle,
                                   style: tt.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -312,7 +314,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                           Text(
                             _total > 0
                                 ? (_comments.length >= _total
-                                      ? '$_total 条'
+                                      ? l10n.chapterCommentsTotalCount(_total)
                                       : '${_comments.length}/$_total')
                                 : '',
                             style: tt.bodySmall?.copyWith(
@@ -321,7 +323,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                           ),
                           IconButton(
                             onPressed: _showCommentSettings,
-                            tooltip: '评论设置',
+                            tooltip: l10n.comicCommentSettingsTooltip,
                             icon: const Icon(Icons.tune),
                           ),
                         ],
@@ -373,7 +375,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                               style: buttonStyle,
                               onPressed: _showPostCommentDialog,
                               icon: const Icon(Icons.comment_outlined),
-                              label: const Text('评论'),
+                              label: Text(l10n.chapterCommentsComment),
                             ),
                             const SizedBox(width: 8),
                             SizedBox.square(
@@ -414,6 +416,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   }
 
   Widget _buildBody(BuildContext context, ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
     if (_loading && _comments.isEmpty) {
       return ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, _listBottomPadding),
@@ -433,7 +436,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
               const SizedBox(height: 12),
               Text(
-                '评论加载失败',
+                l10n.comicCommentLoadFailed,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
@@ -447,7 +450,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               const SizedBox(height: 12),
               FilledButton.tonal(
                 onPressed: _loadComments,
-                child: const Text('重试'),
+                child: Text(l10n.retryButton),
               ),
             ],
           ),
@@ -463,12 +466,12 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
             Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
             const SizedBox(height: 12),
             Text(
-              '还没有评论',
+              l10n.chapterCommentsEmptyTitle,
               style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
             Text(
-              '这部漫画暂时没人发言',
+              l10n.comicCommentEmptySubtitle,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -554,7 +557,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 ],
                 Expanded(
                   child: Text(
-                    comment.userName,
+                    comment.userName.trim().isEmpty
+                        ? AppLocalizations.of(
+                            context,
+                          )!.commentSettingsAnonymousUser
+                        : comment.userName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: userStyle,
@@ -563,7 +570,10 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 if (showCommentTime) ...[
                   const SizedBox(width: 8),
                   Text(
-                    TimeFormat.relativeOf(comment.createAt),
+                    TimeFormat.relativeOf(
+                      comment.createAt,
+                      AppLocalizations.of(context)!,
+                    ),
                     style: timeStyle,
                   ),
                 ],
@@ -593,6 +603,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     ComicComment comment,
     _ComicReplyState replyState,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final actionStyle = tt.bodyMedium?.copyWith(
       color: cs.onSurfaceVariant,
       fontWeight: FontWeight.w500,
@@ -615,7 +626,9 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
             ),
             const SizedBox(width: 2),
             Text(
-              replyState.expanded ? '收起回复' : '展开 ${comment.replyCount} 条回复',
+              replyState.expanded
+                  ? l10n.comicCommentCollapseReplies
+                  : l10n.comicCommentExpandReplies(comment.replyCount),
               style: actionStyle,
             ),
           ],
@@ -630,6 +643,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     ComicComment comment,
     _ComicReplyState replyState,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final replies = replyState.replies;
     final totalReplies = replyState.total > 0
         ? replyState.total
@@ -660,13 +674,13 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      '回复加载失败',
+                      l10n.comicCommentReplyLoadFailed,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
                   TextButton(
                     onPressed: () => _loadReplies(comment),
-                    child: const Text('重试'),
+                    child: Text(l10n.retryButton),
                   ),
                 ],
               ),
@@ -677,7 +691,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                '暂无可显示的回复',
+                l10n.comicCommentEmptyReplies,
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ),
@@ -710,7 +724,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                     ? null
                     : () => _loadReplies(comment, loadMore: true),
                 icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('重试加载更多回复'),
+                label: Text(l10n.comicCommentRetryLoadMoreReplies),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -737,7 +751,12 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                         ),
                       )
                     : const Icon(Icons.expand_more_rounded, size: 18),
-                label: Text('加载更多回复 (${replies.length}/$totalReplies)'),
+                label: Text(
+                  l10n.comicCommentLoadMoreReplies(
+                    replies.length,
+                    totalReplies,
+                  ),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: cs.primary,
                   padding: EdgeInsets.zero,
@@ -801,7 +820,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                         children: [
                           Flexible(
                             child: Text(
-                              reply.userName,
+                              reply.userName.trim().isEmpty
+                                  ? AppLocalizations.of(
+                                      context,
+                                    )!.commentSettingsAnonymousUser
+                                  : reply.userName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: userStyle,
@@ -832,7 +855,10 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                     if (showCommentTime) ...[
                       const SizedBox(width: 8),
                       Text(
-                        TimeFormat.relativeOf(reply.createAt),
+                        TimeFormat.relativeOf(
+                          reply.createAt,
+                          AppLocalizations.of(context)!,
+                        ),
                         style: timeStyle,
                       ),
                     ],
@@ -869,6 +895,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   int _commentTextLength(String text) => text.trim().runes.length;
 
   Future<void> _showCommentActionMenu(ComicComment comment) async {
+    final l10n = AppLocalizations.of(context)!;
     final content = comment.comment.trim();
     if (content.isEmpty) return;
 
@@ -892,14 +919,14 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 Row(
                   children: [
                     Text(
-                      '评论操作',
+                      l10n.chapterCommentsActionTitle,
                       style: tt.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const Spacer(),
                     IconButton(
-                      tooltip: '关闭',
+                      tooltip: l10n.closeButton,
                       onPressed: () => Navigator.of(sheetContext).pop(),
                       icon: const Icon(Icons.close),
                     ),
@@ -923,20 +950,20 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 const SizedBox(height: 10),
                 ListTile(
                   leading: const Icon(Icons.copy_outlined),
-                  title: const Text('复制'),
+                  title: Text(l10n.copyButton),
                   onTap: () => Navigator.of(sheetContext).pop('copy'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.add_comment_outlined),
                   title: const Text('+1'),
-                  subtitle: const Text('发送一条相同评论'),
+                  subtitle: Text(l10n.chapterCommentsPlusOneSubtitle),
                   onTap: () => Navigator.of(sheetContext).pop('plus_one'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.block_outlined),
-                  title: const Text('屏蔽用户'),
+                  title: Text(l10n.chapterCommentsBlockUser),
                   subtitle: Text(
-                    '隐藏 ${comment.userName} 的评论',
+                    l10n.chapterCommentsHideUserComments(comment.userName),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -953,7 +980,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     if (action == 'copy') {
       await Clipboard.setData(ClipboardData(text: content));
       if (!mounted) return;
-      showToast(context, '评论已复制');
+      showToast(context, l10n.comicCommentCopied);
     } else if (action == 'plus_one') {
       await _plusOneComment(content);
     } else if (action == 'block') {
@@ -962,12 +989,13 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   }
 
   Future<void> _blockCommentUser(ComicComment comment) async {
+    final l10n = AppLocalizations.of(context)!;
     final name = comment.userName.trim();
     if (_user.commentBlockNoRemind) {
       await _user.blockCommentUser(comment.userId, name);
       if (!mounted) return;
       _applyBlockedFilter();
-      showToast(context, '已屏蔽该用户');
+      showToast(context, l10n.chapterCommentsUserBlocked);
       return;
     }
 
@@ -976,15 +1004,15 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('屏蔽用户'),
+          title: Text(l10n.chapterCommentsBlockUser),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 name.isEmpty
-                    ? '确定屏蔽该用户吗？屏蔽后将不再显示其评论。'
-                    : '确定屏蔽「$name」吗？屏蔽后将不再显示其评论。\n可在黑名单中解除。',
+                    ? l10n.chapterCommentsBlockUnnamedConfirm
+                    : l10n.comicCommentBlockNamedConfirm(name),
               ),
               const SizedBox(height: 8),
               GestureDetector(
@@ -1002,7 +1030,10 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text('不再提醒', style: Theme.of(ctx).textTheme.bodySmall),
+                    Text(
+                      l10n.chapterCommentsNoRemindAgain,
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
@@ -1011,11 +1042,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
+              child: Text(l10n.cancelButton),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('屏蔽'),
+              child: Text(l10n.chapterCommentsBlock),
             ),
           ],
         ),
@@ -1026,7 +1057,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     await _user.blockCommentUser(comment.userId, name);
     if (!mounted) return;
     _applyBlockedFilter();
-    showToast(context, '已屏蔽该用户');
+    showToast(context, l10n.chapterCommentsUserBlocked);
   }
 
   void _applyBlockedFilter() {
@@ -1109,31 +1140,45 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   }
 
   Future<void> _plusOneComment(String content) async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_user.isLoggedIn) {
-      showToast(context, '请先登录后再发表评论', isError: true);
+      showToast(
+        context,
+        l10n.chapterCommentsLoginRequiredToPost,
+        isError: true,
+      );
       return;
     }
 
     final length = _commentTextLength(content);
     if (length < 3 || length > 200) {
-      showToast(context, '评论字数需在 3-200 之间，无法 +1', isError: true);
+      showToast(
+        context,
+        l10n.chapterCommentsPlusOneLengthInvalid,
+        isError: true,
+      );
       return;
     }
 
     try {
       await _api.manga.postComicComment(widget.comicId, content);
       if (!mounted) return;
-      showToast(context, '+1 已发送');
+      showToast(context, l10n.chapterCommentsPlusOneSent);
       unawaited(_loadComments());
     } catch (e) {
       if (!mounted) return;
-      showToast(context, NetworkError.message(e), isError: true);
+      showToast(context, NetworkError.message(e, l10n: l10n), isError: true);
     }
   }
 
   Future<void> _showPostCommentDialog({ComicComment? replyTo}) async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_user.isLoggedIn) {
-      showToast(context, '请先登录后再发表评论', isError: true);
+      showToast(
+        context,
+        l10n.chapterCommentsLoginRequiredToPost,
+        isError: true,
+      );
       return;
     }
 
@@ -1142,8 +1187,12 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     String? errorText;
 
     final isReply = replyTo != null;
-    final title = isReply ? '回复 ${replyTo.userName}' : '发表评论';
-    final hintText = isReply ? '回复 ${replyTo.userName}...' : '说点什么...';
+    final title = isReply
+        ? l10n.comicCommentReplyTitle(replyTo.userName)
+        : l10n.chapterCommentsPostTitle;
+    final hintText = isReply
+        ? l10n.comicCommentReplyHint(replyTo.userName)
+        : l10n.comicCommentPostHint;
 
     Future<void> submit(
       BuildContext dialogContext,
@@ -1152,7 +1201,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       final content = controller.text.trim();
       final length = _commentTextLength(content);
       if (length < 3 || length > 200) {
-        setLocal(() => errorText = '评论字数需在 3-200 之间');
+        setLocal(() => errorText = l10n.chapterCommentsLengthRange);
         return;
       }
 
@@ -1171,7 +1220,10 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         if (dialogContext.mounted) {
           Navigator.of(dialogContext).pop();
         }
-        showToast(context, isReply ? '回复已发布' : '评论已发布');
+        showToast(
+          context,
+          isReply ? l10n.comicCommentReplyPosted : l10n.chapterCommentsPosted,
+        );
         if (isReply) {
           final index = _comments.indexWhere((c) => c.id == replyTo.id);
           if (index >= 0) {
@@ -1210,7 +1262,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         if (!dialogContext.mounted) return;
         setLocal(() {
           submitting = false;
-          errorText = NetworkError.message(e);
+          errorText = NetworkError.message(e, l10n: l10n);
         });
       }
     }
@@ -1261,7 +1313,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                         textInputAction: TextInputAction.newline,
                         decoration: InputDecoration(
                           hintText: hintText,
-                          helperText: '评论字数 3-200',
+                          helperText: l10n.chapterCommentsLengthHelper,
                           errorText: errorText,
                           border: const OutlineInputBorder(),
                         ),
@@ -1275,7 +1327,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                     onPressed: submitting
                         ? null
                         : () => Navigator.of(dialogContext).pop(),
-                    child: const Text('取消'),
+                    child: Text(l10n.cancelButton),
                   ),
                   FilledButton(
                     onPressed: canSubmit
@@ -1286,7 +1338,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                             dimension: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(isReply ? '回复' : '发布'),
+                        : Text(
+                            isReply
+                                ? l10n.comicCommentReplyButton
+                                : l10n.chapterCommentsPublish,
+                          ),
                   ),
                 ],
               );
@@ -1450,6 +1506,7 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final baseFontSize = widget.style?.fontSize ?? 14.0;
     final hintStyle = widget.style?.copyWith(
@@ -1528,7 +1585,10 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('展开全文', style: hintStyle),
+                              Text(
+                                l10n.comicCommentExpandFullText,
+                                style: hintStyle,
+                              ),
                               const SizedBox(width: 2),
                               Icon(
                                 Icons.keyboard_arrow_down_rounded,
@@ -1548,7 +1608,10 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('收起', style: hintStyle),
+                            Text(
+                              l10n.chapterCommentsCollapse,
+                              style: hintStyle,
+                            ),
                             const SizedBox(width: 2),
                             Icon(
                               Icons.keyboard_arrow_up_rounded,

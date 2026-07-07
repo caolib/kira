@@ -11,8 +11,13 @@ class _ReaderSettingsPanel extends StatefulWidget {
 class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
   final _user = UserManager();
   final _stats = ImageLoadStats();
-  static const _scrollDirectionLabels = ['左到右', '右到左', '上到下'];
   bool _isDraggingBrightness = false;
+
+  List<String> get _scrollDirectionLabels => [
+    AppLocalizations.of(context)!.readerLeftToRight,
+    AppLocalizations.of(context)!.readerRightToLeft,
+    AppLocalizations.of(context)!.readerTopToBottom,
+  ];
 
   @override
   void initState() {
@@ -58,6 +63,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final isPageMode = _user.readerMode == 1;
@@ -90,7 +96,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '阅读设置',
+                  l10n.readerSettingsTitle,
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
@@ -98,16 +104,16 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<int>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: 0,
-                        icon: Icon(Icons.view_day),
-                        label: Text('滚动'),
+                        icon: const Icon(Icons.view_day),
+                        label: Text(l10n.readerScrollMode),
                       ),
                       ButtonSegment(
                         value: 1,
-                        icon: Icon(Icons.auto_stories),
-                        label: Text('翻页'),
+                        icon: const Icon(Icons.auto_stories),
+                        label: Text(l10n.readerPageMode),
                       ),
                     ],
                     selected: {_user.readerMode},
@@ -122,21 +128,21 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<int>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: 0,
-                        icon: Icon(Icons.arrow_forward),
-                        label: Text('左到右'),
+                        icon: const Icon(Icons.arrow_forward),
+                        label: Text(l10n.readerLeftToRight),
                       ),
                       ButtonSegment(
                         value: 1,
-                        icon: Icon(Icons.arrow_back),
-                        label: Text('右到左'),
+                        icon: const Icon(Icons.arrow_back),
+                        label: Text(l10n.readerRightToLeft),
                       ),
                       ButtonSegment(
                         value: 2,
-                        icon: Icon(Icons.arrow_downward),
-                        label: Text('上到下'),
+                        icon: const Icon(Icons.arrow_downward),
+                        label: Text(l10n.readerTopToBottom),
                       ),
                     ],
                     selected: {_user.readerScrollDirection},
@@ -150,10 +156,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 const SizedBox(height: 8),
                 // 滚动设置
                 if (!isPageMode) ...[
-                  _buildSectionHeader('滚动', cs, tt),
+                  _buildSectionHeader(l10n.readerScrollSection, cs, tt),
                   Row(
                     children: [
-                      Text('图片间距', style: tt.bodyMedium),
+                      Text(l10n.readerImageGap, style: tt.bodyMedium),
                       const Spacer(),
                       Text(
                         '${_scrollDirectionLabels[_user.readerScrollDirection]} · ${_user.readerImageGap.round()} px',
@@ -175,8 +181,8 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('连续阅读'),
-                    subtitle: const Text('到末页后直接拼接下一话，不重新加载'),
+                    title: Text(l10n.readerContinuousReading),
+                    subtitle: Text(l10n.readerContinuousReadingDesc),
                     value: _user.readerContinuousReading,
                     onChanged: (v) {
                       _user.setReaderContinuousReading(v);
@@ -186,8 +192,8 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('自动滚动'),
-                    subtitle: const Text('开启后在导航栏显示自动滚动按钮'),
+                    title: Text(l10n.readerAutoScroll),
+                    subtitle: Text(l10n.readerAutoScrollDesc),
                     value: _user.readerAutoScrollEnabled,
                     onChanged: (v) {
                       _user.setReaderAutoScrollEnabled(v);
@@ -200,7 +206,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       children: [
                         const Icon(Icons.unfold_more, size: 18),
                         const SizedBox(width: 8),
-                        Text('滚动幅度', style: tt.bodyMedium),
+                        Text(
+                          l10n.readerAutoScrollDistance,
+                          style: tt.bodyMedium,
+                        ),
                         const Spacer(),
                         Text(
                           '${(_user.readerAutoScrollDistance * 100).round()}%',
@@ -225,10 +234,12 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       children: [
                         const Icon(Icons.pause_circle_outline, size: 18),
                         const SizedBox(width: 8),
-                        Text('停顿时长', style: tt.bodyMedium),
+                        Text(l10n.readerAutoScrollPause, style: tt.bodyMedium),
                         const Spacer(),
                         Text(
-                          '${_user.readerAutoScrollPause.toStringAsFixed(1)} 秒',
+                          l10n.readerSeconds(
+                            _user.readerAutoScrollPause.toStringAsFixed(1),
+                          ),
                           style: tt.bodySmall?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
@@ -240,8 +251,9 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       min: 0.5,
                       max: 8,
                       divisions: 15,
-                      label:
-                          '${_user.readerAutoScrollPause.toStringAsFixed(1)} 秒',
+                      label: l10n.readerSeconds(
+                        _user.readerAutoScrollPause.toStringAsFixed(1),
+                      ),
                       onChanged: (v) {
                         _user.setReaderAutoScrollPause(v);
                         setState(() {});
@@ -249,8 +261,8 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('自动恢复'),
-                      subtitle: const Text('一段时间无动作后自动恢复滚动'),
+                      title: Text(l10n.readerAutoResume),
+                      subtitle: Text(l10n.readerAutoResumeDesc),
                       value: _user.readerAutoScrollResume,
                       onChanged: (v) {
                         _user.setReaderAutoScrollResume(v);
@@ -262,10 +274,17 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                         children: [
                           const Icon(Icons.timer_outlined, size: 18),
                           const SizedBox(width: 8),
-                          Text('恢复延迟', style: tt.bodyMedium),
+                          Text(
+                            l10n.readerAutoResumeDelay,
+                            style: tt.bodyMedium,
+                          ),
                           const Spacer(),
                           Text(
-                            '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                            l10n.readerSeconds(
+                              _user.readerAutoScrollResumeDelay.toStringAsFixed(
+                                1,
+                              ),
+                            ),
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -280,8 +299,9 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                         min: 1,
                         max: 5,
                         divisions: 8,
-                        label:
-                            '${_user.readerAutoScrollResumeDelay.toStringAsFixed(1)} 秒',
+                        label: l10n.readerSeconds(
+                          _user.readerAutoScrollResumeDelay.toStringAsFixed(1),
+                        ),
                         onChanged: (v) {
                           _user.setReaderAutoScrollResumeDelay(v);
                           setState(() {});
@@ -292,11 +312,11 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 ],
                 // 翻页设置
                 if (isPageMode) ...[
-                  _buildSectionHeader('翻页', cs, tt),
+                  _buildSectionHeader(l10n.readerPageSection, cs, tt),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('音量键翻页'),
-                    subtitle: const Text('音量+上一页，音量-下一页'),
+                    title: Text(l10n.readerVolumeKeyPageTurn),
+                    subtitle: Text(l10n.readerVolumeKeyPageTurnDesc),
                     value: _user.readerVolumeKey,
                     onChanged: (v) {
                       _user.setReaderVolumeKey(v);
@@ -306,7 +326,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('无动画翻页'),
+                    title: Text(l10n.readerInstantPageTurn),
                     value: _user.readerInstantPageTurn,
                     onChanged: (v) {
                       _user.setReaderInstantPageTurn(v);
@@ -317,12 +337,12 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 ],
                 // 显示
                 if (isDark) ...[
-                  _buildSectionHeader('显示', cs, tt),
+                  _buildSectionHeader(l10n.readerDisplaySection, cs, tt),
                   Row(
                     children: [
                       const Icon(Icons.brightness_low, size: 18),
                       const SizedBox(width: 8),
-                      Text('降低亮度', style: tt.bodyMedium),
+                      Text(l10n.readerDimming, style: tt.bodyMedium),
                       const Spacer(),
                       Text(
                         '${(_user.readerDimming * 100).round()}%',
@@ -348,12 +368,12 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                 ],
                 // 图片加载
-                _buildSectionHeader('图片加载', cs, tt),
+                _buildSectionHeader(l10n.readerImageLoadingSection, cs, tt),
                 Row(
                   children: [
                     const Icon(Icons.timer_outlined, size: 18),
                     const SizedBox(width: 8),
-                    Text('超时时间', style: tt.bodyMedium),
+                    Text(l10n.readerTimeout, style: tt.bodyMedium),
                     const Spacer(),
                     Text(
                       '${_user.imageLoadTimeout} s',
@@ -374,7 +394,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   },
                 ),
                 Text(
-                  '设置太小可能导致图片加载失败，太大可能导致长时间转圈',
+                  l10n.readerTimeoutDesc,
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 Builder(
@@ -385,7 +405,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       return Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          '暂无加载记录（阅读图片后此处显示平均耗时供参考）',
+                          l10n.readerNoLoadStats,
                           style: tt.bodySmall?.copyWith(
                             color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                           ),
@@ -395,7 +415,10 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '最近10分钟内加载了 $count 张，平均 ${(avg / 1000).toStringAsFixed(1)} s',
+                        l10n.readerRecentLoadStats(
+                          count,
+                          (avg / 1000).toStringAsFixed(1),
+                        ),
                         style: tt.bodySmall?.copyWith(
                           color: cs.primary,
                           fontWeight: FontWeight.w500,
@@ -409,12 +432,12 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   children: [
                     const Icon(Icons.refresh, size: 18),
                     const SizedBox(width: 8),
-                    Text('重试次数', style: tt.bodyMedium),
+                    Text(l10n.readerRetryCount, style: tt.bodyMedium),
                     const Spacer(),
                     Text(
                       _user.imageRetryCount == 0
-                          ? '关闭'
-                          : '${_user.imageRetryCount} 次',
+                          ? l10n.offButton
+                          : l10n.readerTimes(_user.imageRetryCount),
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
@@ -424,8 +447,8 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   max: 5,
                   divisions: 5,
                   label: _user.imageRetryCount == 0
-                      ? '关闭'
-                      : '${_user.imageRetryCount} 次',
+                      ? l10n.offButton
+                      : l10n.readerTimes(_user.imageRetryCount),
                   onChanged: (v) {
                     _user.setImageRetryCount(v.round());
                     setState(() {});

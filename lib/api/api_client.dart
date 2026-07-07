@@ -14,7 +14,7 @@ import 'user/user_api.dart';
 /// Consumers access domain-specific APIs via [manga], [anime], [network],
 /// and [user].  The shared HTTP transport ([ApiTransport]) is internal.
 class ApiClient {
-  static const routeLabels = ['线路 1', '线路 2'];
+  static int get routeCount => routes.length;
 
   static ApiClient _instance = ApiClient._();
   factory ApiClient() => _instance;

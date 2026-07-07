@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_localizations.dart';
+
 class AcknowledgementPage extends StatelessWidget {
   const AcknowledgementPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('致谢')),
+      appBar: AppBar(title: Text(l10n.aboutAcknowledgementTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         children: [
           Text(
-            '感谢以下服务与项目的支持',
+            l10n.acknowledgementThanksTitle,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
@@ -29,16 +32,16 @@ class AcknowledgementPage extends StatelessWidget {
                   _buildAcknowledgementItem(
                     context,
                     icon: Icons.subtitles_rounded,
-                    title: '弹弹play',
-                    description: '提供弹幕服务',
+                    title: l10n.acknowledgementDandanplayTitle,
+                    description: l10n.acknowledgementDandanplayDesc,
                     url: 'https://www.dandanplay.com/',
                   ),
                   const Divider(height: 24),
                   _buildAcknowledgementItem(
                     context,
                     icon: Icons.translate_rounded,
-                    title: '繁化姬',
-                    description: '提供简体化服务',
+                    title: l10n.acknowledgementZhconvertTitle,
+                    description: l10n.acknowledgementZhconvertDesc,
                     url: 'https://zhconvert.org/',
                   ),
                 ],

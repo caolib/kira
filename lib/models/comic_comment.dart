@@ -10,7 +10,7 @@ class ComicComment {
   final String createAt;
   @JsonKey(defaultValue: '')
   final String userId;
-  @JsonKey(name: 'user_name', defaultValue: '匿名用户')
+  @JsonKey(name: 'user_name', defaultValue: '')
   final String userName;
   @JsonKey(defaultValue: '')
   final String userAvatar;

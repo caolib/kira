@@ -8,6 +8,7 @@
   "profileTabLabel": "我的",
   "disclaimerTitle": "免責聲明",
   "disclaimerAgreeNote": "繼續使用本應用，即表示您已閱讀、理解並同意上述說明；如您不同意，請立即停止使用並退出本應用。",
+  "disclaimerConfirmAgeAndTerms": "我已年滿 18 歲，並已仔細閱讀、充分理解且同意上述全部條款",
   "disagreeAndExit": "不同意並退出",
   "confirmButton": "確認",
   "cancelButton": "取消",
@@ -17,6 +18,11 @@
   "noContent": "暫無內容",
   "hotRecommend": "熱門推薦",
   "comicRanking": "漫畫排行",
+  "rankingAuthorWorks": "作者作品",
+  "rankingThemeWorks": "主題作品",
+  "rankingNoAuthorWorks": "暫無作者作品",
+  "rankingNoThemeWorks": "暫無主題作品",
+  "rankingNoComics": "暫無漫畫",
   "moreButton": "更多",
   "dayRank": "日榜",
   "weekRank": "週榜",
@@ -33,41 +39,137 @@
   "noLocalComicsSubtitle": "去漫畫詳情頁下載章節後，這裡會顯示離線內容",
   "deleteLocalComicsTitle": "刪除本地漫畫",
   "deleteLocalComicsContent": "確定刪除選中的 {count} 部本地漫畫嗎？已下載章節和封面都會被刪除。",
-  "@deleteLocalComicsContent": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteLocalComicsContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedLocalComicsCount": "已刪除 {count} 部本地漫畫",
-  "@deletedLocalComicsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedLocalComicsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "localAnimeTitle": "本地動漫",
   "noLocalAnimeTitle": "還沒有本地動漫",
   "noLocalAnimeSubtitle": "去動漫詳情頁下載劇集後，這裡會顯示離線內容",
   "deleteLocalAnimeTitle": "刪除本地動漫",
   "deleteLocalAnimeContent": "確定刪除選中的 {count} 部本地動漫嗎？已下載影片和封面都會被刪除。",
-  "@deleteLocalAnimeContent": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteLocalAnimeContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedLocalAnimeCount": "已刪除 {count} 部本地動漫",
-  "@deletedLocalAnimeCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedLocalAnimeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "selectedCount": "已選 {count} {unit}",
-  "@selectedCount": { "placeholders": { "count": { "type": "int" }, "unit": { "type": "String" } } },
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
   "selectedItems": "已選 {count} 部",
-  "@selectedItems": { "placeholders": { "count": { "type": "int" } } },
+  "@selectedItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadedChapterCount": "已下載 {count} 章",
-  "@downloadedChapterCount": { "placeholders": { "count": { "type": "int" } } },
+  "@downloadedChapterCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadedEpisodeCount": "已下載 {count} 集",
-  "@downloadedEpisodeCount": { "placeholders": { "count": { "type": "int" } } },
+  "@downloadedEpisodeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadedCountUnit": "已下載 {count} {unit}",
-  "@downloadedCountUnit": { "placeholders": { "count": { "type": "int" }, "unit": { "type": "String" } } },
+  "@downloadedCountUnit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
   "localChaptersTitle": "本地章節 ({count})",
-  "@localChaptersTitle": { "placeholders": { "count": { "type": "int" } } },
+  "@localChaptersTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "localEpisodesTitle": "本地劇集 ({count})",
-  "@localEpisodesTitle": { "placeholders": { "count": { "type": "int" } } },
+  "@localEpisodesTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deleteLocalChaptersTitle": "刪除本地章節",
   "deleteChaptersConfirm": "確定刪除選中的 {count} 個章節嗎？",
-  "@deleteChaptersConfirm": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteChaptersConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedChaptersCount": "已刪除 {count} 個章節",
-  "@deletedChaptersCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedChaptersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deleteLocalEpisodesTitle": "刪除本地劇集",
   "deleteEpisodesConfirm": "確定刪除選中的 {count} 個劇集嗎？",
-  "@deleteEpisodesConfirm": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteEpisodesConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedEpisodesCount": "已刪除 {count} 個劇集",
-  "@deletedEpisodesCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedEpisodesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "viewOnlineDetail": "檢視線上詳情",
   "manageChapters": "管理章節",
   "manageEpisodes": "管理劇集",
@@ -81,13 +183,31 @@
   "comicLabel": "漫畫",
   "animeLabel": "動漫",
   "comicWithCount": "漫畫（{count}）",
-  "@comicWithCount": { "placeholders": { "count": { "type": "int" } } },
+  "@comicWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "animeWithCount": "動漫（{count}）",
-  "@animeWithCount": { "placeholders": { "count": { "type": "int" } } },
+  "@animeWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "hasUpdate": "有更新",
   "updateBadge": "更新",
   "refreshedAt": "重新整理於 {time}",
-  "@refreshedAt": { "placeholders": { "time": { "type": "String" } } },
+  "@refreshedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "sortByUpdate": "按更新",
   "sortByFavorite": "按收藏",
   "sortByRead": "按閱讀",
@@ -95,14 +215,26 @@
   "sortMethod": "排序方式",
   "sortByUpdateTime": "作品更新時間",
   "sortByUpdateTimeDesc": "按{type}最新章節的更新時間排序",
-  "@sortByUpdateTimeDesc": { "placeholders": { "type": { "type": "String" } } },
+  "@sortByUpdateTimeDesc": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "sortByFavoriteTime": "收藏時間",
   "sortByFavoriteTimeDesc": "按加入書架的時間排序",
   "sortByBrowseTime": "瀏覽時間",
   "sortByBrowseTimeDesc": "按最近瀏覽的時間排序",
   "bookshelfEmpty": "書架空空如也",
   "goFindSomething": "去找點好看的{type}吧",
-  "@goFindSomething": { "placeholders": { "type": { "type": "String" } } },
+  "@goFindSomething": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "refreshButton": "重新整理",
   "noComicUpdates": "沒有漫畫更新",
   "backToTop": "回到頂部",
@@ -110,27 +242,1851 @@
   "refreshFailed": "重新整理失敗",
   "loginExpiredTitle": "登入已過期",
   "loginExpiredBookshelfContent": "書架需要登入後才能繼續使用，是否現在重新登入？",
+  "loginExpiredFeatureContent": "{featureName}需要登入後才能繼續使用，是否現在重新登入？",
+  "@loginExpiredFeatureContent": {
+    "placeholders": {
+      "featureName": {
+        "type": "String"
+      }
+    }
+  },
   "laterButton": "稍後再說",
   "goLoginButton": "去登入",
   "autoLoginFailed": "自動登入失敗，請手動重新登入",
   "loginToViewBookshelf": "登入後可繼續檢視書架",
   "totalEpisodes": "共 {count} 集",
-  "@totalEpisodes": { "placeholders": { "count": { "type": "int" } } },
+  "@totalEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "searchHint": "搜尋{mode}...",
-  "@searchHint": { "placeholders": { "mode": { "type": "String" } } },
+  "@searchHint": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
   "hotSearchTitle": "熱門搜尋",
   "allTagsTitle": "全部標籤",
   "tagCount": "{count} 個",
-  "@tagCount": { "placeholders": { "count": { "type": "int" } } },
+  "@tagCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "popularOrder": "熱度",
   "updateOrder": "更新",
   "searchResultSummary": "搜尋 \"{query}\" 找到 {total} 個{mode}結果",
-  "@searchResultSummary": { "placeholders": { "query": { "type": "String" }, "total": { "type": "int" }, "mode": { "type": "String" } } },
+  "@searchResultSummary": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      },
+      "total": {
+        "type": "int"
+      },
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
   "openFolderFailed": "開啟資料夾失敗：{error}",
-  "@openFolderFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@openFolderFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "deleteToastPrefix": "已刪除 ",
   "deleteToastSuffixComic": " 部本地漫畫",
   "deleteToastSuffixAnime": " 部本地動漫",
   "chapterUnit": "章",
-  "episodeUnit": "集"
+  "episodeUnit": "集",
+  "generalTitle": "通用",
+  "autoLoginTitle": "自動登入",
+  "autoLoginEnabledDesc": "登入過期時自動重新登入",
+  "autoLoginUnavailableDesc": "登入並儲存帳號密碼後可用",
+  "animeFeatureTitle": "動漫功能",
+  "animeFeatureDesc": "關閉後隱藏動漫相關功能",
+  "bannerVisibleTitle": "顯示 Banner",
+  "bannerVisibleDesc": "關閉後漫畫和動漫首頁頂部 Banner 不顯示",
+  "languageTitle": "語言",
+  "languageSimplifiedSystem": "簡體中文（跟隨系統）",
+  "languageTraditional": "繁體中文",
+  "cacheManagementTitle": "快取管理",
+  "cacheManagementDesc": "檢視和刪除本地快取、歷史和帳號資料",
+  "exportSettingsTitle": "匯出設定",
+  "exportSettingsDesc": "複製設定到剪貼簿",
+  "importSettingsTitle": "匯入設定",
+  "importSettingsDesc": "貼上匯入設定",
+  "settingsCopiedWithSensitive": "設定已複製，包含敏感資訊",
+  "settingsCopiedWithoutSensitive": "設定已複製，未包含敏感資訊",
+  "exportFailed": "匯出失敗：{error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noImportSettingsContent": "沒有可匯入的設定內容",
+  "settingsBackupEmptyClipboard": "剪貼簿裡沒有可匯入的設定",
+  "settingsBackupInvalidJson": "設定格式不是有效的 JSON",
+  "settingsBackupInvalidFormat": "設定格式不正確",
+  "settingsBackupWrongApp": "這不是 Kira 的設定備份",
+  "settingsBackupUnsupportedVersion": "備份版本不受支援",
+  "settingsBackupMissingContent": "設定內容缺失或格式不正確",
+  "settingsBackupUnsupportedField": "設定中包含不支援的欄位",
+  "settingsBackupInvalidFieldFormat": "設定欄位格式不正確",
+  "settingsBackupUnsupportedFieldType": "設定欄位類型不受支援",
+  "importFailed": "匯入失敗：{error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "overwriteImportTitle": "覆蓋匯入",
+  "overwriteImportContent": "將覆蓋目前 {count} 項持久化設定，包含帳號、主題、閱讀器設定和本地閱讀記錄。{backupTime}\n\n臨時快取不會匯入，目前設定會被取代。是否繼續？",
+  "@overwriteImportContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "backupTime": {
+        "type": "String"
+      }
+    }
+  },
+  "backupTimeLine": "\n\n備份時間：{time}",
+  "@backupTimeLine": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmImportButton": "確認匯入",
+  "settingsImportedToast": "設定已匯入並覆蓋本地設定",
+  "resetAppTitle": "重設應用",
+  "resetAppDesc": "清除本地設定、帳號、閱讀記錄和快取，不會刪除已下載的本地漫畫檔案",
+  "resettingApp": "正在重設...",
+  "appResetToast": "應用已重設，已清除 {count} 項本地資料",
+  "@appResetToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resetFailed": "重設失敗：{error}",
+  "@resetFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "exportSettingsContent": "將複製 {count} 項持久化設定到剪貼簿，匯出內容為明文，請謹慎保管。",
+  "@exportSettingsContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "includeSensitiveSettingsTitle": "包含密碼和 API 重要資訊",
+  "noSensitiveSettingsFound": "目前沒有偵測到已儲存的敏感項",
+  "includeSensitiveSettingsDesc": "將額外包含 {count} 項權杖、密碼、API Key 或憑證資訊",
+  "@includeSensitiveSettingsDesc": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copyButton": "複製",
+  "pasteExportedSettingsHint": "貼上匯出的設定 JSON",
+  "continueButton": "繼續",
+  "confirmResetAppTitle": "確認重設應用",
+  "resetAppWarning": "此操作會清除應用本地儲存的設定、帳號、閱讀記錄和快取，且無法復原。",
+  "resetAppInstruction": "如需繼續，請在下方輸入框中輸入「{text}」。",
+  "@resetAppInstruction": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmTextLabel": "確認文字",
+  "confirmResetButton": "確認重設",
+  "animeUnavailableToast": "目前動漫暫時無法開啟",
+  "animeEditorRecommend": "編輯推薦",
+  "animeRecentUpdate": "最近更新",
+  "animeClassicRecommend": "經典推薦",
+  "animeClassicAnimation": "經典動畫",
+  "animeHotAnime": "熱門動漫",
+  "loginRequiredTitle": "需要登入",
+  "playbackFailedTitle": "播放失敗",
+  "viewLogButton": "檢視日誌",
+  "errorLogTitle": "錯誤日誌",
+  "noLogInfo": "無日誌資訊",
+  "closeButton": "關閉",
+  "videoLinkTitle": "影片連結",
+  "videoLinkPending": "載入後顯示影片連結",
+  "openInBrowserButton": "瀏覽器開啟",
+  "switchLineTooltip": "切換線路",
+  "profileCopyCredentialLabel": "拷貝",
+  "profileHotCredentialLabel": "熱辣",
+  "accountSwitchedToast": "帳號已切換",
+  "switchAccountTitle": "切換帳號",
+  "addAccountButton": "新增帳號",
+  "switchAccountFailedToast": "切換失敗，請重試",
+  "logoutTitle": "登出",
+  "logoutConfirmContent": "確定要登出嗎？",
+  "userInfoRefreshedToast": "使用者資訊已重新整理",
+  "userInfoRefreshFailedToast": "重新整理失敗，請重試",
+  "tokenUnavailableToast": "暫無可複製的權杖",
+  "tokenCopiedToast": "權杖已複製到剪貼簿",
+  "appearanceTitle": "外觀",
+  "appearanceLogoChanged": "桌面圖示已更換，可能需要重啟應用後生效",
+  "appearanceColorPickerHeading": "點擊色盤選擇一個自訂主題色",
+  "appearanceColorPickerSubheading": "拖動取色點，即時預覽主題色",
+  "appearanceThemeColorUpdated": "主題配色已更新為 {color}",
+  "@appearanceThemeColorUpdated": {
+    "placeholders": {
+      "color": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceBottomNavShowLabels": "底部導覽列顯示文字",
+  "appearanceNavOrder": "導覽列順序",
+  "appearanceAppIcon": "應用圖示",
+  "appearanceAppIconRestartHint": "更換後重啟應用生效",
+  "appearanceRefreshRateTitle": "螢幕重新整理率",
+  "appearanceThemeMode": "主題模式",
+  "appearanceSystemMode": "系統",
+  "appearanceLightMode": "淺色",
+  "appearanceDarkMode": "深色",
+  "appearanceDarkCoverBrightness": "暗色模式封面亮度",
+  "appearanceDarkCoverBrightnessDesc": "暗色模式下降低各個介面的卡片封面亮度",
+  "appearanceThemeStyle": "主題風格",
+  "appearanceCurrentStyle": "目前風格：{label} · {description}",
+  "@appearanceCurrentStyle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceThemeColor": "主題配色",
+  "appearanceThemeColorDesc": "點擊色塊切換主題色，帶勾選的為目前配色。",
+  "appearanceRefreshRateRequested": "已請求重新整理率 {rate}",
+  "@appearanceRefreshRateRequested": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceRefreshRateSaved": "重新整理率偏好已儲存",
+  "appearanceRefreshRateLoadFailed": "獲取裝置重新整理率失敗：{error}",
+  "@appearanceRefreshRateLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceUnknownError": "未知錯誤",
+  "appearanceAutoSystem": "自動（跟隨系統）",
+  "appearanceRefreshRateCurrent": "{rate}Hz（目前）",
+  "@appearanceRefreshRateCurrent": {
+    "placeholders": {
+      "rate": {
+        "type": "int"
+      }
+    }
+  },
+  "appearanceApplyingRefreshRate": "正在套用 {rate}",
+  "@appearanceApplyingRefreshRate": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceRefreshRateDesc": "實際生效取決於系統和螢幕，部分裝置可能需要重啟應用後完全生效。",
+  "appearanceDefaultFontRestored": "已恢復系統預設字型，重啟應用後完全生效",
+  "appearanceFontChanged": "字型已切換為 {font}",
+  "@appearanceFontChanged": {
+    "placeholders": {
+      "font": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceFontLoadFailed": "載入字型失敗：{error}",
+  "@appearanceFontLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceAppFont": "應用字型",
+  "appearanceSystemDefault": "系統預設",
+  "appearanceChooseFont": "選擇字型",
+  "appearanceSearchFont": "搜尋字型",
+  "networkTitle": "網路",
+  "networkApiRouteTitle": "API 線路",
+  "networkRouteLabel": "線路 {index}",
+  "@networkRouteLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "networkTestLatency": "測試線路延遲",
+  "networkTestingNodes": "正在檢測各節點...",
+  "networkNotTested": "尚未進行檢測",
+  "networkHighLatencyProxySuggestion": "目前延遲較大，建議開啟代理",
+  "networkRateLimitMessage": "請求過於頻繁，已被限速，請稍後再試",
+  "networkRequestFailedCode": "請求失敗（code: {code}）",
+  "@networkRequestFailedCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "networkCopyLoginHost": "拷貝登入",
+  "networkHotLoginHost": "熱辣登入",
+  "networkFixedApiHost": "固定接口",
+  "networkSystemProxyNotDetected": "系統代理：未檢測到",
+  "networkManualProxyNotConfigured": "手動代理：未設定",
+  "networkOtherRouteGroup": "其他",
+  "networkCollapseTestResults": "收起測試結果",
+  "networkExpandTestResults": "展開測試結果",
+  "networkProxySettings": "代理設定",
+  "networkRefreshSystemProxy": "重新檢測系統代理",
+  "networkProxySystem": "系統",
+  "networkProxyManual": "手動",
+  "networkCurrentProxy": "目前代理",
+  "networkProxyAddress": "代理地址",
+  "networkProxyAddressHint": "127.0.0.1:7890 或 http://127.0.0.1:7890",
+  "networkSaveAndEnableManualProxy": "儲存並啟用手動代理",
+  "networkTestingGoogle": "正在透過 {proxy} 存取 Google ...",
+  "@networkTestingGoogle": {
+    "placeholders": {
+      "proxy": {
+        "type": "String"
+      }
+    }
+  },
+  "networkGoogleConnectivity": "Google 連通性",
+  "networkAdvancedSettings": "進階設定",
+  "networkCopyAppVersion": "COPY 請求版本號",
+  "networkFill": "填入",
+  "networkAverageTesting": "平均：檢測中",
+  "networkAverageTimeout": "平均：逾時",
+  "networkAverageLatency": "平均：{milliseconds} ms",
+  "@networkAverageLatency": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "int"
+      }
+    }
+  },
+  "networkNodeLabel": "節點 {index}",
+  "@networkNodeLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "networkTesting": "檢測中",
+  "networkTimeout": "逾時",
+  "networkNoSystemProxyDetected": "未檢測到系統代理",
+  "networkSystemProxyDetected": "已檢測到 {proxy}",
+  "@networkSystemProxyDetected": {
+    "placeholders": {
+      "proxy": {
+        "type": "String"
+      }
+    }
+  },
+  "networkCopyAdvancedSaved": "已儲存 COPY 進階設定",
+  "networkCopyAdvancedReset": "已重設 COPY 進階設定",
+  "networkCopyAutoFilled": "已自動填入 COPY API 地址：{apiHost}，版本號：{version}",
+  "@networkCopyAutoFilled": {
+    "placeholders": {
+      "apiHost": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "networkAutoFillFailed": "自動填入失敗：{error}",
+  "@networkAutoFillFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "networkInvalidProxyAddress": "請輸入有效的代理地址，例如 127.0.0.1:7890",
+  "networkProxyEnabled": "已啟用 {proxy}",
+  "@networkProxyEnabled": {
+    "placeholders": {
+      "proxy": {
+        "type": "String"
+      }
+    }
+  },
+  "networkConnectionSuccess": "連接成功，HTTP {statusCode}，{proxyRule}",
+  "@networkConnectionSuccess": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      },
+      "proxyRule": {
+        "type": "String"
+      }
+    }
+  },
+  "networkConnectionFailed": "連接失敗，HTTP {statusCode}，{proxyRule}",
+  "@networkConnectionFailed": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      },
+      "proxyRule": {
+        "type": "String"
+      }
+    }
+  },
+  "networkConnectionTimeout": "連接逾時，{proxyRule}",
+  "@networkConnectionTimeout": {
+    "placeholders": {
+      "proxyRule": {
+        "type": "String"
+      }
+    }
+  },
+  "networkProxyRuleError": "{proxyRule}：{error}",
+  "@networkProxyRuleError": {
+    "placeholders": {
+      "proxyRule": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "networkTestFailed": "測試失敗，{proxyRule}：{error}",
+  "@networkTestFailed": {
+    "placeholders": {
+      "proxyRule": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigTitle": "AI 設定",
+  "aiConfigNewChat": "新對話",
+  "aiConfigProvidersTitle": "AI 供應商",
+  "aiConfigAdd": "新增",
+  "aiConfigProvidersDescription": "支援任何 OpenAI 相容介面；智譜清言作為內建預設保留，可為不同供應商分別儲存 Base URL、API Key、模型和介面格式。",
+  "aiConfigEnabled": "已啟用",
+  "aiConfigDisabled": "已停用",
+  "aiConfigProviderSummary": "{status} · {count} 個模型 · {format}\n{baseUrl}",
+  "@aiConfigProviderSummary": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "format": {
+        "type": "String"
+      },
+      "baseUrl": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigEdit": "編輯",
+  "aiConfigCustomProvider": "自訂供應商",
+  "aiConfigZhipuName": "智譜清言",
+  "aiConfigAddModel": "新增模型",
+  "aiConfigModelIdLabel": "模型 ID",
+  "aiConfigFillBaseUrlAndApiKey": "請先填寫 Base URL 和 API Key",
+  "aiConfigFetchModelsFailed": "獲取模型失敗：{error}",
+  "@aiConfigFetchModelsFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigNoAvailableModels": "未獲取到可用模型",
+  "aiConfigSelectModel": "選擇模型",
+  "aiConfigAddSelected": "新增所選",
+  "aiConfigAddProvider": "新增供應商",
+  "aiConfigEditProvider": "編輯供應商",
+  "aiConfigProviderNameLabel": "供應商名稱",
+  "aiConfigCustomNameLabel": "自訂名稱",
+  "aiConfigCustomNameHint": "OpenAI / One API / 自訂",
+  "aiConfigApiFormatLabel": "介面格式",
+  "aiConfigDefaultModelLabel": "預設模型",
+  "aiConfigNoSelection": "未選擇",
+  "aiConfigFetch": "獲取",
+  "aiConfigClear": "清空",
+  "aiConfigGetZhipuApiKey": "獲取智譜 API 金鑰",
+  "aiConfigProviderSaved": "供應商已儲存",
+  "aiConfigConfigureBaseUrlAndApiKey": "請先設定 Base URL 和 API 金鑰",
+  "aiConfigModelReturnedEmpty": "(模型未返回內容)",
+  "aiConfigRequestFailed": "請求失敗：{error}",
+  "@aiConfigRequestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigPartialResponseError": "{content}\n\n[出錯：{error}]",
+  "@aiConfigPartialResponseError": {
+    "placeholders": {
+      "content": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigSessionHistory": "會話歷史",
+  "aiConfigNewSession": "新會話",
+  "aiConfigNoSessionHistory": "暫無歷史會話",
+  "aiConfigMessageCount": "{count} 條訊息",
+  "@aiConfigMessageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiConfigDeleteSession": "刪除會話",
+  "aiConfigProviderConfig": "介面設定",
+  "aiConfigClearChat": "清空對話",
+  "aiConfigInputHint": "說點什麼…",
+  "aiConfigSend": "傳送",
+  "aiConfigReadyEmptyHint": "設定 AI 後可以在章節評論中用於總結評論和屏蔽劇透",
+  "aiConfigSetupEmptyHint": "先在右上角設定介面",
+  "aiLegacyDefaultPromptBasic": "先梳理評論區的主流聲音、分歧點、大家吐槽/誇讚的核心內容；之後直抒胸臆，大膽表達你的立場，好壞直接點明，不中和、不打太極；絕對不要虛構漫畫劇情，所有內容都基於現有評論；語言幹練接地氣，用 Markdown 輸出一份犀利總結，類似下面的格式：\n### 大家在聊什麼 （不超過7項，取多數人討論的，每一項字數保持在25字以內）\n- 很多人都表示...\n- 有些人覺得...\n- 個別人認為...\n### 我的評論\n（發表你的評論，簡短10-20字左右，不要附和他人觀點，不是對其他人的看法，而是直接說你自己的看法或吐槽，表現得自然一點）",
+  "aiDefaultPromptBasic": "先梳理評論區的主流聲音、分歧點、大家吐槽/誇讚的核心內容；之後直抒胸臆，大膽表達你的立場，好壞直接點明，不中和、不打太極；絕對不要虛構漫畫劇情，所有內容都基於現有評論；語言幹練接地氣，用 Markdown 輸出一份犀利總結，類似下面的格式：\n### 大家在聊什麼 （不超過7項，取多數人討論的，每一項字數保持在25字以內）\n- 角色A做了什麼...\n- 很多人吐槽...\n- xxxx...\n### 我的評論\n（發表你的評論，簡短10-20字左右，不要附和他人觀點，不是對其他人的看法，而是直接說你自己的看法或吐槽，表現得自然一點）",
+  "aiSpoilerAnalysisPromptAppendix": "【劇透分析附加要求】\n使用者已開啟劇透分析。請在遵循上方提示詞的基礎上，額外滿足以下要求：\n- 正文總結中不要複述、描述、暗示或概括任何劇透內容；\n- 可以輸出 **劇透警告**，但僅當存在劇透評論時才輸出此段，且只能寫\"本章評論中有 N（這個N是劇透的數量） 處涉及劇透，已遮罩\"這一句，絕對不要描述、暗示或概括任何劇情/轉折/結局；如果沒有任何劇透評論則整段省略。\n\n【劇透的判定標準 · 非常重要】\n只有同時滿足以下全部條件的評論才應標記為劇透：\n- 明確透露（包含猜測，有些使用者會透過猜測進行劇透）了尚未在目前章節及之前出場過的劇情走向、角色命運（死亡、復活、背叛等）或結局結果；\n- 普通的感想（如\"太好看了\"\"畫風不錯\"）、角色喜愛（如\"XX好帥\"）、對已發生情節的正常討論、對後續的模糊期待（如\"期待下一話\"）【不算】劇透；\n【機讀輸出】使用者訊息中每條評論開頭都是它的數字 id（形如 \"81216. xxx: ...\"）。在整篇輸出的最末尾追加一個 fenced code block（用三個反引號包裹），裡面只放一個 JSON 數字陣列，列出【高度劇透嫌疑】的評論 id：\n```\n[81216, 81230]\n```\n如果沒有任何高度劇透的評論，依然必須輸出該程式碼區塊，陣列為空：\n```\n[]\n```\n硬性要求：\n1) 必須是整篇輸出的最後一段，下面不要再寫任何字；\n2) 必須用三個反引號包裹（語言標識寫不寫都行）；\n3) 中括號裡只能有數字和英文逗號，不要寫解釋、不要帶 id= 前綴；\n4) 哪怕沒有劇透也要寫空陣列 []，不能省略整個程式碼區塊；\n",
+  "aiPromptBasicName": "基礎提示詞",
+  "noticeCenterTitle": "通知中心",
+  "downloadCenterTitle": "下載中心",
+  "browseHistoryTitle": "瀏覽記錄",
+  "aboutTitle": "關於",
+  "notLoggedInTitle": "未登入",
+  "loginPromptSubtitle": "點擊登入以使用書架等功能",
+  "refreshUserButton": "重新整理使用者",
+  "switchAccountButton": "切換帳號",
+  "copyTokenButton": "複製權杖",
+  "appDisclaimerIntro": "請在使用本應用前仔細閱讀以下聲明：",
+  "appDisclaimerItem1": "本應用（以下簡稱\"本軟體\"）係獨立開發的非官方第三方用戶端，與任何內容平台、出版商或權利人均無隸屬、合作或代理關係。",
+  "appDisclaimerItem2": "本軟體不生產、上傳、儲存、編輯、修改、推薦或預先審查任何具體內容。所有內容均來源於第三方平台公開介面或可存取資源，其合法性、準確性、完整性及合規性由相應內容提供方獨立負責。",
+  "appDisclaimerItem3": "本軟體所展示的內容可能包含成人向、暴力、恐怖或其他不適宜未成年人瀏覽的資訊。您確認您已年滿 18 歲，且您所在地法律法規允許您存取此類內容。如您不符合前述條件，請立即停止使用並解除安裝本軟體。",
+  "appDisclaimerItem4": "您應自行判斷所瀏覽內容是否適合，並確保您的使用行為完全符合您所在地現行有效的法律法規。因您使用本軟體而產生的一切法律後果由您自行承擔。",
+  "appDisclaimerItem5": "如任何第三方內容涉嫌侵犯他人合法權益或違反法律法規，權利人可透過本軟體提供的聯絡方式向開發者傳送有效通知，開發者將在合理期限內核實並採取必要措施。",
+  "appDisclaimerItem6": "本軟體按\"現狀\"提供，開發者不對其功能性、可用性、準確性或可靠性作出任何明示或默示的保證。在任何情況下，開發者均不對因使用或無法使用本軟體而產生的任何直接、間接、附帶、特殊或後果性損害承擔責任。",
+  "appDisclaimerFooter": "繼續使用本軟體，即表示您已仔細閱讀、充分理解並同意接受上述全部條款的約束。如您不同意任一條款，請立即停止使用並解除安裝本軟體。",
+  "profileCurrentSelectedCredential": "目前已選",
+  "profileRemoveAccountTooltip": "移除帳號",
+  "profileAccountRemovedToast": "已移除 {username}",
+  "@profileAccountRemovedToast": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "profileRegisterSuccessLoginToast": "註冊成功，請登入",
+  "profileUsernamePasswordRequired": "請輸入使用者名稱和密碼",
+  "profileLoginFailed": "登入失敗",
+  "profileTokenRequired": "請輸入權杖",
+  "profileTokenInvalidOrExpired": "權杖無效或已過期",
+  "profileLoginTitle": "登入",
+  "profileAccountPasswordLoginMode": "帳號密碼",
+  "profileTokenLoginMode": "權杖",
+  "profileSavedAccountsTitle": "已儲存帳號",
+  "profileSavedAccountsHint": "點按快速填入帳號密碼，右側可移除",
+  "profileUsernameLabel": "使用者名稱",
+  "profilePasswordLabel": "密碼",
+  "profileTokenLabel": "權杖 (Token)",
+  "profileTokenHint": "貼上你的登入權杖",
+  "profileRememberAccountLabel": "記住帳號",
+  "profileRegisterHotMangaAccountButton": "註冊熱辣漫畫帳號",
+  "profileLoginButton": "登入",
+  "profileRegisterInfoRequired": "請填寫完整註冊資訊",
+  "profilePasswordMismatch": "兩次輸入的密碼不一致",
+  "profileSecurityQuestionRequired": "請選擇安全問題",
+  "profileRegisterFailed": "註冊失敗",
+  "profileOpenOfficialRegisterFailed": "無法開啟官網註冊頁",
+  "profileConfirmPasswordLabel": "確認密碼",
+  "profileSecurityQuestionLabel": "帳號安全問題",
+  "profileSecurityAnswerLabel": "安全問題答案",
+  "profileReloadSecurityQuestionsButton": "重新載入安全問題",
+  "profileRegisterButton": "註冊",
+  "profileOfficialRegisterPrompt": "去官網註冊",
+  "profileHotMangaLabel": "熱辣漫畫",
+  "profileCopyMangaLabel": "拷貝漫畫",
+  "aboutQqGroupTitle": "QQ 交流群",
+  "aboutJoinGroupButton": "加入群聊",
+  "aboutGroupNumberCopiedToast": "已複製群號",
+  "aboutMirrorPrefixTitle": "設定鏡像源",
+  "aboutMirrorPrefixDesc": "用於更新彈窗中的鏡像下載連結，會拼接在 GitHub 下載地址前。",
+  "aboutMirrorPrefixLabel": "鏡像源地址",
+  "aboutMirrorPrefixHelper": "留空將恢復預設鏡像源",
+  "aboutInvalidMirrorPrefix": "請輸入有效的 http(s) 地址",
+  "aboutRestoreDefaultButton": "恢復預設",
+  "aboutSaveButton": "儲存",
+  "aboutMirrorPrefixSavedToast": "鏡像源已儲存",
+  "aboutStableChannelShort": "穩定版",
+  "aboutUpdateChannelTitle": "更新渠道",
+  "aboutStableChannelTitle": "穩定版 (Stable)",
+  "aboutStableChannelDesc": "僅檢查正式發布版本",
+  "aboutBetaChannelTitle": "預覽版（Beta）",
+  "aboutBetaChannelDesc": "從最新提交建置的版本，可能不穩定",
+  "aboutBetaChannelSwitchedTitle": "已切換到預覽版",
+  "aboutBetaChannelSwitchedContent": "預覽版一般用於測試新功能或修復問題，可能存在更多問題。",
+  "aboutGotItButton": "知道了",
+  "aboutStableChannelSwitchedToast": "已切換到穩定版",
+  "aboutRepositoryLabel": "倉庫",
+  "aboutFeedbackLabel": "回饋",
+  "aboutCommunityLabel": "交流",
+  "aboutCheckUpdateTitle": "檢查更新",
+  "aboutAutoCheckUpdateTitle": "啟動時檢查更新",
+  "aboutLogTitle": "日誌",
+  "aboutAcknowledgementTitle": "致謝",
+  "acknowledgementThanksTitle": "感謝以下服務與專案的支援",
+  "acknowledgementDandanplayTitle": "彈彈play",
+  "acknowledgementDandanplayDesc": "提供彈幕服務",
+  "acknowledgementZhconvertTitle": "繁化姬",
+  "acknowledgementZhconvertDesc": "提供簡體化服務",
+  "aboutLicenseTitle": "授權條款",
+  "licenseMitSummary": "本專案採用 MIT 開源授權條款",
+  "cacheDeleteEntryTitle": "刪除快取項",
+  "cacheDeleteEntryContent": "確定要刪除 {key} 嗎？此操作無法復原。",
+  "@cacheDeleteEntryContent": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheEntryDeletedToast": "已刪除 {key}",
+  "@cacheEntryDeletedToast": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheDeleteFailedToast": "刪除失敗：{error}",
+  "@cacheDeleteFailedToast": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheLocalDataTarget": "{count} 項本地資料",
+  "@cacheLocalDataTarget": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cacheImageDataTarget": "{count} 個圖片快取（{size}）",
+  "@cacheImageDataTarget": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheDeleteSelectedTitle": "刪除選中快取",
+  "cacheDeleteSelectedContent": "確定要刪除選中卡片中的 {targets} 嗎？此操作無法復原。",
+  "@cacheDeleteSelectedContent": {
+    "placeholders": {
+      "targets": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheSelectedDeletedToast": "已刪除選中快取",
+  "cacheNoImageCacheToClear": "暫無可清理的圖片快取",
+  "cacheClearImageCacheTitle": "清空圖片快取",
+  "cacheClearImageCacheContent": "確定要清空 {label} 嗎？將刪除 {fileCount} 個檔案，釋放約 {size}。",
+  "@cacheClearImageCacheContent": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "fileCount": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheClearButton": "清空",
+  "cacheImageCacheClearedToast": "已清空 {label}",
+  "@cacheImageCacheClearedToast": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheCleanFailedToast": "清理失敗：{error}",
+  "@cacheCleanFailedToast": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheReaderImageLabel": "圖片快取 / 漫畫閱讀器",
+  "cacheReaderImageDesc": "漫畫章節圖片快取。再次開啟讀過的章節時，圖片會優先從這裡讀取。",
+  "cacheDefaultImageLabel": "圖片快取 / 封面與頭像",
+  "cacheDefaultImageDesc": "封面、頭像等 CachedNetworkImage 預設使用的圖片快取。",
+  "commentSettingsEditBuiltInPromptTitle": "編輯內建提示詞",
+  "commentSettingsEditPromptTitle": "編輯提示詞",
+  "commentSettingsAddPromptTitle": "新增提示詞",
+  "commentSettingsNameLabel": "名稱",
+  "commentSettingsPromptLabel": "提示詞",
+  "commentSettingsResetButton": "重設",
+  "commentSettingsSaveButton": "儲存",
+  "commentSettingsAddButton": "新增",
+  "commentSettingsTitle": "評論區設定",
+  "commentSettingsLayoutSection": "版面配置",
+  "commentSettingsCompactLayout": "緊湊版面",
+  "commentSettingsListLayout": "列表版面",
+  "commentSettingsShowAvatar": "顯示頭像",
+  "commentSettingsShowUserName": "顯示使用者名稱",
+  "commentSettingsShowCommentTime": "顯示評論時間",
+  "commentSettingsPreloadTitle": "預載評論",
+  "commentSettingsPreloadDesc": "進入章節時提前載入評論並顯示數量",
+  "commentSettingsAutoLoadAllTitle": "自動載入全部評論",
+  "commentSettingsAutoLoadAllDesc": "開啟評論區時自動載入所有評論",
+  "commentSettingsFontSizeTitle": "評論內容字型大小",
+  "chapterCommentsNoSummaryComments": "目前沒有可總結的評論",
+  "chapterCommentsEnableAiSummaryFirst": "請先在評論區設定中啟用 AI 總結",
+  "chapterCommentsPromptComicLine": "漫畫：{comicName}\n",
+  "@chapterCommentsPromptComicLine": {
+    "placeholders": {
+      "comicName": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsPromptUser": "{comicLine}章節：{chapterName}\n共 {count} 條不同評論（相同內容已合併）。每條行首數字為該評論的 id：\n\n{snippets}",
+  "@chapterCommentsPromptUser": {
+    "placeholders": {
+      "comicLine": {
+        "type": "String"
+      },
+      "chapterName": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "snippets": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsMergedSnippet": "{id}. [{count}人] {text}\n",
+  "@chapterCommentsMergedSnippet": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsSingleSnippet": "{id}. {userName}: {text}\n",
+  "@chapterCommentsSingleSnippet": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      },
+      "userName": {
+        "type": "String"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsSnippetsTruncated": "…（已截斷，共 {count} 條不同評論）",
+  "@chapterCommentsSnippetsTruncated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chapterCommentsDioException": "Dio 異常",
+  "chapterCommentsCopyLog": "複製日誌",
+  "chapterCommentsLoginRequiredToPost": "請先登入後再發表評論",
+  "chapterCommentsLengthRange": "評論字數需在 3-200 之間",
+  "chapterCommentsPosted": "評論已發布",
+  "chapterCommentsPostTitle": "發表評論",
+  "chapterCommentsPostHint": "吐槽一下",
+  "chapterCommentsLengthHelper": "評論字數 3-200",
+  "chapterCommentsLogCopied": "日誌已複製",
+  "chapterCommentsPublish": "發布",
+  "chapterCommentsActionTitle": "評論操作",
+  "chapterCommentsPlusOneSubtitle": "傳送一條相同評論",
+  "chapterCommentsBlockUser": "封鎖使用者",
+  "chapterCommentsHideUserComments": "隱藏 {userName} 的評論",
+  "@chapterCommentsHideUserComments": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsCopied": "已複製",
+  "chapterCommentsUserBlocked": "已封鎖該使用者",
+  "chapterCommentsBlockUnnamedConfirm": "確定封鎖該使用者嗎？封鎖後將不再顯示其評論。",
+  "chapterCommentsBlockNamedConfirm": "確定封鎖「{name}」嗎？封鎖後將不再顯示其評論。\n可在評論區設定 → 黑名單中解除。",
+  "@chapterCommentsBlockNamedConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsNoRemindAgain": "不再提醒",
+  "chapterCommentsBlock": "封鎖",
+  "chapterCommentsPlusOneLengthInvalid": "評論字數需在 3-200 之間，無法 +1",
+  "chapterCommentsPlusOneSent": "+1 已傳送",
+  "chapterCommentsPostFailed": "發表評論失敗",
+  "chapterCommentsTitle": "章節評論",
+  "chapterCommentsLoadAllTooltip": "載入全部評論",
+  "chapterCommentsAiSummaryTooltip": "AI 總結評論",
+  "chapterCommentsRegenerateAiSummaryTooltip": "重新生成 AI 總結",
+  "chapterCommentsSwitchToListLayout": "切換為列表版面",
+  "chapterCommentsSwitchToCompactLayout": "切換為緊湊版面",
+  "chapterCommentsTotalCount": "{count} 條",
+  "@chapterCommentsTotalCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chapterCommentsComment": "評論",
+  "chapterCommentsCatalog": "目錄",
+  "chapterCommentsNext": "下一話",
+  "chapterCommentsLoadFailed": "評論載入失敗",
+  "chapterCommentsEmptyTitle": "還沒有評論",
+  "chapterCommentsEmptySubtitle": "這個章節暫時沒人發言",
+  "chapterCommentsSwitchModel": "切換模型",
+  "chapterCommentsCannotSwitchModelGenerating": "生成中無法切換模型",
+  "chapterCommentsModelSummary": "{model} 總結",
+  "@chapterCommentsModelSummary": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsActiveModel": "目前模型：{provider} / {model}",
+  "@chapterCommentsActiveModel": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsReasoning": "思考過程",
+  "chapterCommentsReasoningCollapsed": "思考過程（已摺疊）",
+  "chapterCommentsGenerating": "正在生成中…",
+  "chapterCommentsCollapse": "收起",
+  "chapterCommentsExpand": "展開",
+  "chapterCommentsSummaryFailed": "生成失敗：{error}",
+  "@chapterCommentsSummaryFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsStop": "停止",
+  "chapterCommentsRegenerate": "重新生成",
+  "chapterCommentsClearSummary": "清除總結",
+  "comicCommentTitle": "漫畫評論",
+  "comicCommentSettingsTooltip": "評論設定",
+  "comicCommentLoadFailed": "評論載入失敗",
+  "comicCommentEmptySubtitle": "這部漫畫暫時沒人發言",
+  "comicCommentCollapseReplies": "收起回覆",
+  "comicCommentExpandReplies": "展開 {count} 條回覆",
+  "@comicCommentExpandReplies": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "comicCommentReplyLoadFailed": "回覆載入失敗",
+  "comicCommentEmptyReplies": "暫無可顯示的回覆",
+  "comicCommentRetryLoadMoreReplies": "重試載入更多回覆",
+  "comicCommentLoadMoreReplies": "載入更多回覆 ({loaded}/{total})",
+  "@comicCommentLoadMoreReplies": {
+    "placeholders": {
+      "loaded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "comicCommentCopied": "評論已複製",
+  "comicCommentBlockNamedConfirm": "確定封鎖「{name}」嗎？封鎖後將不再顯示其評論。\n可在黑名單中解除。",
+  "@comicCommentBlockNamedConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comicCommentReplyTitle": "回覆 {userName}",
+  "@comicCommentReplyTitle": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "comicCommentReplyHint": "回覆 {userName}...",
+  "@comicCommentReplyHint": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "comicCommentPostHint": "說點什麼...",
+  "comicCommentReplyPosted": "回覆已發布",
+  "comicCommentReplyButton": "回覆",
+  "comicCommentExpandFullText": "展開全文",
+  "animeDetailTitle": "動漫詳情",
+  "animeDetailIntroTab": "簡介",
+  "animeDetailEpisodesTab": "選集 ({count})",
+  "@animeDetailEpisodesTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailIntroRefreshFailed": "簡介重新整理失敗",
+  "animeDetailEpisodeRefreshFailed": "選集重新整理失敗",
+  "animeDetailDandanplayBindingCleared": "已清除彈彈play綁定",
+  "animeDetailDandanplayBound": "已綁定 {title}",
+  "@animeDetailDandanplayBound": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "animeDetailAlignmentCleared": "已清除對齊",
+  "animeDetailRealigned": "已重新對齊彈幕",
+  "animeDetailNoAvailableLine": "目前選集暫無可用線路",
+  "animeDetailPlaybackEpisodeUnavailable": "播放紀錄對應選集暫不可用",
+  "animeDetailInfoLoadFailedForDownload": "動漫資訊載入失敗，無法下載",
+  "animeDetailNoLineForDownload": "目前選集暫無可用線路，無法下載",
+  "animeDetailDownloadTasksAdded": "已新增 {count} 個下載任務",
+  "@animeDetailDownloadTasksAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailCannotCollect": "目前動漫暫時無法收藏",
+  "animeDetailCollected": "已收藏",
+  "animeDetailCollectCancelled": "已取消收藏",
+  "animeDetailCollectFailed": "收藏狀態修改失敗",
+  "animeDetailDownloadTaskCount": "{count} 個任務",
+  "@animeDetailDownloadTaskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailNoIntroInfo": "暫無簡介資訊",
+  "animeDetailInfoTitle": "資料",
+  "animeDetailIntroLoadFailed": "簡介載入失敗，下拉重試",
+  "animeDetailIntroRefreshFailedCached": "簡介重新整理失敗，目前顯示快取內容",
+  "animeDetailSelectedEpisodes": "已選 {count} 集",
+  "@animeDetailSelectedEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailSelectAllUndownloaded": "全選未下載",
+  "animeDetailDownloadSelected": "下載選中",
+  "animeDetailEpisodeLoadFailed": "選集載入失敗，下拉重試",
+  "animeDetailNoEpisodes": "暫無選集",
+  "animeDetailEpisodeRefreshFailedCached": "選集重新整理失敗，目前顯示上次結果",
+  "animeDetailBindToViewComments": "綁定彈彈play 後才可查看評論",
+  "animeDetailBindDanmaku": "綁定彈幕",
+  "animeDetailRebind": "重新綁定",
+  "animeDetailAlign": "對齊",
+  "animeDetailDownloadButton": "下載",
+  "animeDetailEpisodeLoadFailedShort": "選集載入失敗",
+  "readerSettingsTitle": "閱讀設定",
+  "readerScrollMode": "捲動",
+  "readerPageMode": "翻頁",
+  "readerLeftToRight": "左到右",
+  "readerRightToLeft": "右到左",
+  "readerTopToBottom": "上到下",
+  "readerScrollSection": "捲動",
+  "readerImageGap": "圖片間距",
+  "readerContinuousReading": "連續閱讀",
+  "readerContinuousReadingDesc": "到末頁後直接拼接下一話，不重新載入",
+  "readerAutoScroll": "自動捲動",
+  "readerAutoScrollDesc": "開啟後在導覽列顯示自動捲動按鈕",
+  "readerAutoScrollDistance": "捲動幅度",
+  "readerAutoScrollPause": "停頓時長",
+  "readerSeconds": "{seconds} 秒",
+  "@readerSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "readerAutoResume": "自動恢復",
+  "readerAutoResumeDesc": "一段時間無動作後自動恢復捲動",
+  "readerAutoResumeDelay": "恢復延遲",
+  "readerPageSection": "翻頁",
+  "readerVolumeKeyPageTurn": "音量鍵翻頁",
+  "readerVolumeKeyPageTurnDesc": "音量+上一頁，音量-下一頁",
+  "readerInstantPageTurn": "無動畫翻頁",
+  "readerDisplaySection": "顯示",
+  "readerDimming": "降低亮度",
+  "readerImageLoadingSection": "圖片載入",
+  "readerTimeout": "逾時時間",
+  "readerTimeoutDesc": "設定太小可能導致圖片載入失敗，太大可能導致長時間轉圈",
+  "readerNoLoadStats": "暫無載入紀錄（閱讀圖片後此處顯示平均耗時供參考）",
+  "readerRecentLoadStats": "最近10分鐘內載入了 {count} 張，平均 {seconds} s",
+  "@readerRecentLoadStats": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "readerRetryCount": "重試次數",
+  "offButton": "關閉",
+  "readerTimes": "{count} 次",
+  "@readerTimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "browseHistoryClearTitle": "清空瀏覽紀錄",
+  "browseHistoryClearContent": "確定要清空所有{mode}瀏覽紀錄嗎？此操作不可復原。",
+  "@browseHistoryClearContent": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryCleared": "已清空{mode}瀏覽紀錄",
+  "@browseHistoryCleared": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryClearFailed": "清空失敗：{error}",
+  "@browseHistoryClearFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryLoginExpiredContent": "瀏覽紀錄需要登入後才能繼續查看，是否現在重新登入？",
+  "browseHistoryLoginToView": "登入後可繼續查看瀏覽紀錄",
+  "browseHistoryLoginHintWithAnime": "瀏覽過的漫畫和動漫會同步顯示在這裡",
+  "browseHistoryLoginHintComicOnly": "瀏覽過的漫畫會同步顯示在這裡",
+  "browseHistoryEmptyTitle": "還沒有{mode}瀏覽紀錄",
+  "@browseHistoryEmptyTitle": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryEmptySubtitle": "去看幾部{mode}後，這裡會顯示最近瀏覽內容",
+  "@browseHistoryEmptySubtitle": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryTotal": "共 {count} 條{mode}瀏覽紀錄",
+  "@browseHistoryTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "hundredMillionUnit": "{value}億",
+  "@hundredMillionUnit": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "tenThousandUnit": "{value}萬",
+  "@tenThousandUnit": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryLatestChapter": "最新 {chapter}",
+  "@browseHistoryLatestChapter": {
+    "placeholders": {
+      "chapter": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryLastSeen": "上次看到 {name}",
+  "@browseHistoryLastSeen": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerLoginRequiredToPlay": "登入後才能播放該影片",
+  "animePlayerEmptyVideoUrl": "影片連結為空",
+  "animePlayerRequestFailedStatus": "請求失敗（{statusCode}）",
+  "@animePlayerRequestFailedStatus": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerRequestFailedStatusText": "請求失敗（{statusCode}）",
+  "@animePlayerRequestFailedStatusText": {
+    "placeholders": {
+      "statusCode": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerMpvLogTitle": "media_kit/mpv 日誌:",
+  "animePlayerQuickDiagnosisTitle": "快速診斷:",
+  "animePlayerDiagnosisManifestStatus": "m3u8 狀態: {statusCode}",
+  "@animePlayerDiagnosisManifestStatus": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerDiagnosisManifestHls": "m3u8 內容: 已識別為 HLS 清單",
+  "animePlayerDiagnosisManifestNotHls": "m3u8 內容: 返回 200，但內容不像標準 HLS 清單",
+  "animePlayerDiagnosisManifestError": "m3u8 錯誤: {error}",
+  "@animePlayerDiagnosisManifestError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerDiagnosisFirstSegment": "首個分片: {url}",
+  "@animePlayerDiagnosisFirstSegment": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerDiagnosisSegmentStatus": "首個分片狀態: {statusCode}",
+  "@animePlayerDiagnosisSegmentStatus": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerDiagnosisSegmentBytes": "首個分片位元組數: {bytes}",
+  "@animePlayerDiagnosisSegmentBytes": {
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerDiagnosisSegmentError": "首個分片錯誤: {error}",
+  "@animePlayerDiagnosisSegmentError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerDiagnosisConclusionDecodeIssue": "結論: m3u8 與首個分片都可存取，更像是播放器解析或解碼相容問題",
+  "animePlayerSourceForbidden": "影片來源拒絕存取（403）",
+  "animePlayerSourceNotFound": "影片地址已失效（404）",
+  "animePlayerCertificateFailed": "影片憑證校驗失敗",
+  "animePlayerConnectionTimeout": "影片連線逾時",
+  "animePlayerCannotParseStream": "影片來源可存取，但播放器無法解析該影片串流",
+  "animePlayerEnableProxyToRetry": "影片載入失敗，請開啟代理後重試",
+  "animePlayerInvalidVideoUri": "影片地址不是合法 URI",
+  "animePlayerDiagnosisRequestFailed": "影片診斷請求失敗",
+  "animePlayerSegmentDiagnosisRequestFailed": "影片分片診斷請求失敗",
+  "animePlayerSegmentUrlNotResolved": "未解析出分片地址",
+  "animePlayerLoadingCannotSwitch": "影片載入中，請稍後再切換",
+  "animePlayerNoVideoUrlToCopy": "暫無可複製的影片連結",
+  "animePlayerVideoUrlCopied": "影片連結已複製到剪貼簿",
+  "animePlayerNoVideoUrlToOpen": "暫無可開啟的影片連結",
+  "animePlayerOpenVideoUrlFailed": "無法開啟影片連結",
+  "animePlayerSeekedTo": "已跳轉到 {position}",
+  "@animePlayerSeekedTo": {
+    "placeholders": {
+      "position": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerSeekLastFailed": "無法跳轉到上次進度",
+  "animePlayerSearchFailed": "搜尋失敗: {error}",
+  "@animePlayerSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerRefreshTooFrequent": "不要頻繁重新整理！",
+  "animePlayerLoadDanmakuFailed": "載入彈幕失敗: {error}",
+  "@animePlayerLoadDanmakuFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerBuffering": "正在緩衝...",
+  "animePlayerProxySuggestion": "如果網路卡頓，建議開啟代理存取",
+  "animePlayerPlay": "播放",
+  "animePlayerFastForward": "快進 {seconds}秒",
+  "@animePlayerFastForward": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerHideDanmaku": "隱藏彈幕",
+  "animePlayerChapterSelector": "選集",
+  "animePlayerChapterSelectorWithCount": "選集 ({count})",
+  "@animePlayerChapterSelectorWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerSetSkipSeconds": "設定跳轉秒數",
+  "animePlayerExitFullscreen": "退出全螢幕",
+  "animePlayerFullscreen": "全螢幕",
+  "backButton": "返回",
+  "cacheSelectedCards": "已選 {count} 個卡片",
+  "@cacheSelectedCards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cacheDeleteSelectedCardsTooltip": "刪除選中卡片",
+  "cacheExitMultiSelectTooltip": "退出多選",
+  "cacheMultiSelectTooltip": "多選卡片",
+  "cacheSummary": "共 {localTotal} 項本地資料 · 圖片快取 {imageCacheFiles} 個檔案 · {size}",
+  "@cacheSummary": {
+    "placeholders": {
+      "localTotal": {
+        "type": "int"
+      },
+      "imageCacheFiles": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheManagementSummaryDesc": "按快取、帳號、設定、歷史等分類顯示；AI 配置 key 已隱藏；圖片檔案快取可單獨清理。",
+  "cacheImageCacheSection": "圖片快取",
+  "cacheDataCacheSection": "資料快取",
+  "cacheNoLocalKeyValueData": "沒有可顯示的本地鍵值資料",
+  "cacheEntryCountSize": "{count} 項 · {size}",
+  "@cacheEntryCountSize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheHideSensitiveTooltip": "隱藏敏感內容",
+  "cacheShowSensitiveTooltip": "顯示敏感內容",
+  "cacheEntryDataTitle": "快取項資料",
+  "cacheDataCopiedToast": "快取資料已複製",
+  "cacheFileCountSize": "{count} 個檔案 · {size}",
+  "@cacheFileCountSize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheDescriptionTitle": "說明",
+  "cacheKeyTitle": "快取標識",
+  "cacheDirectoryTitle": "快取目錄",
+  "cacheCategoryPersistentCache": "業務快取",
+  "cacheCategoryAccount": "帳號資料",
+  "cacheCategoryAppSettings": "應用設定",
+  "cacheCategoryMangaHistory": "漫畫閱讀歷史",
+  "cacheCategoryAnimeHistory": "動漫播放歷史",
+  "cacheCategoryBindings": "彈幕綁定",
+  "cacheCategoryAiSummaryCache": "AI 總結快取",
+  "cacheCategoryOther": "其他資料",
+  "themeColorBlueGrey": "藍灰",
+  "themeColorTeal": "青綠",
+  "themeColorIndigo": "靛藍",
+  "themeColorGreen": "森綠",
+  "themeColorOrange": "橙金",
+  "themeColorPink": "粉色",
+  "themeColorBrightBlue": "亮藍",
+  "themeColorViolet": "紫羅蘭",
+  "themeColorOrchid": "蘭紫",
+  "themeColorCyan": "湖青",
+  "themeColorEmerald": "翡翠",
+  "themeColorLime": "青檸",
+  "themeColorAmber": "琥珀",
+  "themeColorCoral": "珊瑚",
+  "themeColorCustom": "自定",
+  "themeVariantTonalSpot": "柔和",
+  "themeVariantTonalSpotDesc": "Material 預設風格，低飽和、耐看。",
+  "themeVariantVibrant": "鮮明",
+  "themeVariantVibrantDesc": "提高主色飽和度，整體更醒目。",
+  "themeVariantExpressive": "表現",
+  "themeVariantExpressiveDesc": "會偏移主色相，風格更有個性。",
+  "themeVariantFidelity": "準確",
+  "themeVariantFidelityDesc": "盡量貼近所選主色的原始觀感。",
+  "themeVariantContent": "內容",
+  "themeVariantContentDesc": "容器顏色更貼近主色，強調層次。",
+  "themeVariantNeutral": "中性",
+  "themeVariantNeutralDesc": "接近灰階，適合更克制的介面。",
+  "themeVariantMonochrome": "黑白",
+  "themeVariantMonochromeDesc": "完全灰階，只保留明暗關係。",
+  "themeVariantRainbow": "彩虹",
+  "themeVariantRainbowDesc": "跳脫主色限制，整體更活潑。",
+  "appLogEmpty": "暫無錯誤日誌",
+  "appLogCopied": "日誌已複製到剪貼簿",
+  "appLogCopyFailed": "複製失敗：{error}",
+  "@appLogCopyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appLogClearTitle": "清空錯誤日誌",
+  "appLogClearContent": "確定要刪除本地保存的錯誤日誌嗎？",
+  "appLogCleared": "錯誤日誌已清空",
+  "appLogClearFailed": "清空失敗：{error}",
+  "@appLogClearFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsTooltip": "設定",
+  "appLogSettingsTitle": "日誌設定",
+  "appLogRecordLogs": "記錄日誌",
+  "appLogLevel": "日誌級別",
+  "appLogLevelDebug": "調試",
+  "appLogLevelInfo": "資訊",
+  "appLogLevelWarning": "警告",
+  "appLogLevelError": "錯誤",
+  "appLogSearchHint": "搜尋日誌（訊息、來源、堆疊、上下文）",
+  "appLogClearLogsTooltip": "清空日誌",
+  "appLogAllLevels": "全部",
+  "appLogCopyThisLogTooltip": "複製此日誌",
+  "appLogContextTitle": "上下文",
+  "appLogStackTitle": "堆疊",
+  "relativeTimeJustNow": "剛剛",
+  "relativeTimeMinutesAgo": "{minutes}分鐘前",
+  "@relativeTimeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeHoursAgo": "{hours}小時前",
+  "@relativeTimeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeDaysAgo": "{days}天前",
+  "@relativeTimeDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeMonthsAgo": "{months}個月前",
+  "@relativeTimeMonthsAgo": {
+    "placeholders": {
+      "months": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeYearsAgo": "{years}年前",
+  "@relativeTimeYearsAgo": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailCommentsUnavailable": "目前漫畫暫時無法查看評論",
+  "comicDetailAuthorUnavailable": "目前作者暫時無法查看作品",
+  "comicDetailThemeUnavailable": "目前主題暫時無法查看作品",
+  "comicDetailSelectUndownloadedChapters": "請選擇未下載的章節",
+  "comicDetailAddedToDownloadQueue": "已加入下載佇列：{count} 章（順序下載）",
+  "@comicDetailAddedToDownloadQueue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailSelectedAlreadyDownloadedOrQueued": "所選章節已下載或已在佇列中",
+  "comicDetailSelectedChapters": "已選 {count} 章",
+  "@comicDetailSelectedChapters": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailSequentialDownloading": "順序下載中 {count} 章",
+  "@comicDetailSequentialDownloading": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadedStatus": "已下載",
+  "comicDetailDownloadProgress": "下載 {completed}/{total}",
+  "@comicDetailDownloadProgress": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailQueued": "排隊中",
+  "processingStatus": "處理中",
+  "comicDetailReadWithStatus": "已讀 · {status}",
+  "@comicDetailReadWithStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "collectButton": "收藏",
+  "downloadQueueTab": "佇列",
+  "downloadQueueEmpty": "下載佇列為空",
+  "downloadQueueEmptyComicHint": "去漫畫詳情頁新增下載任務",
+  "downloadQueueEmptyMixedHint": "去漫畫或動漫詳情頁新增下載任務",
+  "downloadProgressApproxBytes": "{percent}% · 約 {size}",
+  "@downloadProgressApproxBytes": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadingStatus": "下載中",
+  "waitingStatus": "等待中",
+  "pausedStatus": "已暫停",
+  "downloadFailedStatus": "下載失敗",
+  "animeDownloadConnectionTimeout": "連線逾時",
+  "animeDownloadProxyRetrySuggestion": "建議開啟代理後重試",
+  "animeDownloadUnknownError": "未知錯誤",
+  "animeDownloadFailedMessage": "{chapter} 下載失敗：{error}",
+  "@animeDownloadFailedMessage": {
+    "placeholders": {
+      "chapter": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animeDownloadEmptyVideoUrl": "影片連結為空",
+  "pauseButton": "暫停",
+  "resumeButton": "繼續",
+  "downloadProgressCount": "{percent}% ({completed}/{total})",
+  "@downloadProgressCount": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "commentSettingsAiSummarySection": "AI 總結",
+  "commentSettingsEnableAiSummary": "啟用 AI 總結",
+  "commentSettingsAiSummaryEnabledDesc": "評論頂部顯示 AI 總結按鈕",
+  "commentSettingsAiSummaryDisabled": "未啟用",
+  "commentSettingsConfigureAiFirst": "請先在「我的 → AI配置」中配置 API 密鑰",
+  "commentSettingsCollapseAiComment": "折疊 AI 評論",
+  "commentSettingsCollapseAiCommentDesc": "開啟後 AI 評論預設折疊，生成中也保持折疊",
+  "commentSettingsAutoAiSummary": "自動 AI 總結",
+  "commentSettingsAutoAiSummaryDesc": "評論數 ≥ {count} 條時自動生成",
+  "@commentSettingsAutoAiSummaryDesc": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commentSettingsMinCommentCount": "最少評論數",
+  "commentSettingsTriggerTiming": "呼叫時機",
+  "commentSettingsTimingOnOpen": "打開評論區時",
+  "commentSettingsTimingAfterPreload": "預載完成後",
+  "commentSettingsPreloadRequiredForTiming": "選擇「預載完成後」需要先開啟預載評論。",
+  "commentSettingsSpoilerAnalysis": "劇透分析",
+  "commentSettingsSpoilerAnalysisDesc": "開啟後會在目前提示詞後自動追加劇透分析要求",
+  "commentSettingsSpoilerWarn": "打開劇透評論彈出提醒",
+  "commentSettingsPromptPresets": "提示詞預設",
+  "commentSettingsBlacklistSection": "黑名單",
+  "commentSettingsBlacklistDesc": "長按評論可選擇「屏蔽用戶」，被屏蔽的評論將不再顯示。",
+  "commentSettingsClearBlacklist": "清空黑名單",
+  "commentSettingsAnonymousUser": "匿名用戶",
+  "commentSettingsRemoveFromBlacklist": "移出黑名單",
+  "profileFallbackQuestionWife": "我的老婆叫什麼？",
+  "profileFallbackQuestionFriend": "我的基友叫啥？",
+  "profileFallbackQuestionBestFriendCount": "我的好麻吉有幾個？",
+  "profileFallbackQuestionParentName": "我的父親(母親)叫什麽？",
+  "animeDetailSubtitleChip": "字幕",
+  "animeDetailLatestChapter": "最新：{chapter}",
+  "@animeDetailLatestChapter": {
+    "placeholders": {
+      "chapter": {
+        "type": "String"
+      }
+    }
+  },
+  "animeDetailOnAirChip": "連載中",
+  "animeDetailRestrictedChip": "受限",
+  "animeDetailDirector": "導演：{name}",
+  "@animeDetailDirector": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerSettingsPlaybackTitle": "播放設定",
+  "playerSettingsSkipSeconds": "快進秒數",
+  "playerSettingsSkipSecondsDesc": "動漫片頭一般約90秒",
+  "playerSettingsSecondsLabel": "秒數",
+  "readerSecondsSuffix": "秒",
+  "playerSettingsRecordProgress": "記錄播放進度",
+  "playerSettingsRecordProgressDesc": "再次打開同一集時自動跳轉到上次觀看位置",
+  "playerSettingsDanmakuTitle": "彈幕設定",
+  "playerSettingsShowDanmaku": "顯示彈幕",
+  "playerSettingsFontSize": "字體大小",
+  "playerSettingsDisplayArea": "顯示區域",
+  "playerSettingsOpacity": "透明度",
+  "playerSettingsDanmakuType": "彈幕類型",
+  "playerSettingsScrollDanmaku": "滾動彈幕",
+  "playerSettingsTopDanmaku": "頂部彈幕",
+  "playerSettingsBottomDanmaku": "底部彈幕",
+  "playerSettingsBlocklist": "屏蔽詞",
+  "playerSettingsBlocklistDesc": "包含屏蔽詞的彈幕將被自動過濾",
+  "playerSettingsBlocklistHint": "輸入屏蔽詞",
+  "playerSettingsChineseConvertTooltip": "簡繁轉換",
+  "readerImageLinksRefreshed": "圖片連結已重新整理",
+  "refreshFailedWithError": "重新整理失敗：{error}",
+  "@refreshFailedWithError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "readerLocalChapterNoRefresh": "本地章節無需重新整理",
+  "readerAutoSummaryFailed": "背景自動總結失敗：{error}",
+  "@readerAutoSummaryFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "readerNoPreviousChapter": "目前已無上一話",
+  "readerPreviousChapter": "上一章",
+  "readerPauseAutoScroll": "暫停自動滾動",
+  "readerAutoScrollWillResume": "自動滾動即將恢復",
+  "readerEnableAutoScroll": "開啟自動滾動",
+  "readerLoadingNextChapter": "正在載入下一話…",
+  "readerContinueScrollLoadNext": "繼續滾動載入下一話",
+  "readerAlreadyFirstChapter": "已經是第一章",
+  "readerContinuePageNextChapter": "繼續翻頁進入下一話",
+  "readerAlreadyLastChapter": "已經是最後一話",
+  "readerContinueScrollOrTapNextChapter": "繼續下滑或點擊按鈕進入下一話",
+  "readerImagePathCopied": "圖片路徑已複製到剪貼簿",
+  "readerImageUrlCopied": "圖片連結已複製到剪貼簿",
+  "readerLocalImageMissing": "本地圖片損壞或缺失",
+  "readerCopyImagePath": "複製圖片路徑",
+  "readerImageRetrying": "載入失敗，正在重試 {attempt}/{total}",
+  "@readerImageRetrying": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readerReloadImage": "重新載入",
+  "readerCopyImageUrl": "複製圖片連結",
+  "updateAlreadyLatest": "目前已是最新版本",
+  "updateCheckFailedRetryLater": "檢查更新失敗，請稍後重試",
+  "updateOpenDownloadFailed": "無法開啟下載連結",
+  "updateNoReleaseNotes": "暫無更新說明",
+  "updateMirrorDownload": "鏡像下載",
+  "updateLatestBadge": "最新",
+  "updateCollapseOtherVersions": "收起其他版本",
+  "updateViewMoreVersions": "查看更多版本 ({count})",
+  "@updateViewMoreVersions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updateCiBuildUnstable": "CI 自動構建版本，不保證穩定性。",
+  "updateOpenReleasePage": "開啟發布頁",
+  "updatePackagesBeta": "安裝包（按版本號倒序）",
+  "updatePackages": "安裝包",
+  "updateSkipVersion": "跳過此版本",
+  "updateDisableAutoCheck": "取消自動檢查更新",
+  "totalRank": "總榜",
+  "maleAudience": "男生",
+  "femaleAudience": "女生",
+  "noticeRefreshFailed": "重新整理通知失敗，請稍後重試",
+  "noticeReadFailed": "讀取通知失敗",
+  "noticeAllMarkedRead": "所有通知已標記為已讀",
+  "noticeMarkAllReadTooltip": "全部已讀",
+  "noticeRefreshTooltip": "重新整理通知",
+  "noticeEmptyTitle": "暫無通知",
+  "noticeExpiredTitle": "過期通知",
+  "noticePinnedNodeSemantics": "置頂通知節點",
+  "noticeNodeSemantics": "通知節點",
+  "noticeOpenLink": "開啟連結",
+  "noticeUnreadSemantics": "未讀通知",
+  "noticeExpiredBadge": "已過期",
+  "readerImageViewerSettingsTooltip": "檢視器設定",
+  "resetButton": "重置",
+  "readerRotateLeft": "向左旋轉",
+  "readerRotateRight": "向右旋轉",
+  "readerImageViewerSettingsTitle": "圖片檢視器設定",
+  "readerAutoRotateLandscape": "橫向圖片自動旋轉",
+  "readerAutoRotateLandscapeDesc": "打開寬圖時自動旋轉 90 度",
+  "readerRotationDirection": "旋轉方向",
+  "readerRotateLeftShort": "向左",
+  "readerRotateRightShort": "向右",
+  "browseHistoryLastSeenLabel": "上次看到",
+  "playerProgressAutoResumed": "{progress}（已自動繼續）",
+  "@playerProgressAutoResumed": {
+    "placeholders": {
+      "progress": {
+        "type": "String"
+      }
+    }
+  },
+  "playerSeekButton": "跳轉",
+  "bangumiCommentsLoadFailed": "評論載入失敗",
+  "bangumiCommentsRetryHint": "下拉或點按按鈕重試",
+  "bangumiCommentsEmptyTitle": "還沒有評論",
+  "bangumiCommentsEmptySubtitle": "暫時沒有可顯示的 Bangumi 評論",
+  "bangumiCommentsLoadMoreFailed": "更多評論載入失敗",
+  "bangumiCommentsRetryLoadMore": "重試載入更多",
+  "bangumiCommentsLoadMore": "載入更多",
+  "bangumiCommentsEmptyComment": "這條評論沒有內容",
+  "danmakuSearchTitle": "彈幕搜尋",
+  "danmakuSearchTitleWithCount": "彈幕搜尋（{count}）",
+  "@danmakuSearchTitleWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "danmakuSearchHint": "輸入搜尋關鍵詞",
+  "forceRefreshTooltip": "強制重新整理",
+  "danmakuSearchInstruction": "請選擇分段或輸入搜尋詞後點擊搜尋",
+  "danmakuSearchResultCount": "共找到 {count} 條結果",
+  "@danmakuSearchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "danmakuSearchNoResults": "未找到相關彈幕",
+  "danmakuSearchNoResultsHint": "減少關鍵詞，僅搜尋作品名稱\n如：「Re：從零開始的異世界生活第四季喪失篇」搜尋「從零開始的異世界生活第四季」",
+  "danmakuLabel": "彈幕",
+  "dandanplayBindingSearchKeyword": "搜尋關鍵詞",
+  "dandanplayBindingClear": "清除綁定",
+  "dandanplayBindingSearchFailed": "搜尋失敗：{error}",
+  "@dandanplayBindingSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dandanplayBindingNoResults": "未找到相關番劇",
+  "dandanplayBindingSearchInstruction": "輸入關鍵詞後點擊搜尋",
+  "dandanplayBindingCurrent": "目前綁定",
+  "dandanplayBindingBound": "已綁定",
+  "dandanplayBindingUnbound": "未綁定",
+  "dandanplayBindingBind": "綁定",
+  "dandanplayBindingRating": "評分 {rating}",
+  "@dandanplayBindingRating": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      }
+    }
+  },
+  "dandanplayAlignmentTitle": "對齊彈幕",
+  "dandanplayAlignmentVideoFirstEpisode": "影片第一集",
+  "dandanplayAlignmentDanmakuFirstEpisode": "彈幕第一集",
+  "dandanplayAlignmentClear": "清除對齊",
+  "spoilerWarningTitle": "劇透警告",
+  "spoilerWarningContent": "真的要打開嗎？前方是地獄啊！",
+  "openButton": "打開",
+  "spoilerSuspectedComment": "這是一條高度劇透嫌疑的評論",
+  "spoilerTapToView": "含劇透，點擊查看"
 }

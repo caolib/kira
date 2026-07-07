@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
@@ -56,21 +57,25 @@ class _RankingPageState extends State<RankingPage> {
 
   bool get _isAuthorMode => widget.authorPathWord?.isNotEmpty == true;
   bool get _isThemeMode => widget.themePathWord?.isNotEmpty == true;
-  String get _title => _isAuthorMode
-      ? (widget.authorName?.isNotEmpty == true ? widget.authorName! : '作者作品')
+  String _title(AppLocalizations l10n) => _isAuthorMode
+      ? (widget.authorName?.isNotEmpty == true
+            ? widget.authorName!
+            : l10n.rankingAuthorWorks)
       : _isThemeMode
-      ? (widget.themeName?.isNotEmpty == true ? widget.themeName! : '主题作品')
-      : '漫画排行';
+      ? (widget.themeName?.isNotEmpty == true
+            ? widget.themeName!
+            : l10n.rankingThemeWorks)
+      : l10n.comicRanking;
   String get _scope => _isAuthorMode
       ? 'author-${widget.authorPathWord}'
       : _isThemeMode
       ? 'theme-${widget.themePathWord}'
       : 'ranking';
-  String get _emptyText => _isAuthorMode
-      ? '暂无作者作品'
+  String _emptyText(AppLocalizations l10n) => _isAuthorMode
+      ? l10n.rankingNoAuthorWorks
       : _isThemeMode
-      ? '暂无主题作品'
-      : '暂无漫画';
+      ? l10n.rankingNoThemeWorks
+      : l10n.rankingNoComics;
 
   @override
   void initState() {
@@ -140,6 +145,7 @@ class _RankingPageState extends State<RankingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth.clamp(0.0, 900.0);
     final hp = (screenWidth - contentWidth) / 2 + 16;
@@ -153,21 +159,21 @@ class _RankingPageState extends State<RankingPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(_title(l10n), maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: SegmentedButton<String>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: ApiOrdering.popular,
-                  label: Text('热度'),
-                  icon: Icon(Icons.whatshot, size: 16),
+                  label: Text(l10n.popularOrder),
+                  icon: const Icon(Icons.whatshot, size: 16),
                 ),
                 ButtonSegment(
                   value: ApiOrdering.datetimeUpdated,
-                  label: Text('更新'),
-                  icon: Icon(Icons.schedule, size: 16),
+                  label: Text(l10n.updateOrder),
+                  icon: const Icon(Icons.schedule, size: 16),
                 ),
               ],
               selected: {_ordering},
@@ -202,7 +208,7 @@ class _RankingPageState extends State<RankingPage> {
                   if (_comics.isEmpty)
                     SliverFillRemaining(
                       hasScrollBody: false,
-                      child: Center(child: Text(_emptyText)),
+                      child: Center(child: Text(_emptyText(l10n))),
                     )
                   else
                     SliverPadding(

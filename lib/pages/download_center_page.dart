@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -35,7 +36,7 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
   final _animeDownloads = AnimeDownloadManager();
   final _comicDownloads = DownloadManager();
 
-  /// 当前动画功能是否开启，用于检测变化并重建 TabController
+  /// Tracks anime feature state to rebuild TabController on changes.
   bool _wasAnimeEnabled = true;
 
   int get _tabCount => _user.animeFeatureEnabled ? 3 : 2;
@@ -84,6 +85,7 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final controller = _tabController!;
 
     if (_user.animeFeatureEnabled) {
@@ -95,19 +97,25 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
 
       return Scaffold(
         appBar: AppBar(
-          title: const Text('下载中心'),
+          title: Text(l10n.downloadCenterTitle),
           bottom: TabBar(
             controller: controller,
             tabs: [
-              const Tab(icon: Icon(Icons.menu_book_outlined), text: '漫画'),
-              const Tab(icon: Icon(Icons.movie_outlined), text: '动漫'),
+              Tab(
+                icon: const Icon(Icons.menu_book_outlined),
+                text: l10n.comicLabel,
+              ),
+              Tab(
+                icon: const Icon(Icons.movie_outlined),
+                text: l10n.animeLabel,
+              ),
               Tab(
                 icon: Badge(
                   isLabelVisible: totalQueueCount > 0,
                   label: Text('$totalQueueCount'),
                   child: const Icon(Icons.downloading_outlined),
                 ),
-                text: '队列',
+                text: l10n.downloadQueueTab,
               ),
             ],
           ),
@@ -123,24 +131,27 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
       );
     }
 
-    // 动漫功能关闭：漫画 + 队列 两 tab
+    // Anime feature disabled: comic + queue tabs.
     final comicTasks = _comicDownloads.tasks;
     final comicQueueCount = comicTasks.length;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('下载中心'),
+        title: Text(l10n.downloadCenterTitle),
         bottom: TabBar(
           controller: controller,
           tabs: [
-            const Tab(icon: Icon(Icons.menu_book_outlined), text: '漫画'),
+            Tab(
+              icon: const Icon(Icons.menu_book_outlined),
+              text: l10n.comicLabel,
+            ),
             Tab(
               icon: Badge(
                 isLabelVisible: comicQueueCount > 0,
                 label: Text('$comicQueueCount'),
                 child: const Icon(Icons.downloading_outlined),
               ),
-              text: '队列',
+              text: l10n.downloadQueueTab,
             ),
           ],
         ),
@@ -159,6 +170,7 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
 class _ComicDownloadQueueView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final downloads = DownloadManager();
     final tasks = downloads.tasks;
     final cs = Theme.of(context).colorScheme;
@@ -175,10 +187,10 @@ class _ComicDownloadQueueView extends StatelessWidget {
               color: cs.onSurfaceVariant,
             ),
             const SizedBox(height: 12),
-            Text('下载队列为空', style: tt.titleMedium),
+            Text(l10n.downloadQueueEmpty, style: tt.titleMedium),
             const SizedBox(height: 6),
             Text(
-              '去漫画详情页添加下载任务',
+              l10n.downloadQueueEmptyComicHint,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -198,10 +210,11 @@ class _ComicDownloadQueueView extends StatelessWidget {
   }
 }
 
-/// 动漫功能开启时，合并展示漫画+动漫下载队列
+/// Shows comic and anime download queues together when anime is enabled.
 class _CombinedDownloadQueueView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final comicDownloads = DownloadManager();
     final animeDownloads = AnimeDownloadManager();
     final comicTasks = comicDownloads.tasks;
@@ -222,10 +235,10 @@ class _CombinedDownloadQueueView extends StatelessWidget {
               color: cs.onSurfaceVariant,
             ),
             const SizedBox(height: 12),
-            Text('下载队列为空', style: tt.titleMedium),
+            Text(l10n.downloadQueueEmpty, style: tt.titleMedium),
             const SizedBox(height: 6),
             Text(
-              '去漫画或动漫详情页添加下载任务',
+              l10n.downloadQueueEmptyMixedHint,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -306,11 +319,11 @@ class _AnimeQueueTaskCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      _buildStatusLabel(cs, tt),
+                      _buildStatusLabel(context, cs, tt),
                     ],
                   ),
                 ),
-                _buildActionButton(downloads, cs),
+                _buildActionButton(context, downloads, cs),
               ],
             ),
             if (task.status == DownloadTaskStatus.downloading &&
@@ -322,7 +335,7 @@ class _AnimeQueueTaskCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                _buildProgressText(task.progress!),
+                _buildProgressText(context, task.progress!),
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
@@ -337,14 +350,20 @@ class _AnimeQueueTaskCard extends StatelessWidget {
     child: Icon(Icons.movie_outlined, size: 24, color: cs.onSurfaceVariant),
   );
 
-  String _buildProgressText(AnimeChapterDownloadProgress progress) {
+  String _buildProgressText(
+    BuildContext context,
+    AnimeChapterDownloadProgress progress,
+  ) {
     final percent = (progress.ratio * 100).toStringAsFixed(0);
     final bytes = progress.estimatedTotalBytes;
     if (bytes == null || bytes <= 0) return '$percent%';
-    return '$percent% · 约 ${_formatBytes(bytes)}';
+    return AppLocalizations.of(
+      context,
+    )!.downloadProgressApproxBytes(percent, _formatBytes(bytes));
   }
 
-  Widget _buildStatusLabel(ColorScheme cs, TextTheme tt) {
+  Widget _buildStatusLabel(BuildContext context, ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
     switch (task.status) {
       case DownloadTaskStatus.downloading:
         return Row(
@@ -359,7 +378,10 @@ class _AnimeQueueTaskCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            Text('下载中', style: tt.labelSmall?.copyWith(color: cs.primary)),
+            Text(
+              l10n.downloadingStatus,
+              style: tt.labelSmall?.copyWith(color: cs.primary),
+            ),
           ],
         );
       case DownloadTaskStatus.pending:
@@ -369,7 +391,7 @@ class _AnimeQueueTaskCard extends StatelessWidget {
             Icon(Icons.schedule, size: 14, color: cs.onSurfaceVariant),
             const SizedBox(width: 6),
             Text(
-              '等待中',
+              l10n.waitingStatus,
               style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -384,7 +406,10 @@ class _AnimeQueueTaskCard extends StatelessWidget {
               color: Colors.orange,
             ),
             const SizedBox(width: 6),
-            Text('已暂停', style: tt.labelSmall?.copyWith(color: Colors.orange)),
+            Text(
+              l10n.pausedStatus,
+              style: tt.labelSmall?.copyWith(color: Colors.orange),
+            ),
           ],
         );
       case DownloadTaskStatus.failed:
@@ -395,7 +420,7 @@ class _AnimeQueueTaskCard extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                task.errorMessage ?? '下载失败',
+                _localizedError(l10n),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: tt.labelSmall?.copyWith(color: cs.error),
@@ -406,19 +431,39 @@ class _AnimeQueueTaskCard extends StatelessWidget {
     }
   }
 
-  Widget _buildActionButton(AnimeDownloadManager downloads, ColorScheme cs) {
+  String _localizedError(AppLocalizations l10n) {
+    final message = task.errorMessage;
+    return switch (task.errorCode) {
+      AnimeDownloadErrorCode.timeout => l10n.animeDownloadConnectionTimeout,
+      AnimeDownloadErrorCode.proxySuggestion =>
+        l10n.animeDownloadProxyRetrySuggestion,
+      AnimeDownloadErrorCode.emptyVideoUrl => l10n.animeDownloadEmptyVideoUrl,
+      AnimeDownloadErrorCode.unknown => l10n.animeDownloadUnknownError,
+      null =>
+        message?.trim().isNotEmpty == true
+            ? message!
+            : l10n.downloadFailedStatus,
+    };
+  }
+
+  Widget _buildActionButton(
+    BuildContext context,
+    AnimeDownloadManager downloads,
+    ColorScheme cs,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
     switch (task.status) {
       case DownloadTaskStatus.downloading:
         return IconButton(
           onPressed: () => downloads.pauseTask(task.pathWord, task.chapterUuid),
           icon: Icon(Icons.pause, color: cs.primary),
-          tooltip: '暂停',
+          tooltip: l10n.pauseButton,
         );
       case DownloadTaskStatus.pending:
         return IconButton(
           onPressed: () => downloads.pauseTask(task.pathWord, task.chapterUuid),
           icon: Icon(Icons.pause_outlined, color: cs.onSurfaceVariant),
-          tooltip: '暂停',
+          tooltip: l10n.pauseButton,
         );
       case DownloadTaskStatus.paused:
         return Row(
@@ -428,13 +473,13 @@ class _AnimeQueueTaskCard extends StatelessWidget {
               onPressed: () =>
                   downloads.resumeTask(task.pathWord, task.chapterUuid),
               icon: Icon(Icons.play_arrow, color: cs.primary),
-              tooltip: '继续',
+              tooltip: l10n.resumeButton,
             ),
             IconButton(
               onPressed: () =>
                   downloads.cancelTask(task.pathWord, task.chapterUuid),
               icon: Icon(Icons.close, color: cs.error),
-              tooltip: '取消',
+              tooltip: l10n.cancelButton,
             ),
           ],
         );
@@ -446,13 +491,13 @@ class _AnimeQueueTaskCard extends StatelessWidget {
               onPressed: () =>
                   downloads.resumeTask(task.pathWord, task.chapterUuid),
               icon: Icon(Icons.refresh, color: cs.primary),
-              tooltip: '重试',
+              tooltip: l10n.retryButton,
             ),
             IconButton(
               onPressed: () =>
                   downloads.cancelTask(task.pathWord, task.chapterUuid),
               icon: Icon(Icons.close, color: cs.error),
-              tooltip: '取消',
+              tooltip: l10n.cancelButton,
             ),
           ],
         );
@@ -460,7 +505,7 @@ class _AnimeQueueTaskCard extends StatelessWidget {
   }
 }
 
-/// 漫画下载队列任务卡片（只读展示，漫画队列不支持暂停/取消）
+/// Comic download queue card (read-only; comic queue does not support pause/cancel).
 class _ComicQueueTaskCard extends StatelessWidget {
   final ComicDownloadTaskInfo task;
 
@@ -519,7 +564,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      _buildStatusLabel(cs, tt),
+                      _buildStatusLabel(context, cs, tt),
                     ],
                   ),
                 ),
@@ -539,7 +584,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                _buildProgressText(task.progress!),
+                _buildProgressText(context, task.progress!),
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
@@ -554,14 +599,20 @@ class _ComicQueueTaskCard extends StatelessWidget {
     child: Icon(Icons.menu_book_outlined, size: 24, color: cs.onSurfaceVariant),
   );
 
-  String _buildProgressText(ChapterDownloadProgress progress) {
+  String _buildProgressText(
+    BuildContext context,
+    ChapterDownloadProgress progress,
+  ) {
     final percent = (progress.ratio * 100).toStringAsFixed(0);
     final completed = progress.completed;
     final total = progress.total;
-    return '$percent% ($completed/$total)';
+    return AppLocalizations.of(
+      context,
+    )!.downloadProgressCount(percent, completed, total);
   }
 
-  Widget _buildStatusLabel(ColorScheme cs, TextTheme tt) {
+  Widget _buildStatusLabel(BuildContext context, ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
     switch (task.status) {
       case ComicDownloadTaskStatus.downloading:
         return Row(
@@ -576,7 +627,10 @@ class _ComicQueueTaskCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            Text('下载中', style: tt.labelSmall?.copyWith(color: cs.primary)),
+            Text(
+              l10n.downloadingStatus,
+              style: tt.labelSmall?.copyWith(color: cs.primary),
+            ),
           ],
         );
       case ComicDownloadTaskStatus.pending:
@@ -586,7 +640,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
             Icon(Icons.schedule, size: 14, color: cs.onSurfaceVariant),
             const SizedBox(width: 6),
             Text(
-              '等待中',
+              l10n.waitingStatus,
               style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],

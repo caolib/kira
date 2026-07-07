@@ -89,29 +89,31 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
             ),
             const SizedBox(height: 16),
 
-            // ===== 播放设置区域 =====
+            // Playback settings
             Text(
-              '播放设置',
+              AppLocalizations.of(context)!.playerSettingsPlaybackTitle,
               style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Text(
-              '快进秒数',
+              AppLocalizations.of(context)!.playerSettingsSkipSeconds,
               style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
-              '动漫片头一般约90秒',
+              AppLocalizations.of(context)!.playerSettingsSkipSecondsDesc,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: TextEditingController(text: _skipSeconds.toString()),
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: '秒数',
-                suffixText: '秒',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(
+                  context,
+                )!.playerSettingsSecondsLabel,
+                suffixText: AppLocalizations.of(context)!.readerSecondsSuffix,
+                border: const OutlineInputBorder(),
               ),
               onChanged: (v) {
                 final value = int.tryParse(v);
@@ -126,11 +128,11 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
-                '记录播放进度',
+                AppLocalizations.of(context)!.playerSettingsRecordProgress,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
-                '再次打开同一集时自动跳转到上次观看位置',
+                AppLocalizations.of(context)!.playerSettingsRecordProgressDesc,
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               value: _playbackProgressEnabled,
@@ -143,18 +145,18 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
 
             const Divider(height: 32),
 
-            // ===== 弹幕设置区域 =====
+            // Danmaku settings
             Text(
-              '弹幕设置',
+              AppLocalizations.of(context)!.playerSettingsDanmakuTitle,
               style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
-            // 弹幕开关
+            // Danmaku toggle
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
-                '显示弹幕',
+                AppLocalizations.of(context)!.playerSettingsShowDanmaku,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               value: widget.danmakuVisible,
@@ -164,13 +166,13 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               },
             ),
 
-            // 弹幕详细设置（弹幕开启时显示）
+            // Details shown when danmaku is enabled.
             if (widget.danmakuVisible) ...[
               const SizedBox(height: 4),
               Row(
                 children: [
                   Text(
-                    '字体大小',
+                    AppLocalizations.of(context)!.playerSettingsFontSize,
                     style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
@@ -194,7 +196,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               Row(
                 children: [
                   Text(
-                    '显示区域',
+                    AppLocalizations.of(context)!.playerSettingsDisplayArea,
                     style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
@@ -217,7 +219,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               Row(
                 children: [
                   Text(
-                    '透明度',
+                    AppLocalizations.of(context)!.playerSettingsOpacity,
                     style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
@@ -238,12 +240,15 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
 
               const SizedBox(height: 4),
               Text(
-                '弹幕类型',
+                AppLocalizations.of(context)!.playerSettingsDanmakuType,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('滚动弹幕', style: tt.bodyMedium),
+                title: Text(
+                  AppLocalizations.of(context)!.playerSettingsScrollDanmaku,
+                  style: tt.bodyMedium,
+                ),
                 value: !_hideScroll,
                 onChanged: (v) {
                   setState(() => _hideScroll = !v);
@@ -252,7 +257,10 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('顶部弹幕', style: tt.bodyMedium),
+                title: Text(
+                  AppLocalizations.of(context)!.playerSettingsTopDanmaku,
+                  style: tt.bodyMedium,
+                ),
                 value: !_hideTop,
                 onChanged: (v) {
                   setState(() => _hideTop = !v);
@@ -261,7 +269,10 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('底部弹幕', style: tt.bodyMedium),
+                title: Text(
+                  AppLocalizations.of(context)!.playerSettingsBottomDanmaku,
+                  style: tt.bodyMedium,
+                ),
                 value: !_hideBottom,
                 onChanged: (v) {
                   setState(() => _hideBottom = !v);
@@ -269,7 +280,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
                 },
               ),
 
-              // 屏蔽词设置
+              // Blocklist settings
               const SizedBox(height: 8),
               _DanmakuBlocklistEditor(
                 blocklist: _user.danmakuBlocklist,
@@ -363,12 +374,12 @@ class _DanmakuBlocklistEditorState extends State<_DanmakuBlocklistEditor> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '屏蔽词',
+          AppLocalizations.of(context)!.playerSettingsBlocklist,
           style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
         Text(
-          '包含屏蔽词的弹幕将被自动过滤',
+          AppLocalizations.of(context)!.playerSettingsBlocklistDesc,
           style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
@@ -379,12 +390,16 @@ class _DanmakuBlocklistEditorState extends State<_DanmakuBlocklistEditor> {
                 controller: _controller,
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: '输入屏蔽词',
+                  hintText: AppLocalizations.of(
+                    context,
+                  )!.playerSettingsBlocklistHint,
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     onPressed: _convertSimplifiedTraditional,
                     icon: const Icon(Icons.translate, size: 20),
-                    tooltip: '简繁转换',
+                    tooltip: AppLocalizations.of(
+                      context,
+                    )!.playerSettingsChineseConvertTooltip,
                   ),
                 ),
                 onSubmitted: (_) => _addWord(),

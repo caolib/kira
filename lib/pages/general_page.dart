@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../utils/app_logger.dart';
@@ -62,14 +63,21 @@ class _GeneralPageState extends State<GeneralPage> {
         ClipboardData(text: includeSensitive ? sensitiveBackup : safeBackup),
       );
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         showToast(
           context,
-          includeSensitive ? '设置已复制，包含敏感信息' : '设置已复制，未包含敏感信息',
+          includeSensitive
+              ? l10n.settingsCopiedWithSensitive
+              : l10n.settingsCopiedWithoutSensitive,
         );
       }
     } catch (e) {
       if (mounted) {
-        showToast(context, '导出失败：$e', isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.exportFailed(e.toString()),
+          isError: true,
+        );
       }
     }
   }
@@ -87,7 +95,11 @@ class _GeneralPageState extends State<GeneralPage> {
     final text = raw.trim();
     if (text.isEmpty) {
       if (mounted) {
-        showToast(context, '没有可导入的配置内容', isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.noImportSettingsContent,
+          isError: true,
+        );
       }
       return;
     }
@@ -97,29 +109,37 @@ class _GeneralPageState extends State<GeneralPage> {
       summary = _settingsBackup.inspectPlainText(text);
     } catch (e) {
       if (mounted) {
-        showToast(context, '导入失败：$e', isError: true);
+        final l10n = AppLocalizations.of(context)!;
+        final error = e is SettingsBackupException
+            ? e.localizedMessage(l10n)
+            : e.toString();
+        showToast(context, l10n.importFailed(error), isError: true);
       }
       return;
     }
 
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('覆盖导入'),
+        title: Text(l10n.overwriteImportTitle),
         content: Text(
-          '将覆盖当前 ${summary.preferenceCount} 项持久化配置，包含账号、主题、阅读器设置和本地阅读记录。'
-          '${summary.exportedAt != null ? '\n\n备份时间：${_formatBackupTime(summary.exportedAt!)}' : ''}'
-          '\n\n临时缓存不会导入，当前配置会被替换。是否继续？',
+          l10n.overwriteImportContent(
+            summary.preferenceCount,
+            summary.exportedAt == null
+                ? ''
+                : l10n.backupTimeLine(_formatBackupTime(summary.exportedAt!)),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('确认导入'),
+            child: Text(l10n.confirmImportButton),
           ),
         ],
       ),
@@ -132,11 +152,15 @@ class _GeneralPageState extends State<GeneralPage> {
       ApiClient().user.clearAuthState();
       await _user.init();
       if (mounted) {
-        showToast(context, '配置已导入并覆盖本地设置');
+        showToast(context, AppLocalizations.of(context)!.settingsImportedToast);
       }
     } catch (e) {
       if (mounted) {
-        showToast(context, '导入失败：$e', isError: true);
+        final l10n = AppLocalizations.of(context)!;
+        final error = e is SettingsBackupException
+            ? e.localizedMessage(l10n)
+            : e.toString();
+        showToast(context, l10n.importFailed(error), isError: true);
       }
     }
   }
@@ -160,11 +184,18 @@ class _GeneralPageState extends State<GeneralPage> {
       ApiClient().user.clearAuthState();
       await _user.init();
       if (mounted) {
-        showToast(context, '应用已重置，已清除 $removedCount 项本地数据');
+        showToast(
+          context,
+          AppLocalizations.of(context)!.appResetToast(removedCount),
+        );
       }
     } catch (e) {
       if (mounted) {
-        showToast(context, '重置失败：$e', isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.resetFailed(e.toString()),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) {
@@ -187,6 +218,7 @@ class _GeneralPageState extends State<GeneralPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final canAutoLogin =
@@ -195,7 +227,7 @@ class _GeneralPageState extends State<GeneralPage> {
         _user.savedPassword != null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('通用')),
+      appBar: AppBar(title: Text(l10n.generalTitle)),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
@@ -207,9 +239,11 @@ class _GeneralPageState extends State<GeneralPage> {
                 children: [
                   SwitchListTile(
                     secondary: const Icon(Icons.login_rounded),
-                    title: const Text('自动登录'),
+                    title: Text(l10n.autoLoginTitle),
                     subtitle: Text(
-                      canAutoLogin ? '登录过期时自动重新登录' : '登录并保存账号密码后可用',
+                      canAutoLogin
+                          ? l10n.autoLoginEnabledDesc
+                          : l10n.autoLoginUnavailableDesc,
                       style: tt.bodySmall,
                     ),
                     value: canAutoLogin ? _user.autoLogin : false,
@@ -218,44 +252,47 @@ class _GeneralPageState extends State<GeneralPage> {
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   SwitchListTile(
                     secondary: const Icon(Icons.movie_outlined),
-                    title: const Text('动漫功能'),
-                    subtitle: Text('关闭后隐藏动漫相关功能', style: tt.bodySmall),
+                    title: Text(l10n.animeFeatureTitle),
+                    subtitle: Text(l10n.animeFeatureDesc, style: tt.bodySmall),
                     value: _user.animeFeatureEnabled,
                     onChanged: _user.setAnimeFeatureEnabled,
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   SwitchListTile(
                     secondary: const Icon(Icons.view_carousel_outlined),
-                    title: const Text('显示Banner'),
-                    subtitle: Text(
-                      '关闭后漫画和动漫主页顶部Banner不显示',
-                      style: tt.bodySmall,
-                    ),
+                    title: Text(l10n.bannerVisibleTitle),
+                    subtitle: Text(l10n.bannerVisibleDesc, style: tt.bodySmall),
                     value: _user.bannerVisible,
                     onChanged: _user.setBannerVisible,
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.language_rounded),
-                    title: const Text('语言'),
+                    title: Text(l10n.languageTitle),
                     subtitle: Text(switch (_user.locale) {
-                      'zh-Hant' => '繁體中文',
-                      _ => '简体中文（跟随系统）',
+                      'zh-Hant' => l10n.languageTraditional,
+                      _ => l10n.languageSimplifiedSystem,
                     }, style: tt.bodySmall),
                     trailing: PopupMenuButton<String>(
                       icon: const Icon(Icons.arrow_drop_down),
                       onSelected: _user.setLocale,
-                      itemBuilder: (ctx) => const [
-                        PopupMenuItem(value: '', child: Text('简体中文（跟随系统）')),
-                        PopupMenuItem(value: 'zh-Hant', child: Text('繁體中文')),
+                      itemBuilder: (ctx) => [
+                        PopupMenuItem(
+                          value: '',
+                          child: Text(l10n.languageSimplifiedSystem),
+                        ),
+                        PopupMenuItem(
+                          value: 'zh-Hant',
+                          child: Text(l10n.languageTraditional),
+                        ),
                       ],
                     ),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.storage_rounded),
-                    title: const Text('缓存管理'),
-                    subtitle: const Text('查看和删除本地缓存、历史和账号数据'),
+                    title: Text(l10n.cacheManagementTitle),
+                    subtitle: Text(l10n.cacheManagementDesc),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       context.pushNamed(AppRoutes.cacheManagement);
@@ -264,16 +301,16 @@ class _GeneralPageState extends State<GeneralPage> {
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.upload_file_rounded),
-                    title: const Text('导出设置'),
-                    subtitle: const Text('复制配置到剪贴板'),
+                    title: Text(l10n.exportSettingsTitle),
+                    subtitle: Text(l10n.exportSettingsDesc),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _exportSettings,
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.download_for_offline_rounded),
-                    title: const Text('导入设置'),
-                    subtitle: const Text('粘贴导入配置'),
+                    title: Text(l10n.importSettingsTitle),
+                    subtitle: Text(l10n.importSettingsDesc),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _importSettings,
                   ),
@@ -294,14 +331,14 @@ class _GeneralPageState extends State<GeneralPage> {
                       color: cs.onErrorContainer,
                     ),
                     title: Text(
-                      '重置应用',
+                      l10n.resetAppTitle,
                       style: tt.titleMedium?.copyWith(
                         color: cs.onErrorContainer,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     subtitle: Text(
-                      '清除本地设置、账号、阅读记录和缓存，不会删除已下载的本地漫画文件',
+                      l10n.resetAppDesc,
                       style: tt.bodySmall?.copyWith(
                         color: cs.onErrorContainer.withValues(alpha: 0.88),
                       ),
@@ -327,7 +364,9 @@ class _GeneralPageState extends State<GeneralPage> {
                                 ),
                               )
                             : const Icon(Icons.delete_sweep_rounded),
-                        label: Text(_resetting ? '正在重置...' : '重置应用'),
+                        label: Text(
+                          _resetting ? l10n.resettingApp : l10n.resetAppTitle,
+                        ),
                       ),
                     ),
                   ),
@@ -359,27 +398,26 @@ class _ExportSettingsDialogState extends State<_ExportSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final exportedCount = _includeSensitive
         ? widget.sensitiveSummary.preferenceCount
         : widget.safeSummary.preferenceCount;
     final sensitiveCount = widget.sensitiveSummary.sensitivePreferenceCount;
 
     return AlertDialog(
-      title: const Text('导出设置'),
+      title: Text(l10n.exportSettingsTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '将复制 $exportedCount 项持久化配置到剪贴板，导出内容为明文，请谨慎保管。',
-          ),
+          Text(l10n.exportSettingsContent(exportedCount)),
           const SizedBox(height: 12),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('包含密码和 API 重要信息'),
+            title: Text(l10n.includeSensitiveSettingsTitle),
             subtitle: Text(
               sensitiveCount == 0
-                  ? '当前没有检测到已保存的敏感项'
-                  : '将额外包含 $sensitiveCount 项令牌、密码、API Key 或凭据信息',
+                  ? l10n.noSensitiveSettingsFound
+                  : l10n.includeSensitiveSettingsDesc(sensitiveCount),
             ),
             value: _includeSensitive,
             onChanged: sensitiveCount == 0
@@ -395,11 +433,11 @@ class _ExportSettingsDialogState extends State<_ExportSettingsDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(l10n.cancelButton),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, _includeSensitive),
-          child: const Text('复制'),
+          child: Text(l10n.copyButton),
         ),
       ],
     );
@@ -432,8 +470,10 @@ class _ImportSettingsDialogState extends State<_ImportSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return AlertDialog(
-      title: const Text('导入设置'),
+      title: Text(l10n.importSettingsTitle),
       content: SizedBox(
         width: 420,
         child: TextField(
@@ -441,20 +481,20 @@ class _ImportSettingsDialogState extends State<_ImportSettingsDialog> {
           autofocus: true,
           minLines: 10,
           maxLines: 18,
-          decoration: const InputDecoration(
-            hintText: '粘贴导出的配置 JSON',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l10n.pasteExportedSettingsHint,
+            border: const OutlineInputBorder(),
           ),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(l10n.cancelButton),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, _controller.text),
-          child: const Text('继续'),
+          child: Text(l10n.continueButton),
         ),
       ],
     );
@@ -469,11 +509,9 @@ class _ResetAppDialog extends StatefulWidget {
 }
 
 class _ResetAppDialogState extends State<_ResetAppDialog> {
-  static const _requiredText = '重置应用';
-
   late final TextEditingController _controller;
 
-  bool get _matched => _controller.text.trim() == _requiredText;
+  bool _matched(String requiredText) => _controller.text.trim() == requiredText;
 
   @override
   void initState() {
@@ -495,25 +533,28 @@ class _ResetAppDialogState extends State<_ResetAppDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final requiredText = l10n.resetAppTitle;
+
     return AlertDialog(
-      title: const Text('确认重置应用'),
+      title: Text(l10n.confirmResetAppTitle),
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('此操作会清除应用本地保存的设置、账号、阅读记录和缓存，且无法撤销。'),
+            Text(l10n.resetAppWarning),
             const SizedBox(height: 12),
-            const Text('如需继续，请在下方输入框中输入“重置应用”。'),
+            Text(l10n.resetAppInstruction(requiredText)),
             const SizedBox(height: 16),
             TextField(
               controller: _controller,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: '确认文本',
-                hintText: '重置应用',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.confirmTextLabel,
+                hintText: requiredText,
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -522,11 +563,13 @@ class _ResetAppDialogState extends State<_ResetAppDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('取消'),
+          child: Text(l10n.cancelButton),
         ),
         FilledButton(
-          onPressed: _matched ? () => Navigator.pop(context, true) : null,
-          child: const Text('确认重置'),
+          onPressed: _matched(requiredText)
+              ? () => Navigator.pop(context, true)
+              : null,
+          child: Text(l10n.confirmResetButton),
         ),
       ],
     );

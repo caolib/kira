@@ -3,9 +3,9 @@ import 'dart:convert';
 import '../utils/json_helpers.dart';
 
 enum RemoteNoticeLevel {
-  normal('普通'),
-  urgent('紧急'),
-  pinned('置顶');
+  normal('Normal'),
+  urgent('Urgent'),
+  pinned('Pinned');
 
   const RemoteNoticeLevel(this.label);
 
@@ -22,11 +22,11 @@ enum RemoteNoticeLevel {
 }
 
 enum RemoteNoticeType {
-  note('说明'),
-  tip('提示'),
-  warning('警告'),
-  important('重要'),
-  caution('注意');
+  note('Note'),
+  tip('Tip'),
+  warning('Warning'),
+  important('Important'),
+  caution('Caution');
 
   const RemoteNoticeType(this.label);
 
@@ -100,11 +100,10 @@ class RemoteNotice {
       'kind',
       'category',
     ]);
-    final levelRaw = _firstString(
-      json,
-      const ['level', 'priority'],
-      fallback: _legacyLevelFromType(typeRaw),
-    );
+    final levelRaw = _firstString(json, const [
+      'level',
+      'priority',
+    ], fallback: _legacyLevelFromType(typeRaw));
     final level = RemoteNoticeLevel.parse(levelRaw);
     final publishedAt =
         _parseDate(
@@ -148,14 +147,14 @@ class RemoteNotice {
   };
 
   static int compareForPrompt(RemoteNotice a, RemoteNotice b) {
-    // 启动弹窗：紧急 > 置顶 > 普通；同级按发布时间倒序。
+    // Startup prompt: urgent > pinned > normal; same priority by publish time desc.
     final priority = a.promptPriority.compareTo(b.promptPriority);
     if (priority != 0) return priority;
     return b.publishedAt.compareTo(a.publishedAt);
   }
 
   static int compareForTimeline(RemoteNotice a, RemoteNotice b) {
-    // 通知中心：当前有效的置顶通知在最前；其余按发布时间倒序。
+    // Notice center: active pinned notices first; others by publish time desc.
     final now = DateTime.now();
     final aPinned = a.isPinned && a.isActive(now);
     final bPinned = b.isPinned && b.isActive(now);

@@ -11,6 +11,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../api/ai_api.dart';
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
 import '../utils/app_logger.dart';
@@ -82,10 +83,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   final ValueNotifier<bool> _showFloatingButtons = ValueNotifier(true);
   double _lastScrollOffset = 0;
 
-  // ── AI 流式内容用 ValueNotifier 承载 ──
-  // 这样流式 chunk 只会让 _SummaryPanel 内部的 ValueListenableBuilder 重建，
-  // 不再触发整棵 Widget 树（评论列表）rebuild —— 这是 AI 生成时卡顿的根因。
-  // 空字符串等价于「无」；用 String? 的 _summaryError 通过 getter/setter 转换。
+  // Stream AI content through ValueNotifiers so chunks only rebuild the summary
+  // panel, keeping the comment list still while generation is running.
+  // Empty string represents null for _summaryError through the getter/setter.
   final ValueNotifier<String> _aiSummaryVN = ValueNotifier('');
   final ValueNotifier<String> _aiSummaryReasoningVN = ValueNotifier('');
   final ValueNotifier<bool> _summarizingVN = ValueNotifier(false);
@@ -104,17 +104,17 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   CancelToken? _summaryCancelToken;
   Set<int> _spoilerIds = const {};
   List<ChapterCommentDisplayEntry> _lastSnippetEntries = const [];
-  // ── AI 流式节流（节流写入 ValueNotifier，而非 setState） ──
+  // Throttle AI stream writes to ValueNotifiers instead of calling setState.
   Timer? _summaryThrottleTimer;
   bool _summaryThrottleScheduled = false;
   bool _summaryHasPendingTextFlush = false;
-  // ── 评论分组缓存 ──
+  // Cached grouped comments.
   List<ChapterCommentDisplayEntry> _groupedEntries = const [];
   bool _reasoningScrollPending = false;
-  // 缓存上次 _hasSummaryPanel 的结果，仅在面板有/无切换时 setState 刷新 ListView 结构。
+  // Cache _hasSummaryPanel and rebuild ListView only when panel presence changes.
   bool _hasSummaryPanelCached = false;
 
-  /// 在 _comments 变化后调用，重建分组缓存。
+  /// Rebuilds the grouped comment cache after _comments changes.
   void _rebuildGroupedEntries() {
     if (_comments.isEmpty) {
       _groupedEntries = const [];
@@ -198,9 +198,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _commentFontScale = _user.commentFontScale;
     _scrollController.addListener(_handleScrollDirection);
     _aiSettings.addListener(_onAiChanged);
-    // 监听流式 VN，仅在「面板有/无」这种结构性变化时刷新评论列表的 itemCount。
-    // 流式增量写入 VN 时（_hasSummaryPanel 不变）不会触发 setState，
-    // 因此评论列表得以在 AI 生成期间保持完全静止。
+    // Listen to stream ValueNotifiers only for structural panel presence changes.
+    // Incremental stream writes keep _hasSummaryPanel unchanged and avoid setState.
     _aiSummaryVN.addListener(_onSummaryPresenceVnChanged);
     _aiSummaryReasoningVN.addListener(_onSummaryPresenceVnChanged);
     _summarizingVN.addListener(_onSummaryPresenceVnChanged);
@@ -211,7 +210,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _applySummaryProgress();
     _aiSettings.load().then((_) {
       if (!mounted) return;
-      setState(() {}); // 配置加载完成，刷新工具栏按钮可见性等
+      setState(() {}); // AI config loaded; refresh toolbar visibility.
       _loadCachedSummary().then((_) => _maybeAutoSummary());
     });
     if (widget.initialComments != null) {
@@ -253,14 +252,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
   void _onAiChanged() {
     if (!mounted) return;
-    // AiSettings 变化（如 spoilerAnalysis 开关）会影响评论卡片的剧透遮罩显示，
-    // 这里同步刷新整棵树一次；触发频率极低（用户手动改设置）。
+    // AiSettings changes, such as spoilerAnalysis, affect comment masks.
+    // This is user-driven and rare, so one full tree refresh is fine.
     setState(() {});
   }
 
-  /// 当流式相关 ValueNotifier 变化时，仅在「面板有/无」切换时刷新 ListView 结构。
-  /// 流式增量写作期间 _hasSummaryPanel 保持为 true，所以不会触发 setState，
-  /// 评论列表因此不重建 —— 卡顿消除。
+  /// Rebuilds the ListView structure only when the summary panel appears/disappears.
+  /// Streaming updates keep _hasSummaryPanel true, so the comment list stays still.
   void _onSummaryPresenceVnChanged() {
     if (!mounted) return;
     final now = _hasSummaryPanel;
@@ -303,9 +301,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _summaryError = null;
         _spoilerIds = const {};
         _usingSharedSummaryProgress = false;
-        // 面板有/无切换由 VN 监听器自动 setState；
-        // _spoilerIds 变化需显式 setState 让评论卡片的剧透遮罩刷新
-        // （仅在退出共享进度这种一次性事件时发生）。
+        // Panel presence changes are handled by the VN listener.
+        // Spoiler id changes need setState so comment masks refresh.
         if (mounted) setState(() {});
       }
       return;
@@ -318,7 +315,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       final newSpoilerIds = _parseSpoilerIds(_summaryProgress.content);
       if (newSpoilerIds != _spoilerIds) {
         _spoilerIds = newSpoilerIds;
-        if (mounted) setState(() {}); // 评论卡片剧透遮罩需要更新
+        if (mounted) setState(() {}); // Refresh comment spoiler masks.
       }
     }
     _aiSummaryReasoning = _summaryProgress.reasoningContent;
@@ -329,7 +326,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         _summaryProgress.content.isNotEmpty) {
       _summaryError = null;
     }
-    // 面板展开/折叠的默认值现由 _SummaryPanel 自行根据 aiSettings 决定。
+    // Default panel expansion is owned by _SummaryPanel based on aiSettings.
   }
 
   void _maybeAutoSummary() {
@@ -436,11 +433,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
   }
 
-  /// 发评论后只刷新第 1 页，保留第 2+ 页已有数据。
+  /// Refreshes page 1 after posting while keeping page 2+ data.
   ///
-  /// 新评论会出现在第 1 页，导致原第 1 页末尾评论「溢出」到第 2 页。
-  /// 若新第 1 页满 pageSize 条，说明有一条溢出，需要把原第 1 页的最后一条
-  /// 插入第 2 页头部（如果已加载了第 2+ 页的话）。第 2+ 页其余数据不动。
+  /// New comments land on page 1, pushing the old page-1 tail onto page 2.
+  /// When the fetched page is full, insert the old tail before existing page 2+.
   Future<void> _refreshFirstPage() async {
     try {
       final data = await _api.manga.getChapterComments(
@@ -451,7 +447,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
       final firstPageComments = data.list;
 
-      // 计算已有评论中属于第 2+ 页的部分
+      // Existing comments that belong to page 2+.
       final existingBeyondPage1 = _comments.length > _pageSize
           ? _comments.sublist(_pageSize)
           : <ChapterComment>[];
@@ -459,19 +455,17 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       List<ChapterComment> merged;
       if (firstPageComments.length >= _pageSize &&
           existingBeyondPage1.isNotEmpty) {
-        // 第 1 页满，说明有一条从第 1 页溢出到第 2 页。
-        // 溢出的是旧第 1 页的最后一条（原 _comments[_pageSize - 1]）。
+        // A full page means the old page-1 tail overflowed to page 2.
         final overflowComment = _comments[_pageSize - 1];
 
-        // 避免重复：如果溢出评论的 id 已存在于新 fetched 数据或
-        // 后续页中，不再插入。
+        // Avoid duplicating the overflow comment if it already exists.
         final allIds = <int>{
           ...firstPageComments.map((c) => c.id),
           ...existingBeyondPage1.map((c) => c.id),
         };
         final insertOverflow = !allIds.contains(overflowComment.id);
 
-        // 去除后续页中与第 1 页重复的评论
+        // Remove comments duplicated by the new page 1.
         final dedupedBeyond = existingBeyondPage1
             .where((c) => !firstPageComments.any((f) => f.id == c.id))
             .toList();
@@ -482,8 +476,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           ...dedupedBeyond,
         ];
       } else {
-        // 第 1 页未满（评论总数 < pageSize），或没有第 2+ 页数据
-        // 直接拼接第 1 页 + 去重后的后续页
+        // If page 1 is not full or page 2+ is absent, append deduped tail.
         final dedupedBeyond = existingBeyondPage1
             .where((c) => !firstPageComments.any((f) => f.id == c.id))
             .toList();
@@ -504,10 +497,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       });
     } catch (e) {
       if (!mounted) return;
-      // 刷新第 1 页失败时不影响已有数据，仅记录错误
+      // Keep existing data when page-1 refresh fails; only log the issue.
       unawaited(
         AppLogger().recordWarning(
-          '刷新第1页评论失败: $e',
+          'Refresh first comment page failed: $e',
           stackTrace: StackTrace.current,
         ),
       );
@@ -567,13 +560,18 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   bool get _allCommentsLoaded => _total > 0 && _comments.length >= _total;
 
   Future<void> _summarizeComments() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_summarizing) return;
     if (_comments.isEmpty) {
-      showToast(context, '当前没有可总结的评论', isError: true);
+      showToast(context, l10n.chapterCommentsNoSummaryComments, isError: true);
       return;
     }
     if (!_aiSettings.hasConfig || !_aiSettings.summaryEnabled) {
-      showToast(context, '请先在评论区设置中启用 AI 总结', isError: true);
+      showToast(
+        context,
+        l10n.chapterCommentsEnableAiSummaryFirst,
+        isError: true,
+      );
       return;
     }
 
@@ -591,16 +589,20 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
     ChapterSummaryCache.startProgress(widget.chapterUuid);
 
-    final snippets = _buildCommentSnippets();
+    final snippets = _buildCommentSnippets(l10n);
     final comicLine = widget.comicName?.trim().isNotEmpty == true
-        ? '漫画：${widget.comicName!.trim()}\n'
+        ? l10n.chapterCommentsPromptComicLine(widget.comicName!.trim())
         : '';
     final messages = <AiMessage>[
       AiMessage(role: 'system', content: _aiSettings.summaryPrompt),
       AiMessage(
         role: 'user',
-        content:
-            '$comicLine章节：${widget.chapterName}\n共 ${_lastSnippetEntries.length} 条不同评论（相同内容已合并）。每条行首数字为该评论的 id：\n\n$snippets',
+        content: l10n.chapterCommentsPromptUser(
+          comicLine,
+          widget.chapterName,
+          _lastSnippetEntries.length,
+          snippets,
+        ),
       ),
     ];
 
@@ -671,7 +673,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
   }
 
-  String _buildCommentSnippets() {
+  String _buildCommentSnippets(AppLocalizations l10n) {
     const maxChars = 64 * 1024;
     final buffer = StringBuffer();
     final entries = _groupedEntries;
@@ -682,8 +684,12 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       if (text.isEmpty) continue;
       final id = entry.primaryComment.id;
       final line = entry.isMerged
-          ? '$id. [${entry.count}人] $text\n'
-          : '$id. ${entry.primaryComment.userName}: $text\n';
+          ? l10n.chapterCommentsMergedSnippet(id, entry.count, text)
+          : l10n.chapterCommentsSingleSnippet(
+              id,
+              entry.primaryComment.userName,
+              text,
+            );
       if (buffer.length + line.length > maxChars) {
         truncated = true;
         break;
@@ -691,7 +697,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       buffer.write(line);
     }
     if (truncated) {
-      buffer.write('…（已截断，共 ${entries.length} 条不同评论）');
+      buffer.write(l10n.chapterCommentsSnippetsTruncated(entries.length));
     }
     return buffer.toString();
   }
@@ -702,11 +708,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   static final _arrayRegex = RegExp(r'\[\s*([\d,\s]*)\s*\]');
   static final _spoilerLegacyRegex = RegExp(r'<!--\s*SPOILERS\s*:([^>]*)-->');
 
-  /// 解析模型输出的剧透 id，兼容旧版 HTML 注释标记。
-  /// 策略：先找最后一个 fenced code block，从中提取 [id, id, ...]；
-  /// 若无代码块则找文本中最后一个数组模式；最后兜底旧版注释。
+  /// Parses spoiler ids from model output, keeping legacy HTML marker support.
+  /// Prefers the last fenced code block, then the last array, then legacy comment.
   Set<int> _parseSpoilerIds(String text) {
-    // 1) 最后一个 fenced code block
+    // 1) Last fenced code block.
     Match? lastBlock;
     for (final m in _codeBlockRegex.allMatches(text)) {
       lastBlock = m;
@@ -716,13 +721,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       final arr = _arrayRegex.firstMatch(content);
       if (arr != null) return _splitIds(arr.group(1) ?? '');
     }
-    // 2) 无代码块，找文本中最后一个 [id, id, ...]
+    // 2) Without code blocks, use the last [id, id, ...] array.
     Match? lastArr;
     for (final m in _arrayRegex.allMatches(text)) {
       lastArr = m;
     }
     if (lastArr != null) return _splitIds(lastArr.group(1) ?? '');
-    // 3) 兜底旧版 HTML 注释
+    // 3) Fallback to the legacy HTML comment.
     final legacy = _spoilerLegacyRegex.firstMatch(text);
     if (legacy != null) return _splitIds(legacy.group(1) ?? '');
     return const {};
@@ -739,7 +744,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     return result;
   }
 
-  /// 从展示文本里剥离机读标记，避免暴露给用户。只剥离最后一个代码块。
+  /// Strips machine-readable markers from display text; only removes the last block.
   String _stripSpoilersMarker(String text) {
     Match? lastBlock;
     for (final m in _codeBlockRegex.allMatches(text)) {
@@ -752,7 +757,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   String _extractSummaryError(Object e) {
-    return NetworkError.message(e);
+    return NetworkError.message(e, l10n: AppLocalizations.of(context)!);
   }
 
   void _stopSummarize() {
@@ -797,7 +802,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         return message;
       }
     }
-    return NetworkError.message(error);
+    return NetworkError.message(error, l10n: AppLocalizations.of(context)!);
   }
 
   String _formatCommentPostErrorLog(Object error) {
@@ -849,6 +854,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     required String log,
     required VoidCallback onCopy,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -870,7 +876,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Dio 异常',
+                  l10n.chapterCommentsDioException,
                   style: tt.labelLarge?.copyWith(
                     color: cs.error,
                     fontWeight: FontWeight.w700,
@@ -881,7 +887,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 onPressed: onCopy,
                 style: TextButton.styleFrom(foregroundColor: cs.error),
                 icon: const Icon(Icons.copy, size: 16),
-                label: const Text('复制日志'),
+                label: Text(l10n.chapterCommentsCopyLog),
               ),
             ],
           ),
@@ -913,8 +919,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Future<void> _showPostCommentDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_user.isLoggedIn) {
-      showToast(context, '请先登录后再发表评论', isError: true);
+      showToast(
+        context,
+        l10n.chapterCommentsLoginRequiredToPost,
+        isError: true,
+      );
       return;
     }
 
@@ -931,8 +942,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       final length = _commentTextLength(content);
       if (length < 3 || length > 200) {
         setLocal(() {
-          errorText = '评论字数需在 3-200 之间';
-          errorLog = 'ValidationError: 评论字数需在 3-200 之间';
+          errorText = l10n.chapterCommentsLengthRange;
+          errorLog = 'ValidationError: ${l10n.chapterCommentsLengthRange}';
         });
         return;
       }
@@ -949,7 +960,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         if (dialogContext.mounted) {
           Navigator.of(dialogContext).pop();
         }
-        showToast(context, '评论已发布');
+        showToast(context, l10n.chapterCommentsPosted);
         await _refreshFirstPage();
       } catch (e) {
         if (!dialogContext.mounted) return;
@@ -970,7 +981,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               final length = _commentTextLength(controller.text);
               final canSubmit = !submitting && length >= 3 && length <= 200;
               return AlertDialog(
-                title: const Text('发表评论'),
+                title: Text(l10n.chapterCommentsPostTitle),
                 content: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -988,8 +999,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                         ],
                         textInputAction: TextInputAction.newline,
                         decoration: InputDecoration(
-                          hintText: '吐槽一下',
-                          helperText: '评论字数 3-200',
+                          hintText: l10n.chapterCommentsPostHint,
+                          helperText: l10n.chapterCommentsLengthHelper,
                           errorText: errorText,
                           border: const OutlineInputBorder(),
                         ),
@@ -1009,7 +1020,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                               ClipboardData(text: errorLog!),
                             );
                             if (!mounted) return;
-                            showToast(context, '日志已复制');
+                            showToast(context, l10n.chapterCommentsLogCopied);
                           },
                         ),
                       ],
@@ -1021,7 +1032,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                     onPressed: submitting
                         ? null
                         : () => Navigator.of(dialogContext).pop(),
-                    child: const Text('取消'),
+                    child: Text(l10n.cancelButton),
                   ),
                   FilledButton(
                     onPressed: canSubmit
@@ -1032,7 +1043,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                             dimension: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('发布'),
+                        : Text(l10n.chapterCommentsPublish),
                   ),
                 ],
               );
@@ -1041,8 +1052,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         },
       );
     } finally {
-      // ponytail: 延后一帧 dispose，避免弹窗退出动画期间
-      // 还在读取 controller.text 导致 used-after-dispose
+      // ponytail: Dispose one frame later because the exit animation still reads
+      // controller.text.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         controller.dispose();
       });
@@ -1050,6 +1061,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Future<void> _showCommentActionMenu(ChapterCommentDisplayEntry entry) async {
+    final l10n = AppLocalizations.of(context)!;
     final content = entry.content.trim();
     if (content.isEmpty) return;
 
@@ -1073,14 +1085,14 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 Row(
                   children: [
                     Text(
-                      '评论操作',
+                      l10n.chapterCommentsActionTitle,
                       style: tt.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const Spacer(),
                     IconButton(
-                      tooltip: '关闭',
+                      tooltip: l10n.closeButton,
                       onPressed: () => Navigator.of(sheetContext).pop(),
                       icon: const Icon(Icons.close),
                     ),
@@ -1104,20 +1116,22 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 const SizedBox(height: 10),
                 ListTile(
                   leading: const Icon(Icons.copy_outlined),
-                  title: const Text('复制'),
+                  title: Text(l10n.copyButton),
                   onTap: () => Navigator.of(sheetContext).pop('copy'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.add_comment_outlined),
                   title: const Text('+1'),
-                  subtitle: const Text('发送一条相同评论'),
+                  subtitle: Text(l10n.chapterCommentsPlusOneSubtitle),
                   onTap: () => Navigator.of(sheetContext).pop('plus_one'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.block_outlined),
-                  title: const Text('屏蔽用户'),
+                  title: Text(l10n.chapterCommentsBlockUser),
                   subtitle: Text(
-                    '隐藏 ${entry.primaryComment.userName} 的评论',
+                    l10n.chapterCommentsHideUserComments(
+                      entry.primaryComment.userName,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1134,7 +1148,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     if (action == 'copy') {
       await Clipboard.setData(ClipboardData(text: content));
       if (!mounted) return;
-      showToast(context, '评论已复制');
+      showToast(context, l10n.chapterCommentsCopied);
     } else if (action == 'plus_one') {
       await _plusOneComment(content);
     } else if (action == 'block') {
@@ -1143,12 +1157,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Future<void> _blockCommentUser(ChapterComment comment) async {
+    final l10n = AppLocalizations.of(context)!;
     final name = comment.userName.trim();
     if (_user.commentBlockNoRemind) {
       await _user.blockCommentUser(comment.userId, name);
       if (!mounted) return;
       setState(_rebuildGroupedEntries);
-      showToast(context, '已屏蔽该用户');
+      showToast(context, l10n.chapterCommentsUserBlocked);
       return;
     }
 
@@ -1157,15 +1172,15 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('屏蔽用户'),
+          title: Text(l10n.chapterCommentsBlockUser),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 name.isEmpty
-                    ? '确定屏蔽该用户吗？屏蔽后将不再显示其评论。'
-                    : '确定屏蔽「$name」吗？屏蔽后将不再显示其评论。\n可在评论区设置 → 黑名单中解除。',
+                    ? l10n.chapterCommentsBlockUnnamedConfirm
+                    : l10n.chapterCommentsBlockNamedConfirm(name),
               ),
               const SizedBox(height: 8),
               GestureDetector(
@@ -1183,7 +1198,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text('不再提醒', style: Theme.of(ctx).textTheme.bodySmall),
+                    Text(
+                      l10n.chapterCommentsNoRemindAgain,
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
@@ -1192,11 +1210,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
+              child: Text(l10n.cancelButton),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('屏蔽'),
+              child: Text(l10n.chapterCommentsBlock),
             ),
           ],
         ),
@@ -1207,25 +1225,34 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     await _user.blockCommentUser(comment.userId, name);
     if (!mounted) return;
     setState(_rebuildGroupedEntries);
-    showToast(context, '已屏蔽该用户');
+    showToast(context, l10n.chapterCommentsUserBlocked);
   }
 
   Future<void> _plusOneComment(String content) async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_user.isLoggedIn) {
-      showToast(context, '请先登录后再发表评论', isError: true);
+      showToast(
+        context,
+        l10n.chapterCommentsLoginRequiredToPost,
+        isError: true,
+      );
       return;
     }
 
     final length = _commentTextLength(content);
     if (length < 3 || length > 200) {
-      showToast(context, '评论字数需在 3-200 之间，无法 +1', isError: true);
+      showToast(
+        context,
+        l10n.chapterCommentsPlusOneLengthInvalid,
+        isError: true,
+      );
       return;
     }
 
     try {
       await _api.manga.postChapterComment(widget.chapterUuid, content);
       if (!mounted) return;
-      showToast(context, '+1 已发送');
+      showToast(context, l10n.chapterCommentsPlusOneSent);
       await _refreshFirstPage();
     } catch (e) {
       if (!mounted) return;
@@ -1234,12 +1261,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Future<void> _showPostCommentErrorDialog(Object error) async {
+    final l10n = AppLocalizations.of(context)!;
     final message = _extractCommentPostErrorMessage(error);
     final log = _formatCommentPostErrorLog(error);
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('发表评论失败'),
+        title: Text(l10n.chapterCommentsPostFailed),
         content: SingleChildScrollView(
           child: _buildPostCommentErrorPanel(
             dialogContext,
@@ -1248,14 +1276,14 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             onCopy: () async {
               await Clipboard.setData(ClipboardData(text: log));
               if (!mounted) return;
-              showToast(context, '日志已复制');
+              showToast(context, l10n.chapterCommentsLogCopied);
             },
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('关闭'),
+            child: Text(l10n.closeButton),
           ),
         ],
       ),
@@ -1334,6 +1362,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final sheetWidth = MediaQuery.of(context).size.width;
@@ -1379,7 +1408,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '章节评论',
+                                      l10n.chapterCommentsTitle,
                                       style: tt.titleMedium?.copyWith(
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -1409,7 +1438,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                         ),
                                       )
                                     : IconButton(
-                                        tooltip: '加载全部评论',
+                                        tooltip:
+                                            l10n.chapterCommentsLoadAllTooltip,
                                         onPressed: _loadAllComments,
                                         icon: const Icon(Icons.refresh),
                                       ),
@@ -1417,8 +1447,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                   _aiSettings.summaryEnabled) ...[
                                 IconButton(
                                   tooltip: _aiSummary.isEmpty
-                                      ? 'AI 总结评论'
-                                      : '重新生成 AI 总结',
+                                      ? l10n.chapterCommentsAiSummaryTooltip
+                                      : l10n.chapterCommentsRegenerateAiSummaryTooltip,
                                   onPressed: _summarizing
                                       ? null
                                       : _summarizeComments,
@@ -1432,8 +1462,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                               ],
                               IconButton(
                                 tooltip: _useCompactLayout
-                                    ? '切换为列表布局'
-                                    : '切换为紧凑布局',
+                                    ? l10n.chapterCommentsSwitchToListLayout
+                                    : l10n.chapterCommentsSwitchToCompactLayout,
                                 onPressed: () {
                                   setState(
                                     () =>
@@ -1450,14 +1480,16 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                 ),
                               ),
                               IconButton(
-                                tooltip: '评论区设置',
+                                tooltip: l10n.commentSettingsTitle,
                                 onPressed: _showCommentSettings,
                                 icon: const Icon(Icons.tune),
                               ),
                               Text(
                                 _total > 0
                                     ? (_allCommentsLoaded
-                                          ? '$_total 条'
+                                          ? l10n.chapterCommentsTotalCount(
+                                              _total,
+                                            )
                                           : '${_comments.length}/$_total')
                                     : '',
                                 style: tt.bodySmall?.copyWith(
@@ -1528,7 +1560,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                       style: buttonStyle,
                                       onPressed: _showPostCommentDialog,
                                       icon: const Icon(Icons.comment_outlined),
-                                      label: const Text('评论'),
+                                      label: Text(l10n.chapterCommentsComment),
                                     ),
                                     const SizedBox(width: 8),
                                     FilledButton.icon(
@@ -1540,7 +1572,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                         ).pop('back_to_catalog');
                                       },
                                       icon: const Icon(Icons.list_rounded),
-                                      label: const Text('目录'),
+                                      label: Text(l10n.chapterCommentsCatalog),
                                     ),
                                     if (widget.hasNextChapter) ...[
                                       const SizedBox(width: 8),
@@ -1550,7 +1582,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                         icon: const Icon(
                                           Icons.skip_next_rounded,
                                         ),
-                                        label: const Text('下一话'),
+                                        label: Text(l10n.chapterCommentsNext),
                                       ),
                                     ],
                                     const SizedBox(width: 8),
@@ -1598,6 +1630,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Widget _buildBody(BuildContext context, ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
     if (_loading && _comments.isEmpty) {
       return ListView.separated(
         padding: const EdgeInsets.fromLTRB(
@@ -1624,7 +1657,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
               const SizedBox(height: 12),
               Text(
-                '评论加载失败',
+                l10n.chapterCommentsLoadFailed,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
@@ -1638,7 +1671,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               const SizedBox(height: 12),
               FilledButton.tonal(
                 onPressed: () => _loadComments(),
-                child: const Text('重试'),
+                child: Text(l10n.retryButton),
               ),
             ],
           ),
@@ -1654,12 +1687,12 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
             const SizedBox(height: 12),
             Text(
-              '还没有评论',
+              l10n.chapterCommentsEmptyTitle,
               style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
             Text(
-              '这个章节暂时没人发言',
+              l10n.chapterCommentsEmptySubtitle,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -1699,7 +1732,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             final entry = entries[dataIndex];
             return _CommentCard(
               entry: entry,
-              relativeTime: TimeFormat.relativeOf(entry.createAt),
+              relativeTime: TimeFormat.relativeOf(
+                entry.createAt,
+                AppLocalizations.of(context)!,
+              ),
               showAvatar: _showUserAvatar,
               showUserName: _showUserName,
               showCommentTime: _showCommentTime,
@@ -1756,6 +1792,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                           entry: row.items[i].entry,
                           relativeTime: TimeFormat.relativeOf(
                             row.items[i].entry.createAt,
+                            AppLocalizations.of(context)!,
                           ),
                           compact: true,
                           showAvatar: _showUserAvatar,
@@ -1790,10 +1827,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           _summaryError != null);
 
   Widget _buildModelNameButton(ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
     final canSwitch = !_summarizing;
     final provider = _aiSettings.activeProvider;
     return Tooltip(
-      message: canSwitch ? '切换模型' : '生成中无法切换模型',
+      message: canSwitch
+          ? l10n.chapterCommentsSwitchModel
+          : l10n.chapterCommentsCannotSwitchModelGenerating,
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
         onTap: canSwitch ? _showModelPickerSheet : null,
@@ -1805,7 +1845,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 180),
                 child: Text(
-                  '${provider.model} 总结',
+                  l10n.chapterCommentsModelSummary(provider.model),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: tt.labelLarge?.copyWith(
@@ -1842,6 +1882,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Widget _buildSummaryTitle(ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
     final provider = _aiSettings.activeProvider;
     if (_modelChoices.isNotEmpty) {
       return _buildModelNameButton(cs, tt);
@@ -1849,7 +1890,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 180),
       child: Text(
-        '${provider.model} 总结',
+        l10n.chapterCommentsModelSummary(provider.model),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: tt.labelLarge?.copyWith(
@@ -1861,6 +1902,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   Future<void> _showModelPickerSheet() async {
+    final l10n = AppLocalizations.of(context)!;
     final choices = _modelChoices;
     if (_summarizing || choices.isEmpty) return;
 
@@ -1882,21 +1924,21 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 Row(
                   children: [
                     Text(
-                      '切换模型',
+                      l10n.chapterCommentsSwitchModel,
                       style: tt.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const Spacer(),
                     IconButton(
-                      tooltip: '关闭',
+                      tooltip: l10n.closeButton,
                       onPressed: () => Navigator.of(sheetContext).pop(),
                       icon: const Icon(Icons.close),
                     ),
                   ],
                 ),
                 Text(
-                  '当前模型：${active.name} / ${active.model}',
+                  l10n.chapterCommentsActiveModel(active.name, active.model),
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 12),
@@ -1988,7 +2030,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       onStopSummarize: _stopSummarize,
       onSummarizeComments: _summarizeComments,
       onClearSummary: _clearSummary,
-      onCopied: () => showToast(context, '已复制'),
+      onCopied: () => showToast(
+        context,
+        AppLocalizations.of(context)!.chapterCommentsCopied,
+      ),
     );
   }
 
@@ -2154,7 +2199,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
     if (_showCommentTime) {
       width += _measureTextWidth(
-        TimeFormat.relativeOf(entry.createAt),
+        TimeFormat.relativeOf(entry.createAt, AppLocalizations.of(context)!),
         textTheme.labelSmall,
         textScaler,
         maxWidth,
@@ -2309,6 +2354,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
     required bool expanded,
     required bool toggleable,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final textStyle = tt.bodySmall?.copyWith(
       color: cs.onSurfaceVariant.withValues(alpha: 0.78),
       fontSize: 12,
@@ -2340,7 +2386,9 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  expanded ? '思考过程' : '思考过程（已折叠）',
+                  expanded
+                      ? l10n.chapterCommentsReasoning
+                      : l10n.chapterCommentsReasoningCollapsed,
                   style: textStyle?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (toggleable) ...[
@@ -2369,7 +2417,12 @@ class _SummaryPanelState extends State<_SummaryPanel> {
     );
   }
 
-  Widget _buildStreamingReasoningPlaceholder(ColorScheme cs, TextTheme tt) {
+  Widget _buildStreamingReasoningPlaceholder(
+    BuildContext context,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(4, 2, 8, 0),
@@ -2393,7 +2446,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
               ),
               const SizedBox(width: 4),
               Text(
-                '思考过程',
+                l10n.chapterCommentsReasoning,
                 style: tt.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant.withValues(alpha: 0.78),
                   fontSize: 12,
@@ -2413,6 +2466,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
     ColorScheme cs,
     TextTheme tt,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final summaryText = widget.stripSpoilersMarker(_aiSummary);
     final hasSummaryText = summaryText.trim().isNotEmpty;
     final boxHeight = hasSummaryText
@@ -2433,7 +2487,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
           padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
           child: !hasSummaryText
               ? Text(
-                  '正在生成中…',
+                  l10n.chapterCommentsGenerating,
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 )
               : MarkdownBody(
@@ -2470,6 +2524,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
         widget.summaryErrorListenable,
       ]),
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context)!;
         final cs = Theme.of(context).colorScheme;
         final tt = Theme.of(context).textTheme;
         final hasContent = _aiSummary.isNotEmpty;
@@ -2516,7 +2571,9 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                     const Spacer(),
                     IconButton(
                       visualDensity: VisualDensity.compact,
-                      tooltip: _summaryExpanded ? '收起' : '展开',
+                      tooltip: _summaryExpanded
+                          ? l10n.chapterCommentsCollapse
+                          : l10n.chapterCommentsExpand,
                       onPressed: _toggleSummaryExpanded,
                       icon: Icon(
                         _summaryExpanded
@@ -2539,14 +2596,14 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                           expanded: reasoningExpanded,
                           toggleable: true,
                         )
-                      : _buildStreamingReasoningPlaceholder(cs, tt),
+                      : _buildStreamingReasoningPlaceholder(context, cs, tt),
                   const SizedBox(height: 8),
                 ],
                 if (_summaryError != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
                     child: Text(
-                      '生成失败：${_summaryError!}',
+                      l10n.chapterCommentsSummaryFailed(_summaryError!),
                       style: tt.bodySmall?.copyWith(color: cs.error),
                     ),
                   )
@@ -2583,7 +2640,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 6, 8, 6),
                     child: Text(
-                      '正在生成中…',
+                      l10n.chapterCommentsGenerating,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
@@ -2593,7 +2650,9 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                   children: [
                     IconButton(
                       visualDensity: VisualDensity.compact,
-                      tooltip: _summarizing ? '停止' : '重新生成',
+                      tooltip: _summarizing
+                          ? l10n.chapterCommentsStop
+                          : l10n.chapterCommentsRegenerate,
                       onPressed: _summarizing
                           ? widget.onStopSummarize
                           : widget.onSummarizeComments,
@@ -2605,7 +2664,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                     if (hasContent && !_summarizing) ...[
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        tooltip: '复制',
+                        tooltip: l10n.copyButton,
                         onPressed: () async {
                           final text = widget.stripSpoilersMarker(_aiSummary);
                           await Clipboard.setData(ClipboardData(text: text));
@@ -2615,7 +2674,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                       ),
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        tooltip: '清除总结',
+                        tooltip: l10n.chapterCommentsClearSummary,
                         onPressed: widget.onClearSummary,
                         icon: const Icon(Icons.delete_outline, size: 18),
                       ),

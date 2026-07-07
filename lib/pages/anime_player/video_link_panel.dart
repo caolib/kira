@@ -19,6 +19,7 @@ class _VideoLinkPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final url = videoUrl;
@@ -27,7 +28,7 @@ class _VideoLinkPanel extends StatelessWidget {
 
     return _CollapsiblePlayerCard(
       icon: Icons.link,
-      title: '视频链接',
+      title: l10n.videoLinkTitle,
       trailing: configurableLines.length > 1
           ? Chip(
               avatar: const Icon(Icons.alt_route, size: 18),
@@ -49,7 +50,7 @@ class _VideoLinkPanel extends StatelessWidget {
               ),
             ),
             child: SelectableText(
-              hasUrl ? url : '加载后显示视频链接',
+              hasUrl ? url : l10n.videoLinkPending,
               style: tt.bodySmall?.copyWith(
                 color: hasUrl ? cs.onSurface : cs.onSurfaceVariant,
                 height: 1.45,
@@ -65,16 +66,16 @@ class _VideoLinkPanel extends StatelessWidget {
               FilledButton.tonalIcon(
                 onPressed: hasUrl ? onCopy : null,
                 icon: const Icon(Icons.copy_all_outlined),
-                label: const Text('复制'),
+                label: Text(l10n.copyButton),
               ),
               FilledButton.tonalIcon(
                 onPressed: hasUrl ? onOpen : null,
                 icon: const Icon(Icons.open_in_browser),
-                label: const Text('浏览器打开'),
+                label: Text(l10n.openInBrowserButton),
               ),
               if (configurableLines.length > 1)
                 PopupMenuButton<String>(
-                  tooltip: '切换线路',
+                  tooltip: l10n.switchLineTooltip,
                   initialValue: currentLine,
                   onSelected: onLineSelected,
                   itemBuilder: (context) => [

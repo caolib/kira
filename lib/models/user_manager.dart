@@ -269,6 +269,7 @@ class UserManager extends ChangeNotifier {
   bool _danmakuHideTop = false;
   bool _danmakuHideBottom = false;
   List<String> _danmakuBlocklist = [];
+
   /// 评论屏蔽用户黑名单，元素为 `userId|userName` 形式
   List<String> _commentBlockedUsers = [];
   bool _commentBlockNoRemind = false;
@@ -370,7 +371,8 @@ class UserManager extends ChangeNotifier {
   bool get danmakuHideTop => _danmakuHideTop;
   bool get danmakuHideBottom => _danmakuHideBottom;
   List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
-  List<String> get commentBlockedUsers => List.unmodifiable(_commentBlockedUsers);
+  List<String> get commentBlockedUsers =>
+      List.unmodifiable(_commentBlockedUsers);
   bool get commentBlockNoRemind => _commentBlockNoRemind;
   int get logoIndex => _logoIndex;
   String get appLogoPath =>
@@ -585,10 +587,8 @@ class UserManager extends ChangeNotifier {
     _danmakuHideTop = prefs.getBool(_keyDanmakuHideTop) ?? false;
     _danmakuHideBottom = prefs.getBool(_keyDanmakuHideBottom) ?? false;
     _danmakuBlocklist = prefs.getStringList(_keyDanmakuBlocklist) ?? [];
-    _commentBlockedUsers =
-        prefs.getStringList(_keyCommentBlockedUsers) ?? [];
-    _commentBlockNoRemind =
-        prefs.getBool(_keyCommentBlockNoRemind) ?? false;
+    _commentBlockedUsers = prefs.getStringList(_keyCommentBlockedUsers) ?? [];
+    _commentBlockNoRemind = prefs.getBool(_keyCommentBlockNoRemind) ?? false;
     _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(
       0,
       appLogoPaths.length - 1,

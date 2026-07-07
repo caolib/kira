@@ -84,8 +84,8 @@ class UserApi {
     }
 
     final message = data is Map
-        ? (data['message']?.toString() ?? '登录失败')
-        : '登录失败';
+        ? (data['message']?.toString() ?? 'Login failed')
+        : 'Login failed';
     NetworkError.throwBadResponse(
       response: resp,
       message: message,
@@ -147,7 +147,7 @@ class UserApi {
           data['detail']?.toString() ??
           (results is Map ? results['detail']?.toString() : null) ??
           resp?.statusMessage ??
-          '注册失败';
+          'Registration failed';
     }
 
     final dio = AppDio.create(
@@ -263,8 +263,8 @@ class UserApi {
       final data = resp.data;
       if (data is Map && data['code'] == 200) return;
       final message = data is Map
-          ? (data['message']?.toString() ?? '清空浏览记录失败')
-          : '清空浏览记录失败';
+          ? (data['message']?.toString() ?? 'Failed to clear browse history')
+          : 'Failed to clear browse history';
       NetworkError.throwBadResponse(
         response: resp,
         message: message,
@@ -305,8 +305,8 @@ class UserApi {
       final data = resp.data;
       if (data is Map && data['code'] == 200) return;
       final message = data is Map
-          ? (data['message']?.toString() ?? '清空浏览记录失败')
-          : '清空浏览记录失败';
+          ? (data['message']?.toString() ?? 'Failed to clear browse history')
+          : 'Failed to clear browse history';
       NetworkError.throwBadResponse(
         response: resp,
         message: message,

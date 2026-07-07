@@ -8,6 +8,7 @@
   "profileTabLabel": "我的",
   "disclaimerTitle": "免责声明",
   "disclaimerAgreeNote": "继续使用本应用，即表示您已阅读、理解并同意上述说明；如您不同意，请立即停止使用并退出本应用。",
+  "disclaimerConfirmAgeAndTerms": "我已年满 18 周岁，并已仔细阅读、充分理解且同意上述全部条款",
   "disagreeAndExit": "不同意并退出",
   "confirmButton": "确认",
   "cancelButton": "取消",
@@ -17,6 +18,11 @@
   "noContent": "暂无内容",
   "hotRecommend": "热门推荐",
   "comicRanking": "漫画排行",
+  "rankingAuthorWorks": "作者作品",
+  "rankingThemeWorks": "主题作品",
+  "rankingNoAuthorWorks": "暂无作者作品",
+  "rankingNoThemeWorks": "暂无主题作品",
+  "rankingNoComics": "暂无漫画",
   "moreButton": "更多",
   "dayRank": "日榜",
   "weekRank": "周榜",
@@ -33,41 +39,137 @@
   "noLocalComicsSubtitle": "去漫画详情页下载章节后，这里会显示离线内容",
   "deleteLocalComicsTitle": "删除本地漫画",
   "deleteLocalComicsContent": "确定删除选中的 {count} 部本地漫画吗？已下载章节和封面都会被删除。",
-  "@deleteLocalComicsContent": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteLocalComicsContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedLocalComicsCount": "已删除 {count} 部本地漫画",
-  "@deletedLocalComicsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedLocalComicsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "localAnimeTitle": "本地动漫",
   "noLocalAnimeTitle": "还没有本地动漫",
   "noLocalAnimeSubtitle": "去动漫详情页下载剧集后，这里会显示离线内容",
   "deleteLocalAnimeTitle": "删除本地动漫",
   "deleteLocalAnimeContent": "确定删除选中的 {count} 部本地动漫吗？已下载视频和封面都会被删除。",
-  "@deleteLocalAnimeContent": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteLocalAnimeContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedLocalAnimeCount": "已删除 {count} 部本地动漫",
-  "@deletedLocalAnimeCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedLocalAnimeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "selectedCount": "已选 {count} {unit}",
-  "@selectedCount": { "placeholders": { "count": { "type": "int" }, "unit": { "type": "String" } } },
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
   "selectedItems": "已选 {count} 部",
-  "@selectedItems": { "placeholders": { "count": { "type": "int" } } },
+  "@selectedItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadedChapterCount": "已下载 {count} 章",
-  "@downloadedChapterCount": { "placeholders": { "count": { "type": "int" } } },
+  "@downloadedChapterCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadedEpisodeCount": "已下载 {count} 集",
-  "@downloadedEpisodeCount": { "placeholders": { "count": { "type": "int" } } },
+  "@downloadedEpisodeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadedCountUnit": "已下载 {count} {unit}",
-  "@downloadedCountUnit": { "placeholders": { "count": { "type": "int" }, "unit": { "type": "String" } } },
+  "@downloadedCountUnit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
   "localChaptersTitle": "本地章节 ({count})",
-  "@localChaptersTitle": { "placeholders": { "count": { "type": "int" } } },
+  "@localChaptersTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "localEpisodesTitle": "本地剧集 ({count})",
-  "@localEpisodesTitle": { "placeholders": { "count": { "type": "int" } } },
+  "@localEpisodesTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deleteLocalChaptersTitle": "删除本地章节",
   "deleteChaptersConfirm": "确定删除选中的 {count} 个章节吗？",
-  "@deleteChaptersConfirm": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteChaptersConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedChaptersCount": "已删除 {count} 个章节",
-  "@deletedChaptersCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedChaptersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deleteLocalEpisodesTitle": "删除本地剧集",
   "deleteEpisodesConfirm": "确定删除选中的 {count} 个剧集吗？",
-  "@deleteEpisodesConfirm": { "placeholders": { "count": { "type": "int" } } },
+  "@deleteEpisodesConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deletedEpisodesCount": "已删除 {count} 个剧集",
-  "@deletedEpisodesCount": { "placeholders": { "count": { "type": "int" } } },
+  "@deletedEpisodesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "viewOnlineDetail": "查看在线详情",
   "manageChapters": "管理章节",
   "manageEpisodes": "管理剧集",
@@ -81,13 +183,31 @@
   "comicLabel": "漫画",
   "animeLabel": "动漫",
   "comicWithCount": "漫画（{count}）",
-  "@comicWithCount": { "placeholders": { "count": { "type": "int" } } },
+  "@comicWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "animeWithCount": "动漫（{count}）",
-  "@animeWithCount": { "placeholders": { "count": { "type": "int" } } },
+  "@animeWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "hasUpdate": "有更新",
   "updateBadge": "更新",
   "refreshedAt": "刷新于 {time}",
-  "@refreshedAt": { "placeholders": { "time": { "type": "String" } } },
+  "@refreshedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "sortByUpdate": "按更新",
   "sortByFavorite": "按收藏",
   "sortByRead": "按阅读",
@@ -95,14 +215,26 @@
   "sortMethod": "排序方式",
   "sortByUpdateTime": "作品更新时间",
   "sortByUpdateTimeDesc": "按{type}最新章节的更新时间排序",
-  "@sortByUpdateTimeDesc": { "placeholders": { "type": { "type": "String" } } },
+  "@sortByUpdateTimeDesc": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "sortByFavoriteTime": "收藏时间",
   "sortByFavoriteTimeDesc": "按加入书架的时间排序",
   "sortByBrowseTime": "浏览时间",
   "sortByBrowseTimeDesc": "按最近浏览的时间排序",
   "bookshelfEmpty": "书架空空如也",
   "goFindSomething": "去找点好看的{type}吧",
-  "@goFindSomething": { "placeholders": { "type": { "type": "String" } } },
+  "@goFindSomething": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "refreshButton": "刷新",
   "noComicUpdates": "没有漫画更新",
   "backToTop": "回到顶部",
@@ -110,27 +242,1851 @@
   "refreshFailed": "刷新失败",
   "loginExpiredTitle": "登录已过期",
   "loginExpiredBookshelfContent": "书架需要登录后才能继续使用，是否现在重新登录？",
+  "loginExpiredFeatureContent": "{featureName}需要登录后才能继续使用，是否现在重新登录？",
+  "@loginExpiredFeatureContent": {
+    "placeholders": {
+      "featureName": {
+        "type": "String"
+      }
+    }
+  },
   "laterButton": "稍后再说",
   "goLoginButton": "去登录",
   "autoLoginFailed": "自动登录失败，请手动重新登录",
   "loginToViewBookshelf": "登录后可继续查看书架",
   "totalEpisodes": "共 {count} 集",
-  "@totalEpisodes": { "placeholders": { "count": { "type": "int" } } },
+  "@totalEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "searchHint": "搜索{mode}...",
-  "@searchHint": { "placeholders": { "mode": { "type": "String" } } },
+  "@searchHint": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
   "hotSearchTitle": "热门搜索",
   "allTagsTitle": "全部标签",
   "tagCount": "{count} 个",
-  "@tagCount": { "placeholders": { "count": { "type": "int" } } },
+  "@tagCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "popularOrder": "热度",
   "updateOrder": "更新",
   "searchResultSummary": "搜索 \"{query}\" 找到 {total} 个{mode}结果",
-  "@searchResultSummary": { "placeholders": { "query": { "type": "String" }, "total": { "type": "int" }, "mode": { "type": "String" } } },
+  "@searchResultSummary": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      },
+      "total": {
+        "type": "int"
+      },
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
   "openFolderFailed": "打开文件夹失败：{error}",
-  "@openFolderFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@openFolderFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "deleteToastPrefix": "已删除 ",
   "deleteToastSuffixComic": " 部本地漫画",
   "deleteToastSuffixAnime": " 部本地动漫",
   "chapterUnit": "章",
-  "episodeUnit": "集"
+  "episodeUnit": "集",
+  "generalTitle": "通用",
+  "autoLoginTitle": "自动登录",
+  "autoLoginEnabledDesc": "登录过期时自动重新登录",
+  "autoLoginUnavailableDesc": "登录并保存账号密码后可用",
+  "animeFeatureTitle": "动漫功能",
+  "animeFeatureDesc": "关闭后隐藏动漫相关功能",
+  "bannerVisibleTitle": "显示Banner",
+  "bannerVisibleDesc": "关闭后漫画和动漫主页顶部Banner不显示",
+  "languageTitle": "语言",
+  "languageSimplifiedSystem": "简体中文（跟随系统）",
+  "languageTraditional": "繁體中文",
+  "cacheManagementTitle": "缓存管理",
+  "cacheManagementDesc": "查看和删除本地缓存、历史和账号数据",
+  "exportSettingsTitle": "导出设置",
+  "exportSettingsDesc": "复制配置到剪贴板",
+  "importSettingsTitle": "导入设置",
+  "importSettingsDesc": "粘贴导入配置",
+  "settingsCopiedWithSensitive": "设置已复制，包含敏感信息",
+  "settingsCopiedWithoutSensitive": "设置已复制，未包含敏感信息",
+  "exportFailed": "导出失败：{error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noImportSettingsContent": "没有可导入的配置内容",
+  "settingsBackupEmptyClipboard": "剪贴板里没有可导入的配置",
+  "settingsBackupInvalidJson": "配置格式不是有效的 JSON",
+  "settingsBackupInvalidFormat": "配置格式不正确",
+  "settingsBackupWrongApp": "这不是 Kira 的设置备份",
+  "settingsBackupUnsupportedVersion": "备份版本不受支持",
+  "settingsBackupMissingContent": "配置内容缺失或格式不正确",
+  "settingsBackupUnsupportedField": "配置中包含不支持的字段",
+  "settingsBackupInvalidFieldFormat": "配置字段格式不正确",
+  "settingsBackupUnsupportedFieldType": "配置字段类型不受支持",
+  "importFailed": "导入失败：{error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "overwriteImportTitle": "覆盖导入",
+  "overwriteImportContent": "将覆盖当前 {count} 项持久化配置，包含账号、主题、阅读器设置和本地阅读记录。{backupTime}\n\n临时缓存不会导入，当前配置会被替换。是否继续？",
+  "@overwriteImportContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "backupTime": {
+        "type": "String"
+      }
+    }
+  },
+  "backupTimeLine": "\n\n备份时间：{time}",
+  "@backupTimeLine": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmImportButton": "确认导入",
+  "settingsImportedToast": "配置已导入并覆盖本地设置",
+  "resetAppTitle": "重置应用",
+  "resetAppDesc": "清除本地设置、账号、阅读记录和缓存，不会删除已下载的本地漫画文件",
+  "resettingApp": "正在重置...",
+  "appResetToast": "应用已重置，已清除 {count} 项本地数据",
+  "@appResetToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resetFailed": "重置失败：{error}",
+  "@resetFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "exportSettingsContent": "将复制 {count} 项持久化配置到剪贴板，导出内容为明文，请谨慎保管。",
+  "@exportSettingsContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "includeSensitiveSettingsTitle": "包含密码和 API 重要信息",
+  "noSensitiveSettingsFound": "当前没有检测到已保存的敏感项",
+  "includeSensitiveSettingsDesc": "将额外包含 {count} 项令牌、密码、API Key 或凭据信息",
+  "@includeSensitiveSettingsDesc": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copyButton": "复制",
+  "pasteExportedSettingsHint": "粘贴导出的配置 JSON",
+  "continueButton": "继续",
+  "confirmResetAppTitle": "确认重置应用",
+  "resetAppWarning": "此操作会清除应用本地保存的设置、账号、阅读记录和缓存，且无法撤销。",
+  "resetAppInstruction": "如需继续，请在下方输入框中输入“{text}”。",
+  "@resetAppInstruction": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmTextLabel": "确认文本",
+  "confirmResetButton": "确认重置",
+  "animeUnavailableToast": "当前动漫暂时无法打开",
+  "animeEditorRecommend": "编辑推荐",
+  "animeRecentUpdate": "最近更新",
+  "animeClassicRecommend": "经典推荐",
+  "animeClassicAnimation": "经典动画",
+  "animeHotAnime": "热门动漫",
+  "loginRequiredTitle": "需要登录",
+  "playbackFailedTitle": "播放失败",
+  "viewLogButton": "查看日志",
+  "errorLogTitle": "错误日志",
+  "noLogInfo": "无日志信息",
+  "closeButton": "关闭",
+  "videoLinkTitle": "视频链接",
+  "videoLinkPending": "加载后显示视频链接",
+  "openInBrowserButton": "浏览器打开",
+  "switchLineTooltip": "切换线路",
+  "profileCopyCredentialLabel": "拷贝",
+  "profileHotCredentialLabel": "热辣",
+  "accountSwitchedToast": "账号已切换",
+  "switchAccountTitle": "切换账号",
+  "addAccountButton": "添加账号",
+  "switchAccountFailedToast": "切换失败，请重试",
+  "logoutTitle": "退出登录",
+  "logoutConfirmContent": "确定要退出登录吗？",
+  "userInfoRefreshedToast": "用户信息已刷新",
+  "userInfoRefreshFailedToast": "刷新失败，请重试",
+  "tokenUnavailableToast": "暂无可复制的令牌",
+  "tokenCopiedToast": "令牌已复制到剪贴板",
+  "appearanceTitle": "外观",
+  "appearanceLogoChanged": "桌面图标已更换，可能需要重启应用后生效",
+  "appearanceColorPickerHeading": "点击色盘选择一个自定义主题色",
+  "appearanceColorPickerSubheading": "拖动取色点，实时预览主题色",
+  "appearanceThemeColorUpdated": "主题配色已更新为 {color}",
+  "@appearanceThemeColorUpdated": {
+    "placeholders": {
+      "color": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceBottomNavShowLabels": "底部导航栏显示文字",
+  "appearanceNavOrder": "导航栏顺序",
+  "appearanceAppIcon": "应用图标",
+  "appearanceAppIconRestartHint": "更换后重启应用生效",
+  "appearanceRefreshRateTitle": "屏幕刷新率",
+  "appearanceThemeMode": "主题模式",
+  "appearanceSystemMode": "系统",
+  "appearanceLightMode": "浅色",
+  "appearanceDarkMode": "深色",
+  "appearanceDarkCoverBrightness": "暗色模式封面亮度",
+  "appearanceDarkCoverBrightnessDesc": "暗色模式下降低各个界面的卡片封面亮度",
+  "appearanceThemeStyle": "主题风格",
+  "appearanceCurrentStyle": "当前风格：{label} · {description}",
+  "@appearanceCurrentStyle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceThemeColor": "主题配色",
+  "appearanceThemeColorDesc": "点击颜色块切换主题色，带勾选的为当前配色。",
+  "appearanceRefreshRateRequested": "已请求刷新率 {rate}",
+  "@appearanceRefreshRateRequested": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceRefreshRateSaved": "刷新率偏好已保存",
+  "appearanceRefreshRateLoadFailed": "获取设备刷新率失败：{error}",
+  "@appearanceRefreshRateLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceUnknownError": "未知错误",
+  "appearanceAutoSystem": "自动（跟随系统）",
+  "appearanceRefreshRateCurrent": "{rate}Hz（当前）",
+  "@appearanceRefreshRateCurrent": {
+    "placeholders": {
+      "rate": {
+        "type": "int"
+      }
+    }
+  },
+  "appearanceApplyingRefreshRate": "正在应用 {rate}",
+  "@appearanceApplyingRefreshRate": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceRefreshRateDesc": "实际生效取决于系统和屏幕，部分设备可能需要重启应用后完全生效。",
+  "appearanceDefaultFontRestored": "已恢复系统默认字体，重启应用后完全生效",
+  "appearanceFontChanged": "字体已切换为 {font}",
+  "@appearanceFontChanged": {
+    "placeholders": {
+      "font": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceFontLoadFailed": "加载字体失败：{error}",
+  "@appearanceFontLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceAppFont": "应用字体",
+  "appearanceSystemDefault": "系统默认",
+  "appearanceChooseFont": "选择字体",
+  "appearanceSearchFont": "搜索字体",
+  "networkTitle": "网络",
+  "networkApiRouteTitle": "API 线路",
+  "networkRouteLabel": "线路 {index}",
+  "@networkRouteLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "networkTestLatency": "测试线路延迟",
+  "networkTestingNodes": "正在检测各节点...",
+  "networkNotTested": "尚未进行检测",
+  "networkHighLatencyProxySuggestion": "当前延迟较大，建议开启代理",
+  "networkRateLimitMessage": "请求过于频繁，已被限速，请稍后再试",
+  "networkRequestFailedCode": "请求失败（code: {code}）",
+  "@networkRequestFailedCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "networkCopyLoginHost": "拷贝登录",
+  "networkHotLoginHost": "热辣登录",
+  "networkFixedApiHost": "固定接口",
+  "networkSystemProxyNotDetected": "系统代理：未检测到",
+  "networkManualProxyNotConfigured": "手动代理：未配置",
+  "networkOtherRouteGroup": "其他",
+  "networkCollapseTestResults": "收起测试结果",
+  "networkExpandTestResults": "展开测试结果",
+  "networkProxySettings": "代理设置",
+  "networkRefreshSystemProxy": "重新检测系统代理",
+  "networkProxySystem": "系统",
+  "networkProxyManual": "手动",
+  "networkCurrentProxy": "当前代理",
+  "networkProxyAddress": "代理地址",
+  "networkProxyAddressHint": "127.0.0.1:7890 或 http://127.0.0.1:7890",
+  "networkSaveAndEnableManualProxy": "保存并启用手动代理",
+  "networkTestingGoogle": "正在通过 {proxy} 访问 Google ...",
+  "@networkTestingGoogle": {
+    "placeholders": {
+      "proxy": {
+        "type": "String"
+      }
+    }
+  },
+  "networkGoogleConnectivity": "Google 连通性",
+  "networkAdvancedSettings": "高级设置",
+  "networkCopyAppVersion": "COPY 请求版本号",
+  "networkFill": "填充",
+  "networkAverageTesting": "平均：检测中",
+  "networkAverageTimeout": "平均：超时",
+  "networkAverageLatency": "平均：{milliseconds} ms",
+  "@networkAverageLatency": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "int"
+      }
+    }
+  },
+  "networkNodeLabel": "节点 {index}",
+  "@networkNodeLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "networkTesting": "检测中",
+  "networkTimeout": "超时",
+  "networkNoSystemProxyDetected": "未检测到系统代理",
+  "networkSystemProxyDetected": "已检测到 {proxy}",
+  "@networkSystemProxyDetected": {
+    "placeholders": {
+      "proxy": {
+        "type": "String"
+      }
+    }
+  },
+  "networkCopyAdvancedSaved": "已保存 COPY 高级设置",
+  "networkCopyAdvancedReset": "已重置 COPY 高级设置",
+  "networkCopyAutoFilled": "已自动填充 COPY API 地址：{apiHost}，版本号：{version}",
+  "@networkCopyAutoFilled": {
+    "placeholders": {
+      "apiHost": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "networkAutoFillFailed": "自动填充失败：{error}",
+  "@networkAutoFillFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "networkInvalidProxyAddress": "请输入有效的代理地址，例如 127.0.0.1:7890",
+  "networkProxyEnabled": "已启用 {proxy}",
+  "@networkProxyEnabled": {
+    "placeholders": {
+      "proxy": {
+        "type": "String"
+      }
+    }
+  },
+  "networkConnectionSuccess": "连接成功，HTTP {statusCode}，{proxyRule}",
+  "@networkConnectionSuccess": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      },
+      "proxyRule": {
+        "type": "String"
+      }
+    }
+  },
+  "networkConnectionFailed": "连接失败，HTTP {statusCode}，{proxyRule}",
+  "@networkConnectionFailed": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      },
+      "proxyRule": {
+        "type": "String"
+      }
+    }
+  },
+  "networkConnectionTimeout": "连接超时，{proxyRule}",
+  "@networkConnectionTimeout": {
+    "placeholders": {
+      "proxyRule": {
+        "type": "String"
+      }
+    }
+  },
+  "networkProxyRuleError": "{proxyRule}：{error}",
+  "@networkProxyRuleError": {
+    "placeholders": {
+      "proxyRule": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "networkTestFailed": "测试失败，{proxyRule}：{error}",
+  "@networkTestFailed": {
+    "placeholders": {
+      "proxyRule": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigTitle": "AI配置",
+  "aiConfigNewChat": "新对话",
+  "aiConfigProvidersTitle": "AI 供应商",
+  "aiConfigAdd": "新增",
+  "aiConfigProvidersDescription": "支持任何 OpenAI 兼容接口；智谱清言作为内置预设保留，可为不同供应商分别保存 Base URL、API Key、模型和接口格式。",
+  "aiConfigEnabled": "已启用",
+  "aiConfigDisabled": "已禁用",
+  "aiConfigProviderSummary": "{status} · {count} 个模型 · {format}\n{baseUrl}",
+  "@aiConfigProviderSummary": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "format": {
+        "type": "String"
+      },
+      "baseUrl": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigEdit": "编辑",
+  "aiConfigCustomProvider": "自定义供应商",
+  "aiConfigZhipuName": "智谱清言",
+  "aiConfigAddModel": "添加模型",
+  "aiConfigModelIdLabel": "模型 ID",
+  "aiConfigFillBaseUrlAndApiKey": "请先填写 Base URL 和 API Key",
+  "aiConfigFetchModelsFailed": "获取模型失败：{error}",
+  "@aiConfigFetchModelsFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigNoAvailableModels": "未获取到可用模型",
+  "aiConfigSelectModel": "选择模型",
+  "aiConfigAddSelected": "添加所选",
+  "aiConfigAddProvider": "新增供应商",
+  "aiConfigEditProvider": "编辑供应商",
+  "aiConfigProviderNameLabel": "供应商名称",
+  "aiConfigCustomNameLabel": "自定义名称",
+  "aiConfigCustomNameHint": "OpenAI / One API / 自定义",
+  "aiConfigApiFormatLabel": "接口格式",
+  "aiConfigDefaultModelLabel": "默认模型",
+  "aiConfigNoSelection": "未选择",
+  "aiConfigFetch": "获取",
+  "aiConfigClear": "清空",
+  "aiConfigGetZhipuApiKey": "获取智谱 API 密钥",
+  "aiConfigProviderSaved": "供应商已保存",
+  "aiConfigConfigureBaseUrlAndApiKey": "请先配置 Base URL 和 API 密钥",
+  "aiConfigModelReturnedEmpty": "(模型未返回内容)",
+  "aiConfigRequestFailed": "请求失败：{error}",
+  "@aiConfigRequestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigPartialResponseError": "{content}\n\n[出错：{error}]",
+  "@aiConfigPartialResponseError": {
+    "placeholders": {
+      "content": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConfigSessionHistory": "会话历史",
+  "aiConfigNewSession": "新会话",
+  "aiConfigNoSessionHistory": "暂无历史会话",
+  "aiConfigMessageCount": "{count} 条消息",
+  "@aiConfigMessageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiConfigDeleteSession": "删除会话",
+  "aiConfigProviderConfig": "接口配置",
+  "aiConfigClearChat": "清空对话",
+  "aiConfigInputHint": "说点什么…",
+  "aiConfigSend": "发送",
+  "aiConfigReadyEmptyHint": "配置AI后可以在章节评论中用于总结评论和屏蔽剧透",
+  "aiConfigSetupEmptyHint": "先在右上角配置接口",
+  "aiLegacyDefaultPromptBasic": "先梳理评论区的主流声音、分歧点、大家吐槽/夸赞的核心内容；之后直抒胸臆，大胆表达你的立场，好坏直接点明，不中和、不打太极；绝对不要虚构漫画剧情，所有内容都基于现有评论；语言干练接地气，用 Markdown 输出一份犀利总结，类似下面的格式：\n### 大家在聊什么 （不超过7项，取多数人讨论的，每一项字数保持在25字以内）\n- 很多人都表示...\n- 有些人觉得...\n- 个别人认为...\n### 我的评论\n（发表你的评论，简短10-20字左右，不要附和他人观点，不是对其他人的看法，而是直接说你自己的看法或吐槽，表现得自然一点）",
+  "aiDefaultPromptBasic": "先梳理评论区的主流声音、分歧点、大家吐槽/夸赞的核心内容；之后直抒胸臆，大胆表达你的立场，好坏直接点明，不中和、不打太极；绝对不要虚构漫画剧情，所有内容都基于现有评论；语言干练接地气，用 Markdown 输出一份犀利总结，类似下面的格式：\n### 大家在聊什么 （不超过7项，取多数人讨论的，每一项字数保持在25字以内）\n- 角色A做了什么...\n- 很多人吐槽...\n- xxxx...\n### 我的评论\n（发表你的评论，简短10-20字左右，不要附和他人观点，不是对其他人的看法，而是直接说你自己的看法或吐槽，表现得自然一点）",
+  "aiSpoilerAnalysisPromptAppendix": "【剧透分析附加要求】\n用户已开启剧透分析。请在遵循上方提示词的基础上，额外满足以下要求：\n- 正文总结中不要复述、描述、暗示或概括任何剧透内容；\n- 可以输出 **剧透警告**，但仅当存在剧透评论时才输出此段，且只能写\"本章评论中有 N（这个N是剧透的数量） 处涉及剧透，已遮罩\"这一句，绝对不要描述、暗示或概括任何剧情/转折/结局；如果没有任何剧透评论则整段省略。\n\n【剧透的判定标准 · 非常重要】\n只有同时满足以下全部条件的评论才应标记为剧透：\n- 明确透露（包含猜测，有些用户会通过猜测进行剧透）了尚未在当前章节及之前出场过的剧情走向、角色命运（死亡、复活、背叛等）或结局结果；\n- 普通的感想（如\"太好看了\"\"画风不错\"）、角色喜爱（如\"XX好帅\"）、对已发生情节的正常讨论、对后续的模糊期待（如\"期待下一话\"）【不算】剧透；\n【机读输出】用户消息中每条评论开头都是它的数字 id（形如 \"81216. xxx: ...\"）。在整篇输出的最末尾追加一个 fenced code block（用三个反引号包裹），里面只放一个 JSON 数字数组，列出【高度剧透嫌疑】的评论 id：\n```\n[81216, 81230]\n```\n如果没有任何高度剧透的评论，依然必须输出该代码块，数组为空：\n```\n[]\n```\n硬性要求：\n1) 必须是整篇输出的最后一段，下面不要再写任何字；\n2) 必须用三个反引号包裹（语言标识写不写都行）；\n3) 中括号里只能有数字和英文逗号，不要写解释、不要带 id= 前缀；\n4) 哪怕没有剧透也要写空数组 []，不能省略整个代码块；\n",
+  "aiPromptBasicName": "基础提示词",
+  "noticeCenterTitle": "通知中心",
+  "downloadCenterTitle": "下载中心",
+  "browseHistoryTitle": "浏览记录",
+  "aboutTitle": "关于",
+  "notLoggedInTitle": "未登录",
+  "loginPromptSubtitle": "点击登录以使用书架等功能",
+  "refreshUserButton": "刷新用户",
+  "switchAccountButton": "切换账号",
+  "copyTokenButton": "复制令牌",
+  "appDisclaimerIntro": "请在使用本应用前仔细阅读以下声明：",
+  "appDisclaimerItem1": "本应用（以下简称\"本软件\"）系独立开发的非官方第三方客户端，与任何内容平台、出版商或权利人均无隶属、合作或代理关系。",
+  "appDisclaimerItem2": "本软件不生产、上传、存储、编辑、修改、推荐或预先审查任何具体内容。所有内容均来源于第三方平台公开接口或可访问资源，其合法性、准确性、完整性及合规性由相应内容提供方独立负责。",
+  "appDisclaimerItem3": "本软件所展示的内容可能包含成人向、暴力、恐怖或其他不适宜未成年人浏览的信息。您确认您已年满 18 周岁，且您所在地法律法规允许您访问此类内容。如您不符合前述条件，请立即停止使用并卸载本软件。",
+  "appDisclaimerItem4": "您应自行判断所浏览内容是否适合，并确保您的使用行为完全符合您所在地现行有效的法律法规。因您使用本软件而产生的一切法律后果由您自行承担。",
+  "appDisclaimerItem5": "如任何第三方内容涉嫌侵犯他人合法权益或违反法律法规，权利人可通过本软件提供的联系方式向开发者发送有效通知，开发者将在合理期限内核实并采取必要措施。",
+  "appDisclaimerItem6": "本软件按\"现状\"提供，开发者不对其功能性、可用性、准确性或可靠性作出任何明示或默示的保证。在任何情况下，开发者均不对因使用或无法使用本软件而产生的任何直接、间接、附带、特殊或后果性损害承担责任。",
+  "appDisclaimerFooter": "继续使用本软件，即表示您已仔细阅读、充分理解并同意接受上述全部条款的约束。如您不同意任一条款，请立即停止使用并卸载本软件。",
+  "profileCurrentSelectedCredential": "当前已选",
+  "profileRemoveAccountTooltip": "移除账号",
+  "profileAccountRemovedToast": "已移除 {username}",
+  "@profileAccountRemovedToast": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "profileRegisterSuccessLoginToast": "注册成功，请登录",
+  "profileUsernamePasswordRequired": "请输入用户名和密码",
+  "profileLoginFailed": "登录失败",
+  "profileTokenRequired": "请输入令牌",
+  "profileTokenInvalidOrExpired": "令牌无效或已过期",
+  "profileLoginTitle": "登录",
+  "profileAccountPasswordLoginMode": "账号密码",
+  "profileTokenLoginMode": "令牌",
+  "profileSavedAccountsTitle": "已保存账号",
+  "profileSavedAccountsHint": "点按快速填充账号密码，右侧可移除",
+  "profileUsernameLabel": "用户名",
+  "profilePasswordLabel": "密码",
+  "profileTokenLabel": "令牌 (Token)",
+  "profileTokenHint": "粘贴你的登录令牌",
+  "profileRememberAccountLabel": "记住账号",
+  "profileRegisterHotMangaAccountButton": "注册热辣漫画账号",
+  "profileLoginButton": "登录",
+  "profileRegisterInfoRequired": "请填写完整注册信息",
+  "profilePasswordMismatch": "两次输入的密码不一致",
+  "profileSecurityQuestionRequired": "请选择安全问题",
+  "profileRegisterFailed": "注册失败",
+  "profileOpenOfficialRegisterFailed": "无法打开官网注册页",
+  "profileConfirmPasswordLabel": "确认密码",
+  "profileSecurityQuestionLabel": "账号安全问题",
+  "profileSecurityAnswerLabel": "安全问题答案",
+  "profileReloadSecurityQuestionsButton": "重新加载安全问题",
+  "profileRegisterButton": "注册",
+  "profileOfficialRegisterPrompt": "去官网注册",
+  "profileHotMangaLabel": "热辣漫画",
+  "profileCopyMangaLabel": "拷贝漫画",
+  "aboutQqGroupTitle": "QQ交流群",
+  "aboutJoinGroupButton": "加入群聊",
+  "aboutGroupNumberCopiedToast": "已复制群号",
+  "aboutMirrorPrefixTitle": "设置镜像源",
+  "aboutMirrorPrefixDesc": "用于更新弹窗中的镜像下载链接，会拼接在 GitHub 下载地址前。",
+  "aboutMirrorPrefixLabel": "镜像源地址",
+  "aboutMirrorPrefixHelper": "留空将恢复默认镜像源",
+  "aboutInvalidMirrorPrefix": "请输入有效的 http(s) 地址",
+  "aboutRestoreDefaultButton": "恢复默认",
+  "aboutSaveButton": "保存",
+  "aboutMirrorPrefixSavedToast": "镜像源已保存",
+  "aboutStableChannelShort": "稳定版",
+  "aboutUpdateChannelTitle": "更新渠道",
+  "aboutStableChannelTitle": "稳定版 (Stable)",
+  "aboutStableChannelDesc": "仅检查正式发布版本",
+  "aboutBetaChannelTitle": "预览版（Beta）",
+  "aboutBetaChannelDesc": "从最新提交构建的版本，可能不稳定",
+  "aboutBetaChannelSwitchedTitle": "已切换到预览版",
+  "aboutBetaChannelSwitchedContent": "预览版一般用于测试新功能或修复问题，可能存在更多问题。",
+  "aboutGotItButton": "知道了",
+  "aboutStableChannelSwitchedToast": "已切换到稳定版",
+  "aboutRepositoryLabel": "仓库",
+  "aboutFeedbackLabel": "反馈",
+  "aboutCommunityLabel": "交流",
+  "aboutCheckUpdateTitle": "检查更新",
+  "aboutAutoCheckUpdateTitle": "启动时检查更新",
+  "aboutLogTitle": "日志",
+  "aboutAcknowledgementTitle": "致谢",
+  "acknowledgementThanksTitle": "感谢以下服务与项目的支持",
+  "acknowledgementDandanplayTitle": "弹弹play",
+  "acknowledgementDandanplayDesc": "提供弹幕服务",
+  "acknowledgementZhconvertTitle": "繁化姬",
+  "acknowledgementZhconvertDesc": "提供简体化服务",
+  "aboutLicenseTitle": "许可证",
+  "licenseMitSummary": "本项目采用 MIT 开源许可证",
+  "cacheDeleteEntryTitle": "删除缓存项",
+  "cacheDeleteEntryContent": "确定要删除 {key} 吗？此操作不可恢复。",
+  "@cacheDeleteEntryContent": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheEntryDeletedToast": "已删除 {key}",
+  "@cacheEntryDeletedToast": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheDeleteFailedToast": "删除失败：{error}",
+  "@cacheDeleteFailedToast": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheLocalDataTarget": "{count} 项本地数据",
+  "@cacheLocalDataTarget": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cacheImageDataTarget": "{count} 个图片缓存（{size}）",
+  "@cacheImageDataTarget": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheDeleteSelectedTitle": "删除选中缓存",
+  "cacheDeleteSelectedContent": "确定要删除选中卡片中的 {targets} 吗？此操作不可恢复。",
+  "@cacheDeleteSelectedContent": {
+    "placeholders": {
+      "targets": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheSelectedDeletedToast": "已删除选中缓存",
+  "cacheNoImageCacheToClear": "暂无可清理的图片缓存",
+  "cacheClearImageCacheTitle": "清空图片缓存",
+  "cacheClearImageCacheContent": "确定要清空 {label} 吗？将删除 {fileCount} 个文件，释放约 {size}。",
+  "@cacheClearImageCacheContent": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "fileCount": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheClearButton": "清空",
+  "cacheImageCacheClearedToast": "已清空 {label}",
+  "@cacheImageCacheClearedToast": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheCleanFailedToast": "清理失败：{error}",
+  "@cacheCleanFailedToast": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheReaderImageLabel": "图片缓存 / 漫画阅读器",
+  "cacheReaderImageDesc": "漫画章节图片缓存。再次打开读过的章节时，图片会优先从这里读取。",
+  "cacheDefaultImageLabel": "图片缓存 / 封面与头像",
+  "cacheDefaultImageDesc": "封面、头像等 CachedNetworkImage 默认使用的图片缓存。",
+  "commentSettingsEditBuiltInPromptTitle": "编辑内置提示词",
+  "commentSettingsEditPromptTitle": "编辑提示词",
+  "commentSettingsAddPromptTitle": "添加提示词",
+  "commentSettingsNameLabel": "名称",
+  "commentSettingsPromptLabel": "提示词",
+  "commentSettingsResetButton": "重置",
+  "commentSettingsSaveButton": "保存",
+  "commentSettingsAddButton": "添加",
+  "commentSettingsTitle": "评论区设置",
+  "commentSettingsLayoutSection": "布局",
+  "commentSettingsCompactLayout": "紧凑布局",
+  "commentSettingsListLayout": "列表布局",
+  "commentSettingsShowAvatar": "显示头像",
+  "commentSettingsShowUserName": "显示用户名",
+  "commentSettingsShowCommentTime": "显示评论时间",
+  "commentSettingsPreloadTitle": "预加载评论",
+  "commentSettingsPreloadDesc": "进入章节时提前加载评论并显示数量",
+  "commentSettingsAutoLoadAllTitle": "自动加载全部评论",
+  "commentSettingsAutoLoadAllDesc": "打开评论区时自动加载所有评论",
+  "commentSettingsFontSizeTitle": "评论内容字体大小",
+  "chapterCommentsNoSummaryComments": "当前没有可总结的评论",
+  "chapterCommentsEnableAiSummaryFirst": "请先在评论区设置中启用 AI 总结",
+  "chapterCommentsPromptComicLine": "漫画：{comicName}\n",
+  "@chapterCommentsPromptComicLine": {
+    "placeholders": {
+      "comicName": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsPromptUser": "{comicLine}章节：{chapterName}\n共 {count} 条不同评论（相同内容已合并）。每条行首数字为该评论的 id：\n\n{snippets}",
+  "@chapterCommentsPromptUser": {
+    "placeholders": {
+      "comicLine": {
+        "type": "String"
+      },
+      "chapterName": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "snippets": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsMergedSnippet": "{id}. [{count}人] {text}\n",
+  "@chapterCommentsMergedSnippet": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsSingleSnippet": "{id}. {userName}: {text}\n",
+  "@chapterCommentsSingleSnippet": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      },
+      "userName": {
+        "type": "String"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsSnippetsTruncated": "…（已截断，共 {count} 条不同评论）",
+  "@chapterCommentsSnippetsTruncated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chapterCommentsDioException": "Dio 异常",
+  "chapterCommentsCopyLog": "复制日志",
+  "chapterCommentsLoginRequiredToPost": "请先登录后再发表评论",
+  "chapterCommentsLengthRange": "评论字数需在 3-200 之间",
+  "chapterCommentsPosted": "评论已发布",
+  "chapterCommentsPostTitle": "发表评论",
+  "chapterCommentsPostHint": "吐槽一下",
+  "chapterCommentsLengthHelper": "评论字数 3-200",
+  "chapterCommentsLogCopied": "日志已复制",
+  "chapterCommentsPublish": "发布",
+  "chapterCommentsActionTitle": "评论操作",
+  "chapterCommentsPlusOneSubtitle": "发送一条相同评论",
+  "chapterCommentsBlockUser": "屏蔽用户",
+  "chapterCommentsHideUserComments": "隐藏 {userName} 的评论",
+  "@chapterCommentsHideUserComments": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsCopied": "已复制",
+  "chapterCommentsUserBlocked": "已屏蔽该用户",
+  "chapterCommentsBlockUnnamedConfirm": "确定屏蔽该用户吗？屏蔽后将不再显示其评论。",
+  "chapterCommentsBlockNamedConfirm": "确定屏蔽「{name}」吗？屏蔽后将不再显示其评论。\n可在评论区设置 → 黑名单中解除。",
+  "@chapterCommentsBlockNamedConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsNoRemindAgain": "不再提醒",
+  "chapterCommentsBlock": "屏蔽",
+  "chapterCommentsPlusOneLengthInvalid": "评论字数需在 3-200 之间，无法 +1",
+  "chapterCommentsPlusOneSent": "+1 已发送",
+  "chapterCommentsPostFailed": "发表评论失败",
+  "chapterCommentsTitle": "章节评论",
+  "chapterCommentsLoadAllTooltip": "加载全部评论",
+  "chapterCommentsAiSummaryTooltip": "AI 总结评论",
+  "chapterCommentsRegenerateAiSummaryTooltip": "重新生成 AI 总结",
+  "chapterCommentsSwitchToListLayout": "切换为列表布局",
+  "chapterCommentsSwitchToCompactLayout": "切换为紧凑布局",
+  "chapterCommentsTotalCount": "{count} 条",
+  "@chapterCommentsTotalCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chapterCommentsComment": "评论",
+  "chapterCommentsCatalog": "目录",
+  "chapterCommentsNext": "下一话",
+  "chapterCommentsLoadFailed": "评论加载失败",
+  "chapterCommentsEmptyTitle": "还没有评论",
+  "chapterCommentsEmptySubtitle": "这个章节暂时没人发言",
+  "chapterCommentsSwitchModel": "切换模型",
+  "chapterCommentsCannotSwitchModelGenerating": "生成中无法切换模型",
+  "chapterCommentsModelSummary": "{model} 总结",
+  "@chapterCommentsModelSummary": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsActiveModel": "当前模型：{provider} / {model}",
+  "@chapterCommentsActiveModel": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsReasoning": "思考过程",
+  "chapterCommentsReasoningCollapsed": "思考过程（已折叠）",
+  "chapterCommentsGenerating": "正在生成中…",
+  "chapterCommentsCollapse": "收起",
+  "chapterCommentsExpand": "展开",
+  "chapterCommentsSummaryFailed": "生成失败：{error}",
+  "@chapterCommentsSummaryFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chapterCommentsStop": "停止",
+  "chapterCommentsRegenerate": "重新生成",
+  "chapterCommentsClearSummary": "清除总结",
+  "comicCommentTitle": "漫画评论",
+  "comicCommentSettingsTooltip": "评论设置",
+  "comicCommentLoadFailed": "评论加载失败",
+  "comicCommentEmptySubtitle": "这部漫画暂时没人发言",
+  "comicCommentCollapseReplies": "收起回复",
+  "comicCommentExpandReplies": "展开 {count} 条回复",
+  "@comicCommentExpandReplies": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "comicCommentReplyLoadFailed": "回复加载失败",
+  "comicCommentEmptyReplies": "暂无可显示的回复",
+  "comicCommentRetryLoadMoreReplies": "重试加载更多回复",
+  "comicCommentLoadMoreReplies": "加载更多回复 ({loaded}/{total})",
+  "@comicCommentLoadMoreReplies": {
+    "placeholders": {
+      "loaded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "comicCommentCopied": "评论已复制",
+  "comicCommentBlockNamedConfirm": "确定屏蔽「{name}」吗？屏蔽后将不再显示其评论。\n可在黑名单中解除。",
+  "@comicCommentBlockNamedConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comicCommentReplyTitle": "回复 {userName}",
+  "@comicCommentReplyTitle": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "comicCommentReplyHint": "回复 {userName}...",
+  "@comicCommentReplyHint": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "comicCommentPostHint": "说点什么...",
+  "comicCommentReplyPosted": "回复已发布",
+  "comicCommentReplyButton": "回复",
+  "comicCommentExpandFullText": "展开全文",
+  "animeDetailTitle": "动漫详情",
+  "animeDetailIntroTab": "简介",
+  "animeDetailEpisodesTab": "选集 ({count})",
+  "@animeDetailEpisodesTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailIntroRefreshFailed": "简介刷新失败",
+  "animeDetailEpisodeRefreshFailed": "选集刷新失败",
+  "animeDetailDandanplayBindingCleared": "已清除弹弹play绑定",
+  "animeDetailDandanplayBound": "已绑定 {title}",
+  "@animeDetailDandanplayBound": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "animeDetailAlignmentCleared": "已清除对齐",
+  "animeDetailRealigned": "已重新对齐弹幕",
+  "animeDetailNoAvailableLine": "当前选集暂无可用线路",
+  "animeDetailPlaybackEpisodeUnavailable": "播放记录对应选集暂不可用",
+  "animeDetailInfoLoadFailedForDownload": "动漫信息加载失败，无法下载",
+  "animeDetailNoLineForDownload": "当前选集暂无可用线路，无法下载",
+  "animeDetailDownloadTasksAdded": "已添加 {count} 个下载任务",
+  "@animeDetailDownloadTasksAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailCannotCollect": "当前动漫暂时无法收藏",
+  "animeDetailCollected": "已收藏",
+  "animeDetailCollectCancelled": "已取消收藏",
+  "animeDetailCollectFailed": "收藏状态修改失败",
+  "animeDetailDownloadTaskCount": "{count} 个任务",
+  "@animeDetailDownloadTaskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailNoIntroInfo": "暂无简介信息",
+  "animeDetailInfoTitle": "资料",
+  "animeDetailIntroLoadFailed": "简介加载失败，下拉重试",
+  "animeDetailIntroRefreshFailedCached": "简介刷新失败，当前显示缓存内容",
+  "animeDetailSelectedEpisodes": "已选 {count} 集",
+  "@animeDetailSelectedEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animeDetailSelectAllUndownloaded": "全选未下载",
+  "animeDetailDownloadSelected": "下载选中",
+  "animeDetailEpisodeLoadFailed": "选集加载失败，下拉重试",
+  "animeDetailNoEpisodes": "暂无选集",
+  "animeDetailEpisodeRefreshFailedCached": "选集刷新失败，当前显示上次结果",
+  "animeDetailBindToViewComments": "绑定弹弹play 后才可查看评论",
+  "animeDetailBindDanmaku": "绑定弹幕",
+  "animeDetailRebind": "重新绑定",
+  "animeDetailAlign": "对齐",
+  "animeDetailDownloadButton": "下载",
+  "animeDetailEpisodeLoadFailedShort": "选集加载失败",
+  "readerSettingsTitle": "阅读设置",
+  "readerScrollMode": "滚动",
+  "readerPageMode": "翻页",
+  "readerLeftToRight": "左到右",
+  "readerRightToLeft": "右到左",
+  "readerTopToBottom": "上到下",
+  "readerScrollSection": "滚动",
+  "readerImageGap": "图片间距",
+  "readerContinuousReading": "连续阅读",
+  "readerContinuousReadingDesc": "到末页后直接拼接下一话，不重新加载",
+  "readerAutoScroll": "自动滚动",
+  "readerAutoScrollDesc": "开启后在导航栏显示自动滚动按钮",
+  "readerAutoScrollDistance": "滚动幅度",
+  "readerAutoScrollPause": "停顿时长",
+  "readerSeconds": "{seconds} 秒",
+  "@readerSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "readerAutoResume": "自动恢复",
+  "readerAutoResumeDesc": "一段时间无动作后自动恢复滚动",
+  "readerAutoResumeDelay": "恢复延迟",
+  "readerPageSection": "翻页",
+  "readerVolumeKeyPageTurn": "音量键翻页",
+  "readerVolumeKeyPageTurnDesc": "音量+上一页，音量-下一页",
+  "readerInstantPageTurn": "无动画翻页",
+  "readerDisplaySection": "显示",
+  "readerDimming": "降低亮度",
+  "readerImageLoadingSection": "图片加载",
+  "readerTimeout": "超时时间",
+  "readerTimeoutDesc": "设置太小可能导致图片加载失败，太大可能导致长时间转圈",
+  "readerNoLoadStats": "暂无加载记录（阅读图片后此处显示平均耗时供参考）",
+  "readerRecentLoadStats": "最近10分钟内加载了 {count} 张，平均 {seconds} s",
+  "@readerRecentLoadStats": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "readerRetryCount": "重试次数",
+  "offButton": "关闭",
+  "readerTimes": "{count} 次",
+  "@readerTimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "browseHistoryClearTitle": "清空浏览记录",
+  "browseHistoryClearContent": "确定要清空所有{mode}浏览记录吗？此操作不可撤销。",
+  "@browseHistoryClearContent": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryCleared": "已清空{mode}浏览记录",
+  "@browseHistoryCleared": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryClearFailed": "清空失败：{error}",
+  "@browseHistoryClearFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryLoginExpiredContent": "浏览记录需要登录后才能继续查看，是否现在重新登录？",
+  "browseHistoryLoginToView": "登录后可继续查看浏览记录",
+  "browseHistoryLoginHintWithAnime": "浏览过的漫画和动漫会同步显示在这里",
+  "browseHistoryLoginHintComicOnly": "浏览过的漫画会同步显示在这里",
+  "browseHistoryEmptyTitle": "还没有{mode}浏览记录",
+  "@browseHistoryEmptyTitle": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryEmptySubtitle": "去看几部{mode}后，这里会显示最近浏览内容",
+  "@browseHistoryEmptySubtitle": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryTotal": "共 {count} 条{mode}浏览记录",
+  "@browseHistoryTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "hundredMillionUnit": "{value}亿",
+  "@hundredMillionUnit": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "tenThousandUnit": "{value}万",
+  "@tenThousandUnit": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryLatestChapter": "最新 {chapter}",
+  "@browseHistoryLatestChapter": {
+    "placeholders": {
+      "chapter": {
+        "type": "String"
+      }
+    }
+  },
+  "browseHistoryLastSeen": "上次看到 {name}",
+  "@browseHistoryLastSeen": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerLoginRequiredToPlay": "登录后才能播放该视频",
+  "animePlayerEmptyVideoUrl": "视频链接为空",
+  "animePlayerRequestFailedStatus": "请求失败（{statusCode}）",
+  "@animePlayerRequestFailedStatus": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerRequestFailedStatusText": "请求失败（{statusCode}）",
+  "@animePlayerRequestFailedStatusText": {
+    "placeholders": {
+      "statusCode": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerMpvLogTitle": "media_kit/mpv 日志:",
+  "animePlayerQuickDiagnosisTitle": "快速诊断:",
+  "animePlayerDiagnosisManifestStatus": "m3u8 状态: {statusCode}",
+  "@animePlayerDiagnosisManifestStatus": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerDiagnosisManifestHls": "m3u8 内容: 已识别为 HLS 清单",
+  "animePlayerDiagnosisManifestNotHls": "m3u8 内容: 返回 200，但内容不像标准 HLS 清单",
+  "animePlayerDiagnosisManifestError": "m3u8 错误: {error}",
+  "@animePlayerDiagnosisManifestError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerDiagnosisFirstSegment": "首个分片: {url}",
+  "@animePlayerDiagnosisFirstSegment": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerDiagnosisSegmentStatus": "首个分片状态: {statusCode}",
+  "@animePlayerDiagnosisSegmentStatus": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerDiagnosisSegmentBytes": "首个分片字节数: {bytes}",
+  "@animePlayerDiagnosisSegmentBytes": {
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerDiagnosisSegmentError": "首个分片错误: {error}",
+  "@animePlayerDiagnosisSegmentError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerDiagnosisConclusionDecodeIssue": "结论: m3u8 与首个分片都可访问，更像是播放器解析或解码兼容问题",
+  "animePlayerSourceForbidden": "视频源拒绝访问（403）",
+  "animePlayerSourceNotFound": "视频地址已失效（404）",
+  "animePlayerCertificateFailed": "视频证书校验失败",
+  "animePlayerConnectionTimeout": "视频连接超时",
+  "animePlayerCannotParseStream": "视频源可访问，但播放器无法解析该视频流",
+  "animePlayerEnableProxyToRetry": "视频加载失败，请开启代理后重试",
+  "animePlayerInvalidVideoUri": "视频地址不是合法 URI",
+  "animePlayerDiagnosisRequestFailed": "视频诊断请求失败",
+  "animePlayerSegmentDiagnosisRequestFailed": "视频分片诊断请求失败",
+  "animePlayerSegmentUrlNotResolved": "未解析出分片地址",
+  "animePlayerLoadingCannotSwitch": "视频加载中，请稍后再切换",
+  "animePlayerNoVideoUrlToCopy": "暂无可复制的视频链接",
+  "animePlayerVideoUrlCopied": "视频链接已复制到剪贴板",
+  "animePlayerNoVideoUrlToOpen": "暂无可打开的视频链接",
+  "animePlayerOpenVideoUrlFailed": "无法打开视频链接",
+  "animePlayerSeekedTo": "已跳转到 {position}",
+  "@animePlayerSeekedTo": {
+    "placeholders": {
+      "position": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerSeekLastFailed": "无法跳转到上次进度",
+  "animePlayerSearchFailed": "搜索失败: {error}",
+  "@animePlayerSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerRefreshTooFrequent": "不要频繁刷新！",
+  "animePlayerLoadDanmakuFailed": "加载弹幕失败: {error}",
+  "@animePlayerLoadDanmakuFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animePlayerBuffering": "正在缓冲...",
+  "animePlayerProxySuggestion": "如果网络卡顿，建议开启代理访问",
+  "animePlayerPlay": "播放",
+  "animePlayerFastForward": "快进 {seconds}秒",
+  "@animePlayerFastForward": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerHideDanmaku": "隐藏弹幕",
+  "animePlayerChapterSelector": "选集",
+  "animePlayerChapterSelectorWithCount": "选集 ({count})",
+  "@animePlayerChapterSelectorWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "animePlayerSetSkipSeconds": "设置跳转秒数",
+  "animePlayerExitFullscreen": "退出全屏",
+  "animePlayerFullscreen": "全屏",
+  "backButton": "返回",
+  "cacheSelectedCards": "已选 {count} 个卡片",
+  "@cacheSelectedCards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cacheDeleteSelectedCardsTooltip": "删除选中卡片",
+  "cacheExitMultiSelectTooltip": "退出多选",
+  "cacheMultiSelectTooltip": "多选卡片",
+  "cacheSummary": "共 {localTotal} 项本地数据 · 图片缓存 {imageCacheFiles} 个文件 · {size}",
+  "@cacheSummary": {
+    "placeholders": {
+      "localTotal": {
+        "type": "int"
+      },
+      "imageCacheFiles": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheManagementSummaryDesc": "按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片文件缓存可单独清理。",
+  "cacheImageCacheSection": "图片缓存",
+  "cacheDataCacheSection": "数据缓存",
+  "cacheNoLocalKeyValueData": "没有可显示的本地键值数据",
+  "cacheEntryCountSize": "{count} 项 · {size}",
+  "@cacheEntryCountSize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheHideSensitiveTooltip": "隐藏敏感内容",
+  "cacheShowSensitiveTooltip": "显示敏感内容",
+  "cacheEntryDataTitle": "缓存项数据",
+  "cacheDataCopiedToast": "缓存数据已复制",
+  "cacheFileCountSize": "{count} 个文件 · {size}",
+  "@cacheFileCountSize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheDescriptionTitle": "说明",
+  "cacheKeyTitle": "缓存标识",
+  "cacheDirectoryTitle": "缓存目录",
+  "cacheCategoryPersistentCache": "业务缓存",
+  "cacheCategoryAccount": "账号数据",
+  "cacheCategoryAppSettings": "应用设置",
+  "cacheCategoryMangaHistory": "漫画阅读历史",
+  "cacheCategoryAnimeHistory": "动漫播放历史",
+  "cacheCategoryBindings": "弹幕绑定",
+  "cacheCategoryAiSummaryCache": "AI 总结缓存",
+  "cacheCategoryOther": "其他数据",
+  "themeColorBlueGrey": "蓝灰",
+  "themeColorTeal": "青绿",
+  "themeColorIndigo": "靛蓝",
+  "themeColorGreen": "森绿",
+  "themeColorOrange": "橙金",
+  "themeColorPink": "粉色",
+  "themeColorBrightBlue": "亮蓝",
+  "themeColorViolet": "紫罗兰",
+  "themeColorOrchid": "兰紫",
+  "themeColorCyan": "湖青",
+  "themeColorEmerald": "翡翠",
+  "themeColorLime": "青柠",
+  "themeColorAmber": "琥珀",
+  "themeColorCoral": "珊瑚",
+  "themeColorCustom": "自定",
+  "themeVariantTonalSpot": "柔和",
+  "themeVariantTonalSpotDesc": "Material 默认风格，低饱和、耐看。",
+  "themeVariantVibrant": "鲜明",
+  "themeVariantVibrantDesc": "提高主色饱和度，整体更醒目。",
+  "themeVariantExpressive": "表现",
+  "themeVariantExpressiveDesc": "会偏移主色相，风格更有个性。",
+  "themeVariantFidelity": "准确",
+  "themeVariantFidelityDesc": "尽量贴近所选主色的原始观感。",
+  "themeVariantContent": "内容",
+  "themeVariantContentDesc": "容器颜色更贴近主色，强调层次。",
+  "themeVariantNeutral": "中性",
+  "themeVariantNeutralDesc": "接近灰阶，适合更克制的界面。",
+  "themeVariantMonochrome": "黑白",
+  "themeVariantMonochromeDesc": "完全灰阶，只保留明暗关系。",
+  "themeVariantRainbow": "彩虹",
+  "themeVariantRainbowDesc": "跳脱主色限制，整体更活泼。",
+  "appLogEmpty": "暂无错误日志",
+  "appLogCopied": "日志已复制到剪贴板",
+  "appLogCopyFailed": "复制失败：{error}",
+  "@appLogCopyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appLogClearTitle": "清空错误日志",
+  "appLogClearContent": "确定要删除本地保存的错误日志吗？",
+  "appLogCleared": "错误日志已清空",
+  "appLogClearFailed": "清空失败：{error}",
+  "@appLogClearFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsTooltip": "设置",
+  "appLogSettingsTitle": "日志设置",
+  "appLogRecordLogs": "记录日志",
+  "appLogLevel": "日志级别",
+  "appLogLevelDebug": "调试",
+  "appLogLevelInfo": "信息",
+  "appLogLevelWarning": "警告",
+  "appLogLevelError": "错误",
+  "appLogSearchHint": "搜索日志（消息、来源、堆栈、上下文）",
+  "appLogClearLogsTooltip": "清空日志",
+  "appLogAllLevels": "全部",
+  "appLogCopyThisLogTooltip": "复制此日志",
+  "appLogContextTitle": "上下文",
+  "appLogStackTitle": "堆栈",
+  "relativeTimeJustNow": "刚刚",
+  "relativeTimeMinutesAgo": "{minutes}分钟前",
+  "@relativeTimeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeHoursAgo": "{hours}小时前",
+  "@relativeTimeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeDaysAgo": "{days}天前",
+  "@relativeTimeDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeMonthsAgo": "{months}个月前",
+  "@relativeTimeMonthsAgo": {
+    "placeholders": {
+      "months": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeTimeYearsAgo": "{years}年前",
+  "@relativeTimeYearsAgo": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailCommentsUnavailable": "当前漫画暂时无法查看评论",
+  "comicDetailAuthorUnavailable": "当前作者暂时无法查看作品",
+  "comicDetailThemeUnavailable": "当前主题暂时无法查看作品",
+  "comicDetailSelectUndownloadedChapters": "请选择未下载的章节",
+  "comicDetailAddedToDownloadQueue": "已加入下载队列：{count} 章（顺序下载）",
+  "@comicDetailAddedToDownloadQueue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailSelectedAlreadyDownloadedOrQueued": "所选章节已下载或已在队列中",
+  "comicDetailSelectedChapters": "已选 {count} 章",
+  "@comicDetailSelectedChapters": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailSequentialDownloading": "顺序下载中 {count} 章",
+  "@comicDetailSequentialDownloading": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadedStatus": "已下载",
+  "comicDetailDownloadProgress": "下载 {completed}/{total}",
+  "@comicDetailDownloadProgress": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "comicDetailQueued": "排队中",
+  "processingStatus": "处理中",
+  "comicDetailReadWithStatus": "已读 · {status}",
+  "@comicDetailReadWithStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "collectButton": "收藏",
+  "downloadQueueTab": "队列",
+  "downloadQueueEmpty": "下载队列为空",
+  "downloadQueueEmptyComicHint": "去漫画详情页添加下载任务",
+  "downloadQueueEmptyMixedHint": "去漫画或动漫详情页添加下载任务",
+  "downloadProgressApproxBytes": "{percent}% · 约 {size}",
+  "@downloadProgressApproxBytes": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadingStatus": "下载中",
+  "waitingStatus": "等待中",
+  "pausedStatus": "已暂停",
+  "downloadFailedStatus": "下载失败",
+  "animeDownloadConnectionTimeout": "连接超时",
+  "animeDownloadProxyRetrySuggestion": "建议开启代理后重试",
+  "animeDownloadUnknownError": "未知错误",
+  "animeDownloadFailedMessage": "{chapter} 下载失败：{error}",
+  "@animeDownloadFailedMessage": {
+    "placeholders": {
+      "chapter": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "animeDownloadEmptyVideoUrl": "视频链接为空",
+  "pauseButton": "暂停",
+  "resumeButton": "继续",
+  "downloadProgressCount": "{percent}% ({completed}/{total})",
+  "@downloadProgressCount": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "commentSettingsAiSummarySection": "AI 总结",
+  "commentSettingsEnableAiSummary": "启用 AI 总结",
+  "commentSettingsAiSummaryEnabledDesc": "评论顶部显示 AI 总结按钮",
+  "commentSettingsAiSummaryDisabled": "未启用",
+  "commentSettingsConfigureAiFirst": "请先在「我的 → AI配置」中配置 API 密钥",
+  "commentSettingsCollapseAiComment": "折叠 AI 评论",
+  "commentSettingsCollapseAiCommentDesc": "开启后 AI 评论默认折叠，生成中也保持折叠",
+  "commentSettingsAutoAiSummary": "自动 AI 总结",
+  "commentSettingsAutoAiSummaryDesc": "评论数 ≥ {count} 条时自动生成",
+  "@commentSettingsAutoAiSummaryDesc": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commentSettingsMinCommentCount": "最少评论数",
+  "commentSettingsTriggerTiming": "调用时机",
+  "commentSettingsTimingOnOpen": "打开评论区时",
+  "commentSettingsTimingAfterPreload": "预加载完成后",
+  "commentSettingsPreloadRequiredForTiming": "选择“预加载完成后”需要先开启预加载评论。",
+  "commentSettingsSpoilerAnalysis": "剧透分析",
+  "commentSettingsSpoilerAnalysisDesc": "开启后会在当前提示词后自动追加剧透分析要求",
+  "commentSettingsSpoilerWarn": "打开剧透评论弹出提醒",
+  "commentSettingsPromptPresets": "提示词预设",
+  "commentSettingsBlacklistSection": "黑名单",
+  "commentSettingsBlacklistDesc": "长按评论可选择「屏蔽用户」，被屏蔽的评论将不再显示。",
+  "commentSettingsClearBlacklist": "清空黑名单",
+  "commentSettingsAnonymousUser": "匿名用户",
+  "commentSettingsRemoveFromBlacklist": "移出黑名单",
+  "profileFallbackQuestionWife": "我的老婆叫什麼？",
+  "profileFallbackQuestionFriend": "我的基友叫啥？",
+  "profileFallbackQuestionBestFriendCount": "我的好麻吉有幾個？",
+  "profileFallbackQuestionParentName": "我的父親(母親)叫什麽？",
+  "animeDetailSubtitleChip": "字幕",
+  "animeDetailLatestChapter": "最新：{chapter}",
+  "@animeDetailLatestChapter": {
+    "placeholders": {
+      "chapter": {
+        "type": "String"
+      }
+    }
+  },
+  "animeDetailOnAirChip": "连载中",
+  "animeDetailRestrictedChip": "受限",
+  "animeDetailDirector": "导演：{name}",
+  "@animeDetailDirector": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerSettingsPlaybackTitle": "播放设置",
+  "playerSettingsSkipSeconds": "快进秒数",
+  "playerSettingsSkipSecondsDesc": "动漫片头一般约90秒",
+  "playerSettingsSecondsLabel": "秒数",
+  "readerSecondsSuffix": "秒",
+  "playerSettingsRecordProgress": "记录播放进度",
+  "playerSettingsRecordProgressDesc": "再次打开同一集时自动跳转到上次观看位置",
+  "playerSettingsDanmakuTitle": "弹幕设置",
+  "playerSettingsShowDanmaku": "显示弹幕",
+  "playerSettingsFontSize": "字体大小",
+  "playerSettingsDisplayArea": "显示区域",
+  "playerSettingsOpacity": "透明度",
+  "playerSettingsDanmakuType": "弹幕类型",
+  "playerSettingsScrollDanmaku": "滚动弹幕",
+  "playerSettingsTopDanmaku": "顶部弹幕",
+  "playerSettingsBottomDanmaku": "底部弹幕",
+  "playerSettingsBlocklist": "屏蔽词",
+  "playerSettingsBlocklistDesc": "包含屏蔽词的弹幕将被自动过滤",
+  "playerSettingsBlocklistHint": "输入屏蔽词",
+  "playerSettingsChineseConvertTooltip": "简繁转换",
+  "readerImageLinksRefreshed": "图片链接已刷新",
+  "refreshFailedWithError": "刷新失败：{error}",
+  "@refreshFailedWithError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "readerLocalChapterNoRefresh": "本地章节无需刷新",
+  "readerAutoSummaryFailed": "后台自动总结失败：{error}",
+  "@readerAutoSummaryFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "readerNoPreviousChapter": "当前已无上一话",
+  "readerPreviousChapter": "上一章",
+  "readerPauseAutoScroll": "暂停自动滚动",
+  "readerAutoScrollWillResume": "自动滚动即将恢复",
+  "readerEnableAutoScroll": "开启自动滚动",
+  "readerLoadingNextChapter": "正在加载下一话…",
+  "readerContinueScrollLoadNext": "继续滚动加载下一话",
+  "readerAlreadyFirstChapter": "已经是第一章",
+  "readerContinuePageNextChapter": "继续翻页进入下一话",
+  "readerAlreadyLastChapter": "已经是最后一话",
+  "readerContinueScrollOrTapNextChapter": "继续下滑或点击按钮进入下一话",
+  "readerImagePathCopied": "图片路径已复制到剪贴板",
+  "readerImageUrlCopied": "图片链接已复制到剪贴板",
+  "readerLocalImageMissing": "本地图片损坏或缺失",
+  "readerCopyImagePath": "复制图片路径",
+  "readerImageRetrying": "加载失败，正在重试 {attempt}/{total}",
+  "@readerImageRetrying": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readerReloadImage": "重新加载",
+  "readerCopyImageUrl": "复制图片链接",
+  "updateAlreadyLatest": "当前已是最新版本",
+  "updateCheckFailedRetryLater": "检查更新失败，请稍后重试",
+  "updateOpenDownloadFailed": "无法打开下载链接",
+  "updateNoReleaseNotes": "暂无更新说明",
+  "updateMirrorDownload": "镜像下载",
+  "updateLatestBadge": "最新",
+  "updateCollapseOtherVersions": "收起其他版本",
+  "updateViewMoreVersions": "查看更多版本 ({count})",
+  "@updateViewMoreVersions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updateCiBuildUnstable": "CI 自动构建版本，不保证稳定性。",
+  "updateOpenReleasePage": "打开发布页",
+  "updatePackagesBeta": "安装包（按版本号倒序）",
+  "updatePackages": "安装包",
+  "updateSkipVersion": "跳过此版本",
+  "updateDisableAutoCheck": "取消自动检查更新",
+  "totalRank": "总榜",
+  "maleAudience": "男生",
+  "femaleAudience": "女生",
+  "noticeRefreshFailed": "刷新通知失败，请稍后重试",
+  "noticeReadFailed": "读取通知失败",
+  "noticeAllMarkedRead": "所有通知已标记为已读",
+  "noticeMarkAllReadTooltip": "全部已读",
+  "noticeRefreshTooltip": "刷新通知",
+  "noticeEmptyTitle": "暂无通知",
+  "noticeExpiredTitle": "过期通知",
+  "noticePinnedNodeSemantics": "置顶通知节点",
+  "noticeNodeSemantics": "通知节点",
+  "noticeOpenLink": "打开链接",
+  "noticeUnreadSemantics": "未读通知",
+  "noticeExpiredBadge": "已过期",
+  "readerImageViewerSettingsTooltip": "查看器设置",
+  "resetButton": "重置",
+  "readerRotateLeft": "向左旋转",
+  "readerRotateRight": "向右旋转",
+  "readerImageViewerSettingsTitle": "图片查看器设置",
+  "readerAutoRotateLandscape": "横向图片自动旋转",
+  "readerAutoRotateLandscapeDesc": "打开宽图时自动旋转 90 度",
+  "readerRotationDirection": "旋转方向",
+  "readerRotateLeftShort": "向左",
+  "readerRotateRightShort": "向右",
+  "browseHistoryLastSeenLabel": "上次看到",
+  "playerProgressAutoResumed": "{progress}（已自动继续）",
+  "@playerProgressAutoResumed": {
+    "placeholders": {
+      "progress": {
+        "type": "String"
+      }
+    }
+  },
+  "playerSeekButton": "跳转",
+  "bangumiCommentsLoadFailed": "评论加载失败",
+  "bangumiCommentsRetryHint": "下拉或点按钮重试",
+  "bangumiCommentsEmptyTitle": "还没有评论",
+  "bangumiCommentsEmptySubtitle": "暂时没有可显示的 Bangumi 评论",
+  "bangumiCommentsLoadMoreFailed": "更多评论加载失败",
+  "bangumiCommentsRetryLoadMore": "重试加载更多",
+  "bangumiCommentsLoadMore": "加载更多",
+  "bangumiCommentsEmptyComment": "这条评论没有内容",
+  "danmakuSearchTitle": "弹幕搜索",
+  "danmakuSearchTitleWithCount": "弹幕搜索（{count}）",
+  "@danmakuSearchTitleWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "danmakuSearchHint": "输入搜索关键词",
+  "forceRefreshTooltip": "强制刷新",
+  "danmakuSearchInstruction": "请选择分段或输入搜索词后点击搜索",
+  "danmakuSearchResultCount": "共找到 {count} 条结果",
+  "@danmakuSearchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "danmakuSearchNoResults": "未找到相关弹幕",
+  "danmakuSearchNoResultsHint": "减少关键词，仅搜索作品名称\n如：「Re：从零开始的异世界生活第四季丧失篇」搜索「从零开始的异世界生活第四季」",
+  "danmakuLabel": "弹幕",
+  "dandanplayBindingSearchKeyword": "搜索关键词",
+  "dandanplayBindingClear": "清除绑定",
+  "dandanplayBindingSearchFailed": "搜索失败：{error}",
+  "@dandanplayBindingSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dandanplayBindingNoResults": "未找到相关番剧",
+  "dandanplayBindingSearchInstruction": "输入关键词后点击搜索",
+  "dandanplayBindingCurrent": "当前绑定",
+  "dandanplayBindingBound": "已绑定",
+  "dandanplayBindingUnbound": "未绑定",
+  "dandanplayBindingBind": "绑定",
+  "dandanplayBindingRating": "评分 {rating}",
+  "@dandanplayBindingRating": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      }
+    }
+  },
+  "dandanplayAlignmentTitle": "对齐弹幕",
+  "dandanplayAlignmentVideoFirstEpisode": "视频第一集",
+  "dandanplayAlignmentDanmakuFirstEpisode": "弹幕第一集",
+  "dandanplayAlignmentClear": "清除对齐",
+  "spoilerWarningTitle": "剧透警告",
+  "spoilerWarningContent": "真的要打开吗？前方是地狱啊！",
+  "openButton": "打开",
+  "spoilerSuspectedComment": "这是一条高度剧透嫌疑的评论",
+  "spoilerTapToView": "含剧透，点击查看"
 }

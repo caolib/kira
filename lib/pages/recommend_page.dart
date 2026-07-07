@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
 import '../utils/app_logger.dart';
@@ -77,6 +78,7 @@ class _RecommendPageState extends State<RecommendPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth.clamp(0.0, 900.0);
     final hp = (screenWidth - contentWidth) / 2 + 16;
@@ -89,7 +91,7 @@ class _RecommendPageState extends State<RecommendPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('热门推荐')),
+      appBar: AppBar(title: Text(l10n.hotRecommend)),
       body: _loading
           ? GridView.builder(
               padding: EdgeInsets.symmetric(horizontal: hp, vertical: 12),

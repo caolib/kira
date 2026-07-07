@@ -10,6 +10,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../api/ai_api.dart';
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
@@ -376,15 +377,15 @@ class _ReaderPageState extends State<ReaderPage> {
       _autoAdvancingChapter = false;
       _saveReadingHistory();
       unawaited(_preloadComments());
-      // 缓存命中且当前无下一话时，后台静默刷新章节导航，用于发现新增的下一话。
+      // If cache has no next chapter, refresh navigation silently in background.
       if (!forceRefresh && !detail.isDownloaded && detail.next == null) {
         _refreshChapterMetadata(detail);
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _preloadImages(startPage - 1);
-        // 章节切换会打断动画接力；列表重建后若仍开启则续滚。
-        // 新章节首屏图片尚在加载，先等待再续滚，避免滚过未加载的空白。
+        // Chapter switches interrupt auto-scroll; resume after rebuild if enabled.
+        // Wait for first images to load before resuming to avoid scrolling blanks.
         if (_autoScrollEnabled && !_isPageMode) {
           final gen = ++_autoScrollGeneration;
           Future.delayed(const Duration(seconds: 3), () {
@@ -395,7 +396,12 @@ class _ReaderPageState extends State<ReaderPage> {
           });
         }
       });
-      if (forceRefresh && mounted) showToast(context, '图片链接已刷新');
+      if (forceRefresh && mounted) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.readerImageLinksRefreshed,
+        );
+      }
     } catch (e) {
       _autoAdvancingChapter = false;
       if (mounted) {
@@ -403,7 +409,14 @@ class _ReaderPageState extends State<ReaderPage> {
           if (!forceRefresh || _detail == null) _loading = false;
           if (forceRefresh) _refreshingChapter = false;
         });
-        if (forceRefresh) showToast(context, '刷新失败：${NetworkError.message(e)}');
+        if (forceRefresh) {
+          showToast(
+            context,
+            AppLocalizations.of(context)!.refreshFailedWithError(
+              NetworkError.message(e, l10n: AppLocalizations.of(context)!),
+            ),
+          );
+        }
       }
     }
   }
@@ -412,18 +425,17 @@ class _ReaderPageState extends State<ReaderPage> {
     final detail = _detail;
     if (_loading || _refreshingChapter || detail == null) return;
     if (detail.isDownloaded) {
-      showToast(context, '本地章节无需刷新');
+      showToast(
+        context,
+        AppLocalizations.of(context)!.readerLocalChapterNoRefresh,
+      );
       return;
     }
     await _loadChapter(forceRefresh: true);
   }
 
-  /// 缓存命中后，后台静默刷新章节导航字段（next/prev），用于发现新增的下一话。
-  ///
-  /// 缓存保存的是上次打开该话时的整份响应，其中 `next` 可能因之后新话上架
-  /// 而变得过时（例如曾经没有下一话，如今已有）。这里发一次请求取最新导航：
-  /// 仅当 next/prev 发生变化时更新 UI 并刷新缓存，避免无谓重绘打断阅读。
-  /// 仅在缓存命中且当前无下一话时触发，已有下一话时导航链完整，无需刷新。
+  /// Refreshes cached chapter navigation fields (next/prev) silently.
+  /// Only updates UI/cache when navigation changes.
   void _refreshChapterMetadata(ChapterDetail cached) {
     final chapterUuid = cached.uuid;
     _api.manga
@@ -432,7 +444,7 @@ class _ReaderPageState extends State<ReaderPage> {
           if (!mounted || _currentUuid != chapterUuid || _detail == null) {
             return;
           }
-          // 仅当导航字段变化才更新；contents 变化留给手动刷新。
+          // Update only when navigation changes; content changes require manual refresh.
           if (fresh.next == cached.next && fresh.prev == cached.prev) {
             return;
           }
@@ -442,14 +454,14 @@ class _ReaderPageState extends State<ReaderPage> {
               prev: fresh.prev,
             );
             _detail = updated;
-            // 同步链中对应章节，保证连续阅读追加判断使用最新导航
+            // Sync chain so continuous reading uses latest navigation.
             if (_chainIndex < _chain.length) {
               _chain[_chainIndex] = updated;
             }
           });
         })
         .catchError((Object _) {
-          // 后台刷新失败不影响正常阅读流程
+          // Background refresh failures do not affect reading.
         });
   }
 
@@ -485,7 +497,7 @@ class _ReaderPageState extends State<ReaderPage> {
         comments: data.list,
       );
     } catch (_) {
-      // 预加载失败不影响正常流程
+      // Preload failures do not affect reading.
     }
   }
 
@@ -532,6 +544,7 @@ class _ReaderPageState extends State<ReaderPage> {
     final buffer = StringBuffer();
     final reasoningBuffer = StringBuffer();
     ChapterSummaryCache.startProgress(chapterUuid);
+    final l10n = AppLocalizations.of(context)!;
     try {
       final provider = _aiSettings.activeProvider;
       final stream = _aiApi.streamChatChunks(
@@ -572,9 +585,9 @@ class _ReaderPageState extends State<ReaderPage> {
     } catch (e) {
       ChapterSummaryCache.failProgress(
         chapterUuid,
-        '后台自动总结失败：${NetworkError.message(e)}',
+        l10n.readerAutoSummaryFailed(NetworkError.message(e, l10n: l10n)),
       );
-      // 后台自动总结失败不打断阅读。
+      // Background auto-summary failures do not interrupt reading.
     }
   }
 
@@ -600,7 +613,11 @@ class _ReaderPageState extends State<ReaderPage> {
       buffer.write(line);
     }
     if (truncated) {
-      buffer.write('…（已截断，共 ${entries.length} 条不同评论）');
+      buffer.write(
+        AppLocalizations.of(
+          context,
+        )!.chapterCommentsSnippetsTruncated(entries.length),
+      );
     }
     return (snippets: buffer.toString(), count: entries.length);
   }
@@ -679,7 +696,7 @@ class _ReaderPageState extends State<ReaderPage> {
       // 链首之前还有上一话：降级为整章跳转（重新加载）
       _goChapter(_detail!.prev);
     } else {
-      showToast(context, '当前已无上一话');
+      showToast(context, AppLocalizations.of(context)!.readerNoPreviousChapter);
     }
   }
 
@@ -739,7 +756,10 @@ class _ReaderPageState extends State<ReaderPage> {
         return;
       }
       if (_loadingNextChainChapter) {
-        showToast(context, '正在加载下一话…');
+        showToast(
+          context,
+          AppLocalizations.of(context)!.readerLoadingNextChapter,
+        );
         return;
       }
       // 已经是最后一话：跳转到末尾空白页（触发返回目录）
@@ -1166,7 +1186,12 @@ class _ReaderPageState extends State<ReaderPage> {
     if (imageSource == null || imageSource.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: imageSource));
     if (!mounted) return;
-    showToast(context, chapter.isDownloaded ? '图片路径已复制到剪贴板' : '图片链接已复制到剪贴板');
+    showToast(
+      context,
+      chapter.isDownloaded
+          ? AppLocalizations.of(context)!.readerImagePathCopied
+          : AppLocalizations.of(context)!.readerImageUrlCopied,
+    );
   }
 
   Future<void> _openImageViewer(ChapterDetail chapter, int localIndex) async {
@@ -1273,14 +1298,16 @@ class _ReaderPageState extends State<ReaderPage> {
                 Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 48),
                 const SizedBox(height: 8),
                 Text(
-                  '本地图片损坏或缺失',
+                  AppLocalizations.of(context)!.readerLocalImageMissing,
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 FilledButton.tonalIcon(
                   onPressed: () => _copyImageUrl(chapter, localIndex),
                   icon: const Icon(Icons.copy_all_outlined, size: 18),
-                  label: const Text('复制图片路径'),
+                  label: Text(
+                    AppLocalizations.of(context)!.readerCopyImagePath,
+                  ),
                 ),
               ],
             ),
@@ -1351,8 +1378,10 @@ class _ReaderPageState extends State<ReaderPage> {
                   const SizedBox(height: 8),
                   Text(
                     canAutoRetry
-                        ? '加载失败，正在重试 ${attempts + 1}/$retryLimit'
-                        : '加载失败',
+                        ? AppLocalizations.of(
+                            context,
+                          )!.readerImageRetrying(attempts + 1, retryLimit)
+                        : AppLocalizations.of(context)!.loadingFailed,
                     style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                   ),
                   if (!canAutoRetry) ...[
@@ -1360,13 +1389,17 @@ class _ReaderPageState extends State<ReaderPage> {
                     FilledButton.tonalIcon(
                       onPressed: () => _retryImage(chapter, localIndex, key),
                       icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('重新加载'),
+                      label: Text(
+                        AppLocalizations.of(context)!.readerReloadImage,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     FilledButton.tonalIcon(
                       onPressed: () => _copyImageUrl(chapter, localIndex),
                       icon: const Icon(Icons.copy_all_outlined, size: 18),
-                      label: const Text('复制图片链接'),
+                      label: Text(
+                        AppLocalizations.of(context)!.readerCopyImageUrl,
+                      ),
                     ),
                   ],
                 ],
@@ -1489,7 +1522,7 @@ class _ReaderPageState extends State<ReaderPage> {
     final starts = <int>[];
     for (final chapter in _chain) {
       starts.add(cursor);
-      cursor += chapter.contents.length + 1; // 图片 + 末尾分隔/tail
+      cursor += chapter.contents.length + 1; // Images + trailing separator/tail
     }
     // 找到可见面积最大的图片 item
     int? bestChapterIndex;
@@ -1817,7 +1850,7 @@ class _ReaderPageState extends State<ReaderPage> {
       page: lastChapter.contents.length,
       hasHeader: hasHeader,
     );
-    final triggerIndex = lastImageIndex - 1; // 倒数第二张
+    final triggerIndex = lastImageIndex - 1; // Second-to-last image
     final positions = _itemPositionsListener.itemPositions.value;
     for (final p in positions) {
       if ((p.index == triggerIndex || p.index == lastImageIndex) &&

@@ -4,6 +4,7 @@ import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:system_fonts/system_fonts.dart';
 
+import '../l10n/app_localizations.dart';
 import '../main.dart' show isDesktop;
 import '../models/app_theme_option.dart';
 import '../models/user_manager.dart';
@@ -21,11 +22,20 @@ class _AppearancePageState extends State<AppearancePage> {
   final _user = UserManager();
 
   static const _navMeta = {
-    'comic': (Icons.menu_book_outlined, Icons.menu_book, '漫画'),
-    'anime': (Icons.movie_outlined, Icons.movie, '动漫'),
-    'search': (Icons.search_outlined, Icons.search, '搜索'),
-    'bookshelf': (Icons.bookmark_border, Icons.bookmark, '书架'),
-    'profile': (Icons.person_outline, Icons.person, '我的'),
+    'comic': (Icons.menu_book_outlined, Icons.menu_book),
+    'anime': (Icons.movie_outlined, Icons.movie),
+    'search': (Icons.search_outlined, Icons.search),
+    'bookshelf': (Icons.bookmark_border, Icons.bookmark),
+    'profile': (Icons.person_outline, Icons.person),
+  };
+
+  String _navLabel(String key, AppLocalizations l10n) => switch (key) {
+    'comic' => l10n.comicTabLabel,
+    'anime' => l10n.animeTabLabel,
+    'search' => l10n.searchTabLabel,
+    'bookshelf' => l10n.bookshelfTabLabel,
+    'profile' => l10n.profileTabLabel,
+    _ => key,
   };
 
   @override
@@ -49,7 +59,7 @@ class _AppearancePageState extends State<AppearancePage> {
     await _user.setLogoIndex(index);
     if (!mounted) return;
     if (Platform.isAndroid || Platform.isIOS) {
-      showToast(context, '桌面图标已更换，可能需要重启应用后生效');
+      showToast(context, AppLocalizations.of(context)!.appearanceLogoChanged);
     }
   }
 
@@ -64,6 +74,7 @@ class _AppearancePageState extends State<AppearancePage> {
 
   Future<void> _pickCustomThemeColor() async {
     var selectedColor = _user.customThemeColor;
+    final l10n = AppLocalizations.of(context)!;
     final didSelectColor =
         await ColorPicker(
           color: selectedColor,
@@ -84,8 +95,8 @@ class _AppearancePageState extends State<AppearancePage> {
           wheelWidth: 20,
           wheelSquareBorderRadius: 12,
           wheelHasBorder: true,
-          heading: const Text('点击色盘选择一个自定义主题色'),
-          wheelSubheading: const Text('拖动取色点，实时预览主题色'),
+          heading: Text(l10n.appearanceColorPickerHeading),
+          wheelSubheading: Text(l10n.appearanceColorPickerSubheading),
           borderRadius: 12,
         ).showPickerDialog(
           context,
@@ -96,12 +107,16 @@ class _AppearancePageState extends State<AppearancePage> {
 
     await _user.setCustomThemeColor(selectedColor);
     if (mounted) {
-      showToast(context, '主题配色已更新为 ${_colorToHex(selectedColor)}');
+      showToast(
+        context,
+        l10n.appearanceThemeColorUpdated(_colorToHex(selectedColor)),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final selectedVariant = _user.themeVariantOption;
@@ -109,7 +124,7 @@ class _AppearancePageState extends State<AppearancePage> {
         .round();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('外观')),
+      appBar: AppBar(title: Text(l10n.appearanceTitle)),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
@@ -122,7 +137,7 @@ class _AppearancePageState extends State<AppearancePage> {
                     Icons.text_fields_rounded,
                     color: cs.onSurfaceVariant,
                   ),
-                  title: const Text('底部导航栏显示文字'),
+                  title: Text(l10n.appearanceBottomNavShowLabels),
                   value: _user.bottomNavShowLabels,
                   onChanged: _user.setBottomNavShowLabels,
                 ),
@@ -137,7 +152,7 @@ class _AppearancePageState extends State<AppearancePage> {
                         size: 20,
                       ),
                       const SizedBox(width: 16),
-                      Text('导航栏顺序', style: tt.titleSmall),
+                      Text(l10n.appearanceNavOrder, style: tt.titleSmall),
                     ],
                   ),
                 ),
@@ -173,7 +188,7 @@ class _AppearancePageState extends State<AppearancePage> {
                               child: _NavOrderDestination(
                                 icon: meta.$1,
                                 selectedIcon: meta.$2,
-                                label: meta.$3,
+                                label: _navLabel(key, l10n),
                                 selected: key == _user.lastNavKey,
                                 showLabel: _user.bottomNavShowLabels,
                               ),
@@ -207,12 +222,12 @@ class _AppearancePageState extends State<AppearancePage> {
                         color: cs.onSurfaceVariant,
                       ),
                       const SizedBox(width: 16),
-                      const Text('应用图标'),
+                      Text(l10n.appearanceAppIcon),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '更换后重启应用生效',
+                    l10n.appearanceAppIconRestartHint,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
@@ -241,7 +256,7 @@ class _AppearancePageState extends State<AppearancePage> {
                   Icons.monitor_heart_outlined,
                   color: cs.onSurfaceVariant,
                 ),
-                title: const Text('屏幕刷新率'),
+                title: Text(l10n.appearanceRefreshRateTitle),
                 trailing: Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
                 onTap: _showDisplayModeSheet,
               ),
@@ -259,28 +274,28 @@ class _AppearancePageState extends State<AppearancePage> {
                     children: [
                       Icon(Icons.brightness_6, color: cs.onSurfaceVariant),
                       const SizedBox(width: 16),
-                      const Text('主题模式'),
+                      Text(l10n.appearanceThemeMode),
                     ],
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: SegmentedButton<ThemeMode>(
-                      segments: const [
+                      segments: [
                         ButtonSegment(
                           value: ThemeMode.system,
-                          icon: Icon(Icons.settings_brightness),
-                          label: Text('系统'),
+                          icon: const Icon(Icons.settings_brightness),
+                          label: Text(l10n.appearanceSystemMode),
                         ),
                         ButtonSegment(
                           value: ThemeMode.light,
-                          icon: Icon(Icons.light_mode),
-                          label: Text('浅色'),
+                          icon: const Icon(Icons.light_mode),
+                          label: Text(l10n.appearanceLightMode),
                         ),
                         ButtonSegment(
                           value: ThemeMode.dark,
-                          icon: Icon(Icons.dark_mode),
-                          label: Text('深色'),
+                          icon: const Icon(Icons.dark_mode),
+                          label: Text(l10n.appearanceDarkMode),
                         ),
                       ],
                       selected: {_user.themeMode},
@@ -297,12 +312,12 @@ class _AppearancePageState extends State<AppearancePage> {
                         color: cs.onSurfaceVariant,
                       ),
                       const SizedBox(width: 16),
-                      const Text('暗色模式封面亮度'),
+                      Text(l10n.appearanceDarkCoverBrightness),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '暗色模式下降低各个界面的卡片封面亮度',
+                    l10n.appearanceDarkCoverBrightnessDesc,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
@@ -353,12 +368,15 @@ class _AppearancePageState extends State<AppearancePage> {
                     children: [
                       Icon(Icons.palette_outlined, color: cs.onSurfaceVariant),
                       const SizedBox(width: 16),
-                      const Text('主题风格'),
+                      Text(l10n.appearanceThemeStyle),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '当前风格：${selectedVariant.label} · ${selectedVariant.description}',
+                    l10n.appearanceCurrentStyle(
+                      selectedVariant.localizedLabel(l10n),
+                      selectedVariant.localizedDescription(l10n),
+                    ),
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
@@ -368,9 +386,9 @@ class _AppearancePageState extends State<AppearancePage> {
                     children: [
                       for (final option in appThemeVariantOptions)
                         Tooltip(
-                          message: option.description,
+                          message: option.localizedDescription(l10n),
                           child: ChoiceChip(
-                            label: Text(option.label),
+                            label: Text(option.localizedLabel(l10n)),
                             selected: _user.themeVariant == option.variant,
                             onSelected: (_) =>
                                 _user.setThemeVariant(option.variant),
@@ -380,12 +398,12 @@ class _AppearancePageState extends State<AppearancePage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '主题配色',
+                    l10n.appearanceThemeColor,
                     style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '点击颜色块切换主题色，带勾选的为当前配色。',
+                    l10n.appearanceThemeColorDesc,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
@@ -509,14 +527,20 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
 
     if (!mounted) return;
     setState(() => _applyingRate = null);
+    final l10n = AppLocalizations.of(context)!;
     showToast(
       context,
-      applied ? '已请求刷新率 ${_formatRefreshRate(refreshRate)}' : '刷新率偏好已保存',
+      applied
+          ? l10n.appearanceRefreshRateRequested(
+              _formatRefreshRate(refreshRate, l10n),
+            )
+          : l10n.appearanceRefreshRateSaved,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -540,14 +564,17 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '屏幕刷新率',
+                    l10n.appearanceRefreshRateTitle,
                     style: tt.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '获取设备刷新率失败：${snapshot.error ?? '未知错误'}',
+                    l10n.appearanceRefreshRateLoadFailed(
+                      (snapshot.error ?? l10n.appearanceUnknownError)
+                          .toString(),
+                    ),
                     style: tt.bodyMedium?.copyWith(color: cs.error),
                   ),
                 ],
@@ -568,7 +595,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '屏幕刷新率',
+                  l10n.appearanceRefreshRateTitle,
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
@@ -586,10 +613,10 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const RadioListTile<int>(
+                          RadioListTile<int>(
                             contentPadding: EdgeInsets.zero,
                             value: UserManager.defaultDisplayModeRefreshRate,
-                            title: Text('自动（跟随系统）'),
+                            title: Text(l10n.appearanceAutoSystem),
                           ),
                           for (final rate in rates)
                             RadioListTile<int>(
@@ -597,7 +624,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                               value: rate,
                               title: Text(
                                 rate == activeRate
-                                    ? '${rate}Hz（当前）'
+                                    ? l10n.appearanceRefreshRateCurrent(rate)
                                     : '${rate}Hz',
                               ),
                             ),
@@ -617,7 +644,9 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        '正在应用 ${_formatRefreshRate(_applyingRate!)}',
+                        l10n.appearanceApplyingRefreshRate(
+                          _formatRefreshRate(_applyingRate!, l10n),
+                        ),
                         style: tt.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -627,7 +656,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  '实际生效取决于系统和屏幕，部分设备可能需要重启应用后完全生效。',
+                  l10n.appearanceRefreshRateDesc,
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
@@ -707,9 +736,9 @@ String _colorToHex(Color color) {
   return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
 }
 
-String _formatRefreshRate(int refreshRate) {
+String _formatRefreshRate(int refreshRate, AppLocalizations l10n) {
   return refreshRate == UserManager.defaultDisplayModeRefreshRate
-      ? '自动（跟随系统）'
+      ? l10n.appearanceAutoSystem
       : '${refreshRate}Hz';
 }
 
@@ -746,7 +775,12 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
 
     if (selected.useDefault) {
       await widget.user.setDesktopFontFamily('');
-      if (mounted) showToast(context, '已恢复系统默认字体，重启应用后完全生效');
+      if (mounted) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.appearanceDefaultFontRestored,
+        );
+      }
       return;
     }
 
@@ -759,9 +793,19 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
           ? family.toString()
           : name;
       await widget.user.setDesktopFontFamily(resolved);
-      if (mounted) showToast(context, '字体已切换为 $resolved');
+      if (mounted) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.appearanceFontChanged(resolved),
+        );
+      }
     } catch (e) {
-      if (mounted) showToast(context, '加载字体失败：$e');
+      if (mounted) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.appearanceFontLoadFailed(e.toString()),
+        );
+      }
     } finally {
       if (mounted) setState(() => _applying = false);
     }
@@ -769,6 +813,7 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final current = widget.user.desktopFontFamily;
@@ -785,7 +830,7 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
               children: [
                 Icon(Icons.font_download_outlined, color: cs.onSurfaceVariant),
                 const SizedBox(width: 16),
-                const Text('应用字体'),
+                Text(l10n.appearanceAppFont),
               ],
             ),
             const SizedBox(height: 12),
@@ -808,7 +853,7 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
                     children: [
                       Expanded(
                         child: Text(
-                          hasCustom ? current : '系统默认',
+                          hasCustom ? current : l10n.appearanceSystemDefault,
                           style: tt.bodyMedium?.copyWith(
                             fontFamily: hasCustom ? current : null,
                           ),
@@ -870,6 +915,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     return Dialog(
@@ -883,10 +929,10 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      '选择字体',
-                      style: TextStyle(
+                      l10n.appearanceChooseFont,
+                      style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
                       ),
@@ -902,7 +948,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: '搜索字体',
+                  hintText: l10n.appearanceSearchFont,
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -927,7 +973,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                     if (snap.hasError) {
                       return Center(
                         child: Text(
-                          '获取字体失败：${snap.error}',
+                          l10n.appearanceFontLoadFailed(snap.error.toString()),
                           style: TextStyle(color: cs.error),
                         ),
                       );
@@ -954,7 +1000,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                                   : Icons.radio_button_unchecked,
                               color: selected ? cs.primary : null,
                             ),
-                            title: const Text('系统默认'),
+                            title: Text(l10n.appearanceSystemDefault),
                             onTap: () => Navigator.of(
                               context,
                             ).pop(const _FontPickResult.defaultFont()),

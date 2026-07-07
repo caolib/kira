@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../utils/toast.dart';
@@ -85,8 +86,14 @@ class _LoginPageState extends State<LoginPage> {
     return false;
   }
 
-  String _credentialTypeLabel(SavedCredential credential) {
-    return _isCopyCredential(credential) ? '拷贝' : '热辣';
+  String _credentialTypeLabel(
+    BuildContext context,
+    SavedCredential credential,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    return _isCopyCredential(credential)
+        ? l10n.profileCopyCredentialLabel
+        : l10n.profileHotCredentialLabel;
   }
 
   IconData _credentialTypeIcon(SavedCredential credential) {
@@ -216,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                           _buildCredentialBadge(
                             context: context,
                             icon: _credentialTypeIcon(credential),
-                            label: _credentialTypeLabel(credential),
+                            label: _credentialTypeLabel(context, credential),
                             backgroundColor: typeBackgroundColor,
                             foregroundColor: typeForegroundColor,
                           ),
@@ -224,7 +231,9 @@ class _LoginPageState extends State<LoginPage> {
                             _buildCredentialBadge(
                               context: context,
                               icon: Icons.check_circle,
-                              label: '当前已选',
+                              label: AppLocalizations.of(
+                                context,
+                              )!.profileCurrentSelectedCredential,
                               backgroundColor: cs.primary,
                               foregroundColor: cs.onPrimary,
                             ),
@@ -234,7 +243,9 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 IconButton(
-                  tooltip: '移除账号',
+                  tooltip: AppLocalizations.of(
+                    context,
+                  )!.profileRemoveAccountTooltip,
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _removeSavedCredential(credential),
                   icon: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
@@ -274,7 +285,12 @@ class _LoginPageState extends State<LoginPage> {
         _rememberMe = next != null;
       });
     }
-    showToast(context, '已移除 ${credential.username}');
+    showToast(
+      context,
+      AppLocalizations.of(
+        context,
+      )!.profileAccountRemovedToast(credential.username),
+    );
   }
 
   Future<void> _goRegister() async {
@@ -290,14 +306,18 @@ class _LoginPageState extends State<LoginPage> {
       _usernameCtrl.text = result.username;
       _passwordCtrl.text = result.password;
     });
-    showToast(context, '注册成功，请登录');
+    showToast(
+      context,
+      AppLocalizations.of(context)!.profileRegisterSuccessLoginToast,
+    );
   }
 
   Future<void> _login() async {
+    final l10n = AppLocalizations.of(context)!;
     final username = _usernameCtrl.text.trim();
     final password = _passwordCtrl.text;
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = '请输入用户名和密码');
+      setState(() => _error = l10n.profileUsernamePasswordRequired);
       return;
     }
 
@@ -326,7 +346,7 @@ class _LoginPageState extends State<LoginPage> {
       await UserManager().refreshUserInfo();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      String msg = '登录失败';
+      String msg = l10n.profileLoginFailed;
       if (e is DioException) {
         if (e.response?.data is Map) {
           msg = e.response?.data['message'] ?? msg;
@@ -342,9 +362,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loginWithToken() async {
+    final l10n = AppLocalizations.of(context)!;
     final token = _tokenCtrl.text.trim();
     if (token.isEmpty) {
-      setState(() => _error = '请输入令牌');
+      setState(() => _error = l10n.profileTokenRequired);
       return;
     }
 
@@ -354,7 +375,7 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // 先临时保存 token 以便 API 请求携带 Authorization
+      // Temporarily save token so API requests include Authorization.
       await UserManager().saveLogin(
         token: token,
         userId: '',
@@ -362,7 +383,7 @@ class _LoginPageState extends State<LoginPage> {
         nickname: '',
         avatar: '',
       );
-      // 用 token 拉取用户信息验证有效性
+      // Fetch user info with token to validate it.
       final info = await _api.user.getUserInfo();
       await UserManager().saveLogin(
         token: token,
@@ -374,9 +395,9 @@ class _LoginPageState extends State<LoginPage> {
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      // 令牌无效，清除
+      // Invalid token; clear it.
       await UserManager().logout();
-      String msg = '令牌无效或已过期';
+      String msg = l10n.profileTokenInvalidOrExpired;
       if (e is DioException && e.response?.data is Map) {
         msg = e.response?.data['message'] ?? msg;
       }
@@ -395,7 +416,9 @@ class _LoginPageState extends State<LoginPage> {
     final hp = (screenWidth - contentWidth) / 2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('登录')),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.profileLoginTitle),
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(hp + 24, 48, hp + 24, 24),
         child: Column(
@@ -412,16 +435,22 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 32),
             SegmentedButton<bool>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: false,
-                  label: Text('账号密码'),
-                  icon: Icon(Icons.person_outline),
+                  label: Text(
+                    AppLocalizations.of(
+                      context,
+                    )!.profileAccountPasswordLoginMode,
+                  ),
+                  icon: const Icon(Icons.person_outline),
                 ),
                 ButtonSegment(
                   value: true,
-                  label: Text('令牌'),
-                  icon: Icon(Icons.key),
+                  label: Text(
+                    AppLocalizations.of(context)!.profileTokenLoginMode,
+                  ),
+                  icon: const Icon(Icons.key),
                 ),
               ],
               selected: {_useToken},
@@ -433,16 +462,20 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 24),
             if (!_useToken) ...[
               SegmentedButton<bool>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: false,
-                    label: Text('热辣'),
-                    icon: Icon(Icons.phone_android, size: 18),
+                    label: Text(
+                      AppLocalizations.of(context)!.profileHotCredentialLabel,
+                    ),
+                    icon: const Icon(Icons.phone_android, size: 18),
                   ),
                   ButtonSegment(
                     value: true,
-                    label: Text('拷贝'),
-                    icon: Icon(Icons.language, size: 18),
+                    label: Text(
+                      AppLocalizations.of(context)!.profileCopyCredentialLabel,
+                    ),
+                    icon: const Icon(Icons.language, size: 18),
                   ),
                 ],
                 selected: {_useCopyLogin},
@@ -456,7 +489,7 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '已保存账号',
+                    AppLocalizations.of(context)!.profileSavedAccountsTitle,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -464,7 +497,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '点按快速填充账号密码，右侧可移除',
+                  AppLocalizations.of(context)!.profileSavedAccountsHint,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -487,7 +520,7 @@ class _LoginPageState extends State<LoginPage> {
               TextField(
                 controller: _usernameCtrl,
                 decoration: InputDecoration(
-                  labelText: '用户名',
+                  labelText: AppLocalizations.of(context)!.profileUsernameLabel,
                   prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -500,7 +533,7 @@ class _LoginPageState extends State<LoginPage> {
                 controller: _passwordCtrl,
                 obscureText: _obscure,
                 decoration: InputDecoration(
-                  labelText: '密码',
+                  labelText: AppLocalizations.of(context)!.profilePasswordLabel,
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -519,9 +552,9 @@ class _LoginPageState extends State<LoginPage> {
               TextField(
                 controller: _tokenCtrl,
                 decoration: InputDecoration(
-                  labelText: '令牌 (Token)',
+                  labelText: AppLocalizations.of(context)!.profileTokenLabel,
                   prefixIcon: const Icon(Icons.key),
-                  hintText: '粘贴你的登录令牌',
+                  hintText: AppLocalizations.of(context)!.profileTokenHint,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -543,7 +576,9 @@ class _LoginPageState extends State<LoginPage> {
               CheckboxListTile(
                 value: _rememberMe,
                 onChanged: (v) => setState(() => _rememberMe = v ?? false),
-                title: const Text('记住账号'),
+                title: Text(
+                  AppLocalizations.of(context)!.profileRememberAccountLabel,
+                ),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -552,7 +587,11 @@ class _LoginPageState extends State<LoginPage> {
                 child: TextButton.icon(
                   onPressed: _loading ? null : _goRegister,
                   icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('注册热辣漫画账号'),
+                  label: Text(
+                    AppLocalizations.of(
+                      context,
+                    )!.profileRegisterHotMangaAccountButton,
+                  ),
                 ),
               ),
             ],
@@ -573,7 +612,10 @@ class _LoginPageState extends State<LoginPage> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('登录', style: TextStyle(fontSize: 16)),
+                  : Text(
+                      AppLocalizations.of(context)!.profileLoginButton,
+                      style: const TextStyle(fontSize: 16),
+                    ),
             ),
           ],
         ),

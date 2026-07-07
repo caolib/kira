@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../utils/app_dio.dart';
 import '../../utils/network_error.dart';
 import '../api_transport.dart';
@@ -27,11 +28,16 @@ class NetworkApi {
   }
 
   /// 获取固定 API / Web host 在诊断结果中的展示名称。
-  String getExtraApiHostLabel(String host) {
+  String getExtraApiHostLabel(String host, AppLocalizations l10n) {
     if (host == _t.user.copyApiHost || host == defaultCopyApiHost) {
       return 'COPY API';
     }
-    return extraApiHostLabels[host] ?? '固定接口';
+    return switch (extraApiHostKinds[host] ?? ExtraApiHostKind.fixed) {
+      ExtraApiHostKind.copyApi => 'COPY API',
+      ExtraApiHostKind.copyLogin => l10n.networkCopyLoginHost,
+      ExtraApiHostKind.hotLogin => l10n.networkHotLoginHost,
+      ExtraApiHostKind.fixed => l10n.networkFixedApiHost,
+    };
   }
 
   /// 测试指定线路所有 host 的延迟，返回 {host: 毫秒数，超时为 null}
@@ -100,8 +106,8 @@ class NetworkApi {
         }
       }
       final message = data is Map
-          ? (data['message']?.toString() ?? '获取 COPY API 地址失败')
-          : '获取 COPY API 地址失败';
+          ? (data['message']?.toString() ?? 'Failed to fetch COPY API host')
+          : 'Failed to fetch COPY API host';
       NetworkError.throwBadResponse(
         response: resp,
         message: message,

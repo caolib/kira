@@ -534,7 +534,7 @@ class DandanplayApi {
   }) async {
     final normalizedBangumiId = bangumiId.trim();
     if (normalizedBangumiId.isEmpty) {
-      throw ArgumentError.value(bangumiId, 'bangumiId', '不能为空');
+      throw ArgumentError.value(bangumiId, 'bangumiId', 'must not be empty');
     }
     if (page < 0 || page > 9) {
       throw RangeError.range(page, 0, 9, 'page');
@@ -573,11 +573,13 @@ class DandanplayApi {
         return result;
       }
       throw StateError(
-        data is Map ? data['errorMessage']?.toString() ?? '未知错误' : '响应格式错误',
+        data is Map
+            ? data['errorMessage']?.toString() ?? 'Unknown error'
+            : 'Invalid response format',
       );
     } catch (e) {
       debugPrint('Dandanplay get bangumi comments error: $e');
-      throw Exception('获取番剧评论失败');
+      throw Exception('Failed to fetch bangumi comments');
     }
   }
 }

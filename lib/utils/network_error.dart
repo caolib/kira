@@ -2,11 +2,17 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
+import '../l10n/app_localizations.dart';
 import 'app_logger.dart';
 
 /// App-wide network error helpers.
 class NetworkError {
-  static const rateLimitMessage = '请求过于频繁，已被限速，请稍后再试';
+  static const _fallbackRateLimitMessage =
+      'Too many requests. Please try again later.';
+
+  static String rateLimitMessage([AppLocalizations? l10n]) {
+    return l10n?.networkRateLimitMessage ?? _fallbackRateLimitMessage;
+  }
 
   static Interceptor rateLimitInterceptor() {
     return InterceptorsWrapper(
@@ -91,13 +97,21 @@ class NetworkError {
     return false;
   }
 
-  static String message(Object error) {
-    if (isRateLimited(error)) return rateLimitMessage;
+  static String message(Object error, {AppLocalizations? l10n}) {
+    if (isRateLimited(error)) return rateLimitMessage(l10n);
     if (error is DioException) {
       final dataMessage = _messageFromData(error.response?.data);
       if (dataMessage != null) return dataMessage;
       final message = error.message;
-      if (message != null && message.isNotEmpty) return message;
+      final responseCode = _codeFromData(error.response?.data);
+      if (l10n != null && responseCode != null) {
+        return l10n.networkRequestFailedCode(responseCode.toString());
+      }
+      if (message != null &&
+          message.isNotEmpty &&
+          message != _fallbackRateLimitMessage) {
+        return message;
+      }
     }
     return error.toString();
   }
@@ -199,10 +213,10 @@ class RateLimitDioException extends DioException {
     super.type = DioExceptionType.badResponse,
     super.stackTrace,
   }) : super(
-         error: NetworkError.rateLimitMessage,
-         message: NetworkError.rateLimitMessage,
+         error: NetworkError.rateLimitMessage(),
+         message: NetworkError.rateLimitMessage(),
        );
 
   @override
-  String toString() => NetworkError.rateLimitMessage;
+  String toString() => NetworkError.rateLimitMessage();
 }

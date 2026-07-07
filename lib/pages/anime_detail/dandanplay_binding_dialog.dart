@@ -102,8 +102,10 @@ class _DandanplayBindingDialogState extends State<_DandanplayBindingDialog> {
     final size = MediaQuery.sizeOf(context);
     final dialogHeight = (size.height * 0.68).clamp(360.0, 620.0);
 
+    final l10n = AppLocalizations.of(context)!;
+
     return AlertDialog(
-      title: const Text('绑定弹幕'),
+      title: Text(l10n.animeDetailBindDanmaku),
       content: SizedBox(
         width: 540,
         height: dialogHeight,
@@ -118,7 +120,7 @@ class _DandanplayBindingDialogState extends State<_DandanplayBindingDialog> {
               controller: _controller,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                labelText: '搜索关键词',
+                labelText: l10n.dandanplayBindingSearchKeyword,
                 border: const OutlineInputBorder(),
                 isDense: true,
                 suffixIcon: IconButton(
@@ -130,7 +132,7 @@ class _DandanplayBindingDialogState extends State<_DandanplayBindingDialog> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.search),
-                  tooltip: '搜索',
+                  tooltip: l10n.searchTabLabel,
                 ),
               ),
               onSubmitted: (_) => _search(),
@@ -148,17 +150,18 @@ class _DandanplayBindingDialogState extends State<_DandanplayBindingDialog> {
               const _DandanplayBindingDialogResult.clear(),
             ),
             icon: const Icon(Icons.link_off_rounded),
-            label: const Text('清除绑定'),
+            label: Text(l10n.dandanplayBindingClear),
           ),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('关闭'),
+          child: Text(l10n.closeButton),
         ),
       ],
     );
   }
 
   Widget _buildResults() {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     if (_searching) {
@@ -167,7 +170,7 @@ class _DandanplayBindingDialogState extends State<_DandanplayBindingDialog> {
     if (_error != null) {
       return Center(
         child: Text(
-          '搜索失败：$_error',
+          l10n.dandanplayBindingSearchFailed(_error!),
           textAlign: TextAlign.center,
           style: tt.bodyMedium?.copyWith(color: cs.error),
         ),
@@ -176,7 +179,9 @@ class _DandanplayBindingDialogState extends State<_DandanplayBindingDialog> {
     if (_results.isEmpty) {
       return Center(
         child: Text(
-          _searched ? '未找到相关番剧' : '输入关键词后点击搜索',
+          _searched
+              ? l10n.dandanplayBindingNoResults
+              : l10n.dandanplayBindingSearchInstruction,
           style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
         ),
       );
@@ -213,6 +218,7 @@ class _CurrentDandanplayBinding extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -233,7 +239,7 @@ class _CurrentDandanplayBinding extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '当前绑定',
+                  l10n.dandanplayBindingCurrent,
                   style: tt.labelMedium?.copyWith(
                     color: cs.primary,
                     fontWeight: FontWeight.w700,
@@ -275,10 +281,11 @@ class _DandanplayAnimeResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final imageUrl = item.imageUrl?.trim() ?? '';
-    final meta = _metaText();
+    final meta = _metaText(l10n);
 
     return Material(
       color: selected
@@ -357,7 +364,11 @@ class _DandanplayAnimeResultTile extends StatelessWidget {
                           size: 16,
                         ),
                         label: Text(
-                          selected ? '已绑定' : (hasBinding ? '重新绑定' : '绑定'),
+                          selected
+                              ? l10n.dandanplayBindingBound
+                              : (hasBinding
+                                    ? l10n.animeDetailRebind
+                                    : l10n.dandanplayBindingBind),
                         ),
                         style: FilledButton.styleFrom(
                           visualDensity: VisualDensity.compact,
@@ -374,11 +385,12 @@ class _DandanplayAnimeResultTile extends StatelessWidget {
     );
   }
 
-  String _metaText() {
+  String _metaText(AppLocalizations l10n) {
     final parts = <String>[
       if ((item.typeDescription ?? '').isNotEmpty) item.typeDescription!,
-      if (item.episodeCount > 0) '${item.episodeCount} 集',
-      if (item.rating > 0) '评分 ${item.rating.toStringAsFixed(1)}',
+      if (item.episodeCount > 0) l10n.totalEpisodes(item.episodeCount),
+      if (item.rating > 0)
+        l10n.dandanplayBindingRating(item.rating.toStringAsFixed(1)),
       ?_startYear,
     ];
     return parts.join(' · ');

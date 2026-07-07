@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../utils/app_update.dart';
@@ -47,6 +48,7 @@ class _AboutPageState extends State<AboutPage> {
   static const _qqGroupNumber = '1025321453';
 
   void _showQQGroupDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     showDialog<void>(
@@ -67,7 +69,7 @@ class _AboutPageState extends State<AboutPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                'QQ交流群',
+                l10n.aboutQqGroupTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
@@ -92,7 +94,7 @@ class _AboutPageState extends State<AboutPage> {
                       Icon(Icons.open_in_new, size: 18, color: cs.primary),
                       const SizedBox(width: 8),
                       Text(
-                        '加入群聊',
+                        l10n.aboutJoinGroupButton,
                         style: tt.bodyLarge?.copyWith(
                           color: cs.primary,
                           fontWeight: FontWeight.w600,
@@ -109,7 +111,7 @@ class _AboutPageState extends State<AboutPage> {
                     const ClipboardData(text: _qqGroupNumber),
                   );
                   if (dialogContext.mounted) {
-                    showToast(dialogContext, '已复制群号');
+                    showToast(dialogContext, l10n.aboutGroupNumberCopiedToast);
                   }
                 },
                 borderRadius: BorderRadius.circular(12),
@@ -148,7 +150,7 @@ class _AboutPageState extends State<AboutPage> {
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('关闭'),
+              child: Text(l10n.closeButton),
             ),
           ],
         );
@@ -181,6 +183,7 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _editUpdateMirrorPrefix() async {
+    final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: _user.updateMirrorPrefix);
     final formKey = GlobalKey<FormState>();
 
@@ -192,7 +195,7 @@ class _AboutPageState extends State<AboutPage> {
           final tt = Theme.of(dialogContext).textTheme;
 
           return AlertDialog(
-            title: const Text('设置镜像源'),
+            title: Text(l10n.aboutMirrorPrefixTitle),
             content: Form(
               key: formKey,
               child: Column(
@@ -200,7 +203,7 @@ class _AboutPageState extends State<AboutPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '用于更新弹窗中的镜像下载链接，会拼接在 GitHub 下载地址前。',
+                    l10n.aboutMirrorPrefixDesc,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
@@ -211,17 +214,17 @@ class _AboutPageState extends State<AboutPage> {
                     inputFormatters: [
                       FilteringTextInputFormatter.deny(RegExp(r'\s')),
                     ],
-                    decoration: const InputDecoration(
-                      labelText: '镜像源地址',
+                    decoration: InputDecoration(
+                      labelText: l10n.aboutMirrorPrefixLabel,
                       hintText: UserManager.defaultUpdateMirrorPrefix,
-                      helperText: '留空将恢复默认镜像源',
-                      border: OutlineInputBorder(),
+                      helperText: l10n.aboutMirrorPrefixHelper,
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (value) {
                       final trimmed = value?.trim() ?? '';
                       if (trimmed.isEmpty) return null;
                       if (!_isValidUpdateMirrorPrefix(trimmed)) {
-                        return '请输入有效的 http(s) 地址';
+                        return l10n.aboutInvalidMirrorPrefix;
                       }
                       return null;
                     },
@@ -235,11 +238,11 @@ class _AboutPageState extends State<AboutPage> {
                   dialogContext,
                   UserManager.defaultUpdateMirrorPrefix,
                 ),
-                child: const Text('恢复默认'),
+                child: Text(l10n.aboutRestoreDefaultButton),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('取消'),
+                child: Text(l10n.cancelButton),
               ),
               FilledButton(
                 onPressed: () {
@@ -247,7 +250,7 @@ class _AboutPageState extends State<AboutPage> {
                     Navigator.pop(dialogContext, controller.text);
                   }
                 },
-                child: const Text('保存'),
+                child: Text(l10n.aboutSaveButton),
               ),
             ],
           );
@@ -257,13 +260,13 @@ class _AboutPageState extends State<AboutPage> {
       if (result == null) return;
       await _user.setUpdateMirrorPrefix(result);
       if (!mounted) return;
-      showToast(context, '镜像源已保存');
+      showToast(context, l10n.aboutMirrorPrefixSavedToast);
     } finally {
       controller.dispose();
     }
   }
 
-  Widget _buildUpdateChannelChip(ColorScheme cs) {
+  Widget _buildUpdateChannelChip(ColorScheme cs, AppLocalizations l10n) {
     final isBeta = _user.isBetaUpdateChannel;
     final fg = isBeta ? Colors.amber.shade900 : cs.onSurfaceVariant;
     return InkWell(
@@ -288,7 +291,7 @@ class _AboutPageState extends State<AboutPage> {
             ),
             const SizedBox(width: 4),
             Text(
-              isBeta ? 'Beta' : '稳定版',
+              isBeta ? 'Beta' : l10n.aboutStableChannelShort,
               style: TextStyle(
                 color: fg,
                 fontSize: 12,
@@ -302,6 +305,7 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _showUpdateChannelDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     var selected = _user.updateChannel;
     final result = await showDialog<String>(
       context: context,
@@ -309,7 +313,7 @@ class _AboutPageState extends State<AboutPage> {
         return StatefulBuilder(
           builder: (ctx, setState) {
             return AlertDialog(
-              title: const Text('更新渠道'),
+              title: Text(l10n.aboutUpdateChannelTitle),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -318,20 +322,20 @@ class _AboutPageState extends State<AboutPage> {
                     onChanged: (value) {
                       if (value != null) setState(() => selected = value);
                     },
-                    child: const Column(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'stable',
-                          title: Text('稳定版 (Stable)'),
-                          subtitle: Text('仅检查正式发布版本'),
+                          title: Text(l10n.aboutStableChannelTitle),
+                          subtitle: Text(l10n.aboutStableChannelDesc),
                         ),
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'beta',
-                          title: Text('预览版（Beta）'),
-                          subtitle: Text('从最新提交构建的版本，可能不稳定'),
+                          title: Text(l10n.aboutBetaChannelTitle),
+                          subtitle: Text(l10n.aboutBetaChannelDesc),
                         ),
                       ],
                     ),
@@ -341,11 +345,11 @@ class _AboutPageState extends State<AboutPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('取消'),
+                  child: Text(l10n.cancelButton),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, selected),
-                  child: const Text('确定'),
+                  child: Text(l10n.confirmButton),
                 ),
               ],
             );
@@ -361,29 +365,30 @@ class _AboutPageState extends State<AboutPage> {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('已切换到预览版'),
-            content: const Text('预览版一般用于测试新功能或修复问题，可能存在更多问题。'),
+            title: Text(l10n.aboutBetaChannelSwitchedTitle),
+            content: Text(l10n.aboutBetaChannelSwitchedContent),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('知道了'),
+                child: Text(l10n.aboutGotItButton),
               ),
             ],
           ),
         );
       } else {
-        showToast(context, '已切换到稳定版');
+        showToast(context, l10n.aboutStableChannelSwitchedToast);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('关于')),
+      appBar: AppBar(title: Text(l10n.aboutTitle)),
       body: FutureBuilder<PackageInfo>(
         future: PackageInfo.fromPlatform(),
         builder: (context, snapshot) {
@@ -426,7 +431,7 @@ class _AboutPageState extends State<AboutPage> {
                               BlendMode.srcIn,
                             ),
                           ),
-                          label: '仓库',
+                          label: l10n.aboutRepositoryLabel,
                           onTap: () async {
                             await launchUrl(
                               Uri.parse(_repoUrl),
@@ -442,7 +447,7 @@ class _AboutPageState extends State<AboutPage> {
                       Expanded(
                         child: _LinkAction(
                           icon: const Icon(Icons.feedback_outlined),
-                          label: '反馈',
+                          label: l10n.aboutFeedbackLabel,
                           onTap: () async {
                             await launchUrl(
                               Uri.parse(
@@ -468,7 +473,7 @@ class _AboutPageState extends State<AboutPage> {
                               BlendMode.srcIn,
                             ),
                           ),
-                          label: '交流',
+                          label: l10n.aboutCommunityLabel,
                           onTap: () => _showQQGroupDialog(context),
                         ),
                       ),
@@ -485,11 +490,11 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.system_update_alt),
-                      title: const Text('检查更新'),
+                      title: Text(l10n.aboutCheckUpdateTitle),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildUpdateChannelChip(cs),
+                          _buildUpdateChannelChip(cs, l10n),
                           const SizedBox(width: 4),
                           const Icon(Icons.chevron_right),
                         ],
@@ -502,7 +507,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     SwitchListTile(
                       secondary: const Icon(Icons.autorenew),
-                      title: const Text('启动时检查更新'),
+                      title: Text(l10n.aboutAutoCheckUpdateTitle),
                       value: _user.autoCheckUpdate,
                       onChanged: _user.setAutoCheckUpdate,
                     ),
@@ -512,7 +517,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.public),
-                      title: const Text('设置镜像源'),
+                      title: Text(l10n.aboutMirrorPrefixTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _editUpdateMirrorPrefix,
                     ),
@@ -528,7 +533,7 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.gavel_outlined),
-                      title: const Text('免责声明'),
+                      title: Text(l10n.disclaimerTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.disclaimer),
                     ),
@@ -538,7 +543,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.bug_report_outlined),
-                      title: const Text('日志'),
+                      title: Text(l10n.aboutLogTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.appLog),
                     ),
@@ -548,7 +553,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.favorite_outline),
-                      title: const Text('致谢'),
+                      title: Text(l10n.aboutAcknowledgementTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.acknowledgement),
                     ),
@@ -558,7 +563,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.copyright_outlined),
-                      title: const Text('许可证'),
+                      title: Text(l10n.aboutLicenseTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.license),
                     ),

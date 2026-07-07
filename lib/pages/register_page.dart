@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/toast.dart';
 
 class RegisterPrefill {
@@ -26,11 +27,11 @@ class _RegisterPageState extends State<RegisterPage> {
   static final _copyMangaRegisterUri = Uri.parse(
     'https://www.mangacopy.com/web/login/loginByAccount',
   );
-  static const _fallbackQuestions = [
-    '我的老婆叫什麼？',
-    '我的基友叫啥？',
-    '我的好麻吉有幾個？',
-    '我的父親(母親)叫什麽？',
+  List<String> _fallbackQuestions(AppLocalizations l10n) => [
+    l10n.profileFallbackQuestionWife,
+    l10n.profileFallbackQuestionFriend,
+    l10n.profileFallbackQuestionBestFriendCount,
+    l10n.profileFallbackQuestionParentName,
   ];
 
   final _api = ApiClient();
@@ -70,9 +71,12 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final questions = await _api.user.getSecurityQuestions();
       if (!mounted) return;
+      final fallbackQuestions = _fallbackQuestions(
+        AppLocalizations.of(context)!,
+      );
       final availableQuestions = questions.isNotEmpty
           ? questions
-          : _fallbackQuestions;
+          : fallbackQuestions;
       setState(() {
         _questions = availableQuestions;
         _selectedQuestion = availableQuestions.first;
@@ -81,8 +85,11 @@ class _RegisterPageState extends State<RegisterPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _questions = _fallbackQuestions;
-        _selectedQuestion = _fallbackQuestions.first;
+        final fallbackQuestions = _fallbackQuestions(
+          AppLocalizations.of(context)!,
+        );
+        _questions = fallbackQuestions;
+        _selectedQuestion = fallbackQuestions.first;
         _loadingQuestions = false;
         _error = null;
       });
@@ -90,6 +97,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _register() async {
+    final l10n = AppLocalizations.of(context)!;
     final username = _usernameCtrl.text.trim();
     final password = _passwordCtrl.text;
     final confirmPassword = _confirmPasswordCtrl.text;
@@ -99,15 +107,15 @@ class _RegisterPageState extends State<RegisterPage> {
         password.isEmpty ||
         confirmPassword.isEmpty ||
         answer.isEmpty) {
-      setState(() => _error = '请填写完整注册信息');
+      setState(() => _error = l10n.profileRegisterInfoRequired);
       return;
     }
     if (password != confirmPassword) {
-      setState(() => _error = '两次输入的密码不一致');
+      setState(() => _error = l10n.profilePasswordMismatch);
       return;
     }
     if (_selectedQuestion == null || _selectedQuestion!.isEmpty) {
-      setState(() => _error = '请选择安全问题');
+      setState(() => _error = l10n.profileSecurityQuestionRequired);
       return;
     }
 
@@ -129,7 +137,7 @@ class _RegisterPageState extends State<RegisterPage> {
         RegisterPrefill(username: username, password: password),
       );
     } catch (e) {
-      String msg = '注册失败';
+      String msg = l10n.profileRegisterFailed;
       if (e is DioException) {
         msg = e.message ?? msg;
         if (e.response?.data is Map) {
@@ -153,7 +161,11 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _openOfficialRegister(Uri uri) async {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
-      showToast(context, '无法打开官网注册页', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.profileOpenOfficialRegisterFailed,
+        isError: true,
+      );
     }
   }
 
@@ -165,7 +177,11 @@ class _RegisterPageState extends State<RegisterPage> {
     final hp = (screenWidth - contentWidth) / 2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('注册热辣漫画账号')),
+      appBar: AppBar(
+        title: Text(
+          AppLocalizations.of(context)!.profileRegisterHotMangaAccountButton,
+        ),
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(hp + 24, 24, hp + 24, 24),
         child: Column(
@@ -174,7 +190,7 @@ class _RegisterPageState extends State<RegisterPage> {
             TextField(
               controller: _usernameCtrl,
               decoration: InputDecoration(
-                labelText: '用户名',
+                labelText: AppLocalizations.of(context)!.profileUsernameLabel,
                 prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -187,7 +203,7 @@ class _RegisterPageState extends State<RegisterPage> {
               controller: _passwordCtrl,
               obscureText: _obscure,
               decoration: InputDecoration(
-                labelText: '密码',
+                labelText: AppLocalizations.of(context)!.profilePasswordLabel,
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -206,7 +222,9 @@ class _RegisterPageState extends State<RegisterPage> {
               controller: _confirmPasswordCtrl,
               obscureText: _obscure,
               decoration: InputDecoration(
-                labelText: '确认密码',
+                labelText: AppLocalizations.of(
+                  context,
+                )!.profileConfirmPasswordLabel,
                 prefixIcon: const Icon(Icons.lock_reset_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -222,7 +240,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 initialValue: _selectedQuestion,
                 isExpanded: true,
                 decoration: InputDecoration(
-                  labelText: '账号安全问题',
+                  labelText: AppLocalizations.of(
+                    context,
+                  )!.profileSecurityQuestionLabel,
                   prefixIcon: const Icon(Icons.help_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -242,7 +262,9 @@ class _RegisterPageState extends State<RegisterPage> {
               TextField(
                 controller: _answerCtrl,
                 decoration: InputDecoration(
-                  labelText: '安全问题答案',
+                  labelText: AppLocalizations.of(
+                    context,
+                  )!.profileSecurityAnswerLabel,
                   prefixIcon: const Icon(Icons.shield_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -265,7 +287,11 @@ class _RegisterPageState extends State<RegisterPage> {
               TextButton.icon(
                 onPressed: _loadQuestions,
                 icon: const Icon(Icons.refresh),
-                label: const Text('重新加载安全问题'),
+                label: Text(
+                  AppLocalizations.of(
+                    context,
+                  )!.profileReloadSecurityQuestionsButton,
+                ),
               ),
             ],
             const SizedBox(height: 24),
@@ -283,11 +309,14 @@ class _RegisterPageState extends State<RegisterPage> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('注册', style: TextStyle(fontSize: 16)),
+                  : Text(
+                      AppLocalizations.of(context)!.profileRegisterButton,
+                      style: const TextStyle(fontSize: 16),
+                    ),
             ),
             const SizedBox(height: 12),
             Text(
-              '去官网注册',
+              AppLocalizations.of(context)!.profileOfficialRegisterPrompt,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -301,12 +330,16 @@ class _RegisterPageState extends State<RegisterPage> {
                 TextButton.icon(
                   onPressed: () => _openOfficialRegister(_hotMangaRegisterUri),
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('热辣漫画'),
+                  label: Text(
+                    AppLocalizations.of(context)!.profileHotMangaLabel,
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: () => _openOfficialRegister(_copyMangaRegisterUri),
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('拷贝漫画'),
+                  label: Text(
+                    AppLocalizations.of(context)!.profileCopyMangaLabel,
+                  ),
                 ),
               ],
             ),

@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
+
 typedef AppLogDirectoryProvider = Future<Directory> Function();
 
 enum AppLogLevel {
@@ -13,16 +15,18 @@ enum AppLogLevel {
   warning,
   error;
 
-  String get displayName {
+  String displayName(AppLocalizations l10n) {
     return switch (this) {
-      AppLogLevel.debug => '调试',
-      AppLogLevel.info => '信息',
-      AppLogLevel.warning => '警告',
-      AppLogLevel.error => '错误',
+      AppLogLevel.debug => l10n.appLogLevelDebug,
+      AppLogLevel.info => l10n.appLogLevelInfo,
+      AppLogLevel.warning => l10n.appLogLevelWarning,
+      AppLogLevel.error => l10n.appLogLevelError,
     };
   }
 
-  String get thresholdLabel => displayName;
+  /// Locale-independent fallback label, used where no l10n context exists
+  /// (e.g. serialization / logs).
+  String get idLabel => name;
 
   int get severity {
     return switch (this) {

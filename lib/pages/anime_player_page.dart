@@ -13,6 +13,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
+import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
@@ -157,10 +158,11 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     _player.stream.log.listen(_rememberPlayerLog);
     _player.stream.error.listen((error) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       _recordPlayerError(error);
       setState(() {
-        _error = _formatPlayerError(error);
-        _rawError = _buildPlayerDebugReport(error);
+        _error = _formatPlayerError(error, l10n: l10n);
+        _rawError = _buildPlayerDebugReport(error, l10n: l10n);
       });
     });
 
@@ -171,7 +173,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_savePlaybackProgress(force: true, updateState: false));
-    _openMediaSerial++; // 阻止正在进行的媒体加载
+    _openMediaSerial++;
     _player.dispose();
     WakelockPlus.disable();
     _searchController.dispose();
@@ -189,6 +191,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   }
 
   Future<void> _load({bool forceRefresh = false}) async {
+    final l10n = AppLocalizations.of(context)!;
     _readyToSavePlaybackProgress = false;
     _lastPlaybackProgressSavedAt = null;
     _playbackProgressRestored = false;
@@ -240,7 +243,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       setState(() {
         _loading = false;
         _requiresLogin = true;
-        _error = '登录后才能播放该视频';
+        _error = l10n.animePlayerLoginRequiredToPlay;
       });
       return;
     }
@@ -249,7 +252,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       final playback = await _getPlayback(forceRefresh: forceRefresh);
       final videoUrl = _resolveVideoUrl(playback.chapter);
       if (videoUrl.isEmpty) {
-        throw StateError('视频链接为空');
+        throw StateError(l10n.animePlayerEmptyVideoUrl);
       }
 
       if (!mounted) return;
@@ -275,7 +278,9 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       setState(() {
         _loading = false;
         _requiresLogin = requiresLogin;
-        _error = requiresLogin ? '登录后才能播放该视频' : _formatLoadError(e);
+        _error = requiresLogin
+            ? l10n.animePlayerLoginRequiredToPlay
+            : _formatLoadError(e, l10n);
         _rawError = e.toString();
       });
     }
@@ -284,7 +289,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   bool _isUnauthorized(Object error) =>
       error is DioException && error.response?.statusCode == 401;
 
-  String _formatLoadError(Object error) {
+  String _formatLoadError(Object error, AppLocalizations l10n) {
     if (error is DioException) {
       final data = error.response?.data;
       if (data is Map) {
@@ -296,7 +301,9 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         if (message != null && message.isNotEmpty) return message;
       }
       final statusCode = error.response?.statusCode;
-      if (statusCode != null) return '请求失败（$statusCode）';
+      if (statusCode != null) {
+        return l10n.animePlayerRequestFailedStatus(statusCode);
+      }
       final message = error.message;
       if (message != null && message.isNotEmpty) return message;
     }
@@ -319,27 +326,32 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   String _buildPlayerDebugReport(
     String message, {
     _MediaOpenDiagnosis? diagnosis,
+    required AppLocalizations l10n,
   }) {
     final buffer = StringBuffer()..writeln(message);
     if (_recentPlayerLogs.isNotEmpty) {
       buffer
         ..writeln()
-        ..writeln('media_kit/mpv 日志:');
+        ..writeln(l10n.animePlayerMpvLogTitle);
       for (final line in _recentPlayerLogs) {
         buffer.writeln(line);
       }
     }
-    final diagnosisText = diagnosis?.toDebugString();
+    final diagnosisText = diagnosis?.toDebugString(l10n);
     if (diagnosisText != null && diagnosisText.isNotEmpty) {
       buffer
         ..writeln()
-        ..writeln('快速诊断:')
+        ..writeln(l10n.animePlayerQuickDiagnosisTitle)
         ..writeln(diagnosisText);
     }
     return buffer.toString().trim();
   }
 
-  String _formatPlayerError(String message, {_MediaOpenDiagnosis? diagnosis}) {
+  String _formatPlayerError(
+    String message, {
+    _MediaOpenDiagnosis? diagnosis,
+    required AppLocalizations l10n,
+  }) {
     final lower = message.toLowerCase();
     final manifestStatus = diagnosis?.manifestStatus;
     final segmentStatus = diagnosis?.segmentStatus;
@@ -347,37 +359,40 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         lower.contains('forbidden') ||
         manifestStatus == 403 ||
         segmentStatus == 403) {
-      return '视频源拒绝访问（403）';
+      return l10n.animePlayerSourceForbidden;
     }
     if (lower.contains('404') ||
         lower.contains('not found') ||
         manifestStatus == 404 ||
         segmentStatus == 404) {
-      return '视频地址已失效（404）';
+      return l10n.animePlayerSourceNotFound;
     }
     if (lower.contains('certificate') ||
         lower.contains('tls') ||
         lower.contains('ssl')) {
-      return '视频证书校验失败';
+      return l10n.animePlayerCertificateFailed;
     }
     if (lower.contains('timeout') || lower.contains('timed out')) {
-      return '视频连接超时';
+      return l10n.animePlayerConnectionTimeout;
     }
     if (diagnosis?.networkLooksHealthy == true) {
-      return '视频源可访问，但播放器无法解析该视频流';
+      return l10n.animePlayerCannotParseStream;
     }
     if (lower.contains('127.0.0.1') ||
         lower.contains('localhost') ||
         lower.contains('failed to open')) {
-      return '视频加载失败，请开启代理后重试';
+      return l10n.animePlayerEnableProxyToRetry;
     }
     return message;
   }
 
   Future<_MediaOpenDiagnosis> _diagnoseMediaOpen(String videoUrl) async {
+    final l10n = AppLocalizations.of(context)!;
     final uri = Uri.tryParse(videoUrl);
     if (uri == null || !uri.hasScheme) {
-      return const _MediaOpenDiagnosis(manifestError: '视频地址不是合法 URI');
+      return _MediaOpenDiagnosis(
+        manifestError: l10n.animePlayerInvalidVideoUri,
+      );
     }
 
     final dio = AppDio.create(
@@ -395,7 +410,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       final manifestResponse = await dio.getUri<String>(uri);
       await _recordPlaybackHttpFailureIfNeeded(
         manifestResponse,
-        message: '视频诊断请求失败',
+        message: l10n.animePlayerDiagnosisRequestFailed,
       );
       final manifestText = manifestResponse.data ?? '';
       final manifestLooksLikeHls = manifestText.contains('#EXTM3U');
@@ -423,13 +438,13 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           );
           await _recordPlaybackHttpFailureIfNeeded(
             segmentResponse,
-            message: '视频分片诊断请求失败',
+            message: l10n.animePlayerSegmentDiagnosisRequestFailed,
           );
           segmentStatus = segmentResponse.statusCode;
           segmentBytes = segmentResponse.data?.length;
         } on DioException catch (e) {
           segmentStatus = e.response?.statusCode;
-          segmentError = _formatLoadError(e);
+          segmentError = _formatLoadError(e, l10n);
         }
       }
 
@@ -438,16 +453,20 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         manifestLooksLikeHls: manifestLooksLikeHls,
         manifestError: manifestResponse.statusCode == 200
             ? null
-            : '请求失败（${manifestResponse.statusCode ?? 'unknown'}）',
+            : l10n.animePlayerRequestFailedStatusText(
+                (manifestResponse.statusCode ?? 'unknown').toString(),
+              ),
         firstSegmentUrl: segmentUri?.toString(),
         segmentStatus: segmentStatus,
         segmentBytes: segmentBytes,
-        segmentError: segmentError ?? (segmentUri == null ? '未解析出分片地址' : null),
+        segmentError:
+            segmentError ??
+            (segmentUri == null ? l10n.animePlayerSegmentUrlNotResolved : null),
       );
     } on DioException catch (e) {
       return _MediaOpenDiagnosis(
         manifestStatus: e.response?.statusCode,
-        manifestError: _formatLoadError(e),
+        manifestError: _formatLoadError(e, l10n),
       );
     } finally {
       dio.close(force: true);
@@ -459,12 +478,17 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     required String videoUrl,
     required String rawMessage,
   }) async {
+    final l10n = AppLocalizations.of(context)!;
     final diagnosis = await _diagnoseMediaOpen(videoUrl);
     if (!mounted || serial != _openMediaSerial) return;
     _recordPlayerError(rawMessage, diagnosis: diagnosis);
     setState(() {
-      _error = _formatPlayerError(rawMessage, diagnosis: diagnosis);
-      _rawError = _buildPlayerDebugReport(rawMessage, diagnosis: diagnosis);
+      _error = _formatPlayerError(rawMessage, diagnosis: diagnosis, l10n: l10n);
+      _rawError = _buildPlayerDebugReport(
+        rawMessage,
+        diagnosis: diagnosis,
+        l10n: l10n,
+      );
     });
   }
 
@@ -487,6 +511,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   }
 
   void _recordPlayerError(String message, {_MediaOpenDiagnosis? diagnosis}) {
+    final l10n = AppLocalizations.of(context)!;
     unawaited(
       AppLogger.instance.recordError(
         message,
@@ -499,7 +524,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           if (_videoUrl != null && _videoUrl!.isNotEmpty) 'videoUrl': _videoUrl,
           if (_recentPlayerLogs.isNotEmpty)
             'playerLogs': _recentPlayerLogs.join('\n'),
-          if (diagnosis != null) 'diagnosis': diagnosis.toDebugString(),
+          if (diagnosis != null) 'diagnosis': diagnosis.toDebugString(l10n),
         },
       ),
     );
@@ -591,10 +616,11 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       debugPrint('AnimePlayerPage open media error: $e');
       final rawMessage = e.toString();
       if (!mounted || serial != _openMediaSerial) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _buffering = false;
-        _error = _formatPlayerError(rawMessage);
-        _rawError = _buildPlayerDebugReport(rawMessage);
+        _error = _formatPlayerError(rawMessage, l10n: l10n);
+        _rawError = _buildPlayerDebugReport(rawMessage, l10n: l10n);
       });
       unawaited(
         _enrichOpenMediaFailure(
@@ -808,14 +834,18 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   }
 
   Future<void> _openChapter(AnimeChapter chapter) async {
+    final l10n = AppLocalizations.of(context)!;
     if (chapter.uuid == _currentChapterUuid) return;
     if (_loading) {
-      _showPlayerHint('视频加载中，请稍后再切换', isError: true);
+      _showPlayerHint(
+        AppLocalizations.of(context)!.animePlayerLoadingCannotSwitch,
+        isError: true,
+      );
       return;
     }
     final line = _resolveChapterLine(chapter) ?? _line;
     if (line.isEmpty) {
-      _showPlayerHint('当前选集暂无可用线路', isError: true);
+      _showPlayerHint(l10n.animeDetailNoAvailableLine, isError: true);
       return;
     }
 
@@ -842,25 +872,34 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   Future<void> _copyVideoUrl() async {
     final url = _videoUrl;
     if (url == null || url.isEmpty) {
-      _showPlayerHint('暂无可复制的视频链接', isError: true);
+      _showPlayerHint(
+        AppLocalizations.of(context)!.animePlayerNoVideoUrlToCopy,
+        isError: true,
+      );
       return;
     }
     await Clipboard.setData(ClipboardData(text: url));
     if (!mounted) return;
-    _showPlayerHint('视频链接已复制到剪贴板');
+    _showPlayerHint(AppLocalizations.of(context)!.animePlayerVideoUrlCopied);
   }
 
   Future<void> _openVideoUrl() async {
     final url = _videoUrl;
     final uri = url == null ? null : Uri.tryParse(url);
     if (uri == null || !uri.hasScheme) {
-      _showPlayerHint('暂无可打开的视频链接', isError: true);
+      _showPlayerHint(
+        AppLocalizations.of(context)!.animePlayerNoVideoUrlToOpen,
+        isError: true,
+      );
       return;
     }
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted) return;
     if (!launched) {
-      _showPlayerHint('无法打开视频链接', isError: true);
+      _showPlayerHint(
+        AppLocalizations.of(context)!.animePlayerOpenVideoUrlFailed,
+        isError: true,
+      );
     }
   }
 
@@ -894,9 +933,16 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     if (!mounted) return;
     if (restored) {
       _lastDanmakuSec = -1;
-      _showPlayerHint('已跳转到 ${_formatDuration(record.position)}');
+      _showPlayerHint(
+        AppLocalizations.of(
+          context,
+        )!.animePlayerSeekedTo(_formatDuration(record.position)),
+      );
     } else {
-      _showPlayerHint('无法跳转到上次进度', isError: true);
+      _showPlayerHint(
+        AppLocalizations.of(context)!.animePlayerSeekLastFailed,
+        isError: true,
+      );
     }
   }
 
@@ -953,7 +999,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       List.generate(_searchSegments.length, (i) => i),
     );
     _syncSearchText();
-    // 如果有缓存，直接显示
+    // Show cached results immediately.
     unawaited(_doInlineSearch(showLoading: false));
   }
 
@@ -997,14 +1043,22 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           _inlineSearching = false;
           _hasSearched = true;
         });
-        if (showLoading) _showPlayerHint('搜索失败: $e', isError: true);
+        if (showLoading) {
+          _showPlayerHint(
+            AppLocalizations.of(context)!.animePlayerSearchFailed(e.toString()),
+            isError: true,
+          );
+        }
       }
     }
   }
 
   void _forceRefreshSearch() {
     if (!DandanplayApi().clearSearchCache()) {
-      _showPlayerHint('不要频繁刷新！', isError: true);
+      _showPlayerHint(
+        AppLocalizations.of(context)!.animePlayerRefreshTooFrequent,
+        isError: true,
+      );
       return;
     }
     _doInlineSearch();
@@ -1080,7 +1134,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           });
         }
       }
-      // if (!silent) _showPlayerHint('共加载了 ${items.length} 条弹幕');
+      // if (!silent) _showPlayerHint('Loaded ${items.length} danmaku items');
       return true;
     } catch (e) {
       debugPrint('LoadDanmaku error: $e');
@@ -1092,7 +1146,12 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         setState(() => _loadingDanmakuEpisodeId = null);
       }
       if (!silent) {
-        _showPlayerHint('加载弹幕失败: $e', isError: true);
+        _showPlayerHint(
+          AppLocalizations.of(
+            context,
+          )!.animePlayerLoadDanmakuFailed(e.toString()),
+          isError: true,
+        );
       }
       return false;
     }
@@ -1225,6 +1284,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     return PopScope(
       onPopInvokedWithResult: (_, _) {
@@ -1257,7 +1317,9 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
                               requiresLogin: _requiresLogin,
                               onLogin: _goLogin,
                               onRetry: () => _load(),
-                              onLogCopied: () => _showPlayerHint('日志已复制到剪贴板'),
+                              onLogCopied: () => _showPlayerHint(
+                                l10n.chapterCommentsLogCopied,
+                              ),
                             ),
                     ),
                     if (_showLoadingOverlay)
@@ -1270,16 +1332,16 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
                               const CircularProgressIndicator(),
                               if (_buffering && !_loading) ...[
                                 const SizedBox(height: 12),
-                                const Text(
-                                  '正在缓冲...',
-                                  style: TextStyle(
+                                Text(
+                                  l10n.animePlayerBuffering,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '如果网络卡顿，建议开启代理访问',
+                                  l10n.animePlayerProxySuggestion,
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.7),
                                     fontSize: 10,

@@ -28,6 +28,13 @@ class _DandanplayAlignmentResult {
       clear = true;
 }
 
+const _bangumiEpisodeCountKey = '话数';
+const _bangumiAirStartKey = '放送开始';
+const _bangumiOriginalWorkKey = '原作';
+const _bangumiDirectorKey = '导演';
+const _bangumiAirWeekdayKey = '放送星期';
+const _bangumiOriginalIntroMarker = '[简介原文]';
+
 class _AnimeIntroViewData {
   final String title;
   final String cover;
@@ -53,7 +60,10 @@ class _AnimeIntroViewData {
     this.headerMetadata = const [],
   });
 
-  factory _AnimeIntroViewData.fromAnime(Anime anime) => _AnimeIntroViewData(
+  factory _AnimeIntroViewData.fromAnime(
+    Anime anime,
+    AppLocalizations l10n,
+  ) => _AnimeIntroViewData(
     title: anime.name,
     cover: anime.cover,
     summary: anime.brief?.trim() ?? '',
@@ -65,7 +75,7 @@ class _AnimeIntroViewData {
       if (anime.grade?['display'] != null) anime.grade!['display'].toString(),
       if (anime.freeType?['display'] != null)
         anime.freeType!['display'].toString(),
-      if (anime.bSubtitle) '字幕',
+      if (anime.bSubtitle) l10n.animeDetailSubtitleChip,
       ...anime.themes
           .map((e) => e.name)
           .where((item) => item.trim().isNotEmpty),
@@ -82,18 +92,22 @@ class _AnimeIntroViewData {
           ].where((item) => item.trim().isNotEmpty).join(' · '),
     subMetaLine: anime.lastChapter?['name'] == null
         ? null
-        : '最新：${anime.lastChapter!['name']}',
+        : l10n.animeDetailLatestChapter(anime.lastChapter!['name'].toString()),
     primaryStat: (
       icon: Icons.local_fire_department,
-      text: ComicCoverCard.formatPopular(anime.popular),
+      text: ComicCoverCard.formatPopular(anime.popular, l10n),
     ),
     secondaryStat: anime.count > 0
-        ? (icon: Icons.video_collection_outlined, text: '共 ${anime.count} 集')
+        ? (
+            icon: Icons.video_collection_outlined,
+            text: l10n.totalEpisodes(anime.count),
+          )
         : null,
   );
 
   factory _AnimeIntroViewData.fromDandanplay(
     DandanplayBangumi bangumi, {
+    required AppLocalizations l10n,
     Anime? fallbackAnime,
   }) {
     final metadataMap = _bangumiMetadataMap(bangumi.metadata);
@@ -114,8 +128,8 @@ class _AnimeIntroViewData {
     if ((bangumi.typeDescription ?? '').trim().isNotEmpty) {
       addChip(bangumi.typeDescription!);
     }
-    if (bangumi.isOnAir) addChip('连载中');
-    if (bangumi.isRestricted) addChip('受限');
+    if (bangumi.isOnAir) addChip(l10n.animeDetailOnAirChip);
+    if (bangumi.isRestricted) addChip(l10n.animeDetailRestrictedChip);
     for (final item
         in bangumi.metadata.where((item) => item.contains(':')).take(6)) {
       addChip(item.split(':').first);
@@ -129,7 +143,10 @@ class _AnimeIntroViewData {
             item.trim() != (bangumi.intro ?? '').trim(),
       ),
     ];
-    final episodeCountLabel = _formatEpisodeCountLabel(metadataMap['话数'] ?? '');
+    final episodeCountLabel = _formatEpisodeCountLabel(
+      metadataMap[_bangumiEpisodeCountKey] ?? '',
+      l10n,
+    );
 
     return _AnimeIntroViewData(
       title: title,
@@ -138,16 +155,20 @@ class _AnimeIntroViewData {
       chips: chips,
       metaLine:
           [
-            if ((metadataMap['放送开始'] ?? '').isNotEmpty) metadataMap['放送开始']!,
-            if ((metadataMap['原作'] ?? '').isNotEmpty) metadataMap['原作']!,
+            if ((metadataMap[_bangumiAirStartKey] ?? '').isNotEmpty)
+              metadataMap[_bangumiAirStartKey]!,
+            if ((metadataMap[_bangumiOriginalWorkKey] ?? '').isNotEmpty)
+              metadataMap[_bangumiOriginalWorkKey]!,
           ].join(' · ').trim().isEmpty
           ? null
           : [
-              if ((metadataMap['放送开始'] ?? '').isNotEmpty) metadataMap['放送开始']!,
-              if ((metadataMap['原作'] ?? '').isNotEmpty) metadataMap['原作']!,
+              if ((metadataMap[_bangumiAirStartKey] ?? '').isNotEmpty)
+                metadataMap[_bangumiAirStartKey]!,
+              if ((metadataMap[_bangumiOriginalWorkKey] ?? '').isNotEmpty)
+                metadataMap[_bangumiOriginalWorkKey]!,
             ].join(' · '),
-      subMetaLine: (metadataMap['导演'] ?? '').isNotEmpty
-          ? '导演：${metadataMap['导演']}'
+      subMetaLine: (metadataMap[_bangumiDirectorKey] ?? '').isNotEmpty
+          ? l10n.animeDetailDirector(metadataMap[_bangumiDirectorKey]!)
           : null,
       extraInfoLines: extraLines,
       primaryStat: bangumi.rating > 0
@@ -155,27 +176,33 @@ class _AnimeIntroViewData {
           : (fallbackAnime != null
                 ? (
                     icon: Icons.local_fire_department,
-                    text: ComicCoverCard.formatPopular(fallbackAnime.popular),
+                    text: ComicCoverCard.formatPopular(
+                      fallbackAnime.popular,
+                      l10n,
+                    ),
                   )
                 : null),
       secondaryStat: episodeCountLabel != null
           ? (icon: Icons.video_collection_outlined, text: episodeCountLabel)
-          : ((metadataMap['话数'] ?? '').isNotEmpty
+          : ((metadataMap[_bangumiEpisodeCountKey] ?? '').isNotEmpty
                 ? null
                 : (bangumi.episodes.isNotEmpty
                       ? (
                           icon: Icons.video_collection_outlined,
-                          text: '共 ${bangumi.episodes.length} 集',
+                          text: l10n.totalEpisodes(bangumi.episodes.length),
                         )
                       : (fallbackAnime != null && fallbackAnime.count > 0
                             ? (
                                 icon: Icons.video_collection_outlined,
-                                text: '共 ${fallbackAnime.count} 集',
+                                text: l10n.totalEpisodes(fallbackAnime.count),
                               )
                             : null))),
       headerMetadata: [
-        if ((metadataMap['放送星期'] ?? '').isNotEmpty)
-          (icon: Icons.calendar_today_outlined, text: metadataMap['放送星期']!),
+        if ((metadataMap[_bangumiAirWeekdayKey] ?? '').isNotEmpty)
+          (
+            icon: Icons.calendar_today_outlined,
+            text: metadataMap[_bangumiAirWeekdayKey]!,
+          ),
       ],
     );
   }
@@ -194,14 +221,15 @@ class _AnimeIntroViewData {
   }
 
   static bool _isHeaderMetadata(String item) =>
-      item.startsWith('话数:') || item.startsWith('放送星期:');
+      item.startsWith('$_bangumiEpisodeCountKey:') ||
+      item.startsWith('$_bangumiAirWeekdayKey:');
 
-  static String? _formatEpisodeCountLabel(String raw) {
+  static String? _formatEpisodeCountLabel(String raw, AppLocalizations l10n) {
     final value = raw.trim();
     if (value.isEmpty || value == '*') return null;
     final matched = RegExp(r'\d+').firstMatch(value)?.group(0);
     if (matched != null && matched.isNotEmpty) {
-      return '共 ${int.parse(matched)} 集';
+      return l10n.totalEpisodes(int.parse(matched));
     }
     return null;
   }
@@ -209,7 +237,7 @@ class _AnimeIntroViewData {
   static String _cleanBangumiSummary(String? summary, String? intro) {
     final raw = (summary ?? '').trim();
     if (raw.isEmpty) return (intro ?? '').trim();
-    final markerIndex = raw.indexOf('[简介原文]');
+    final markerIndex = raw.indexOf(_bangumiOriginalIntroMarker);
     final cleaned = markerIndex >= 0 ? raw.substring(0, markerIndex) : raw;
     final normalized = cleaned
         .split(RegExp(r'\r?\n'))

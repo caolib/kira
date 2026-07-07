@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -48,16 +49,16 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
   final _scrollController = ScrollController();
   bool _showBackToTop = false;
 
-  String get _title {
+  String _title(AppLocalizations l10n) {
     switch (widget.kind) {
       case CopyMangaListKind.recommendations:
-        return '推荐';
+        return l10n.copyRecommend;
       case CopyMangaListKind.ranking:
-        return '排行榜';
+        return l10n.copyRanking;
       case CopyMangaListKind.newest:
-        return '全新上架';
+        return l10n.copyNewArrival;
       case CopyMangaListKind.finished:
-        return '已完结';
+        return l10n.copyFinished;
     }
   }
 
@@ -193,12 +194,12 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(_title)),
+      appBar: AppBar(title: Text(_title(AppLocalizations.of(context)!))),
       floatingActionButton: _showBackToTop
           ? FloatingActionButton.small(
               heroTag: 'copy_list_back_to_top_${widget.kind.name}',
               onPressed: _scrollToTop,
-              tooltip: '回到顶部',
+              tooltip: AppLocalizations.of(context)!.backToTop,
               child: const Icon(Icons.arrow_upward_rounded),
             )
           : null,
@@ -302,11 +303,23 @@ class _CopyRankControls extends StatelessWidget {
             child: SegmentedButton<String>(
               selected: {dateType},
               onSelectionChanged: (value) => onDateTypeChanged(value.first),
-              segments: const [
-                ButtonSegment(value: 'day', label: Text('日榜')),
-                ButtonSegment(value: 'week', label: Text('周榜')),
-                ButtonSegment(value: 'month', label: Text('月榜')),
-                ButtonSegment(value: 'total', label: Text('总榜')),
+              segments: [
+                ButtonSegment(
+                  value: 'day',
+                  label: Text(AppLocalizations.of(context)!.dayRank),
+                ),
+                ButtonSegment(
+                  value: 'week',
+                  label: Text(AppLocalizations.of(context)!.weekRank),
+                ),
+                ButtonSegment(
+                  value: 'month',
+                  label: Text(AppLocalizations.of(context)!.monthRank),
+                ),
+                ButtonSegment(
+                  value: 'total',
+                  label: Text(AppLocalizations.of(context)!.totalRank),
+                ),
               ],
               style: const ButtonStyle(
                 visualDensity: VisualDensity.compact,
@@ -320,9 +333,15 @@ class _CopyRankControls extends StatelessWidget {
             child: SegmentedButton<String>(
               selected: {audienceType},
               onSelectionChanged: (value) => onAudienceTypeChanged(value.first),
-              segments: const [
-                ButtonSegment(value: 'male', label: Text('男生')),
-                ButtonSegment(value: 'female', label: Text('女生')),
+              segments: [
+                ButtonSegment(
+                  value: 'male',
+                  label: Text(AppLocalizations.of(context)!.maleAudience),
+                ),
+                ButtonSegment(
+                  value: 'female',
+                  label: Text(AppLocalizations.of(context)!.femaleAudience),
+                ),
               ],
               style: const ButtonStyle(
                 visualDensity: VisualDensity.compact,
@@ -352,9 +371,15 @@ class _CopyListError extends StatelessWidget {
         children: [
           Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
           const SizedBox(height: 16),
-          Text('加载失败', style: tt.titleMedium),
+          Text(
+            AppLocalizations.of(context)!.loadingFailed,
+            style: tt.titleMedium,
+          ),
           const SizedBox(height: 8),
-          FilledButton.tonal(onPressed: onRetry, child: const Text('重试')),
+          FilledButton.tonal(
+            onPressed: onRetry,
+            child: Text(AppLocalizations.of(context)!.retryButton),
+          ),
         ],
       ),
     );
@@ -374,6 +399,7 @@ class _CopyListComicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -428,7 +454,7 @@ class _CopyListComicCard extends StatelessWidget {
               const SizedBox(width: 2),
               Flexible(
                 child: Text(
-                  _formatPopular(comic.popular),
+                  _formatPopular(context, comic.popular),
                   overflow: TextOverflow.ellipsis,
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
@@ -439,7 +465,7 @@ class _CopyListComicCard extends StatelessWidget {
               if (comic.datetimeUpdated != null) ...[
                 const SizedBox(width: 4),
                 Text(
-                  TimeFormat.relativeOf(comic.datetimeUpdated!),
+                  TimeFormat.relativeOf(comic.datetimeUpdated!, l10n),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontSize: 10,
@@ -453,9 +479,14 @@ class _CopyListComicCard extends StatelessWidget {
     );
   }
 
-  static String _formatPopular(int n) {
-    if (n >= 100000000) return '${(n / 100000000).toStringAsFixed(1)}亿';
-    if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
+  static String _formatPopular(BuildContext context, int n) {
+    final l10n = AppLocalizations.of(context)!;
+    if (n >= 100000000) {
+      return l10n.hundredMillionUnit((n / 100000000).toStringAsFixed(1));
+    }
+    if (n >= 10000) {
+      return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
+    }
     return n.toString();
   }
 }

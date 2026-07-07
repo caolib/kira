@@ -135,7 +135,7 @@ class _PlaybackProgressHint extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '上次看到',
+                  AppLocalizations.of(context)!.browseHistoryLastSeenLabel,
                   style: tt.labelMedium?.copyWith(
                     color: cs.onSecondaryContainer,
                     fontWeight: FontWeight.w700,
@@ -143,7 +143,11 @@ class _PlaybackProgressHint extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  restored ? '$progressText（已自动继续）' : progressText,
+                  restored
+                      ? AppLocalizations.of(
+                          context,
+                        )!.playerProgressAutoResumed(progressText)
+                      : progressText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: tt.bodyMedium?.copyWith(
@@ -157,7 +161,7 @@ class _PlaybackProgressHint extends StatelessWidget {
           TextButton.icon(
             onPressed: onResume,
             icon: const Icon(Icons.replay_10, size: 18),
-            label: const Text('跳转'),
+            label: Text(AppLocalizations.of(context)!.playerSeekButton),
             style: TextButton.styleFrom(
               foregroundColor: cs.secondary,
               visualDensity: VisualDensity.compact,
@@ -209,7 +213,10 @@ class _InlineSearchPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final hasResults = results.isNotEmpty;
-    final title = loadedDanmakuCount > 0 ? '弹幕搜索（$loadedDanmakuCount）' : '弹幕搜索';
+    final l10n = AppLocalizations.of(context)!;
+    final title = loadedDanmakuCount > 0
+        ? l10n.danmakuSearchTitleWithCount(loadedDanmakuCount)
+        : l10n.danmakuSearchTitle;
 
     return _CollapsiblePlayerCard(
       icon: Icons.subtitles_outlined,
@@ -239,7 +246,7 @@ class _InlineSearchPanel extends StatelessWidget {
           TextField(
             controller: searchController,
             decoration: InputDecoration(
-              hintText: '输入搜索关键词',
+              hintText: l10n.danmakuSearchHint,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -254,7 +261,7 @@ class _InlineSearchPanel extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     onPressed: searching ? null : onRefresh,
-                    tooltip: '强制刷新',
+                    tooltip: l10n.forceRefreshTooltip,
                   ),
                   IconButton(
                     icon: searching
@@ -265,7 +272,7 @@ class _InlineSearchPanel extends StatelessWidget {
                           )
                         : const Icon(Icons.search),
                     onPressed: searching ? null : onSearch,
-                    tooltip: '搜索',
+                    tooltip: l10n.searchTabLabel,
                   ),
                 ],
               ),
@@ -281,12 +288,12 @@ class _InlineSearchPanel extends StatelessWidget {
               ),
             )
           else if (hasResults)
-            _buildFlatResults(cs, tt)
+            _buildFlatResults(context, cs, tt)
           else if (hasSearched)
-            _buildEmptyResults(cs, tt)
+            _buildEmptyResults(context, cs, tt)
           else
             Text(
-              '请选择分段或输入搜索词后点击搜索',
+              l10n.danmakuSearchInstruction,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
         ],
@@ -294,12 +301,14 @@ class _InlineSearchPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildFlatResults(ColorScheme cs, TextTheme tt) {
+  Widget _buildFlatResults(BuildContext context, ColorScheme cs, TextTheme tt) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '共找到 ${results.length} 条结果',
+          AppLocalizations.of(
+            context,
+          )!.danmakuSearchResultCount(results.length),
           style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
@@ -332,7 +341,11 @@ class _InlineSearchPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyResults(ColorScheme cs, TextTheme tt) {
+  Widget _buildEmptyResults(
+    BuildContext context,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -346,12 +359,12 @@ class _InlineSearchPanel extends StatelessWidget {
           Icon(Icons.search_off_rounded, size: 36, color: cs.onSurfaceVariant),
           const SizedBox(height: 10),
           Text(
-            '未找到相关弹幕',
+            AppLocalizations.of(context)!.danmakuSearchNoResults,
             style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            '减少关键词，仅搜索作品名称\n如：「Re：从零开始的异世界生活第四季丧失篇」搜索「从零开始的异世界生活第四季」',
+            AppLocalizations.of(context)!.danmakuSearchNoResultsHint,
             textAlign: TextAlign.start,
             style: tt.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
@@ -419,7 +432,7 @@ class _DanmakuResultTile extends StatelessWidget {
               if (loading) ...[
                 const SizedBox(width: 8),
                 _LoadingTag(
-                  label: '加载中',
+                  label: AppLocalizations.of(context)!.networkTesting,
                   foreground: cs.primary,
                   background: cs.primaryContainer.withValues(alpha: 0.45),
                 ),

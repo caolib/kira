@@ -164,6 +164,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     const controlButtonSize = 24.0;
     const controlButtonExtent = 40.0;
 
@@ -411,7 +412,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                             child: Row(
                               children: [
                                 IconButton(
-                                  tooltip: '退出全屏',
+                                  tooltip: l10n.animePlayerExitFullscreen,
                                   onPressed: widget.onFullscreen,
                                   icon: const Icon(Icons.arrow_back),
                                   color: Colors.white,
@@ -530,7 +531,9 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           _PlayerControlButton(
-                                            tooltip: playing ? '暂停' : '播放',
+                                            tooltip: playing
+                                                ? l10n.pauseButton
+                                                : l10n.animePlayerPlay,
                                             icon: playing
                                                 ? Icons.pause
                                                 : Icons.play_arrow,
@@ -539,8 +542,11 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                             onPressed: _togglePlay,
                                           ),
                                           _PlayerControlButton(
-                                            tooltip:
-                                                '快进 ${UserManager().animeSkipSeconds}秒',
+                                            tooltip: l10n
+                                                .animePlayerFastForward(
+                                                  UserManager()
+                                                      .animeSkipSeconds,
+                                                ),
                                             icon: Icons.fast_forward,
                                             iconSize: controlButtonSize,
                                             extent: controlButtonExtent,
@@ -548,8 +554,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                           ),
                                           _PlayerControlButton(
                                             tooltip: widget.danmakuVisible
-                                                ? '隐藏弹幕'
-                                                : '显示弹幕',
+                                                ? l10n.animePlayerHideDanmaku
+                                                : l10n.playerSettingsShowDanmaku,
                                             icon: widget.danmakuVisible
                                                 ? Icons.subtitles
                                                 : Icons.subtitles_off,
@@ -558,14 +564,16 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                             onPressed: widget.onToggleDanmaku,
                                           ),
                                           _PlayerControlButton(
-                                            tooltip: '选集',
+                                            tooltip:
+                                                l10n.animePlayerChapterSelector,
                                             icon: Icons.playlist_play,
                                             iconSize: controlButtonSize,
                                             extent: controlButtonExtent,
                                             onPressed: _togglePlaylist,
                                           ),
                                           _PlayerControlButton(
-                                            tooltip: '设置跳转秒数',
+                                            tooltip:
+                                                l10n.animePlayerSetSkipSeconds,
                                             icon: Icons.settings,
                                             iconSize: controlButtonSize,
                                             extent: controlButtonExtent,
@@ -573,8 +581,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                           ),
                                           _PlayerControlButton(
                                             tooltip: widget.fullscreen
-                                                ? '退出全屏'
-                                                : '全屏',
+                                                ? l10n.animePlayerExitFullscreen
+                                                : l10n.animePlayerFullscreen,
                                             icon: widget.fullscreen
                                                 ? Icons.fullscreen_exit
                                                 : Icons.fullscreen,
@@ -739,13 +747,14 @@ class _VideoTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Row(
         children: [
           IconButton(
-            tooltip: '返回',
+            tooltip: l10n.backButton,
             onPressed: () => Navigator.maybePop(context),
             icon: const Icon(Icons.arrow_back),
           ),

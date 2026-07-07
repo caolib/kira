@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../widgets/github_markdown.dart';
 import 'app_dio.dart';
@@ -19,7 +20,7 @@ enum AssetPlatform {
   ios('iOS', Icons.phone_iphone),
   linux('Linux', Icons.desktop_mac),
   web('Web', Icons.public),
-  unknown('其他', Icons.insert_drive_file);
+  unknown('Other', Icons.insert_drive_file);
 
   final String label;
   final IconData icon;
@@ -33,8 +34,8 @@ class ReleaseAsset {
   final int size;
   final AssetPlatform platform;
   final DateTime createdAt;
-  // 从文件名解析出的版本号 [major, minor, patch, build]，如 1.1.3+205 -> [1,1,3,205]。
-  // 无法解析时为空列表，排序时回退到构建时间。
+  // Version parts parsed from filename, e.g. 1.1.3+205 -> [1,1,3,205].
+  // Empty when parsing fails; sorting falls back to build time.
   final List<int> versionParts;
 
   const ReleaseAsset({
@@ -58,8 +59,12 @@ class ReleaseAsset {
     return '$size B';
   }
 
-  /// 构建时间的相对描述（如"3 小时前"）。
-  String get createdLabel => TimeFormat.relative(createdAt);
+  /// Relative description of build time. Falls back to "just now" when
+  /// no [AppLocalizations] is provided (e.g. tests).
+  String relativeCreatedLabel(AppLocalizations? l10n) {
+    if (l10n == null) return TimeFormat.relativeFallback(createdAt);
+    return TimeFormat.relative(createdAt, l10n);
+  }
 }
 
 class AppUpdateInfo {
@@ -153,18 +158,18 @@ class AppUpdateService {
     return AppUpdateInfo(
       currentVersion: currentVersion,
       latestVersion: latestVersion,
-      releaseName: releaseName.isNotEmpty ? releaseName : '发现新版本',
+      releaseName: releaseName.isNotEmpty
+          ? releaseName
+          : 'New version available',
       releaseNotes: releaseNotes,
       releasePageUrl: releasePageUrl,
       assets: assets,
     );
   }
 
-  /// beta 渠道固定指向 CI tag，tag 不变。每次 CI 触发都会追加一个安装包，
-  /// 按内部版本号（如 1.1.3+205 中的 build 号）倒序排列，版本号无法解析时
-  /// 回退到构建时间。
-  /// 更新判断依据内部 build 号对比：当前 build 号 >= 最新 build 号则无更新。
-  /// 自动检查时（autoCheck=true）还在此基础上用最新构建名去重，避免重复弹窗。
+  /// Beta channel points to the CI tag. New CI runs append assets.
+  /// Assets are sorted by internal build number descending, falling back to time.
+  /// Update checks compare build numbers and use latest asset name to dedupe auto prompts.
   static AppUpdateInfo? _buildBetaUpdateInfo({
     required UserManager user,
     required String currentVersion,
@@ -177,10 +182,10 @@ class AppUpdateService {
     required AssetPlatform currentPlatform,
     required bool autoCheck,
   }) {
-    // 版本号最大的即最新构建，用于 build 号对比和自动检查去重。
+    // Highest version is the latest build for comparison and auto-check dedupe.
     final newest = _maxByVersion(assets);
 
-    // 按内部 build 号对比：当前 >= 最新则无更新（无需弹窗）。
+    // Compare internal build number: current >= latest means no update.
     if (newest.versionParts.isNotEmpty) {
       final latestBuild = newest.versionParts.last;
       final currentBuild = int.tryParse(currentBuildNumber) ?? 0;
@@ -201,7 +206,7 @@ class AppUpdateService {
     return AppUpdateInfo(
       currentVersion: currentVersion,
       latestVersion: tagName.isNotEmpty ? tagName : 'CI',
-      releaseName: releaseName.isNotEmpty ? releaseName : 'CI 构建版本',
+      releaseName: releaseName.isNotEmpty ? releaseName : 'CI build',
       releaseNotes: releaseNotes,
       releasePageUrl: releasePageUrl,
       assets: assets,
@@ -209,7 +214,7 @@ class AppUpdateService {
     );
   }
 
-  /// 从文件名解析形如 `1.1.3+205` 的内部版本号，返回 [major, minor, patch, build]。
+  /// Parses internal version like `1.1.3+205` into [major, minor, patch, build].
   static List<int> _parseVersionFromName(String name) {
     final match = RegExp(r'(\d+)\.(\d+)\.(\d+)\+(\d+)').firstMatch(name);
     if (match == null) return const [];
@@ -221,7 +226,7 @@ class AppUpdateService {
     ];
   }
 
-  /// 按内部版本号倒序比较；版本号无法解析时回退到构建时间倒序。
+  /// Compares by internal version descending, falling back to build time.
   static int _compareByVersionDesc(ReleaseAsset a, ReleaseAsset b) {
     if (a.versionParts.isEmpty && b.versionParts.isEmpty) {
       return b.createdAt.compareTo(a.createdAt);
@@ -234,12 +239,12 @@ class AppUpdateService {
     for (var i = 0; i < length; i++) {
       final av = i < a.versionParts.length ? a.versionParts[i] : 0;
       final bv = i < b.versionParts.length ? b.versionParts[i] : 0;
-      if (av != bv) return bv.compareTo(av); // 倒序
+      if (av != bv) return bv.compareTo(av); // Descending
     }
     return 0;
   }
 
-  /// 取版本号最大（最新）的资产，回退到构建时间最新。
+  /// Returns the newest asset by version, falling back to build time.
   static ReleaseAsset _maxByVersion(List<ReleaseAsset> assets) {
     return assets.reduce((a, b) => _compareByVersionDesc(a, b) <= 0 ? a : b);
   }
@@ -282,12 +287,12 @@ class AppUpdateService {
 
       if (updateInfo == null) {
         if (!auto) {
-          showToast(context, '当前已是最新版本');
+          showToast(context, AppLocalizations.of(context)!.updateAlreadyLatest);
         }
         return;
       }
 
-      // beta 渠道记录最新构建，自动检查时据此去重。
+      // Record latest beta build to dedupe auto-check prompts.
       if (updateInfo.isBetaChannel && updateInfo.assets.isNotEmpty) {
         await UserManager().setLastBetaAssetName(updateInfo.assets.first.name);
       }
@@ -299,7 +304,11 @@ class AppUpdateService {
       );
     } catch (_) {
       if (!context.mounted || auto) return;
-      showToast(context, '检查更新失败，请稍后重试', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.updateCheckFailedRetryLater,
+        isError: true,
+      );
     }
   }
 
@@ -376,7 +385,11 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted) return;
     if (!launched) {
-      showToast(context, '无法打开下载链接', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.updateOpenDownloadFailed,
+        isError: true,
+      );
       return;
     }
     Navigator.pop(context);
@@ -401,7 +414,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   Widget _buildReleaseNotes(String notes, ColorScheme cs, TextTheme tt) {
     if (notes.trim().isEmpty) {
       return Text(
-        '暂无更新说明',
+        AppLocalizations.of(context)!.updateNoReleaseNotes,
         style: TextStyle(color: cs.onSurfaceVariant, height: 1.5),
       );
     }
@@ -421,10 +434,13 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     TextTheme tt, {
     bool showCreated = false,
     String? badge,
+    AppLocalizations? l10n,
   }) {
     final subtitleParts = <String>[asset.platform.label];
     if (asset.sizeLabel.isNotEmpty) subtitleParts.add(asset.sizeLabel);
-    if (showCreated) subtitleParts.add(asset.createdLabel);
+    if (showCreated) {
+      subtitleParts.add(asset.relativeCreatedLabel(l10n));
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -489,7 +505,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           ),
           const SizedBox(width: 6),
           IconButton(
-            tooltip: '下载',
+            tooltip: AppLocalizations.of(context)!.animeDetailDownloadButton,
             visualDensity: VisualDensity.compact,
             onPressed: _submitting ? null : () => _openUrl(asset.downloadUrl),
             icon: SvgPicture.asset(
@@ -500,7 +516,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             ),
           ),
           IconButton(
-            tooltip: '镜像下载',
+            tooltip: AppLocalizations.of(context)!.updateMirrorDownload,
             visualDensity: VisualDensity.compact,
             onPressed: _submitting ? null : () => _openUrl(asset.mirrorUrl),
             icon: Icon(Icons.public, size: 20, color: cs.primary),
@@ -510,22 +526,32 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     );
   }
 
-  /// beta 渠道：最新构建置顶并标注「最新」，其余构建默认折叠。
+  /// Beta channel: latest build is pinned and other builds are collapsed by default.
   List<Widget> _buildBetaAssetWidgets(
     List<ReleaseAsset> assets,
     ColorScheme cs,
     TextTheme tt,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final widgets = <Widget>[];
     if (assets.isEmpty) return widgets;
     widgets.add(
-      _buildAssetTile(assets.first, cs, tt, showCreated: true, badge: '最新'),
+      _buildAssetTile(
+        assets.first,
+        cs,
+        tt,
+        showCreated: true,
+        badge: l10n.updateLatestBadge,
+        l10n: l10n,
+      ),
     );
     if (assets.length > 1) {
       widgets.add(_buildBetaExpandToggle(cs, tt, assets.length - 1));
       if (_betaAssetsExpanded) {
         for (final asset in assets.skip(1)) {
-          widgets.add(_buildAssetTile(asset, cs, tt, showCreated: true));
+          widgets.add(
+            _buildAssetTile(asset, cs, tt, showCreated: true, l10n: l10n),
+          );
         }
       }
     }
@@ -557,7 +583,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             ),
             const SizedBox(width: 4),
             Text(
-              _betaAssetsExpanded ? '收起其他版本' : '查看更多版本 ($count)',
+              _betaAssetsExpanded
+                  ? AppLocalizations.of(context)!.updateCollapseOtherVersions
+                  : AppLocalizations.of(context)!.updateViewMoreVersions(count),
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -572,16 +600,18 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     final tt = Theme.of(context).textTheme;
     final isBeta = widget.updateInfo.isBetaChannel;
     final notes = widget.updateInfo.releaseNotes.isEmpty
-        ? (isBeta ? 'CI 自动构建版本，不保证稳定性。' : '暂无更新说明')
+        ? (isBeta
+              ? AppLocalizations.of(context)!.updateCiBuildUnstable
+              : AppLocalizations.of(context)!.updateNoReleaseNotes)
         : widget.updateInfo.releaseNotes;
 
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       title: Row(
         children: [
-          const Expanded(child: Text('有更新')),
+          Expanded(child: Text(AppLocalizations.of(context)!.hasUpdate)),
           IconButton(
-            tooltip: '打开发布页',
+            tooltip: AppLocalizations.of(context)!.updateOpenReleasePage,
             visualDensity: VisualDensity.compact,
             onPressed: _submitting
                 ? null
@@ -608,7 +638,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             Row(
               children: [
                 Text(
-                  isBeta ? '安装包（按版本号倒序）' : '安装包',
+                  isBeta
+                      ? AppLocalizations.of(context)!.updatePackagesBeta
+                      : AppLocalizations.of(context)!.updatePackages,
                   style: tt.labelLarge?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -632,7 +664,12 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                       ? _buildBetaAssetWidgets(widget.updateInfo.assets, cs, tt)
                       : [
                           for (final asset in widget.updateInfo.assets)
-                            _buildAssetTile(asset, cs, tt),
+                            _buildAssetTile(
+                              asset,
+                              cs,
+                              tt,
+                              l10n: AppLocalizations.of(context)!,
+                            ),
                         ],
                 ),
               ),
@@ -646,15 +683,19 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 if (!isBeta)
                   TextButton(
                     onPressed: _submitting ? null : _skipVersion,
-                    child: const Text('跳过此版本'),
+                    child: Text(
+                      AppLocalizations.of(context)!.updateSkipVersion,
+                    ),
                   ),
                 TextButton(
                   onPressed: _submitting ? null : _disableAutoCheck,
-                  child: const Text('取消自动检查更新'),
+                  child: Text(
+                    AppLocalizations.of(context)!.updateDisableAutoCheck,
+                  ),
                 ),
                 TextButton(
                   onPressed: _submitting ? null : () => Navigator.pop(context),
-                  child: const Text('关闭'),
+                  child: Text(AppLocalizations.of(context)!.closeButton),
                 ),
               ],
             ),

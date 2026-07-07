@@ -29,6 +29,7 @@ class _ChapterDividerActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 8,
@@ -37,13 +38,15 @@ class _ChapterDividerActions extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onCatalog,
           icon: const Icon(Icons.list),
-          label: const Text('目录'),
+          label: Text(l10n.chapterCommentsCatalog),
           style: _chapterActionButtonStyle,
         ),
         OutlinedButton.icon(
           onPressed: onComments,
           icon: const Icon(Icons.forum_outlined),
-          label: Text(commentCount > 0 ? '$commentCount' : '评论'),
+          label: Text(
+            commentCount > 0 ? '$commentCount' : l10n.chapterCommentsComment,
+          ),
           style: _chapterActionButtonStyle,
         ),
       ],
@@ -109,6 +112,7 @@ class _LoadMoreTail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(32, 48, 32, 32),
@@ -122,7 +126,9 @@ class _LoadMoreTail extends StatelessWidget {
               Icon(Icons.expand_more, color: cs.onSurfaceVariant, size: 32),
             const SizedBox(height: 8),
             Text(
-              isLoading ? '正在加载下一话…' : '继续滚动加载下一话',
+              isLoading
+                  ? l10n.readerLoadingNextChapter
+                  : l10n.readerContinueScrollLoadNext,
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 16),
@@ -158,21 +164,22 @@ class _FirstChapterHead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const message = Center(
+    final l10n = AppLocalizations.of(context)!;
+    final message = Center(
       child: Text(
-        '已经是第一章',
-        style: TextStyle(color: Colors.white54, fontSize: 14),
+        l10n.readerAlreadyFirstChapter,
+        style: const TextStyle(color: Colors.white54, fontSize: 14),
       ),
     );
 
     if (isHorizontalScroll) {
       return SizedBox(
         width: tailExtent,
-        child: const Padding(padding: EdgeInsets.all(32), child: message),
+        child: Padding(padding: const EdgeInsets.all(32), child: message),
       );
     }
 
-    return const Padding(padding: EdgeInsets.all(32), child: message);
+    return Padding(padding: const EdgeInsets.all(32), child: message);
   }
 }
 
@@ -194,6 +201,7 @@ class _ChapterEndActionsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 8,
@@ -202,20 +210,22 @@ class _ChapterEndActionsRow extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onCatalog,
           icon: const Icon(Icons.list),
-          label: const Text('目录'),
+          label: Text(l10n.chapterCommentsCatalog),
           style: _chapterActionButtonStyle,
         ),
         OutlinedButton.icon(
           onPressed: onComments,
           icon: const Icon(Icons.forum_outlined),
-          label: Text(commentCount > 0 ? '$commentCount' : '评论'),
+          label: Text(
+            commentCount > 0 ? '$commentCount' : l10n.chapterCommentsComment,
+          ),
           style: _chapterActionButtonStyle,
         ),
         if (hasNext)
           FilledButton.icon(
             onPressed: onNextChapter,
             icon: const Icon(Icons.skip_next),
-            label: const Text('下一话'),
+            label: Text(l10n.chapterCommentsNext),
             style: _chapterPrimaryButtonStyle,
           ),
       ],
@@ -241,6 +251,7 @@ class _PageModeEndActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ColoredBox(
       color: Colors.black,
       child: SafeArea(
@@ -258,22 +269,15 @@ class _PageModeEndActions extends StatelessWidget {
                   onComments: onComments,
                   onNextChapter: onNextChapter,
                 ),
-                if (hasNext)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      '继续翻页进入下一话',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                  )
-                else
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      '已经是最后一话',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    hasNext
+                        ? l10n.readerContinuePageNextChapter
+                        : l10n.readerAlreadyLastChapter,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
+                ),
               ],
             ),
           ),
@@ -305,13 +309,16 @@ class _NextChapterTail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(32, 72, 32, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            hasNext ? '继续下滑或点击按钮进入下一话' : '已经是最后一话',
+            hasNext
+                ? l10n.readerContinueScrollOrTapNextChapter
+                : l10n.readerAlreadyLastChapter,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white70,

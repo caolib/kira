@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// 显示本项目（kira）自身的开源许可证。
 class ProjectLicensePage extends StatelessWidget {
   const ProjectLicensePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('许可证')),
+      appBar: AppBar(title: Text(l10n.aboutLicenseTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -23,7 +26,7 @@ class ProjectLicensePage extends StatelessWidget {
                   Icon(Icons.copyright_outlined, color: cs.primary),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text('本项目采用 MIT 开源许可证', style: tt.titleMedium),
+                    child: Text(l10n.licenseMitSummary, style: tt.titleMedium),
                   ),
                 ],
               ),

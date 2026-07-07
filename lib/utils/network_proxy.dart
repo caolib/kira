@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:native_flutter_proxy/native_flutter_proxy.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import 'app_logger.dart';
 
@@ -36,14 +37,16 @@ class NetworkProxy {
 
   static NetworkProxyEndpoint? get systemProxy => _systemProxy;
 
-  static String get systemProxyDescription => _systemProxy?.label ?? '未检测到系统代理';
+  static String systemProxyDescription(AppLocalizations l10n) {
+    return _systemProxy?.label ?? l10n.networkNoSystemProxyDetected;
+  }
 
-  static String get activeProxyDescription {
+  static String activeProxyDescription(AppLocalizations l10n) {
     switch (_user.networkProxyMode) {
       case NetworkProxyMode.system:
-        return _systemProxy?.label ?? '系统代理：未检测到';
+        return _systemProxy?.label ?? l10n.networkSystemProxyNotDetected;
       case NetworkProxyMode.manual:
-        return _manualProxy?.label ?? '手动代理：未配置';
+        return _manualProxy?.label ?? l10n.networkManualProxyNotConfigured;
     }
   }
 

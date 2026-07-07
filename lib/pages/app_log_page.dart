@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/app_logger.dart';
 import '../utils/toast.dart';
 
@@ -60,6 +61,7 @@ class _AppLogPageState extends State<AppLogPage> {
   }
 
   Future<void> _copyLogs() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_copying) return;
     setState(() {
       _copying = true;
@@ -69,17 +71,17 @@ class _AppLogPageState extends State<AppLogPage> {
       final text = await _logger.exportText();
       if (!mounted) return;
       if (text.trim().isEmpty) {
-        showToast(context, '暂无错误日志', isError: true);
+        showToast(context, l10n.appLogEmpty, isError: true);
         return;
       }
 
       await Clipboard.setData(ClipboardData(text: text));
       if (mounted) {
-        showToast(context, '日志已复制到剪贴板');
+        showToast(context, l10n.appLogCopied);
       }
     } catch (e) {
       if (mounted) {
-        showToast(context, '复制失败：$e', isError: true);
+        showToast(context, l10n.appLogCopyFailed('$e'), isError: true);
       }
     } finally {
       if (mounted) {
@@ -91,21 +93,22 @@ class _AppLogPageState extends State<AppLogPage> {
   }
 
   Future<void> _clearLogs() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_clearing) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('清空错误日志'),
-        content: const Text('确定要删除本地保存的错误日志吗？'),
+        title: Text(l10n.appLogClearTitle),
+        content: Text(l10n.appLogClearContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('清空'),
+            child: Text(l10n.cacheClearButton),
           ),
         ],
       ),
@@ -119,11 +122,11 @@ class _AppLogPageState extends State<AppLogPage> {
       await _logger.clear();
       await _refresh();
       if (mounted) {
-        showToast(context, '错误日志已清空');
+        showToast(context, l10n.appLogCleared);
       }
     } catch (e) {
       if (mounted) {
-        showToast(context, '清空失败：$e', isError: true);
+        showToast(context, l10n.appLogClearFailed('$e'), isError: true);
       }
     } finally {
       if (mounted) {
@@ -165,12 +168,13 @@ class _AppLogPageState extends State<AppLogPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('错误日志'),
+        title: Text(l10n.errorLogTitle),
         actions: [
           IconButton(
-            tooltip: '设置',
+            tooltip: l10n.settingsTooltip,
             onPressed: () => _showSettings(context),
             icon: const Icon(Icons.settings_rounded),
           ),
@@ -206,7 +210,7 @@ class _AppLogPageState extends State<AppLogPage> {
                     return false;
                   }
                   if (query.isEmpty) return true;
-                  return _entryMatches(entry, query);
+                  return _entryMatches(entry, query, l10n);
                 }).toList();
                 if (filtered.isEmpty) {
                   return RefreshIndicator(
@@ -224,7 +228,7 @@ class _AppLogPageState extends State<AppLogPage> {
                         const SizedBox(height: 16),
                         Center(
                           child: Text(
-                            '暂无错误日志',
+                            l10n.appLogEmpty,
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
                                   color: Theme.of(
@@ -301,6 +305,7 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tt = Theme.of(context).textTheme;
 
     return SafeArea(
@@ -325,14 +330,14 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('日志设置', style: tt.titleMedium),
+              child: Text(l10n.appLogSettingsTitle, style: tt.titleMedium),
             ),
           ),
           const Divider(height: 1),
           SwitchListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20),
             secondary: const Icon(Icons.fact_check_outlined),
-            title: const Text('记录日志'),
+            title: Text(l10n.appLogRecordLogs),
             value: _loggingEnabled,
             onChanged: (value) {
               setState(() => _loggingEnabled = value);
@@ -342,7 +347,7 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20),
             leading: const Icon(Icons.tune_rounded),
-            title: const Text('日志级别'),
+            title: Text(l10n.appLogLevel),
             trailing: DropdownButton<AppLogLevel>(
               value: _minimumLevel,
               underline: const SizedBox.shrink(),
@@ -358,7 +363,7 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
                     child: _FilterItem(
                       icon: _levelIcon(level),
                       color: _levelColor(Theme.of(context).colorScheme, level),
-                      label: level.thresholdLabel,
+                      label: level.displayName(l10n),
                     ),
                   ),
               ],
@@ -400,6 +405,7 @@ class _LogFilterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final currentValue = levelFilter ?? _allValue;
 
@@ -418,12 +424,12 @@ class _LogFilterPanel extends StatelessWidget {
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 isDense: true,
-                hintText: '搜索日志（消息、来源、堆栈、上下文）',
+                hintText: l10n.appLogSearchHint,
                 prefixIcon: const Icon(Icons.search_rounded),
                 suffixIcon: searchQuery.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: '清除',
+                        tooltip: l10n.aiConfigClear,
                         icon: const Icon(Icons.clear_rounded),
                         onPressed: () {
                           controller.clear();
@@ -442,17 +448,17 @@ class _LogFilterPanel extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  tooltip: '刷新',
+                  tooltip: l10n.refreshButton,
                   onPressed: onRefresh,
                   icon: const Icon(Icons.refresh_rounded),
                 ),
                 IconButton(
-                  tooltip: '复制日志',
+                  tooltip: l10n.chapterCommentsCopyLog,
                   onPressed: copying ? null : onCopy,
                   icon: const Icon(Icons.copy_rounded),
                 ),
                 IconButton(
-                  tooltip: '清空日志',
+                  tooltip: l10n.appLogClearLogsTooltip,
                   onPressed: clearing ? null : onClear,
                   icon: const Icon(Icons.delete_outline_rounded),
                 ),
@@ -473,7 +479,7 @@ class _LogFilterPanel extends StatelessWidget {
                       child: _FilterItem(
                         icon: Icons.layers_rounded,
                         color: cs.onSurfaceVariant,
-                        label: '全部',
+                        label: l10n.appLogAllLevels,
                       ),
                     ),
                     for (final level in AppLogLevel.values)
@@ -482,7 +488,7 @@ class _LogFilterPanel extends StatelessWidget {
                         child: _FilterItem(
                           icon: _levelIcon(level),
                           color: _levelColor(cs, level),
-                          label: level.displayName,
+                          label: level.displayName(l10n),
                         ),
                       ),
                   ],
@@ -535,16 +541,17 @@ class _LogEntryCardState extends State<_LogEntryCard> {
   AppLogEntry get entry => widget.entry;
 
   Future<void> _copyEntry() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_copying) return;
     setState(() => _copying = true);
     try {
       await Clipboard.setData(ClipboardData(text: entry.toPlainText()));
       if (mounted) {
-        showToast(context, '日志已复制到剪贴板');
+        showToast(context, l10n.appLogCopied);
       }
     } catch (e) {
       if (mounted) {
-        showToast(context, '复制失败：$e', isError: true);
+        showToast(context, l10n.appLogCopyFailed('$e'), isError: true);
       }
     } finally {
       if (mounted) {
@@ -555,6 +562,7 @@ class _LogEntryCardState extends State<_LogEntryCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final stackTrace = entry.stackTrace;
@@ -579,7 +587,7 @@ class _LogEntryCardState extends State<_LogEntryCard> {
           ),
         ),
         subtitle: Text(
-          '${_formatLogTime(entry.timestamp)} · ${entry.level.displayName} · ${entry.source}',
+          '${_formatLogTime(entry.timestamp)} · ${entry.level.displayName(l10n)} · ${entry.source}',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -588,7 +596,7 @@ class _LogEntryCardState extends State<_LogEntryCard> {
           Align(
             alignment: Alignment.centerRight,
             child: IconButton(
-              tooltip: '复制此日志',
+              tooltip: l10n.appLogCopyThisLogTooltip,
               onPressed: _copying ? null : _copyEntry,
               icon: _copying
                   ? const SizedBox(
@@ -602,7 +610,7 @@ class _LogEntryCardState extends State<_LogEntryCard> {
           if (entry.context.isNotEmpty) ...[
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('上下文', style: tt.labelLarge),
+              child: Text(l10n.appLogContextTitle, style: tt.labelLarge),
             ),
             const SizedBox(height: 8),
             for (final item in entry.context.entries)
@@ -615,7 +623,7 @@ class _LogEntryCardState extends State<_LogEntryCard> {
           if (stackTrace != null && stackTrace.isNotEmpty) ...[
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('堆栈', style: tt.labelLarge),
+              child: Text(l10n.appLogStackTitle, style: tt.labelLarge),
             ),
             const SizedBox(height: 8),
             _LogTextBlock(text: stackTrace),
@@ -684,14 +692,15 @@ String _formatLogTime(DateTime time) {
   return '$year-$month-$day $hour:$minute:$second';
 }
 
-bool _entryMatches(AppLogEntry entry, String query) {
+bool _entryMatches(AppLogEntry entry, String query, AppLocalizations l10n) {
   final lower = query.toLowerCase();
   bool contains(String? text) =>
       text != null && text.toLowerCase().contains(lower);
 
   if (contains(entry.message) ||
       contains(entry.source) ||
-      contains(entry.level.displayName) ||
+      contains(entry.level.idLabel) ||
+      contains(entry.level.displayName(l10n)) ||
       contains(entry.stackTrace)) {
     return true;
   }

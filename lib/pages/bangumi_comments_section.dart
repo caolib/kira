@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../api/dandanplay_api.dart';
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/time_format.dart';
 
@@ -169,6 +170,7 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -184,23 +186,23 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: _BangumiCommentsMessage(
           icon: Icons.rate_review_outlined,
-          title: '评论加载失败',
-          description: '下拉或点按钮重试',
+          title: l10n.bangumiCommentsLoadFailed,
+          description: l10n.bangumiCommentsRetryHint,
           action: FilledButton.tonal(
             onPressed: () => _loadComments(forceRefresh: true),
-            child: const Text('重试'),
+            child: Text(l10n.retryButton),
           ),
         ),
       );
     }
 
     if (_comments.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
         child: _BangumiCommentsMessage(
           icon: Icons.forum_outlined,
-          title: '还没有评论',
-          description: '暂时没有可显示的 Bangumi 评论',
+          title: l10n.bangumiCommentsEmptyTitle,
+          description: l10n.bangumiCommentsEmptySubtitle,
         ),
       );
     }
@@ -212,13 +214,19 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
         for (var i = 0; i < _comments.length; i++) ...[
           _BangumiCommentCard(
             comment: _comments[i],
-            relativeTime: TimeFormat.relativeOf(_comments[i].updatedTime),
+            relativeTime: TimeFormat.relativeOf(
+              _comments[i].updatedTime,
+              AppLocalizations.of(context)!,
+            ),
           ),
           if (i != _comments.length - 1) const SizedBox(height: 10),
         ],
         if (_error != null && _comments.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Text('更多评论加载失败', style: tt.bodySmall?.copyWith(color: cs.error)),
+          Text(
+            l10n.bangumiCommentsLoadMoreFailed,
+            style: tt.bodySmall?.copyWith(color: cs.error),
+          ),
         ],
         if (_loadingMore) ...[
           const SizedBox(height: 16),
@@ -229,7 +237,11 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
             child: FilledButton.tonalIcon(
               onPressed: () => _loadComments(loadMore: true),
               icon: Icon(_error != null ? Icons.refresh : Icons.expand_more),
-              label: Text(_error != null ? '重试加载更多' : '加载更多'),
+              label: Text(
+                _error != null
+                    ? l10n.bangumiCommentsRetryLoadMore
+                    : l10n.bangumiCommentsLoadMore,
+              ),
             ),
           ),
         ],
@@ -249,6 +261,7 @@ class _BangumiCommentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final user = UserManager();
@@ -291,7 +304,7 @@ class _BangumiCommentCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             comment.userName.isEmpty
-                                ? '匿名用户'
+                                ? l10n.commentSettingsAnonymousUser
                                 : comment.userName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -315,7 +328,9 @@ class _BangumiCommentCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            comment.text.isEmpty ? '这条评论没有内容' : comment.text,
+            comment.text.isEmpty
+                ? l10n.bangumiCommentsEmptyComment
+                : comment.text,
             style: bodyStyle,
           ),
         ],

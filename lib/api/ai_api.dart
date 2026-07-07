@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Locale, PlatformDispatcher;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/app_dio.dart';
 
-/// 提示词预设条目。
+/// Prompt preset item.
 class PromptPreset {
   final String id;
   final String name;
@@ -98,7 +100,7 @@ class AiProviderConfig {
     final model = json['model'] as String? ?? AiSettings.defaultModel;
     return AiProviderConfig(
       id: json['id'] as String,
-      name: json['name'] as String? ?? '自定义供应商',
+      name: json['name'] as String? ?? AiSettings._l10n.aiConfigCustomProvider,
       baseUrl: json['baseUrl'] as String? ?? AiSettings.defaultBaseUrl,
       apiKey: json['apiKey'] as String?,
       apiFormat: AiSettings.parseApiFormatName(json['apiFormat'] as String?),
@@ -133,9 +135,9 @@ class AiProviderConfig {
   static const Object _unset = Object();
 }
 
-/// OpenAI 兼容模型 API 客户端与本地设置。
+/// OpenAI-compatible model API client and local settings.
 ///
-/// 密钥与模型选择仅保存在本地 SharedPreferences，不上传到任何位置。
+/// API keys and model choices are stored only in local SharedPreferences.
 class AiSettings extends ChangeNotifier {
   static final AiSettings _instance = AiSettings._();
   factory AiSettings() => _instance;
@@ -158,7 +160,7 @@ class AiSettings extends ChangeNotifier {
   static const _keySpoilerWarn = 'zhipu_spoiler_warn';
   static const _keyCustomModels = 'zhipu_custom_models';
 
-  /// 常用模型，第一个为默认。glm-4-flash 系列对个人用户免费。
+  /// Common models; the first one is the default.
   static const availableModels = <String>[
     'glm-4-Flash-250414',
     'glm-4.5-flash',
@@ -169,79 +171,45 @@ class AiSettings extends ChangeNotifier {
   static const defaultBaseUrl = 'https://open.bigmodel.cn/api/paas/v4';
   static const builtInZhipuProviderId = 'zhipu_bigmodel';
 
-  /// 内置预设 ID。
+  /// Built-in preset ID.
   static const presetBasicId = 'basic';
 
-  /// 旧版内置风格预设 ID，仅用于迁移历史配置。
+  /// Legacy built-in style preset IDs, kept only for migration.
   static const _legacyPresetSharpId = 'sharp';
   static const _legacyPresetWarmId = 'warm';
 
-  /// 旧版内置剧透预设 ID，仅用于迁移历史配置。
+  /// Legacy built-in spoiler preset ID, kept only for migration.
   static const presetSpoilerId = 'spoiler';
 
-  /// 默认提示词（基础提示词）。
-  static const _legacyDefaultPromptBasic =
-      '先梳理评论区的主流声音、分歧点、大家吐槽/夸赞的核心内容；'
-      '之后直抒胸臆，大胆表达你的立场，好坏直接点明，不中和、不打太极；'
-      '绝对不要虚构漫画剧情，所有内容都基于现有评论；'
-      '语言干练接地气，用 Markdown 输出一份犀利总结，类似下面的格式：\n'
-      '### 大家在聊什么 （不超过7项，取多数人讨论的，每一项字数保持在25字以内）\n'
-      '- 很多人都表示...\n'
-      '- 有些人觉得...\n'
-      '- 个别人认为...\n'
-      '### 我的评论\n'
-      '（发表你的评论，简短10-20字左右，不要附和他人观点，'
-      '不是对其他人的看法，而是直接说你自己的看法或吐槽，表现得自然一点）';
+  static AppLocalizations get _l10n {
+    final locale = PlatformDispatcher.instance.locale;
+    if (locale.languageCode == 'zh' && locale.scriptCode == 'Hant') {
+      return lookupAppLocalizations(
+        const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      );
+    }
+    return lookupAppLocalizations(const Locale('zh'));
+  }
 
-  static const defaultPromptBasic =
-      '先梳理评论区的主流声音、分歧点、大家吐槽/夸赞的核心内容；'
-      '之后直抒胸臆，大胆表达你的立场，好坏直接点明，不中和、不打太极；'
-      '绝对不要虚构漫画剧情，所有内容都基于现有评论；'
-      '语言干练接地气，用 Markdown 输出一份犀利总结，类似下面的格式：\n'
-      '### 大家在聊什么 （不超过7项，取多数人讨论的，每一项字数保持在25字以内）\n'
-      '- 角色A做了什么...\n'
-      '- 很多人吐槽...\n'
-      '- xxxx...\n'
-      '### 我的评论\n'
-      '（发表你的评论，简短10-20字左右，不要附和他人观点，'
-      '不是对其他人的看法，而是直接说你自己的看法或吐槽，表现得自然一点）';
+  static String get _legacyDefaultPromptBasic =>
+      _l10n.aiLegacyDefaultPromptBasic;
+  static String get defaultPromptBasic => _l10n.aiDefaultPromptBasic;
 
-  /// 开启剧透分析时追加到当前提示词后的要求。
-  static const spoilerAnalysisPromptAppendix =
-      '【剧透分析附加要求】\n'
-      '用户已开启剧透分析。请在遵循上方提示词的基础上，额外满足以下要求：\n'
-      '- 正文总结中不要复述、描述、暗示或概括任何剧透内容；\n'
-      '- 可以输出 **剧透警告**，但仅当存在剧透评论时才输出此段，且只能写"本章评论中有 N（这个N是剧透的数量） 处涉及剧透，已遮罩"这一句，绝对不要描述、暗示或概括任何剧情/转折/结局；如果没有任何剧透评论则整段省略。\n\n'
-      '【剧透的判定标准 · 非常重要】\n'
-      '只有同时满足以下全部条件的评论才应标记为剧透：\n'
-      '- 明确透露（包含猜测，有些用户会通过猜测进行剧透）了尚未在当前章节及之前出场过的剧情走向、角色命运（死亡、复活、背叛等）或结局结果；\n'
-      '- 普通的感想（如"太好看了""画风不错"）、角色喜爱（如"XX好帅"）、对已发生情节的正常讨论、对后续的模糊期待（如"期待下一话"）【不算】剧透；\n'
-      '【机读输出】用户消息中每条评论开头都是它的数字 id（形如 "81216. xxx: ..."）。'
-      '在整篇输出的最末尾追加一个 fenced code block（用三个反引号包裹），里面只放一个 JSON 数字数组，列出【高度剧透嫌疑】的评论 id：\n'
-      '```\n'
-      '[81216, 81230]\n'
-      '```\n'
-      '如果没有任何高度剧透的评论，依然必须输出该代码块，数组为空：\n'
-      '```\n'
-      '[]\n'
-      '```\n'
-      '硬性要求：\n'
-      '1) 必须是整篇输出的最后一段，下面不要再写任何字；\n'
-      '2) 必须用三个反引号包裹（语言标识写不写都行）；\n'
-      '3) 中括号里只能有数字和英文逗号，不要写解释、不要带 id= 前缀；\n'
-      '4) 哪怕没有剧透也要写空数组 []，不能省略整个代码块；\n';
+  /// Requirements appended to the active prompt when spoiler analysis is enabled.
+  static String get spoilerAnalysisPromptAppendix =>
+      _l10n.aiSpoilerAnalysisPromptAppendix;
 
-  /// 兼容旧版常量；剧透分析现在会动态追加到当前预设。
-  static const defaultPromptSpoiler =
+  /// Backward-compatible getter; spoiler analysis is now appended dynamically.
+  static String get defaultPromptSpoiler =>
       '$defaultPromptBasic\n\n$spoilerAnalysisPromptAppendix';
 
-  /// 兼容旧版。
-  static const defaultSummaryPrompt = defaultPromptBasic;
+  /// Backward-compatible getter.
+  static String get defaultSummaryPrompt => defaultPromptBasic;
 
-  static const builtInPresets = <PromptPreset>[
+  static List<PromptPreset> get builtInPresets => [
     PromptPreset(
       id: presetBasicId,
-      name: '基础提示词',
+      name: _l10n.aiPromptBasicName,
       prompt: defaultPromptBasic,
       isBuiltIn: true,
     ),
@@ -318,7 +286,7 @@ class AiSettings extends ChangeNotifier {
     _spoilerWarn = sp.getBool(_keySpoilerWarn) ?? true;
     _activePresetId = sp.getString(_keyActivePreset) ?? presetBasicId;
     _customModels = sp.getStringList(_keyCustomModels) ?? [];
-    // 首次使用时将内置模型加入自定义列表
+    // Seed built-in models into the custom model list on first use.
     if (_customModels.isEmpty) {
       _customModels = List.from(availableModels);
       await sp.setStringList(_keyCustomModels, _customModels);
@@ -364,7 +332,7 @@ class AiSettings extends ChangeNotifier {
     );
     return AiProviderConfig(
       id: builtInZhipuProviderId,
-      name: '智谱清言',
+      name: _l10n.aiConfigZhipuName,
       baseUrl: baseUrl?.trim().isNotEmpty == true
           ? baseUrl!.trim()
           : defaultBaseUrl,
@@ -486,7 +454,7 @@ class AiSettings extends ChangeNotifier {
               return keep;
             })
             .toList();
-        // 确保内置预设始终存在（用保存的覆盖默认）
+        // Ensure built-in presets always exist; saved copies override defaults.
         final ids = list.map((e) => e.id).toSet();
         for (final builtIn in builtInPresets) {
           if (!ids.contains(builtIn.id)) {
@@ -629,7 +597,7 @@ class AiSettings extends ChangeNotifier {
 
   Future<void> upsertProvider(AiProviderConfig provider) async {
     final trimmedName = provider.name.trim().isEmpty
-        ? '自定义供应商'
+        ? _l10n.aiConfigCustomProvider
         : provider.name.trim();
     final trimmedModel = provider.model.trim().isEmpty
         ? defaultModel
@@ -857,7 +825,7 @@ class AiApi {
     ),
   );
 
-  /// 获取 OpenAI 兼容供应商暴露的模型列表。
+  /// Fetches model IDs exposed by an OpenAI-compatible provider.
   Future<List<String>> fetchModels({
     required String apiKey,
     required String baseUrl,
@@ -892,7 +860,7 @@ class AiApi {
     return result;
   }
 
-  /// 以流式 SSE 方式调用，逐块吐出文本增量。
+  /// Calls the SSE stream and yields text deltas chunk by chunk.
   Stream<String> streamChat({
     required String apiKey,
     required String baseUrl,
@@ -913,7 +881,7 @@ class AiApi {
     }
   }
 
-  /// 以流式 SSE 方式调用，同时保留支持推理模型返回的思考增量。
+  /// Calls the SSE stream and preserves reasoning deltas when available.
   Stream<AiStreamChunk> streamChatChunks({
     required String apiKey,
     required String baseUrl,
@@ -931,7 +899,7 @@ class AiApi {
           'Authorization': 'Bearer $apiKey',
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream',
-          // 关键：禁用压缩，否则 Dio 会等待完整响应才能解压，无法流式
+          // Disable compression so Dio does not wait for a full body to decompress.
           'Accept-Encoding': 'identity',
           'Cache-Control': 'no-cache',
         },
@@ -939,7 +907,7 @@ class AiApi {
       cancelToken: cancelToken,
     );
 
-    // 用流式 utf8 解码器 + LineSplitter，正确处理跨 chunk 的中文字符和分行
+    // Streaming UTF-8 decoding preserves split multibyte chars and line breaks.
     final lines = response.data!.stream
         .cast<List<int>>()
         .transform(utf8.decoder)
@@ -956,7 +924,7 @@ class AiApi {
         final chunk = _parseStreamChunk(json, apiFormat);
         if (chunk != null && chunk.text.isNotEmpty) yield chunk;
       } catch (_) {
-        // 忽略个别无法解析的行
+        // Ignore individual malformed SSE lines.
       }
     }
   }

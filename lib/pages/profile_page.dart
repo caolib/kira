@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../utils/app_update.dart';
@@ -15,17 +16,14 @@ import '../utils/remote_notice_service.dart';
 import '../utils/toast.dart';
 import 'register_page.dart' show RegisterPrefill;
 
-const _appDisclaimerItems = [
-  '本应用（以下简称"本软件"）系独立开发的非官方第三方客户端，与任何内容平台、出版商或权利人均无隶属、合作或代理关系。',
-  '本软件不生产、上传、存储、编辑、修改、推荐或预先审查任何具体内容。所有内容均来源于第三方平台公开接口或可访问资源，其合法性、准确性、完整性及合规性由相应内容提供方独立负责。',
-  '本软件所展示的内容可能包含成人向、暴力、恐怖或其他不适宜未成年人浏览的信息。您确认您已年满 18 周岁，且您所在地法律法规允许您访问此类内容。如您不符合前述条件，请立即停止使用并卸载本软件。',
-  '您应自行判断所浏览内容是否适合，并确保您的使用行为完全符合您所在地现行有效的法律法规。因您使用本软件而产生的一切法律后果由您自行承担。',
-  '如任何第三方内容涉嫌侵犯他人合法权益或违反法律法规，权利人可通过本软件提供的联系方式向开发者发送有效通知，开发者将在合理期限内核实并采取必要措施。',
-  '本软件按"现状"提供，开发者不对其功能性、可用性、准确性或可靠性作出任何明示或默示的保证。在任何情况下，开发者均不对因使用或无法使用本软件而产生的任何直接、间接、附带、特殊或后果性损害承担责任。',
+List<String> _appDisclaimerItems(AppLocalizations l10n) => [
+  l10n.appDisclaimerItem1,
+  l10n.appDisclaimerItem2,
+  l10n.appDisclaimerItem3,
+  l10n.appDisclaimerItem4,
+  l10n.appDisclaimerItem5,
+  l10n.appDisclaimerItem6,
 ];
-
-const _appDisclaimerFooter =
-    '继续使用本软件，即表示您已仔细阅读、充分理解并同意接受上述全部条款的约束。如您不同意任一条款，请立即停止使用并卸载本软件。';
 
 const _noticeCenterColor = Color(0xFFEB6F92);
 
@@ -82,8 +80,13 @@ class _ProfilePageState extends State<ProfilePage> {
     return false;
   }
 
-  String _credentialTypeLabel(SavedCredential credential) {
-    return _isCopyCredential(credential) ? '拷贝' : '热辣';
+  String _credentialTypeLabel(
+    AppLocalizations l10n,
+    SavedCredential credential,
+  ) {
+    return _isCopyCredential(credential)
+        ? l10n.profileCopyCredentialLabel
+        : l10n.profileHotCredentialLabel;
   }
 
   IconData _credentialTypeIcon(SavedCredential credential) {
@@ -108,13 +111,14 @@ class _ProfilePageState extends State<ProfilePage> {
     if (otherAccounts.isEmpty || !hasToken) {
       final result = await context.pushNamed<bool>(AppRoutes.login);
       if (result == true && mounted) {
-        showToast(context, '账号已切换');
+        showToast(context, AppLocalizations.of(context)!.accountSwitchedToast);
         setState(() {});
       }
       return;
     }
 
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final selected = await showModalBottomSheet<Object>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -123,7 +127,10 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('切换账号', style: Theme.of(ctx).textTheme.titleMedium),
+              child: Text(
+                l10n.switchAccountTitle,
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
             ),
             Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
             ...otherAccounts.map((cred) {
@@ -173,7 +180,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _credentialTypeLabel(cred),
+                            _credentialTypeLabel(l10n, cred),
                             style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
                               color: _isCopyCredential(cred)
                                   ? cs.onTertiaryContainer
@@ -199,7 +206,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: () =>
                       Navigator.pop(ctx, _SwitchAccountSheetAction.addAccount),
                   icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('添加账号'),
+                  label: Text(l10n.addAccountButton),
                 ),
               ),
             ),
@@ -213,7 +220,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (selected == _SwitchAccountSheetAction.addAccount) {
       final result = await context.pushNamed<bool>(AppRoutes.login);
       if (result == true && mounted) {
-        showToast(context, '账号已切换');
+        showToast(context, AppLocalizations.of(context)!.accountSwitchedToast);
         setState(() {});
       }
       return;
@@ -225,35 +232,43 @@ class _ProfilePageState extends State<ProfilePage> {
       final success = await _user.switchToCredential(selected);
       if (mounted) {
         if (success) {
-          showToast(context, '账号已切换');
+          showToast(
+            context,
+            AppLocalizations.of(context)!.accountSwitchedToast,
+          );
         } else {
-          showToast(context, '切换失败，请重试', isError: true);
+          showToast(
+            context,
+            AppLocalizations.of(context)!.switchAccountFailedToast,
+            isError: true,
+          );
         }
       }
     } else {
       // 该账号无令牌，回退到登录页
       final result = await context.pushNamed<bool>(AppRoutes.login);
       if (result == true && mounted) {
-        showToast(context, '账号已切换');
+        showToast(context, AppLocalizations.of(context)!.accountSwitchedToast);
         setState(() {});
       }
     }
   }
 
   Future<void> _logout() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('退出登录'),
-        content: const Text('确定要退出登录吗？'),
+        title: Text(l10n.logoutTitle),
+        content: Text(l10n.logoutConfirmContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('确定'),
+            child: Text(l10n.confirmButton),
           ),
         ],
       ),
@@ -273,11 +288,18 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       await _user.refreshUserInfo();
       if (mounted) {
-        showToast(context, '用户信息已刷新');
+        showToast(
+          context,
+          AppLocalizations.of(context)!.userInfoRefreshedToast,
+        );
       }
     } catch (_) {
       if (mounted) {
-        showToast(context, '刷新失败，请重试', isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.userInfoRefreshFailedToast,
+          isError: true,
+        );
       }
     }
   }
@@ -285,18 +307,23 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _copyToken() async {
     final token = _user.token;
     if (token == null || token.isEmpty) {
-      showToast(context, '暂无可复制的令牌', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.tokenUnavailableToast,
+        isError: true,
+      );
       return;
     }
 
     await Clipboard.setData(ClipboardData(text: token));
     if (mounted) {
-      showToast(context, '令牌已复制到剪贴板');
+      showToast(context, AppLocalizations.of(context)!.tokenCopiedToast);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -332,7 +359,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.tune_rounded,
                               color: Color(0xFF6E9D5B),
                             ),
-                            title: const Text('通用'),
+                            title: Text(l10n.generalTitle),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => context.pushNamed(AppRoutes.general),
                           ),
@@ -342,7 +369,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.palette_rounded,
                               color: Color(0xFF7C8CFF),
                             ),
-                            title: const Text('外观'),
+                            title: Text(l10n.appearanceTitle),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () =>
                                 context.pushNamed(AppRoutes.appearance),
@@ -353,7 +380,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.dns_rounded,
                               color: Color(0xFF2BB8A5),
                             ),
-                            title: const Text('网络'),
+                            title: Text(l10n.networkTitle),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => context.pushNamed(AppRoutes.network),
                           ),
@@ -363,7 +390,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.smart_toy_outlined,
                               color: Color(0xFFE07AD0),
                             ),
-                            title: const Text('AI配置'),
+                            title: Text(l10n.aiConfigTitle),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => context.pushNamed(AppRoutes.aiConfig),
                           ),
@@ -391,7 +418,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                   ],
                                 ),
-                                title: const Text('通知中心'),
+                                title: Text(l10n.noticeCenterTitle),
                                 trailing: const Icon(Icons.chevron_right),
                                 onTap: () =>
                                     context.pushNamed(AppRoutes.noticeCenter),
@@ -416,7 +443,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.download_done_rounded,
                               color: Color(0xFFFFA24C),
                             ),
-                            title: const Text('下载中心'),
+                            title: Text(l10n.downloadCenterTitle),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () =>
                                 context.pushNamed(AppRoutes.downloadCenter),
@@ -427,7 +454,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.history_rounded,
                               color: Color(0xFF9B7BFF),
                             ),
-                            title: const Text('浏览记录'),
+                            title: Text(l10n.browseHistoryTitle),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () =>
                                 context.pushNamed(AppRoutes.browseHistory),
@@ -448,7 +475,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           icon: Icons.info_rounded,
                           color: Color(0xFF4FA8FF),
                         ),
-                        title: const Text('关于'),
+                        title: Text(l10n.aboutTitle),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.pushNamed(AppRoutes.about),
                       ),
@@ -464,6 +491,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildLoginCard(ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Card(
       color: cs.surfaceContainerLow,
       shadowColor: Colors.black.withValues(alpha: 0.20),
@@ -489,10 +518,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('未登录', style: tt.titleMedium),
+                    Text(l10n.notLoggedInTitle, style: tt.titleMedium),
                     const SizedBox(height: 4),
                     Text(
-                      '点击登录以使用书架等功能',
+                      l10n.loginPromptSubtitle,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
@@ -507,6 +536,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildUserCard(ColorScheme cs, TextTheme tt) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Card(
       color: cs.surfaceContainerLow,
       shadowColor: Colors.black.withValues(alpha: 0.20),
@@ -578,7 +609,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     width: buttonWidth,
                                     child: _buildUserActionButton(
                                       icon: Icons.refresh,
-                                      label: '刷新用户',
+                                      label: l10n.refreshUserButton,
                                       onPressed: () => _refreshUserInfo(),
                                     ),
                                   ),
@@ -586,7 +617,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     width: buttonWidth,
                                     child: _buildUserActionButton(
                                       icon: Icons.switch_account,
-                                      label: '切换账号',
+                                      label: l10n.switchAccountButton,
                                       onPressed: () => _switchAccount(),
                                     ),
                                   ),
@@ -594,7 +625,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     width: buttonWidth,
                                     child: _buildUserActionButton(
                                       icon: Icons.copy_outlined,
-                                      label: '复制令牌',
+                                      label: l10n.copyTokenButton,
                                       onPressed: () => _copyToken(),
                                     ),
                                   ),
@@ -602,7 +633,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     width: buttonWidth,
                                     child: _buildUserActionButton(
                                       icon: Icons.logout,
-                                      label: '退出登录',
+                                      label: l10n.logoutTitle,
                                       onPressed: () => _logout(),
                                     ),
                                   ),
@@ -742,8 +773,13 @@ class _LoginPageState extends State<LoginPage> {
     return false;
   }
 
-  String _credentialTypeLabel(SavedCredential credential) {
-    return _isCopyCredential(credential) ? '拷贝' : '热辣';
+  String _credentialTypeLabel(
+    AppLocalizations l10n,
+    SavedCredential credential,
+  ) {
+    return _isCopyCredential(credential)
+        ? l10n.profileCopyCredentialLabel
+        : l10n.profileHotCredentialLabel;
   }
 
   IconData _credentialTypeIcon(SavedCredential credential) {
@@ -791,6 +827,7 @@ class _LoginPageState extends State<LoginPage> {
     BuildContext context,
     SavedCredential credential,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final isCopy = _isCopyCredential(credential);
@@ -873,7 +910,7 @@ class _LoginPageState extends State<LoginPage> {
                           _buildCredentialBadge(
                             context: context,
                             icon: _credentialTypeIcon(credential),
-                            label: _credentialTypeLabel(credential),
+                            label: _credentialTypeLabel(l10n, credential),
                             backgroundColor: typeBackgroundColor,
                             foregroundColor: typeForegroundColor,
                           ),
@@ -881,7 +918,7 @@ class _LoginPageState extends State<LoginPage> {
                             _buildCredentialBadge(
                               context: context,
                               icon: Icons.check_circle,
-                              label: '当前已选',
+                              label: l10n.profileCurrentSelectedCredential,
                               backgroundColor: cs.primary,
                               foregroundColor: cs.onPrimary,
                             ),
@@ -891,7 +928,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 IconButton(
-                  tooltip: '移除账号',
+                  tooltip: l10n.profileRemoveAccountTooltip,
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _removeSavedCredential(credential),
                   icon: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
@@ -931,7 +968,12 @@ class _LoginPageState extends State<LoginPage> {
         _rememberMe = next != null;
       });
     }
-    showToast(context, '已移除 ${credential.username}');
+    showToast(
+      context,
+      AppLocalizations.of(
+        context,
+      )!.profileAccountRemovedToast(credential.username),
+    );
   }
 
   Future<void> _goRegister() async {
@@ -947,14 +989,18 @@ class _LoginPageState extends State<LoginPage> {
       _usernameCtrl.text = result.username;
       _passwordCtrl.text = result.password;
     });
-    showToast(context, '注册成功，请登录');
+    showToast(
+      context,
+      AppLocalizations.of(context)!.profileRegisterSuccessLoginToast,
+    );
   }
 
   Future<void> _login() async {
     final username = _usernameCtrl.text.trim();
     final password = _passwordCtrl.text;
+    final l10n = AppLocalizations.of(context)!;
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = '请输入用户名和密码');
+      setState(() => _error = l10n.profileUsernamePasswordRequired);
       return;
     }
 
@@ -983,7 +1029,7 @@ class _LoginPageState extends State<LoginPage> {
       await UserManager().refreshUserInfo();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      String msg = '登录失败';
+      String msg = l10n.profileLoginFailed;
       if (e is DioException) {
         if (e.response?.data is Map) {
           msg = e.response?.data['message'] ?? msg;
@@ -1000,8 +1046,9 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _loginWithToken() async {
     final token = _tokenCtrl.text.trim();
+    final l10n = AppLocalizations.of(context)!;
     if (token.isEmpty) {
-      setState(() => _error = '请输入令牌');
+      setState(() => _error = l10n.profileTokenRequired);
       return;
     }
 
@@ -1033,7 +1080,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       // 令牌无效，清除
       await UserManager().logout();
-      String msg = '令牌无效或已过期';
+      String msg = l10n.profileTokenInvalidOrExpired;
       if (e is DioException && e.response?.data is Map) {
         msg = e.response?.data['message'] ?? msg;
       }
@@ -1046,13 +1093,14 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth.clamp(0.0, 400.0);
     final hp = (screenWidth - contentWidth) / 2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('登录')),
+      appBar: AppBar(title: Text(l10n.profileLoginTitle)),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(hp + 24, 48, hp + 24, 24),
         child: Column(
@@ -1069,16 +1117,16 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 32),
             SegmentedButton<bool>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: false,
-                  label: Text('账号密码'),
-                  icon: Icon(Icons.person_outline),
+                  label: Text(l10n.profileAccountPasswordLoginMode),
+                  icon: const Icon(Icons.person_outline),
                 ),
                 ButtonSegment(
                   value: true,
-                  label: Text('令牌'),
-                  icon: Icon(Icons.key),
+                  label: Text(l10n.profileTokenLoginMode),
+                  icon: const Icon(Icons.key),
                 ),
               ],
               selected: {_useToken},
@@ -1090,16 +1138,16 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 24),
             if (!_useToken) ...[
               SegmentedButton<bool>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: false,
-                    label: Text('热辣'),
-                    icon: Icon(Icons.phone_android, size: 18),
+                    label: Text(l10n.profileHotCredentialLabel),
+                    icon: const Icon(Icons.phone_android, size: 18),
                   ),
                   ButtonSegment(
                     value: true,
-                    label: Text('拷贝'),
-                    icon: Icon(Icons.language, size: 18),
+                    label: Text(l10n.profileCopyCredentialLabel),
+                    icon: const Icon(Icons.language, size: 18),
                   ),
                 ],
                 selected: {_useCopyLogin},
@@ -1113,7 +1161,7 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '已保存账号',
+                    l10n.profileSavedAccountsTitle,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -1121,7 +1169,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '点按快速填充账号密码，右侧可移除',
+                  l10n.profileSavedAccountsHint,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -1144,7 +1192,7 @@ class _LoginPageState extends State<LoginPage> {
               TextField(
                 controller: _usernameCtrl,
                 decoration: InputDecoration(
-                  labelText: '用户名',
+                  labelText: l10n.profileUsernameLabel,
                   prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1157,7 +1205,7 @@ class _LoginPageState extends State<LoginPage> {
                 controller: _passwordCtrl,
                 obscureText: _obscure,
                 decoration: InputDecoration(
-                  labelText: '密码',
+                  labelText: l10n.profilePasswordLabel,
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -1176,9 +1224,9 @@ class _LoginPageState extends State<LoginPage> {
               TextField(
                 controller: _tokenCtrl,
                 decoration: InputDecoration(
-                  labelText: '令牌 (Token)',
+                  labelText: l10n.profileTokenLabel,
                   prefixIcon: const Icon(Icons.key),
-                  hintText: '粘贴你的登录令牌',
+                  hintText: l10n.profileTokenHint,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -1200,7 +1248,7 @@ class _LoginPageState extends State<LoginPage> {
               CheckboxListTile(
                 value: _rememberMe,
                 onChanged: (v) => setState(() => _rememberMe = v ?? false),
-                title: const Text('记住账号'),
+                title: Text(l10n.profileRememberAccountLabel),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -1209,7 +1257,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: TextButton.icon(
                   onPressed: _loading ? null : _goRegister,
                   icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('注册热辣漫画账号'),
+                  label: Text(l10n.profileRegisterHotMangaAccountButton),
                 ),
               ),
             ],
@@ -1230,7 +1278,10 @@ class _LoginPageState extends State<LoginPage> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('登录', style: TextStyle(fontSize: 16)),
+                  : Text(
+                      l10n.profileLoginButton,
+                      style: const TextStyle(fontSize: 16),
+                    ),
             ),
           ],
         ),
@@ -1253,11 +1304,11 @@ class _RegisterPageState extends State<RegisterPage> {
   static final _copyMangaRegisterUri = Uri.parse(
     'https://www.mangacopy.com/web/login/loginByAccount',
   );
-  static const _fallbackQuestions = [
-    '我的老婆叫什麼？',
-    '我的基友叫啥？',
-    '我的好麻吉有幾個？',
-    '我的父親(母親)叫什麽？',
+  List<String> _fallbackQuestions(AppLocalizations l10n) => [
+    l10n.profileFallbackQuestionWife,
+    l10n.profileFallbackQuestionFriend,
+    l10n.profileFallbackQuestionBestFriendCount,
+    l10n.profileFallbackQuestionParentName,
   ];
 
   final _api = ApiClient();
@@ -1297,9 +1348,12 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final questions = await _api.user.getSecurityQuestions();
       if (!mounted) return;
+      final fallbackQuestions = _fallbackQuestions(
+        AppLocalizations.of(context)!,
+      );
       final availableQuestions = questions.isNotEmpty
           ? questions
-          : _fallbackQuestions;
+          : fallbackQuestions;
       setState(() {
         _questions = availableQuestions;
         _selectedQuestion = availableQuestions.first;
@@ -1307,9 +1361,12 @@ class _RegisterPageState extends State<RegisterPage> {
       });
     } catch (e) {
       if (!mounted) return;
+      final fallbackQuestions = _fallbackQuestions(
+        AppLocalizations.of(context)!,
+      );
       setState(() {
-        _questions = _fallbackQuestions;
-        _selectedQuestion = _fallbackQuestions.first;
+        _questions = fallbackQuestions;
+        _selectedQuestion = fallbackQuestions.first;
         _loadingQuestions = false;
         _error = null;
       });
@@ -1321,20 +1378,21 @@ class _RegisterPageState extends State<RegisterPage> {
     final password = _passwordCtrl.text;
     final confirmPassword = _confirmPasswordCtrl.text;
     final answer = _answerCtrl.text.trim();
+    final l10n = AppLocalizations.of(context)!;
 
     if (username.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty ||
         answer.isEmpty) {
-      setState(() => _error = '请填写完整注册信息');
+      setState(() => _error = l10n.profileRegisterInfoRequired);
       return;
     }
     if (password != confirmPassword) {
-      setState(() => _error = '两次输入的密码不一致');
+      setState(() => _error = l10n.profilePasswordMismatch);
       return;
     }
     if (_selectedQuestion == null || _selectedQuestion!.isEmpty) {
-      setState(() => _error = '请选择安全问题');
+      setState(() => _error = l10n.profileSecurityQuestionRequired);
       return;
     }
 
@@ -1356,7 +1414,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _RegisterPrefill(username: username, password: password),
       );
     } catch (e) {
-      String msg = '注册失败';
+      String msg = l10n.profileRegisterFailed;
       if (e is DioException) {
         msg = e.message ?? msg;
         if (e.response?.data is Map) {
@@ -1380,19 +1438,24 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _openOfficialRegister(Uri uri) async {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
-      showToast(context, '无法打开官网注册页', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.profileOpenOfficialRegisterFailed,
+        isError: true,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth.clamp(0.0, 420.0);
     final hp = (screenWidth - contentWidth) / 2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('注册热辣漫画账号')),
+      appBar: AppBar(title: Text(l10n.profileRegisterHotMangaAccountButton)),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(hp + 24, 24, hp + 24, 24),
         child: Column(
@@ -1401,7 +1464,7 @@ class _RegisterPageState extends State<RegisterPage> {
             TextField(
               controller: _usernameCtrl,
               decoration: InputDecoration(
-                labelText: '用户名',
+                labelText: l10n.profileUsernameLabel,
                 prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1414,7 +1477,7 @@ class _RegisterPageState extends State<RegisterPage> {
               controller: _passwordCtrl,
               obscureText: _obscure,
               decoration: InputDecoration(
-                labelText: '密码',
+                labelText: l10n.profilePasswordLabel,
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -1433,7 +1496,7 @@ class _RegisterPageState extends State<RegisterPage> {
               controller: _confirmPasswordCtrl,
               obscureText: _obscure,
               decoration: InputDecoration(
-                labelText: '确认密码',
+                labelText: l10n.profileConfirmPasswordLabel,
                 prefixIcon: const Icon(Icons.lock_reset_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1449,7 +1512,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 initialValue: _selectedQuestion,
                 isExpanded: true,
                 decoration: InputDecoration(
-                  labelText: '账号安全问题',
+                  labelText: l10n.profileSecurityQuestionLabel,
                   prefixIcon: const Icon(Icons.help_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1469,7 +1532,7 @@ class _RegisterPageState extends State<RegisterPage> {
               TextField(
                 controller: _answerCtrl,
                 decoration: InputDecoration(
-                  labelText: '安全问题答案',
+                  labelText: l10n.profileSecurityAnswerLabel,
                   prefixIcon: const Icon(Icons.shield_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1492,7 +1555,7 @@ class _RegisterPageState extends State<RegisterPage> {
               TextButton.icon(
                 onPressed: _loadQuestions,
                 icon: const Icon(Icons.refresh),
-                label: const Text('重新加载安全问题'),
+                label: Text(l10n.profileReloadSecurityQuestionsButton),
               ),
             ],
             const SizedBox(height: 24),
@@ -1510,11 +1573,14 @@ class _RegisterPageState extends State<RegisterPage> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('注册', style: TextStyle(fontSize: 16)),
+                  : Text(
+                      l10n.profileRegisterButton,
+                      style: const TextStyle(fontSize: 16),
+                    ),
             ),
             const SizedBox(height: 12),
             Text(
-              '去官网注册',
+              l10n.profileOfficialRegisterPrompt,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -1528,12 +1594,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 TextButton.icon(
                   onPressed: () => _openOfficialRegister(_hotMangaRegisterUri),
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('热辣漫画'),
+                  label: Text(l10n.profileHotMangaLabel),
                 ),
                 TextButton.icon(
                   onPressed: () => _openOfficialRegister(_copyMangaRegisterUri),
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('拷贝漫画'),
+                  label: Text(l10n.profileCopyMangaLabel),
                 ),
               ],
             ),
@@ -1549,16 +1615,17 @@ class DisclaimerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('免责声明')),
+      appBar: AppBar(title: Text(l10n.disclaimerTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         children: [
           Text(
-            '请在使用本应用前仔细阅读以下声明：',
+            l10n.appDisclaimerIntro,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
@@ -1571,7 +1638,7 @@ class DisclaimerPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final item in _appDisclaimerItems) ...[
+                  for (final item in _appDisclaimerItems(l10n)) ...[
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1583,7 +1650,7 @@ class DisclaimerPage extends StatelessWidget {
                   ],
                   const SizedBox(height: 4),
                   Text(
-                    _appDisclaimerFooter,
+                    l10n.appDisclaimerFooter,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
@@ -1633,6 +1700,7 @@ class _AboutPageState extends State<AboutPage> {
   static const _qqGroupNumber = '1025321453';
 
   void _showQQGroupDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     showDialog<void>(
@@ -1653,7 +1721,7 @@ class _AboutPageState extends State<AboutPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                'QQ交流群',
+                l10n.aboutQqGroupTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
@@ -1678,7 +1746,7 @@ class _AboutPageState extends State<AboutPage> {
                       Icon(Icons.open_in_new, size: 18, color: cs.primary),
                       const SizedBox(width: 8),
                       Text(
-                        '加入群聊',
+                        l10n.aboutJoinGroupButton,
                         style: tt.bodyLarge?.copyWith(
                           color: cs.primary,
                           fontWeight: FontWeight.w600,
@@ -1695,7 +1763,7 @@ class _AboutPageState extends State<AboutPage> {
                     const ClipboardData(text: _qqGroupNumber),
                   );
                   if (dialogContext.mounted) {
-                    showToast(dialogContext, '已复制群号');
+                    showToast(dialogContext, l10n.aboutGroupNumberCopiedToast);
                   }
                 },
                 borderRadius: BorderRadius.circular(12),
@@ -1734,7 +1802,7 @@ class _AboutPageState extends State<AboutPage> {
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('关闭'),
+              child: Text(l10n.closeButton),
             ),
           ],
         );
@@ -1769,6 +1837,7 @@ class _AboutPageState extends State<AboutPage> {
   Future<void> _editUpdateMirrorPrefix() async {
     final controller = TextEditingController(text: _user.updateMirrorPrefix);
     final formKey = GlobalKey<FormState>();
+    final l10n = AppLocalizations.of(context)!;
 
     try {
       final result = await showDialog<String>(
@@ -1778,7 +1847,7 @@ class _AboutPageState extends State<AboutPage> {
           final tt = Theme.of(dialogContext).textTheme;
 
           return AlertDialog(
-            title: const Text('设置镜像源'),
+            title: Text(l10n.aboutMirrorPrefixTitle),
             content: Form(
               key: formKey,
               child: Column(
@@ -1786,7 +1855,7 @@ class _AboutPageState extends State<AboutPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '用于更新弹窗中的镜像下载链接，会拼接在 GitHub 下载地址前。',
+                    l10n.aboutMirrorPrefixDesc,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
@@ -1797,17 +1866,17 @@ class _AboutPageState extends State<AboutPage> {
                     inputFormatters: [
                       FilteringTextInputFormatter.deny(RegExp(r'\s')),
                     ],
-                    decoration: const InputDecoration(
-                      labelText: '镜像源地址',
+                    decoration: InputDecoration(
+                      labelText: l10n.aboutMirrorPrefixLabel,
                       hintText: UserManager.defaultUpdateMirrorPrefix,
-                      helperText: '留空将恢复默认镜像源',
-                      border: OutlineInputBorder(),
+                      helperText: l10n.aboutMirrorPrefixHelper,
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (value) {
                       final trimmed = value?.trim() ?? '';
                       if (trimmed.isEmpty) return null;
                       if (!_isValidUpdateMirrorPrefix(trimmed)) {
-                        return '请输入有效的 http(s) 地址';
+                        return l10n.aboutInvalidMirrorPrefix;
                       }
                       return null;
                     },
@@ -1821,11 +1890,11 @@ class _AboutPageState extends State<AboutPage> {
                   dialogContext,
                   UserManager.defaultUpdateMirrorPrefix,
                 ),
-                child: const Text('恢复默认'),
+                child: Text(l10n.aboutRestoreDefaultButton),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('取消'),
+                child: Text(l10n.cancelButton),
               ),
               FilledButton(
                 onPressed: () {
@@ -1833,7 +1902,7 @@ class _AboutPageState extends State<AboutPage> {
                     Navigator.pop(dialogContext, controller.text);
                   }
                 },
-                child: const Text('保存'),
+                child: Text(l10n.aboutSaveButton),
               ),
             ],
           );
@@ -1843,13 +1912,14 @@ class _AboutPageState extends State<AboutPage> {
       if (result == null) return;
       await _user.setUpdateMirrorPrefix(result);
       if (!mounted) return;
-      showToast(context, '镜像源已保存');
+      showToast(context, l10n.aboutMirrorPrefixSavedToast);
     } finally {
       controller.dispose();
     }
   }
 
   Widget _buildUpdateChannelChip(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final isBeta = _user.isBetaUpdateChannel;
     final fg = isBeta ? Colors.amber.shade900 : cs.onSurfaceVariant;
     return InkWell(
@@ -1874,7 +1944,7 @@ class _AboutPageState extends State<AboutPage> {
             ),
             const SizedBox(width: 4),
             Text(
-              isBeta ? 'Beta' : '稳定版',
+              isBeta ? 'Beta' : l10n.aboutStableChannelShort,
               style: TextStyle(
                 color: fg,
                 fontSize: 12,
@@ -1888,6 +1958,7 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _showUpdateChannelDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     var selected = _user.updateChannel;
     final result = await showDialog<String>(
       context: context,
@@ -1895,7 +1966,7 @@ class _AboutPageState extends State<AboutPage> {
         return StatefulBuilder(
           builder: (ctx, setState) {
             return AlertDialog(
-              title: const Text('更新渠道'),
+              title: Text(l10n.aboutUpdateChannelTitle),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1904,20 +1975,20 @@ class _AboutPageState extends State<AboutPage> {
                     onChanged: (value) {
                       if (value != null) setState(() => selected = value);
                     },
-                    child: const Column(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'stable',
-                          title: Text('稳定版 (Stable)'),
-                          subtitle: Text('仅检查正式发布版本'),
+                          title: Text(l10n.aboutStableChannelTitle),
+                          subtitle: Text(l10n.aboutStableChannelDesc),
                         ),
                         RadioListTile<String>(
                           contentPadding: EdgeInsets.zero,
                           value: 'beta',
-                          title: Text('预览版（Beta）'),
-                          subtitle: Text('从最新提交构建的版本，可能不稳定'),
+                          title: Text(l10n.aboutBetaChannelTitle),
+                          subtitle: Text(l10n.aboutBetaChannelDesc),
                         ),
                       ],
                     ),
@@ -1927,11 +1998,11 @@ class _AboutPageState extends State<AboutPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('取消'),
+                  child: Text(l10n.cancelButton),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, selected),
-                  child: const Text('确定'),
+                  child: Text(l10n.confirmButton),
                 ),
               ],
             );
@@ -1947,29 +2018,30 @@ class _AboutPageState extends State<AboutPage> {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('已切换到预览版'),
-            content: const Text('预览版一般用于测试新功能或修复问题，可能存在更多问题。'),
+            title: Text(l10n.aboutBetaChannelSwitchedTitle),
+            content: Text(l10n.aboutBetaChannelSwitchedContent),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('知道了'),
+                child: Text(l10n.aboutGotItButton),
               ),
             ],
           ),
         );
       } else {
-        showToast(context, '已切换到稳定版');
+        showToast(context, l10n.aboutStableChannelSwitchedToast);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('关于')),
+      appBar: AppBar(title: Text(l10n.aboutTitle)),
       body: FutureBuilder<PackageInfo>(
         future: PackageInfo.fromPlatform(),
         builder: (context, snapshot) {
@@ -2012,7 +2084,7 @@ class _AboutPageState extends State<AboutPage> {
                               BlendMode.srcIn,
                             ),
                           ),
-                          label: '仓库',
+                          label: l10n.aboutRepositoryLabel,
                           onTap: () async {
                             await launchUrl(
                               Uri.parse(_repoUrl),
@@ -2028,7 +2100,7 @@ class _AboutPageState extends State<AboutPage> {
                       Expanded(
                         child: _LinkAction(
                           icon: const Icon(Icons.feedback_outlined),
-                          label: '反馈',
+                          label: l10n.aboutFeedbackLabel,
                           onTap: () async {
                             await launchUrl(
                               Uri.parse(
@@ -2054,7 +2126,7 @@ class _AboutPageState extends State<AboutPage> {
                               BlendMode.srcIn,
                             ),
                           ),
-                          label: '交流',
+                          label: l10n.aboutCommunityLabel,
                           onTap: () => _showQQGroupDialog(context),
                         ),
                       ),
@@ -2071,7 +2143,7 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.system_update_alt),
-                      title: const Text('检查更新'),
+                      title: Text(l10n.aboutCheckUpdateTitle),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -2088,7 +2160,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     SwitchListTile(
                       secondary: const Icon(Icons.autorenew),
-                      title: const Text('启动时检查更新'),
+                      title: Text(l10n.aboutAutoCheckUpdateTitle),
                       value: _user.autoCheckUpdate,
                       onChanged: _user.setAutoCheckUpdate,
                     ),
@@ -2098,7 +2170,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.public),
-                      title: const Text('设置镜像源'),
+                      title: Text(l10n.aboutMirrorPrefixTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _editUpdateMirrorPrefix,
                     ),
@@ -2114,7 +2186,7 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.gavel_outlined),
-                      title: const Text('免责声明'),
+                      title: Text(l10n.disclaimerTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.disclaimer),
                     ),
@@ -2124,7 +2196,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.bug_report_outlined),
-                      title: const Text('日志'),
+                      title: Text(l10n.aboutLogTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.appLog),
                     ),
@@ -2134,7 +2206,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.favorite_outline),
-                      title: const Text('致谢'),
+                      title: Text(l10n.aboutAcknowledgementTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.acknowledgement),
                     ),
@@ -2144,7 +2216,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.copyright_outlined),
-                      title: const Text('许可证'),
+                      title: Text(l10n.aboutLicenseTitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(AppRoutes.license),
                     ),

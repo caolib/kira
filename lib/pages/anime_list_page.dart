@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../routing/app_router.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -10,16 +11,22 @@ import '../widgets/comic_card_skeleton.dart';
 import 'home_page.dart';
 
 enum AnimeListType {
-  editor(title: '编辑推荐', icon: Icons.auto_awesome, pos: 1202002),
-  updates(title: '最近更新', icon: Icons.update),
-  classics(title: '经典动画', icon: Icons.workspace_premium, pos: 1202003),
-  hots(title: '热门推荐', icon: Icons.local_fire_department, pos: 1202004);
+  editor(icon: Icons.auto_awesome, pos: 1202002),
+  updates(icon: Icons.update),
+  classics(icon: Icons.workspace_premium, pos: 1202003),
+  hots(icon: Icons.local_fire_department, pos: 1202004);
 
-  final String title;
   final IconData icon;
   final int? pos;
 
-  const AnimeListType({required this.title, required this.icon, this.pos});
+  const AnimeListType({required this.icon, this.pos});
+
+  String title(AppLocalizations l10n) => switch (this) {
+    AnimeListType.editor => l10n.animeEditorRecommend,
+    AnimeListType.updates => l10n.animeRecentUpdate,
+    AnimeListType.classics => l10n.animeClassicAnimation,
+    AnimeListType.hots => l10n.hotRecommend,
+  };
 }
 
 class AnimeListPage extends StatefulWidget {
@@ -145,6 +152,7 @@ class _AnimeListPageState extends State<AnimeListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -173,14 +181,14 @@ class _AnimeListPageState extends State<AnimeListPage> {
           children: [
             Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
             const SizedBox(height: 16),
-            Text('加载失败', style: tt.titleMedium),
+            Text(l10n.loadingFailed, style: tt.titleMedium),
             const SizedBox(height: 8),
-            FilledButton.tonal(onPressed: _load, child: const Text('重试')),
+            FilledButton.tonal(onPressed: _load, child: Text(l10n.retryButton)),
           ],
         ),
       );
     } else if (_items.isEmpty) {
-      body = Center(child: Text('暂无内容', style: tt.titleMedium));
+      body = Center(child: Text(l10n.noContent, style: tt.titleMedium));
     } else {
       body = RefreshIndicator(
         onRefresh: _load,
@@ -209,7 +217,7 @@ class _AnimeListPageState extends State<AnimeListPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.type.title),
+        title: Text(widget.type.title(l10n)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -230,10 +238,11 @@ class _AnimeGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final meta = anime.count > 0
-        ? '共 ${anime.count} 集'
+        ? l10n.totalEpisodes(anime.count)
         : (anime.company?.name ?? anime.years ?? '');
 
     return GestureDetector(
@@ -274,7 +283,10 @@ class _AnimeGridCard extends StatelessWidget {
               Icon(Icons.local_fire_department, size: 12, color: cs.primary),
               const SizedBox(width: 2),
               Text(
-                ComicCard.formatPopular(anime.popular),
+                ComicCard.formatPopular(
+                  anime.popular,
+                  AppLocalizations.of(context)!,
+                ),
                 style: tt.labelSmall?.copyWith(
                   color: cs.onSurfaceVariant,
                   fontSize: 10,

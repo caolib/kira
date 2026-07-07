@@ -9,8 +9,8 @@ class CommentSettingsPanel extends StatefulWidget {
   final bool commentPreload;
   final bool commentAutoLoadAll;
 
-  /// 章节评论专属区块（布局/预加载/自动加载全部/AI 总结）仅在此为 true 时显示。
-  /// 漫画评论复用本面板时传 false。
+  /// Chapter-comment-only sections are shown only when true.
+  /// Comic comments reuse this panel with false.
   final bool isChapterComments;
   final ValueChanged<bool> onLayoutChanged;
   final ValueChanged<bool> onShowAvatarChanged;
@@ -69,13 +69,18 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
     required PromptPreset preset,
     required bool isBuiltIn,
   }) async {
+    final l10n = AppLocalizations.of(context)!;
     final settings = AiSettings();
     final nameCtrl = TextEditingController(text: preset.name);
     final promptCtrl = TextEditingController(text: preset.prompt);
     final result = await showDialog<Map<String, String?>>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isBuiltIn ? '编辑内置提示词' : '编辑提示词'),
+        title: Text(
+          isBuiltIn
+              ? l10n.commentSettingsEditBuiltInPromptTitle
+              : l10n.commentSettingsEditPromptTitle,
+        ),
         scrollable: true,
         content: SizedBox(
           width: 520,
@@ -86,9 +91,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               children: [
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '名称',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.commentSettingsNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -99,9 +104,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                     minLines: 6,
                     maxLines: 8,
                     textAlignVertical: TextAlignVertical.top,
-                    decoration: const InputDecoration(
-                      labelText: '提示词',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.commentSettingsPromptLabel,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -116,7 +121,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(ctx).colorScheme.error,
               ),
-              child: const Text('删除'),
+              child: Text(l10n.deleteButton),
             ),
           if (isBuiltIn)
             TextButton(
@@ -129,18 +134,18 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                   promptCtrl.text = builtIn.prompt;
                 }
               },
-              child: const Text('重置'),
+              child: Text(l10n.commentSettingsResetButton),
             ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, {
               'name': nameCtrl.text,
               'prompt': promptCtrl.text,
             }),
-            child: const Text('保存'),
+            child: Text(l10n.commentSettingsSaveButton),
           ),
         ],
       ),
@@ -159,13 +164,14 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
   }
 
   Future<void> _addPreset(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final settings = AiSettings();
     final nameCtrl = TextEditingController();
     final promptCtrl = TextEditingController();
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('添加提示词'),
+        title: Text(l10n.commentSettingsAddPromptTitle),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
@@ -175,9 +181,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               children: [
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '名称',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.commentSettingsNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -188,9 +194,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                     minLines: 6,
                     maxLines: 8,
                     textAlignVertical: TextAlignVertical.top,
-                    decoration: const InputDecoration(
-                      labelText: '提示词',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.commentSettingsPromptLabel,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -201,7 +207,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () {
@@ -214,7 +220,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                 'prompt': promptCtrl.text,
               });
             },
-            child: const Text('添加'),
+            child: Text(l10n.commentSettingsAddButton),
           ),
         ],
       ),
@@ -255,6 +261,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final defaultFontSizePx = _defaultCommentFontSizePx(
@@ -292,24 +299,24 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               ),
               const SizedBox(height: 16),
               Text(
-                '评论区设置',
+                l10n.commentSettingsTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               if (widget.isChapterComments) ...[
-                _buildSectionHeader('布局', cs, tt),
+                _buildSectionHeader(l10n.commentSettingsLayoutSection, cs, tt),
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<bool>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: true,
-                        icon: Icon(Icons.dashboard_outlined),
-                        label: Text('紧凑布局'),
+                        icon: const Icon(Icons.dashboard_outlined),
+                        label: Text(l10n.commentSettingsCompactLayout),
                       ),
                       ButtonSegment(
                         value: false,
-                        icon: Icon(Icons.view_agenda_outlined),
-                        label: Text('列表布局'),
+                        icon: const Icon(Icons.view_agenda_outlined),
+                        label: Text(l10n.commentSettingsListLayout),
                       ),
                     ],
                     selected: {_useCompactLayout},
@@ -324,7 +331,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('显示头像'),
+                title: Text(l10n.commentSettingsShowAvatar),
                 value: _showUserAvatar,
                 onChanged: (value) {
                   setState(() => _showUserAvatar = value);
@@ -333,7 +340,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('显示用户名'),
+                title: Text(l10n.commentSettingsShowUserName),
                 value: _showUserName,
                 onChanged: (value) {
                   setState(() => _showUserName = value);
@@ -342,7 +349,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('显示评论时间'),
+                title: Text(l10n.commentSettingsShowCommentTime),
                 value: _showCommentTime,
                 onChanged: (value) {
                   setState(() => _showCommentTime = value);
@@ -352,8 +359,8 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               if (widget.isChapterComments) ...[
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('预加载评论'),
-                  subtitle: const Text('进入章节时提前加载评论并显示数量'),
+                  title: Text(l10n.commentSettingsPreloadTitle),
+                  subtitle: Text(l10n.commentSettingsPreloadDesc),
                   value: _commentPreload,
                   onChanged: (value) {
                     setState(() => _commentPreload = value);
@@ -362,8 +369,8 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('自动加载全部评论'),
-                  subtitle: const Text('打开评论区时自动加载所有评论'),
+                  title: Text(l10n.commentSettingsAutoLoadAllTitle),
+                  subtitle: Text(l10n.commentSettingsAutoLoadAllDesc),
                   value: _commentAutoLoadAll,
                   onChanged: (value) {
                     setState(() => _commentAutoLoadAll = value);
@@ -374,7 +381,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Text('评论内容字体大小', style: tt.bodyMedium),
+                  Text(l10n.commentSettingsFontSizeTitle, style: tt.bodyMedium),
                   const Spacer(),
                   Text(
                     '${currentFontSizePx.round()} px',
@@ -397,7 +404,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                   widget.onFontScaleChanged(nextScale);
                 },
               ),
-              // AI 总结设置
+              // AI summary settings
               if (widget.isChapterComments)
                 ListenableBuilder(
                   listenable: AiSettings(),
@@ -410,14 +417,32 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader('AI 总结', cs, tt),
+                        _buildSectionHeader(
+                          AppLocalizations.of(
+                            context,
+                          )!.commentSettingsAiSummarySection,
+                          cs,
+                          tt,
+                        ),
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('启用 AI 总结'),
+                          title: Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.commentSettingsEnableAiSummary,
+                          ),
                           subtitle: Text(
                             hasKey
-                                ? (enabled ? '评论顶部显示 AI 总结按钮' : '未启用')
-                                : '请先在「我的 → AI配置」中配置 API 密钥',
+                                ? (enabled
+                                      ? AppLocalizations.of(
+                                          context,
+                                        )!.commentSettingsAiSummaryEnabledDesc
+                                      : AppLocalizations.of(
+                                          context,
+                                        )!.commentSettingsAiSummaryDisabled)
+                                : AppLocalizations.of(
+                                    context,
+                                  )!.commentSettingsConfigureAiFirst,
                             style: tt.bodySmall?.copyWith(
                               color: hasKey ? null : cs.error,
                             ),
@@ -430,16 +455,32 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                         if (enabled && hasKey) ...[
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text('折叠 AI 评论'),
-                            subtitle: const Text('开启后 AI 评论默认折叠，生成中也保持折叠'),
+                            title: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsCollapseAiComment,
+                            ),
+                            subtitle: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsCollapseAiCommentDesc,
+                            ),
                             value: zhipu.summaryCollapsed,
                             onChanged: (v) => zhipu.setSummaryCollapsed(v),
                           ),
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text('自动 AI 总结'),
+                            title: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsAutoAiSummary,
+                            ),
                             subtitle: Text(
-                              '评论数 ≥ ${zhipu.autoSummaryMin} 条时自动生成',
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsAutoAiSummaryDesc(
+                                zhipu.autoSummaryMin,
+                              ),
                             ),
                             value: zhipu.autoSummary,
                             onChanged: (v) => zhipu.setAutoSummary(v),
@@ -452,7 +493,12 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                                 children: [
                                   Row(
                                     children: [
-                                      Text('最少评论数', style: tt.bodySmall),
+                                      Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.commentSettingsMinCommentCount,
+                                        style: tt.bodySmall,
+                                      ),
                                       const SizedBox(width: 8),
                                       SizedBox(
                                         width: 64,
@@ -481,20 +527,33 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  Text('调用时机', style: tt.bodySmall),
+                                  Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.commentSettingsTriggerTiming,
+                                    style: tt.bodySmall,
+                                  ),
                                   const SizedBox(height: 6),
                                   SizedBox(
                                     width: double.infinity,
                                     child: SegmentedButton<AiAutoSummaryTiming>(
                                       segments: [
-                                        const ButtonSegment(
+                                        ButtonSegment(
                                           value: AiAutoSummaryTiming.onOpen,
-                                          label: Text('打开评论区时'),
+                                          label: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.commentSettingsTimingOnOpen,
+                                          ),
                                         ),
                                         ButtonSegment(
                                           value:
                                               AiAutoSummaryTiming.afterPreload,
-                                          label: const Text('预加载完成后'),
+                                          label: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.commentSettingsTimingAfterPreload,
+                                          ),
                                           enabled: _commentPreload,
                                         ),
                                       ],
@@ -513,7 +572,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                                   if (!_commentPreload) ...[
                                     const SizedBox(height: 4),
                                     Text(
-                                      '选择“预加载完成后”需要先开启预加载评论。',
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.commentSettingsPreloadRequiredForTiming,
                                       style: tt.bodySmall?.copyWith(
                                         color: cs.onSurfaceVariant,
                                       ),
@@ -524,21 +585,35 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                             ),
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text('剧透分析'),
-                            subtitle: const Text('开启后会在当前提示词后自动追加剧透分析要求'),
+                            title: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsSpoilerAnalysis,
+                            ),
+                            subtitle: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsSpoilerAnalysisDesc,
+                            ),
                             value: spoiler,
                             onChanged: (v) => zhipu.setSpoilerAnalysis(v),
                           ),
                           if (spoiler)
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('打开剧透评论弹出提醒'),
+                              title: Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.commentSettingsSpoilerWarn,
+                              ),
                               value: zhipu.spoilerWarn,
                               onChanged: (v) => zhipu.setSpoilerWarn(v),
                             ),
                           const SizedBox(height: 4),
                           Text(
-                            '提示词预设',
+                            AppLocalizations.of(
+                              context,
+                            )!.commentSettingsPromptPresets,
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -589,7 +664,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                                         Icons.edit_outlined,
                                         size: 20,
                                       ),
-                                      tooltip: '编辑',
+                                      tooltip: AppLocalizations.of(
+                                        context,
+                                      )!.aiConfigEdit,
                                       onPressed: () => _editPreset(
                                         context,
                                         preset: p,
@@ -606,7 +683,11 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
                               icon: const Icon(Icons.add, size: 18),
-                              label: const Text('添加提示词'),
+                              label: Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.commentSettingsAddPromptTitle,
+                              ),
                               onPressed: () => _addPreset(context),
                             ),
                           ),
@@ -635,12 +716,16 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader('黑名单', cs, tt),
+            _buildSectionHeader(
+              AppLocalizations.of(context)!.commentSettingsBlacklistSection,
+              cs,
+              tt,
+            ),
             if (list.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Text(
-                  '长按评论可选择「屏蔽用户」，被屏蔽的评论将不再显示。',
+                  AppLocalizations.of(context)!.commentSettingsBlacklistDesc,
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               )
@@ -654,7 +739,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                  label: const Text('清空黑名单'),
+                  label: Text(
+                    AppLocalizations.of(context)!.commentSettingsClearBlacklist,
+                  ),
                   style: TextButton.styleFrom(foregroundColor: cs.error),
                   onPressed: () => user.clearCommentBlockedUsers(),
                 ),
@@ -678,13 +765,17 @@ class _BlockedUserTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final sep = rawKey.indexOf('|');
     final userName = sep < 0 ? '' : rawKey.substring(sep + 1);
-    final displayName = userName.isNotEmpty ? userName : '匿名用户';
+    final displayName = userName.isNotEmpty
+        ? userName
+        : AppLocalizations.of(context)!.commentSettingsAnonymousUser;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       title: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: IconButton(
-        tooltip: '移出黑名单',
+        tooltip: AppLocalizations.of(
+          context,
+        )!.commentSettingsRemoveFromBlacklist,
         icon: const Icon(Icons.remove_circle_outline, size: 22),
         color: cs.error,
         onPressed: onRemove,

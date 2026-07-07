@@ -13,9 +13,10 @@ class _ChapterSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _CollapsiblePlayerCard(
       icon: Icons.video_library_outlined,
-      title: '选集 (${chapters.length})',
+      title: l10n.animePlayerChapterSelectorWithCount(chapters.length),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,

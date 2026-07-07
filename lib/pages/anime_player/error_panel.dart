@@ -19,6 +19,8 @@ class _ErrorPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Center(
@@ -32,7 +34,9 @@ class _ErrorPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              requiresLogin ? '需要登录' : '播放失败',
+              requiresLogin
+                  ? l10n.loginRequiredTitle
+                  : l10n.playbackFailedTitle,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -53,7 +57,7 @@ class _ErrorPanel extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onLogin,
                 icon: const Icon(Icons.login),
-                label: const Text('去登录'),
+                label: Text(l10n.goLoginButton),
               )
             else
               Row(
@@ -63,7 +67,7 @@ class _ErrorPanel extends StatelessWidget {
                     TextButton.icon(
                       onPressed: () => _showErrorLog(context),
                       icon: const Icon(Icons.bug_report_outlined, size: 18),
-                      label: const Text('查看日志'),
+                      label: Text(l10n.viewLogButton),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white70,
                       ),
@@ -72,7 +76,7 @@ class _ErrorPanel extends StatelessWidget {
                   ],
                   FilledButton.tonal(
                     onPressed: onRetry,
-                    child: const Text('重试'),
+                    child: Text(l10n.retryButton),
                   ),
                 ],
               ),
@@ -85,32 +89,36 @@ class _ErrorPanel extends StatelessWidget {
   void _showErrorLog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('错误日志'),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            rawError ?? '无日志信息',
-            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+
+        return AlertDialog(
+          title: Text(l10n.errorLogTitle),
+          content: SingleChildScrollView(
+            child: SelectableText(
+              rawError ?? l10n.noLogInfo,
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              if (rawError != null) {
-                await Clipboard.setData(ClipboardData(text: rawError!));
-                if (context.mounted) {
-                  onLogCopied();
+          actions: [
+            TextButton(
+              onPressed: () async {
+                if (rawError != null) {
+                  await Clipboard.setData(ClipboardData(text: rawError!));
+                  if (context.mounted) {
+                    onLogCopied();
+                  }
                 }
-              }
-            },
-            child: const Text('复制'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
+              },
+              child: Text(l10n.copyButton),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.closeButton),
+            ),
+          ],
+        );
+      },
     );
   }
 }

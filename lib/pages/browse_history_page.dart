@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
@@ -43,7 +44,8 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   bool get _animeFeatureEnabled => _user.animeFeatureEnabled;
   bool get _isAnimeMode => _animeFeatureEnabled && _mode == _HistoryMode.anime;
-  String get _modeLabel => _isAnimeMode ? '动漫' : '漫画';
+  String _modeLabel(AppLocalizations l10n) =>
+      _isAnimeMode ? l10n.animeLabel : l10n.comicLabel;
   bool get _currentItemsEmpty =>
       _isAnimeMode ? _animeItems.isEmpty : _comicItems.isEmpty;
   int get _currentLength =>
@@ -92,19 +94,21 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
   }
 
   Future<void> _clearHistory() async {
+    final l10n = AppLocalizations.of(context)!;
+    final modeLabel = _modeLabel(l10n);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('清空浏览记录'),
-        content: Text('确定要清空所有$_modeLabel浏览记录吗？此操作不可撤销。'),
+        title: Text(l10n.browseHistoryClearTitle),
+        content: Text(l10n.browseHistoryClearContent(modeLabel)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('清空'),
+            child: Text(l10n.cacheClearButton),
           ),
         ],
       ),
@@ -118,16 +122,21 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
         await _api.user.clearBrowseHistory();
       }
       if (!mounted) return;
-      showToast(context, '已清空$_modeLabel浏览记录');
+      showToast(context, l10n.browseHistoryCleared(modeLabel));
       setState(_clearItems);
     } catch (e) {
       if (!mounted) return;
-      showToast(context, '清空失败：${NetworkError.message(e)}', isError: true);
+      showToast(
+        context,
+        l10n.browseHistoryClearFailed(NetworkError.message(e, l10n: l10n)),
+        isError: true,
+      );
     }
   }
 
   Future<void> _load({bool silent = false, bool force = false}) async {
     if (_refreshing && !force) return;
+    final l10n = AppLocalizations.of(context)!;
     final mode = _mode;
     _refreshing = true;
     final isInitial = _currentItemsEmpty;
@@ -159,7 +168,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
         });
       }
       if (!silent && mounted) {
-        showToast(context, '刷新成功');
+        showToast(context, l10n.refreshSuccess);
       }
     } catch (e) {
       debugPrint('BrowseHistoryPage load error: $e');
@@ -167,7 +176,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
       } else if (!silent && mounted) {
-        showToast(context, '刷新失败', isError: true);
+        showToast(context, l10n.refreshFailed, isError: true);
       }
     } finally {
       _refreshing = false;
@@ -222,11 +231,12 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   Future<void> _handleUnauthorized() async {
     if (_showingLoginPrompt || !mounted) return;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_user.autoLogin) {
       await _user.logout();
       if (mounted) {
-        showToast(context, '自动登录失败，请手动重新登录', isError: true);
+        showToast(context, l10n.autoLoginFailed, isError: true);
       }
       return;
     }
@@ -242,16 +252,16 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     final shouldLogin = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('登录已过期'),
-        content: const Text('浏览记录需要登录后才能继续查看，是否现在重新登录？'),
+        title: Text(l10n.loginExpiredTitle),
+        content: Text(l10n.browseHistoryLoginExpiredContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('稍后再说'),
+            child: Text(l10n.laterButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('去登录'),
+            child: Text(l10n.goLoginButton),
           ),
         ],
       ),
@@ -260,7 +270,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     if (shouldLogin == true && mounted) {
       await _goLogin();
     } else if (mounted) {
-      showToast(context, '登录后可继续查看浏览记录', isError: true);
+      showToast(context, l10n.browseHistoryLoginToView, isError: true);
     }
 
     _showingLoginPrompt = false;
@@ -285,6 +295,8 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final modeLabel = _modeLabel(l10n);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -293,12 +305,12 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('浏览记录'),
+        title: Text(l10n.browseHistoryTitle),
         actions: [
           if (_user.isLoggedIn && !_currentItemsEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              tooltip: '清空浏览记录',
+              tooltip: l10n.browseHistoryClearTitle,
               onPressed: _clearHistory,
             ),
         ],
@@ -317,7 +329,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '登录后可查看浏览记录',
+                      l10n.browseHistoryLoginToView,
                       style: tt.titleMedium?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -325,8 +337,8 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                     const SizedBox(height: 8),
                     Text(
                       _animeFeatureEnabled
-                          ? '浏览过的漫画和动漫会同步显示在这里'
-                          : '浏览过的漫画会同步显示在这里',
+                          ? l10n.browseHistoryLoginHintWithAnime
+                          : l10n.browseHistoryLoginHintComicOnly,
                       textAlign: TextAlign.center,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -334,7 +346,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                     FilledButton.icon(
                       onPressed: _goLogin,
                       icon: const Icon(Icons.login),
-                      label: const Text('去登录'),
+                      label: Text(l10n.goLoginButton),
                     ),
                   ],
                 ),
@@ -349,16 +361,16 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
                       child: SegmentedButton<_HistoryMode>(
-                        segments: const [
+                        segments: [
                           ButtonSegment(
                             value: _HistoryMode.comic,
-                            label: Text('漫画'),
-                            icon: Icon(Icons.menu_book_outlined),
+                            label: Text(l10n.comicLabel),
+                            icon: const Icon(Icons.menu_book_outlined),
                           ),
                           ButtonSegment(
                             value: _HistoryMode.anime,
-                            label: Text('动漫'),
-                            icon: Icon(Icons.movie_outlined),
+                            label: Text(l10n.animeLabel),
+                            icon: const Icon(Icons.movie_outlined),
                           ),
                         ],
                         selected: {_mode},
@@ -400,16 +412,16 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
                           child: SegmentedButton<_HistoryMode>(
-                            segments: const [
+                            segments: [
                               ButtonSegment(
                                 value: _HistoryMode.comic,
-                                label: Text('漫画'),
-                                icon: Icon(Icons.menu_book_outlined),
+                                label: Text(l10n.comicLabel),
+                                icon: const Icon(Icons.menu_book_outlined),
                               ),
                               ButtonSegment(
                                 value: _HistoryMode.anime,
-                                label: Text('动漫'),
-                                icon: Icon(Icons.movie_outlined),
+                                label: Text(l10n.animeLabel),
+                                icon: const Icon(Icons.movie_outlined),
                               ),
                             ],
                             selected: {_mode},
@@ -433,14 +445,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  '还没有$_modeLabel浏览记录',
+                                  l10n.browseHistoryEmptyTitle(modeLabel),
                                   style: tt.titleMedium?.copyWith(
                                     color: cs.onSurfaceVariant,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '去看几部$_modeLabel后，这里会显示最近浏览内容',
+                                  l10n.browseHistoryEmptySubtitle(modeLabel),
                                   textAlign: TextAlign.center,
                                   style: tt.bodySmall?.copyWith(
                                     color: cs.onSurfaceVariant,
@@ -450,7 +462,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                                 FilledButton.tonalIcon(
                                   onPressed: _user.isLoggedIn ? _load : null,
                                   icon: const Icon(Icons.refresh),
-                                  label: const Text('刷新'),
+                                  label: Text(l10n.refreshButton),
                                 ),
                               ],
                             ),
@@ -462,7 +474,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(hp, 4, hp, 8),
                           child: Text(
-                            '共 $_total 条$_modeLabel浏览记录',
+                            l10n.browseHistoryTotal(_total, modeLabel),
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -496,9 +508,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     );
   }
 
-  static String formatPopular(int n) {
-    if (n >= 100000000) return '${(n / 100000000).toStringAsFixed(1)}亿';
-    if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
+  static String formatPopular(BuildContext context, int n) {
+    final l10n = AppLocalizations.of(context)!;
+    if (n >= 100000000) {
+      return l10n.hundredMillionUnit((n / 100000000).toStringAsFixed(1));
+    }
+    if (n >= 10000) {
+      return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
+    }
     return n.toString();
   }
 }
@@ -540,16 +557,21 @@ class _ComicBrowseHistoryCard extends StatelessWidget {
       latestText:
           comic.lastChapterName == null || comic.lastChapterName!.isEmpty
           ? null
-          : '最新 ${comic.lastChapterName}',
+          : AppLocalizations.of(
+              context,
+            )!.browseHistoryLatestChapter(comic.lastChapterName!),
       chips: [
         _HistoryMetaChip(
           icon: Icons.local_fire_department,
-          label: _BrowseHistoryPageState.formatPopular(comic.popular),
+          label: _BrowseHistoryPageState.formatPopular(context, comic.popular),
         ),
         if (comic.datetimeUpdated != null)
           _HistoryMetaChip(
             icon: Icons.schedule,
-            label: TimeFormat.relativeOf(comic.datetimeUpdated!),
+            label: TimeFormat.relativeOf(
+              comic.datetimeUpdated!,
+              AppLocalizations.of(context)!,
+            ),
           ),
       ],
     );
@@ -599,16 +621,21 @@ class _AnimeBrowseHistoryCard extends StatelessWidget {
       subtitle: subtitle.isEmpty ? null : subtitle,
       lastBrowseName: item.lastBrowseName,
       lastBrowseIcon: Icons.play_circle_outline,
-      latestText: anime.count > 0 ? '共 ${anime.count} 集' : null,
+      latestText: anime.count > 0
+          ? AppLocalizations.of(context)!.totalEpisodes(anime.count)
+          : null,
       chips: [
         _HistoryMetaChip(
           icon: Icons.local_fire_department,
-          label: _BrowseHistoryPageState.formatPopular(anime.popular),
+          label: _BrowseHistoryPageState.formatPopular(context, anime.popular),
         ),
         if (anime.datetimeUpdated != null)
           _HistoryMetaChip(
             icon: Icons.schedule,
-            label: TimeFormat.relativeOf(anime.datetimeUpdated!),
+            label: TimeFormat.relativeOf(
+              anime.datetimeUpdated!,
+              AppLocalizations.of(context)!,
+            ),
           ),
       ],
     );
@@ -638,6 +665,7 @@ class _HistoryCardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -688,7 +716,7 @@ class _HistoryCardShell extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              '上次看到 $lastBrowseName',
+                              l10n.browseHistoryLastSeen(lastBrowseName!),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: tt.bodyMedium,

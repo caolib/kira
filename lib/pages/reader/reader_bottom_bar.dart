@@ -50,6 +50,7 @@ class _ReaderBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Positioned(
       bottom: 0,
       left: 0,
@@ -127,18 +128,20 @@ class _ReaderBottomBar extends StatelessWidget {
                             color: hasPrev ? Colors.white : Colors.white38,
                           ),
                           onPressed: onPrevChapter,
-                          tooltip: '上一章',
+                          tooltip: l10n.readerPreviousChapter,
                         ),
                         IconButton(
                           icon: const Icon(Icons.list, color: Colors.white),
                           onPressed: onCatalog,
-                          tooltip: '目录',
+                          tooltip: l10n.chapterCommentsCatalog,
                         ),
                         if (showAutoScrollButton)
                           IconButton(
                             tooltip: autoScrollEnabled
-                                ? (autoScrollActive ? '暂停自动滚动' : '自动滚动即将恢复')
-                                : '开启自动滚动',
+                                ? (autoScrollActive
+                                      ? l10n.readerPauseAutoScroll
+                                      : l10n.readerAutoScrollWillResume)
+                                : l10n.readerEnableAutoScroll,
                             icon: Icon(
                               autoScrollEnabled
                                   ? Icons.pause_circle_filled
@@ -168,12 +171,12 @@ class _ReaderBottomBar extends StatelessWidget {
                             ),
                           ),
                           onPressed: onComments,
-                          tooltip: '章节评论',
+                          tooltip: l10n.chapterCommentsTitle,
                         ),
                         IconButton(
                           icon: const Icon(Icons.settings, color: Colors.white),
                           onPressed: onSettings,
-                          tooltip: '阅读设置',
+                          tooltip: l10n.readerSettingsTitle,
                         ),
                         IconButton(
                           icon: Icon(
@@ -181,7 +184,7 @@ class _ReaderBottomBar extends StatelessWidget {
                             color: hasNext ? Colors.white : Colors.white38,
                           ),
                           onPressed: onNextChapter,
-                          tooltip: '下一话',
+                          tooltip: l10n.chapterCommentsNext,
                         ),
                       ],
                     ),

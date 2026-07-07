@@ -508,9 +508,9 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
         ? _comicCacheTime
         : _animeCacheTime;
     if (cacheTime == null) return '';
-    return AppLocalizations.of(
-      context,
-    )!.refreshedAt(TimeFormat.relative(cacheTime));
+    return AppLocalizations.of(context)!.refreshedAt(
+      TimeFormat.relative(cacheTime, AppLocalizations.of(context)!),
+    );
   }
 
   void _setType(_BookshelfType type) {
@@ -1013,7 +1013,10 @@ class _AnimeBookshelfCard extends StatelessWidget {
               Icon(Icons.local_fire_department, size: 12, color: cs.primary),
               const SizedBox(width: 2),
               Text(
-                ComicCard.formatPopular(anime.popular),
+                ComicCard.formatPopular(
+                  anime.popular,
+                  AppLocalizations.of(context)!,
+                ),
                 style: tt.labelSmall?.copyWith(
                   color: cs.onSurfaceVariant,
                   fontSize: 10,

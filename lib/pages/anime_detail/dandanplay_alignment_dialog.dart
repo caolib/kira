@@ -40,8 +40,9 @@ class _DandanplayAlignmentDialogState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('对齐弹幕'),
+      title: Text(l10n.dandanplayAlignmentTitle),
       content: SizedBox(
         width: 460,
         child: Column(
@@ -50,9 +51,9 @@ class _DandanplayAlignmentDialogState
             DropdownButtonFormField<int>(
               initialValue: _chapterIndex,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: '视频第一集',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.dandanplayAlignmentVideoFirstEpisode,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (final entry in widget.chapters.indexed)
@@ -73,9 +74,9 @@ class _DandanplayAlignmentDialogState
             DropdownButtonFormField<int>(
               initialValue: _episodeIndex,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: '弹幕第一集',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.dandanplayAlignmentDanmakuFirstEpisode,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (final entry in widget.episodes.indexed)
@@ -102,11 +103,11 @@ class _DandanplayAlignmentDialogState
               context,
               const _DandanplayAlignmentResult.clear(),
             ),
-            child: const Text('清除对齐'),
+            child: Text(l10n.dandanplayAlignmentClear),
           ),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(l10n.cancelButton),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(
@@ -116,7 +117,7 @@ class _DandanplayAlignmentDialogState
               episodeIndex: _episodeIndex,
             ),
           ),
-          child: const Text('确定'),
+          child: Text(l10n.confirmButton),
         ),
       ],
     );

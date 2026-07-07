@@ -12,6 +12,8 @@ import 'app_dio.dart';
 
 enum DownloadTaskStatus { pending, downloading, paused, failed }
 
+enum AnimeDownloadErrorCode { timeout, proxySuggestion, emptyVideoUrl, unknown }
+
 class AnimeDownloadTaskInfo {
   final String pathWord;
   final String chapterUuid;
@@ -20,6 +22,7 @@ class AnimeDownloadTaskInfo {
   final String? cover;
   final DownloadTaskStatus status;
   final AnimeChapterDownloadProgress? progress;
+  final AnimeDownloadErrorCode? errorCode;
   final String? errorMessage;
 
   const AnimeDownloadTaskInfo({
@@ -30,6 +33,7 @@ class AnimeDownloadTaskInfo {
     this.cover,
     required this.status,
     this.progress,
+    this.errorCode,
     this.errorMessage,
   });
 
@@ -80,16 +84,18 @@ class AnimeDownloadManager extends ChangeNotifier {
         t.status == DownloadTaskStatus.downloading,
   );
 
-  String _friendlyErrorMessage(DioException e) {
+  AnimeDownloadErrorCode _friendlyErrorCode(DioException e) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return '连接超时';
+        return AnimeDownloadErrorCode.timeout;
       case DioExceptionType.connectionError:
-        return '建议开启代理后重试';
+        return AnimeDownloadErrorCode.proxySuggestion;
       default:
-        return e.message ?? '建议开启代理后重试';
+        return e.message == null
+            ? AnimeDownloadErrorCode.proxySuggestion
+            : AnimeDownloadErrorCode.unknown;
     }
   }
 
@@ -247,6 +253,7 @@ class AnimeDownloadManager extends ChangeNotifier {
     }
 
     task.status = DownloadTaskStatus.pending;
+    task.errorCode = null;
     task.errorMessage = null;
     notifyListeners();
     unawaited(_processQueue());
@@ -366,10 +373,9 @@ class AnimeDownloadManager extends ChangeNotifier {
               'Download anime chapter failed: ${task.pathWord}/${task.chapter.uuid} $e',
             );
             task.status = DownloadTaskStatus.failed;
-            task.errorMessage = _friendlyErrorMessage(e);
-            _errorController.add(
-              '${task.chapterName} 下载失败：${task.errorMessage}',
-            );
+            task.errorCode = _friendlyErrorCode(e);
+            task.errorMessage = e.message;
+            _errorController.add('${task.chapterName}: $e');
             notifyListeners();
           }
         } catch (e) {
@@ -377,8 +383,11 @@ class AnimeDownloadManager extends ChangeNotifier {
             'Download anime chapter failed: ${task.pathWord}/${task.chapter.uuid} $e',
           );
           task.status = DownloadTaskStatus.failed;
-          task.errorMessage = '未知错误';
-          _errorController.add('${task.chapterName} 下载失败：$e');
+          task.errorCode = e is HttpException && e.message == 'empty video url'
+              ? AnimeDownloadErrorCode.emptyVideoUrl
+              : AnimeDownloadErrorCode.unknown;
+          task.errorMessage = e.toString();
+          _errorController.add('${task.chapterName}: $e');
           notifyListeners();
         }
       }
@@ -402,7 +411,7 @@ class AnimeDownloadManager extends ChangeNotifier {
 
       final videoUrl = _resolveVideoUrl(playback.chapter);
       if (videoUrl.isEmpty) {
-        throw const HttpException('视频链接为空');
+        throw const HttpException('empty video url');
       }
 
       final isHls = await _isHlsStream(videoUrl);
@@ -1060,6 +1069,7 @@ class _AnimeDownloadTask {
   final String cover;
   DownloadTaskStatus status = DownloadTaskStatus.pending;
   AnimeChapterDownloadProgress? progress;
+  AnimeDownloadErrorCode? errorCode;
   String? errorMessage;
 
   _AnimeDownloadTask({
@@ -1082,6 +1092,7 @@ class _AnimeDownloadTask {
     cover: cover,
     status: status,
     progress: progress,
+    errorCode: errorCode,
     errorMessage: errorMessage,
   );
 }

@@ -8,6 +8,7 @@ class _AnimeDetailHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
@@ -87,7 +88,10 @@ class _AnimeDetailHeader extends StatelessWidget {
                               _HeaderPill(icon: item.icon, text: item.text),
                         ),
                         if (isCollected)
-                          const _HeaderPill(icon: Icons.bookmark, text: '已收藏'),
+                          _HeaderPill(
+                            icon: Icons.bookmark,
+                            text: l10n.animeDetailCollected,
+                          ),
                       ],
                     ),
                   ],
@@ -142,6 +146,7 @@ class _AnimeInfoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final chips = <Widget>[...intro.chips.map((item) => _InfoChip(text: item))];
@@ -157,7 +162,11 @@ class _AnimeInfoPanel extends StatelessWidget {
               onPressed: collectSubmitting ? null : onToggleCollect,
               icon: Icon(isCollected ? Icons.bookmark : Icons.bookmark_border),
               label: Text(
-                collectSubmitting ? '处理中' : (isCollected ? '已收藏' : '收藏'),
+                collectSubmitting
+                    ? l10n.processingStatus
+                    : (isCollected
+                          ? l10n.animeDetailCollected
+                          : l10n.collectButton),
               ),
             ),
           ],
@@ -182,7 +191,7 @@ class _AnimeInfoPanel extends StatelessWidget {
               Icon(Icons.update, size: 16, color: cs.onSurfaceVariant),
               const SizedBox(width: 4),
               Text(
-                '刷新于 $refreshedAtText',
+                l10n.refreshedAt(refreshedAtText!),
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
@@ -191,7 +200,7 @@ class _AnimeInfoPanel extends StatelessWidget {
         if (intro.summary.isNotEmpty) ...[
           const SizedBox(height: 18),
           Text(
-            '简介',
+            l10n.animeDetailIntroTab,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -208,7 +217,7 @@ class _AnimeInfoPanel extends StatelessWidget {
         if (intro.extraInfoLines.isNotEmpty) ...[
           const SizedBox(height: 18),
           Text(
-            '资料',
+            l10n.animeDetailInfoTitle,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),

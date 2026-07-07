@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/ai_api.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/network_error.dart';
 import '../utils/toast.dart';
 
@@ -55,7 +56,7 @@ class _AiChatSession {
         .toList();
     return _AiChatSession(
       id: json['id'] as String? ?? _newSessionId(),
-      title: json['title'] as String? ?? '新对话',
+      title: json['title'] as String? ?? 'New chat',
       updatedAt:
           DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
           DateTime.now(),
@@ -157,7 +158,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
       if (!mounted) return;
       setState(() => _sessions = sessions);
     } catch (_) {
-      // 忽略损坏的历史记录，避免影响聊天页打开。
+      // Ignore corrupted history so the chat page can still open.
     }
   }
 
@@ -169,9 +170,9 @@ class _AiConfigPageState extends State<AiConfigPage> {
     );
   }
 
-  String _titleFromFirstMessage(String text) {
+  String _titleFromFirstMessage(String text, AppLocalizations l10n) {
     final singleLine = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (singleLine.isEmpty) return '新对话';
+    if (singleLine.isEmpty) return l10n.aiConfigNewChat;
     return singleLine.length > 18
         ? '${singleLine.substring(0, 18)}…'
         : singleLine;
@@ -188,6 +189,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
         ?.content;
     final title = _titleFromFirstMessage(
       firstUser ?? savedMessages.first.content,
+      AppLocalizations.of(context)!,
     );
     final now = DateTime.now();
     final id = _activeSessionId ?? _newSessionId();
@@ -220,6 +222,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
   }
 
   Future<void> _openProviderConfigDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -237,7 +240,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          'AI 供应商',
+                          l10n.aiConfigProvidersTitle,
                           style: Theme.of(ctx).textTheme.titleMedium,
                         ),
                       ),
@@ -247,7 +250,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                           if (ctx.mounted) setLocal(() {});
                         },
                         icon: const Icon(Icons.add, size: 18),
-                        label: const Text('新增'),
+                        label: Text(l10n.aiConfigAdd),
                       ),
                     ],
                   ),
@@ -255,7 +258,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    '支持任何 OpenAI 兼容接口；智谱清言作为内置预设保留，可为不同供应商分别保存 Base URL、API Key、模型和接口格式。',
+                    l10n.aiConfigProvidersDescription,
                     style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                       color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                     ),
@@ -281,7 +284,14 @@ class _AiConfigPageState extends State<AiConfigPage> {
                         ),
                         title: Text(provider.name),
                         subtitle: Text(
-                          '${provider.enabled ? '已启用' : '已禁用'} · ${provider.models.length} 个模型 · ${provider.apiFormat.label}\n${provider.baseUrl}',
+                          l10n.aiConfigProviderSummary(
+                            provider.enabled
+                                ? l10n.aiConfigEnabled
+                                : l10n.aiConfigDisabled,
+                            provider.models.length,
+                            provider.apiFormat.label,
+                            provider.baseUrl,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -290,7 +300,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              tooltip: '编辑',
+                              tooltip: l10n.aiConfigEdit,
                               icon: const Icon(Icons.edit_outlined),
                               onPressed: () async {
                                 await _openProviderEditor(provider: provider);
@@ -299,7 +309,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                             ),
                             if (!provider.isBuiltIn)
                               IconButton(
-                                tooltip: '删除',
+                                tooltip: l10n.deleteButton,
                                 icon: Icon(
                                   Icons.delete_outline,
                                   color: Theme.of(ctx).colorScheme.error,
@@ -325,6 +335,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
   }
 
   Future<void> _openProviderEditor({AiProviderConfig? provider}) async {
+    final l10n = AppLocalizations.of(context)!;
     final editing = provider ?? _settings.activeProvider;
     final isNew = provider == null;
     const customPreset = 'custom';
@@ -334,7 +345,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
         ? zhipuPreset
         : customPreset;
     final nameCtrl = TextEditingController(
-      text: isNew ? '自定义供应商' : editing.name,
+      text: isNew ? l10n.aiConfigCustomProvider : editing.name,
     );
     final baseUrlCtrl = TextEditingController(
       text: isNew ? 'https://api.openai.com/v1' : editing.baseUrl,
@@ -357,7 +368,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
     void applyZhipuPreset(StateSetter setLocal) {
       setLocal(() {
         providerPreset = zhipuPreset;
-        nameCtrl.text = '智谱清言';
+        nameCtrl.text = l10n.aiConfigZhipuName;
         baseUrlCtrl.text = AiSettings.defaultBaseUrl;
         apiFormat = OpenAiApiFormat.chatCompletions;
         models = List<String>.from(AiSettings.availableModels);
@@ -370,24 +381,24 @@ class _AiConfigPageState extends State<AiConfigPage> {
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('添加模型'),
+          title: Text(l10n.aiConfigAddModel),
           content: TextField(
             controller: ctrl,
             autofocus: true,
-            decoration: const InputDecoration(
-              labelText: '模型 ID',
+            decoration: InputDecoration(
+              labelText: l10n.aiConfigModelIdLabel,
               hintText: 'gpt-4o-mini',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消'),
+              child: Text(l10n.cancelButton),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: const Text('添加'),
+              child: Text(l10n.aiConfigAdd),
             ),
           ],
         ),
@@ -404,7 +415,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
       final baseUrl = baseUrlCtrl.text.trim();
       final apiKey = apiKeyCtrl.text.trim();
       if (baseUrl.isEmpty || apiKey.isEmpty) {
-        showToast(context, '请先填写 Base URL 和 API Key', isError: true);
+        showToast(context, l10n.aiConfigFillBaseUrlAndApiKey, isError: true);
         return;
       }
 
@@ -413,12 +424,16 @@ class _AiConfigPageState extends State<AiConfigPage> {
         fetched = await _api.fetchModels(baseUrl: baseUrl, apiKey: apiKey);
       } catch (e) {
         if (!mounted) return;
-        showToast(context, '获取模型失败：${NetworkError.message(e)}', isError: true);
+        showToast(
+          context,
+          l10n.aiConfigFetchModelsFailed(NetworkError.message(e, l10n: l10n)),
+          isError: true,
+        );
         return;
       }
       if (!mounted) return;
       if (fetched.isEmpty) {
-        showToast(context, '未获取到可用模型', isError: true);
+        showToast(context, l10n.aiConfigNoAvailableModels, isError: true);
         return;
       }
 
@@ -427,7 +442,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
         context: context,
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, setDialog) => AlertDialog(
-            title: const Text('选择模型'),
+            title: Text(l10n.aiConfigSelectModel),
             content: SizedBox(
               width: double.maxFinite,
               child: Column(
@@ -438,7 +453,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     value: selected.length == fetched.length,
                     tristate:
                         selected.isNotEmpty && selected.length < fetched.length,
-                    title: const Text('全选'),
+                    title: Text(l10n.selectAll),
                     onChanged: (checked) {
                       setDialog(() {
                         selected.clear();
@@ -476,11 +491,11 @@ class _AiConfigPageState extends State<AiConfigPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('取消'),
+                child: Text(l10n.cancelButton),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, selected),
-                child: const Text('添加所选'),
+                child: Text(l10n.aiConfigAddSelected),
               ),
             ],
           ),
@@ -497,23 +512,28 @@ class _AiConfigPageState extends State<AiConfigPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(isNew ? '新增供应商' : '编辑供应商'),
+          title: Text(
+            isNew ? l10n.aiConfigAddProvider : l10n.aiConfigEditProvider,
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: providerPreset,
-                  decoration: const InputDecoration(
-                    labelText: '供应商名称',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.aiConfigProviderNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: customPreset,
-                      child: Text('自定义供应商'),
+                      child: Text(l10n.aiConfigCustomProvider),
                     ),
-                    DropdownMenuItem(value: zhipuPreset, child: Text('智谱清言')),
+                    DropdownMenuItem(
+                      value: zhipuPreset,
+                      child: Text(l10n.aiConfigZhipuName),
+                    ),
                   ],
                   onChanged: (value) {
                     if (value == null) return;
@@ -526,8 +546,8 @@ class _AiConfigPageState extends State<AiConfigPage> {
                         models = [];
                         selectedModel = '';
                         if (nameCtrl.text.trim().isEmpty ||
-                            nameCtrl.text.trim() == '智谱清言') {
-                          nameCtrl.text = '自定义供应商';
+                            nameCtrl.text.trim() == l10n.aiConfigZhipuName) {
+                          nameCtrl.text = l10n.aiConfigCustomProvider;
                         }
                       });
                     }
@@ -537,10 +557,10 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: '自定义名称',
-                      hintText: 'OpenAI / One API / 自定义',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.aiConfigCustomNameLabel,
+                      hintText: l10n.aiConfigCustomNameHint,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ],
@@ -556,9 +576,9 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<OpenAiApiFormat>(
                   initialValue: apiFormat,
-                  decoration: const InputDecoration(
-                    labelText: '接口格式',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.aiConfigApiFormatLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   items: OpenAiApiFormat.values
                       .map(
@@ -577,12 +597,12 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   initialValue: models.contains(selectedModel)
                       ? selectedModel
                       : null,
-                  decoration: const InputDecoration(
-                    labelText: '默认模型',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.aiConfigDefaultModelLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   items: [
-                    const DropdownMenuItem(child: Text('未选择')),
+                    DropdownMenuItem(child: Text(l10n.aiConfigNoSelection)),
                     ...models.map(
                       (model) =>
                           DropdownMenuItem(value: model, child: Text(model)),
@@ -619,7 +639,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                         ),
                       ActionChip(
                         avatar: const Icon(Icons.add, size: 18),
-                        label: const Text('添加'),
+                        label: Text(l10n.aiConfigAdd),
                         onPressed: () => addModel(setLocal),
                       ),
                       ActionChip(
@@ -627,13 +647,13 @@ class _AiConfigPageState extends State<AiConfigPage> {
                           Icons.cloud_download_outlined,
                           size: 18,
                         ),
-                        label: const Text('获取'),
+                        label: Text(l10n.aiConfigFetch),
                         onPressed: () => fetchModels(setLocal),
                       ),
                       if (models.isNotEmpty)
                         ActionChip(
                           avatar: const Icon(Icons.clear_all, size: 18),
-                          label: const Text('清空'),
+                          label: Text(l10n.aiConfigClear),
                           onPressed: () => setLocal(() {
                             models = [];
                             selectedModel = '';
@@ -667,7 +687,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                         mode: LaunchMode.externalApplication,
                       ),
                       icon: const Icon(Icons.open_in_new, size: 14),
-                      label: const Text('获取智谱 API 密钥'),
+                      label: Text(l10n.aiConfigGetZhipuApiKey),
                     ),
                   ),
                 ],
@@ -677,15 +697,15 @@ class _AiConfigPageState extends State<AiConfigPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消'),
+              child: Text(l10n.cancelButton),
             ),
             FilledButton(
               onPressed: () {
                 final model = selectedModel.trim();
                 final name = providerPreset == zhipuPreset
-                    ? '智谱清言'
+                    ? l10n.aiConfigZhipuName
                     : nameCtrl.text.trim().isEmpty
-                    ? (isNew ? '自定义供应商' : editing.name)
+                    ? (isNew ? l10n.aiConfigCustomProvider : editing.name)
                     : nameCtrl.text.trim();
                 Navigator.pop(
                   ctx,
@@ -706,7 +726,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   ),
                 );
               },
-              child: const Text('保存'),
+              child: Text(l10n.commentSettingsSaveButton),
             ),
           ],
         ),
@@ -714,14 +734,15 @@ class _AiConfigPageState extends State<AiConfigPage> {
     );
     if (result == null) return;
     await _settings.upsertProvider(result);
-    if (mounted) showToast(context, '供应商已保存');
+    if (mounted) showToast(context, l10n.aiConfigProviderSaved);
   }
 
   Future<void> _send() async {
+    final l10n = AppLocalizations.of(context)!;
     final text = _inputCtrl.text.trim();
     if (text.isEmpty || _sending) return;
     if (!_settings.hasConfig) {
-      showToast(context, '请先配置 Base URL 和 API 密钥', isError: true);
+      showToast(context, l10n.aiConfigConfigureBaseUrlAndApiKey, isError: true);
       unawaited(_openProviderConfigDialog());
       return;
     }
@@ -777,7 +798,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
         setState(() {
           _messages[_messages.length - 1] = AiMessage(
             role: 'assistant',
-            content: '(模型未返回内容)',
+            content: l10n.aiConfigModelReturnedEmpty,
             reasoningContent: reasoningBuffer.isEmpty
                 ? null
                 : reasoningBuffer.toString(),
@@ -791,8 +812,8 @@ class _AiConfigPageState extends State<AiConfigPage> {
         _messages[_messages.length - 1] = AiMessage(
           role: 'assistant',
           content: buffer.isEmpty
-              ? '请求失败：$msg'
-              : '${buffer.toString()}\n\n[出错：$msg]',
+              ? l10n.aiConfigRequestFailed(msg)
+              : l10n.aiConfigPartialResponseError(buffer.toString(), msg),
           reasoningContent: reasoningBuffer.isEmpty
               ? null
               : reasoningBuffer.toString(),
@@ -808,7 +829,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
   }
 
   String _extractError(Object e) {
-    return NetworkError.message(e);
+    return NetworkError.message(e, l10n: AppLocalizations.of(context)!);
   }
 
   void _stop() {
@@ -825,6 +846,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
   }
 
   Future<void> _openSessionHistory() async {
+    final l10n = AppLocalizations.of(context)!;
     await _persistCurrentSession();
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -847,7 +869,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                       children: [
                         Expanded(
                           child: Text(
-                            '会话历史',
+                            l10n.aiConfigSessionHistory,
                             style: Theme.of(ctx).textTheme.titleMedium,
                           ),
                         ),
@@ -860,10 +882,10 @@ class _AiConfigPageState extends State<AiConfigPage> {
                             Navigator.pop(ctx);
                           },
                           icon: const Icon(Icons.add, size: 18),
-                          label: const Text('新会话'),
+                          label: Text(l10n.aiConfigNewSession),
                         ),
                         IconButton(
-                          tooltip: '关闭',
+                          tooltip: l10n.closeButton,
                           icon: const Icon(Icons.close),
                           onPressed: () => Navigator.pop(ctx),
                         ),
@@ -875,7 +897,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     Padding(
                       padding: const EdgeInsets.all(32),
                       child: Text(
-                        '暂无历史会话',
+                        l10n.aiConfigNoSessionHistory,
                         style: TextStyle(color: cs.onSurfaceVariant),
                       ),
                     )
@@ -907,13 +929,15 @@ class _AiConfigPageState extends State<AiConfigPage> {
                             ),
                             subtitle: Text(
                               preview == null || preview.isEmpty
-                                  ? '${session.messages.length} 条消息'
+                                  ? l10n.aiConfigMessageCount(
+                                      session.messages.length,
+                                    )
                                   : preview,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             trailing: IconButton(
-                              tooltip: '删除会话',
+                              tooltip: l10n.aiConfigDeleteSession,
                               icon: Icon(Icons.delete_outline, color: cs.error),
                               onPressed: () async {
                                 final removedActive =
@@ -955,6 +979,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
   }
 
   Future<void> _openModelPicker() async {
+    final l10n = AppLocalizations.of(context)!;
     final choices = _modelChoices;
     if (choices.isEmpty) return;
 
@@ -978,12 +1003,12 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          '切换模型',
+                          l10n.chapterCommentsSwitchModel,
                           style: Theme.of(ctx).textTheme.titleMedium,
                         ),
                       ),
                       IconButton(
-                        tooltip: '关闭',
+                        tooltip: l10n.closeButton,
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.pop(ctx),
                       ),
@@ -1054,6 +1079,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final modelChoices = _modelChoices;
     final activeProvider = _settings.activeProvider;
@@ -1063,7 +1089,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('AI 配置'),
+            Text(l10n.aiConfigTitle),
             if (modelChoices.isNotEmpty)
               InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -1096,12 +1122,12 @@ class _AiConfigPageState extends State<AiConfigPage> {
         ),
         actions: [
           IconButton(
-            tooltip: '会话历史',
+            tooltip: l10n.aiConfigSessionHistory,
             icon: const Icon(Icons.history),
             onPressed: _openSessionHistory,
           ),
           IconButton(
-            tooltip: '接口配置',
+            tooltip: l10n.aiConfigProviderConfig,
             icon: Icon(
               _settings.hasConfig ? Icons.key : Icons.key_off_outlined,
               color: _settings.hasConfig ? null : cs.error,
@@ -1109,7 +1135,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
             onPressed: _openProviderConfigDialog,
           ),
           IconButton(
-            tooltip: '清空对话',
+            tooltip: l10n.aiConfigClearChat,
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: _clearChat,
           ),
@@ -1141,7 +1167,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _send(),
                 decoration: InputDecoration(
-                  hintText: '说点什么…',
+                  hintText: l10n.aiConfigInputHint,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -1153,12 +1179,12 @@ class _AiConfigPageState extends State<AiConfigPage> {
                       ? IconButton(
                           onPressed: _stop,
                           icon: const Icon(Icons.stop),
-                          tooltip: '停止',
+                          tooltip: l10n.chapterCommentsStop,
                         )
                       : IconButton(
                           onPressed: _send,
                           icon: const Icon(Icons.send),
-                          tooltip: '发送',
+                          tooltip: l10n.aiConfigSend,
                         ),
                 ),
               ),
@@ -1183,7 +1209,9 @@ class _AiConfigPageState extends State<AiConfigPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              _settings.hasConfig ? '配置AI后可以在章节评论中用于总结评论和屏蔽剧透' : '先在右上角配置接口',
+              _settings.hasConfig
+                  ? AppLocalizations.of(context)!.aiConfigReadyEmptyHint
+                  : AppLocalizations.of(context)!.aiConfigSetupEmptyHint,
               style: TextStyle(color: cs.onSurfaceVariant),
             ),
           ],
@@ -1214,7 +1242,12 @@ class _AiConfigPageState extends State<AiConfigPage> {
           onLongPress: () async {
             if (msg.content.isEmpty) return;
             await Clipboard.setData(ClipboardData(text: msg.content));
-            if (mounted) showToast(context, '已复制');
+            if (mounted) {
+              showToast(
+                context,
+                AppLocalizations.of(context)!.chapterCommentsCopied,
+              );
+            }
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1311,7 +1344,11 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  expanded ? '思考过程' : '思考过程（已折叠）',
+                  expanded
+                      ? AppLocalizations.of(context)!.chapterCommentsReasoning
+                      : AppLocalizations.of(
+                          context,
+                        )!.chapterCommentsReasoningCollapsed,
                   style: textStyle?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (collapsed) ...[

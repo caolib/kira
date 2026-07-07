@@ -10,7 +10,7 @@ ComicComment _$ComicCommentFromJson(Map<String, dynamic> json) => ComicComment(
   id: _intOrStringToInt(json['id']),
   createAt: json['create_at'] as String? ?? '',
   userId: json['user_id'] as String? ?? '',
-  userName: json['user_name'] as String? ?? '匿名用户',
+  userName: json['user_name'] as String? ?? '',
   userAvatar: json['user_avatar'] as String? ?? '',
   comment: json['comment'] as String? ?? '',
   replyCount: _intOrStringToInt(json['count']),

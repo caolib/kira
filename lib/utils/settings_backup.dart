@@ -2,13 +2,47 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsBackupException implements Exception {
-  final String message;
+import '../l10n/app_localizations.dart';
 
-  const SettingsBackupException(this.message);
+enum SettingsBackupErrorCode {
+  emptyClipboard,
+  invalidJson,
+  invalidFormat,
+  wrongApp,
+  unsupportedVersion,
+  missingContent,
+  unsupportedField,
+  invalidFieldFormat,
+  unsupportedFieldType,
+}
+
+class SettingsBackupException implements Exception {
+  final SettingsBackupErrorCode code;
+
+  const SettingsBackupException(this.code);
+
+  String localizedMessage(AppLocalizations l10n) {
+    return switch (code) {
+      SettingsBackupErrorCode.emptyClipboard =>
+        l10n.settingsBackupEmptyClipboard,
+      SettingsBackupErrorCode.invalidJson => l10n.settingsBackupInvalidJson,
+      SettingsBackupErrorCode.invalidFormat => l10n.settingsBackupInvalidFormat,
+      SettingsBackupErrorCode.wrongApp => l10n.settingsBackupWrongApp,
+      SettingsBackupErrorCode.unsupportedVersion =>
+        l10n.settingsBackupUnsupportedVersion,
+      SettingsBackupErrorCode.missingContent =>
+        l10n.settingsBackupMissingContent,
+      SettingsBackupErrorCode.unsupportedField =>
+        l10n.settingsBackupUnsupportedField,
+      SettingsBackupErrorCode.invalidFieldFormat =>
+        l10n.settingsBackupInvalidFieldFormat,
+      SettingsBackupErrorCode.unsupportedFieldType =>
+        l10n.settingsBackupUnsupportedFieldType,
+    };
+  }
 
   @override
-  String toString() => message;
+  String toString() => code.name;
 }
 
 class SettingsBackupSummary {
@@ -73,8 +107,7 @@ class SettingsBackupService {
       'exported_at': DateTime.now().toUtc().toIso8601String(),
       'includes_sensitive': options.includeSensitive,
       'skipped_sensitive_count': skippedSensitiveKeys.length,
-      'warning':
-          options.includeSensitive
+      'warning': options.includeSensitive
           ? 'This backup is plain text and may contain tokens, accounts, passwords, API keys, and reading history.'
           : 'This backup is plain text and excludes known tokens, passwords, and API keys.',
       'preferences': entries,
@@ -158,31 +191,39 @@ class SettingsBackupService {
   static _ParsedSettingsBackup _parseBackup(String raw) {
     final normalized = _normalizeInput(raw);
     if (normalized.isEmpty) {
-      throw const SettingsBackupException('剪贴板里没有可导入的配置');
+      throw const SettingsBackupException(
+        SettingsBackupErrorCode.emptyClipboard,
+      );
     }
 
     final Object? decoded;
     try {
       decoded = jsonDecode(normalized);
     } catch (_) {
-      throw const SettingsBackupException('配置格式不是有效的 JSON');
+      throw const SettingsBackupException(SettingsBackupErrorCode.invalidJson);
     }
 
     if (decoded is! Map) {
-      throw const SettingsBackupException('配置格式不正确');
+      throw const SettingsBackupException(
+        SettingsBackupErrorCode.invalidFormat,
+      );
     }
 
     final map = Map<String, dynamic>.from(decoded);
     if (map['app'] != _app || map['kind'] != _kind) {
-      throw const SettingsBackupException('这不是 Kira 的设置备份');
+      throw const SettingsBackupException(SettingsBackupErrorCode.wrongApp);
     }
     if (map['version'] != _version) {
-      throw const SettingsBackupException('备份版本不受支持');
+      throw const SettingsBackupException(
+        SettingsBackupErrorCode.unsupportedVersion,
+      );
     }
 
     final rawPreferences = map['preferences'];
     if (rawPreferences is! Map) {
-      throw const SettingsBackupException('配置内容缺失或格式不正确');
+      throw const SettingsBackupException(
+        SettingsBackupErrorCode.missingContent,
+      );
     }
 
     final preferences = <String, _PreferenceValue>{};
@@ -190,14 +231,18 @@ class SettingsBackupService {
     for (final rawEntry in rawPreferences.entries) {
       final key = rawEntry.key.toString();
       if (key.isEmpty || key.startsWith(_cachePrefix)) {
-        throw const SettingsBackupException('配置中包含不支持的字段');
+        throw const SettingsBackupException(
+          SettingsBackupErrorCode.unsupportedField,
+        );
       }
       if (_excludedPreferenceKeys.contains(key)) {
         continue;
       }
       final rawValue = rawEntry.value;
       if (rawValue is! Map) {
-        throw const SettingsBackupException('配置字段格式不正确');
+        throw const SettingsBackupException(
+          SettingsBackupErrorCode.invalidFieldFormat,
+        );
       }
       if (_isSensitivePreferenceKey(key)) {
         sensitivePreferenceCount += 1;
@@ -241,7 +286,9 @@ class SettingsBackupService {
         break;
     }
 
-    throw const SettingsBackupException('配置字段类型不受支持');
+    throw const SettingsBackupException(
+      SettingsBackupErrorCode.unsupportedFieldType,
+    );
   }
 
   static Future<void> _writePreference(

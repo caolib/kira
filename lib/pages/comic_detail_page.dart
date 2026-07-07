@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/chapter.dart';
 import '../models/comic.dart' as comic_model;
 import '../models/comic.dart' hide Theme;
@@ -79,9 +80,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   bool _loadingChapters = false;
   bool _keepShowingCachedChapters = false;
   int _chapterTotal = 0;
-  int _chapterPage = 0; // 当前页码（0-based）
+  int _chapterPage = 0; // Current page index (0-based)
   static const _pageSize = 100;
-  // 会话内章节分页缓存：key 为 "group:page"，离开详情页时随 State 一起销毁
+  // In-session chapter page cache; destroyed with State.
   final Map<String, ({List<Chapter> list, int total})> _chapterPageCache = {};
   bool _briefExpanded = false;
   bool _reversed = false;
@@ -91,7 +92,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   int? _nextBrowseChapterListPage;
   String? _nextBrowseChapterSourceId;
   bool _loadingNextBrowseChapter = false;
-  // 本地阅读记录（优先级高于书架传入的记录）
+  // Local reading history takes precedence over bookshelf record.
   late final String? _officialLastBrowseId;
   late final String? _officialLastBrowseName;
   bool _usingLocalHistory = false;
@@ -548,7 +549,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     final comic = _comic;
     final comicId = comic?.uuid;
     if (comic == null || comicId == null || comicId.isEmpty) {
-      showToast(context, '当前漫画暂时无法查看评论', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.comicDetailCommentsUnavailable,
+        isError: true,
+      );
       return;
     }
 
@@ -565,7 +570,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   void _openAuthorWorks(Author author) {
     final authorPathWord = author.pathWord.trim();
     if (authorPathWord.isEmpty) {
-      showToast(context, '当前作者暂时无法查看作品', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.comicDetailAuthorUnavailable,
+        isError: true,
+      );
       return;
     }
 
@@ -584,7 +593,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   void _openThemeWorks(comic_model.Theme theme) {
     final themePathWord = theme.pathWord.trim();
     if (themePathWord.isEmpty) {
-      showToast(context, '当前主题暂时无法查看作品', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.comicDetailThemeUnavailable,
+        isError: true,
+      );
       return;
     }
 
@@ -668,7 +681,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         .toList();
 
     if (chapters.isEmpty) {
-      showToast(context, '请选择未下载的章节', isError: true);
+      showToast(
+        context,
+        AppLocalizations.of(context)!.comicDetailSelectUndownloadedChapters,
+        isError: true,
+      );
       return;
     }
 
@@ -679,7 +696,13 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
     if (!mounted) return;
 
-    showToast(context, added > 0 ? '已加入下载队列：$added 章（顺序下载）' : '所选章节已下载或已在队列中');
+    final l10n = AppLocalizations.of(context)!;
+    showToast(
+      context,
+      added > 0
+          ? l10n.comicDetailAddedToDownloadQueue(added)
+          : l10n.comicDetailSelectedAlreadyDownloadedOrQueued,
+    );
     _exitSelectionMode();
   }
 
@@ -724,11 +747,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     color: cs.onSurfaceVariant,
                   ),
                   const SizedBox(height: 12),
-                  const Text('加载失败'),
+                  Text(AppLocalizations.of(context)!.loadingFailed),
                   const SizedBox(height: 8),
                   FilledButton.tonal(
                     onPressed: _loadComic,
-                    child: const Text('重试'),
+                    child: Text(AppLocalizations.of(context)!.retryButton),
                   ),
                 ],
               ),
@@ -829,7 +852,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
-                    '已选 ${_selectedChapterIds.length} 章',
+                    AppLocalizations.of(
+                      context,
+                    )!.comicDetailSelectedChapters(_selectedChapterIds.length),
                     style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   OutlinedButton.icon(
@@ -837,14 +862,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         ? _selectAllVisibleDownloadable
                         : null,
                     icon: const Icon(Icons.select_all, size: 18),
-                    label: const Text('全选'),
+                    label: Text(AppLocalizations.of(context)!.selectAll),
                   ),
                   FilledButton.icon(
                     onPressed: _selectedChapterIds.isEmpty
                         ? null
                         : _downloadSelectedChapters,
                     icon: const Icon(Icons.download_for_offline, size: 18),
-                    label: const Text('下载选中'),
+                    label: Text(
+                      AppLocalizations.of(context)!.animeDetailDownloadSelected,
+                    ),
                   ),
                 ],
               )
@@ -863,7 +890,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           color: cs.primary,
                         ),
                       ),
-                      label: Text('顺序下载中 $pendingCount 章'),
+                      label: Text(
+                        AppLocalizations.of(
+                          context,
+                        )!.comicDetailSequentialDownloading(pendingCount),
+                      ),
                     ),
                   if (downloadedCount > 0)
                     Chip(
@@ -872,7 +903,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         size: 18,
                         color: Colors.green,
                       ),
-                      label: Text('已下载 $downloadedCount 章'),
+                      label: Text(
+                        AppLocalizations.of(
+                          context,
+                        )!.downloadedChapterCount(downloadedCount),
+                      ),
                     ),
                 ],
               ),
@@ -923,13 +958,17 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         : cs.onSurfaceVariant;
 
     final statusText = isDownloaded
-        ? '已下载'
+        ? AppLocalizations.of(context)!.downloadedStatus
         : isDownloading && progress != null
-        ? '下载 ${progress.completed}/${progress.total}'
+        ? AppLocalizations.of(
+            context,
+          )!.comicDetailDownloadProgress(progress.completed, progress.total)
         : isQueued
-        ? '排队中'
+        ? AppLocalizations.of(context)!.comicDetailQueued
         : '${chapter.size}P';
-    final subtitle = isRead && !isLastRead ? '已读 · $statusText' : statusText;
+    final subtitle = isRead && !isLastRead
+        ? AppLocalizations.of(context)!.comicDetailReadWithStatus(statusText)
+        : statusText;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
@@ -1070,7 +1109,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                   : Icons.download_for_offline_outlined,
               size: 18,
             ),
-            label: Text(_selectionMode ? '取消' : '下载'),
+            label: Text(
+              _selectionMode
+                  ? AppLocalizations.of(context)!.cancelButton
+                  : AppLocalizations.of(context)!.animeDetailDownloadButton,
+            ),
             style: buttonStyle,
           ),
         ),
@@ -1081,7 +1124,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 ? null
                 : _showComicComments,
             icon: const Icon(Icons.forum_outlined, size: 18),
-            label: const Text('评论'),
+            label: Text(AppLocalizations.of(context)!.chapterCommentsComment),
             style: buttonStyle,
           ),
         ),
@@ -1095,7 +1138,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
               _isCollected ? Icons.bookmark : Icons.bookmark_border,
               size: 18,
             ),
-            label: Text(_isCollected ? '已收藏' : '收藏'),
+            label: Text(
+              _isCollected
+                  ? AppLocalizations.of(context)!.animeDetailCollected
+                  : AppLocalizations.of(context)!.collectButton,
+            ),
             style: buttonStyle,
           ),
         ),
@@ -1239,7 +1286,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                _formatPopular(comic.popular),
+                                _formatPopular(context, comic.popular),
                                 style: tt.bodySmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                 ),
@@ -1258,7 +1305,10 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                TimeFormat.relativeOf(comic.datetimeUpdated!),
+                                TimeFormat.relativeOf(
+                                  comic.datetimeUpdated!,
+                                  AppLocalizations.of(context)!,
+                                ),
                                 style: tt.bodySmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                 ),
@@ -1404,7 +1454,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Tooltip(
-                        message: _reversed ? '逆序（新→旧）' : '正序（旧→新）',
+                        message: _reversed
+                            ? AppLocalizations.of(context)!.sortReverse
+                            : AppLocalizations.of(context)!.sortNormal,
                         child: Icon(
                           _reversed ? Icons.arrow_downward : Icons.arrow_upward,
                           size: 20,
@@ -1448,9 +1500,14 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
   }
 
-  static String _formatPopular(int n) {
-    if (n >= 100000000) return '${(n / 100000000).toStringAsFixed(1)}亿';
-    if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
+  static String _formatPopular(BuildContext context, int n) {
+    final l10n = AppLocalizations.of(context)!;
+    if (n >= 100000000) {
+      return l10n.hundredMillionUnit((n / 100000000).toStringAsFixed(1));
+    }
+    if (n >= 10000) {
+      return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
+    }
     return n.toString();
   }
 }

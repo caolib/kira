@@ -1224,6 +1224,7 @@ class _MangaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -1287,7 +1288,7 @@ class _MangaCard extends StatelessWidget {
                 Icon(Icons.local_fire_department, size: 12, color: cs.primary),
                 const SizedBox(width: 2),
                 Text(
-                  ComicCard.formatPopular(comic.popular),
+                  ComicCard.formatPopular(comic.popular, l10n),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontSize: 10,
@@ -1413,6 +1414,7 @@ class ComicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final title = Text(
@@ -1475,7 +1477,7 @@ class ComicCard extends StatelessWidget {
               const SizedBox(width: 2),
               Flexible(
                 child: Text(
-                  formatPopular(comic.popular),
+                  formatPopular(comic.popular, l10n),
                   overflow: TextOverflow.ellipsis,
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
@@ -1486,7 +1488,7 @@ class ComicCard extends StatelessWidget {
               if (comic.datetimeUpdated != null) ...[
                 const SizedBox(width: 4),
                 Text(
-                  TimeFormat.relativeOf(comic.datetimeUpdated!),
+                  TimeFormat.relativeOf(comic.datetimeUpdated!, l10n),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontSize: 10,
@@ -1519,9 +1521,13 @@ class ComicCard extends StatelessWidget {
     return SizedBox(width: heroSize.width, height: heroSize.height);
   }
 
-  static String formatPopular(int n) {
-    if (n >= 100000000) return '${(n / 100000000).toStringAsFixed(1)}亿';
-    if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
+  static String formatPopular(int n, AppLocalizations l10n) {
+    if (n >= 100000000) {
+      return l10n.hundredMillionUnit((n / 100000000).toStringAsFixed(1));
+    }
+    if (n >= 10000) {
+      return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
+    }
     return n.toString();
   }
 }

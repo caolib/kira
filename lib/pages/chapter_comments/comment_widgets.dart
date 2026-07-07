@@ -127,7 +127,7 @@ class _CommentCardState extends State<_CommentCard> {
   bool _revealed = false;
 
   bool get _isSpoiler {
-    // 合并评论：只要其中任一评论 id 在集合中就视为剧透
+    // Merged comments are spoilers if any contained comment id matches.
     if (_revealed) return false;
     for (final c in widget.entry.comments) {
       if (widget.spoilerIds.contains(c.id)) return true;
@@ -147,8 +147,8 @@ class _CommentCardState extends State<_CommentCard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('剧透警告'),
-          content: const Text('真的要打开吗？前方是地狱啊！'),
+          title: Text(AppLocalizations.of(context)!.spoilerWarningTitle),
+          content: Text(AppLocalizations.of(context)!.spoilerWarningContent),
           actions: [
             SizedBox(
               height: 32,
@@ -167,18 +167,23 @@ class _CommentCardState extends State<_CommentCard> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text('不再提醒', style: Theme.of(ctx).textTheme.bodySmall),
+                    Text(
+                      AppLocalizations.of(
+                        context,
+                      )!.chapterCommentsNoRemindAgain,
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('算了'),
+              child: Text(AppLocalizations.of(context)!.cancelButton),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('打开'),
+              child: Text(AppLocalizations.of(context)!.openButton),
             ),
           ],
         ),
@@ -219,7 +224,7 @@ class _CommentCardState extends State<_CommentCard> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '这是一条高度剧透嫌疑的评论',
+                      AppLocalizations.of(context)!.spoilerSuspectedComment,
                       style: tt.labelSmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -309,7 +314,11 @@ class _CommentCardState extends State<_CommentCard> {
                               if (showUserName)
                                 Expanded(
                                   child: Text(
-                                    entry.primaryComment.userName,
+                                    entry.primaryComment.userName.trim().isEmpty
+                                        ? AppLocalizations.of(
+                                            context,
+                                          )!.commentSettingsAnonymousUser
+                                        : entry.primaryComment.userName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: userStyle,
@@ -383,8 +392,10 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
             context: context,
             builder: (ctx) => StatefulBuilder(
               builder: (ctx, setLocal) => AlertDialog(
-                title: const Text('剧透警告'),
-                content: const Text('真的要打开吗？前方是地狱啊！'),
+                title: Text(AppLocalizations.of(context)!.spoilerWarningTitle),
+                content: Text(
+                  AppLocalizations.of(context)!.spoilerWarningContent,
+                ),
                 actions: [
                   SizedBox(
                     height: 32,
@@ -405,7 +416,9 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '不再提醒',
+                            AppLocalizations.of(
+                              context,
+                            )!.chapterCommentsNoRemindAgain,
                             style: Theme.of(ctx).textTheme.bodySmall,
                           ),
                         ],
@@ -414,11 +427,11 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('算了'),
+                    child: Text(AppLocalizations.of(context)!.cancelButton),
                   ),
                   FilledButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('打开'),
+                    child: Text(AppLocalizations.of(context)!.openButton),
                   ),
                 ],
               ),
@@ -446,7 +459,7 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '含剧透，点击查看',
+                      AppLocalizations.of(context)!.spoilerTapToView,
                       style: tt.labelSmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),

@@ -7,6 +7,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../api/api_client.dart';
+import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/app_storage.dart';
 import '../utils/toast.dart';
@@ -149,19 +150,20 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   }
 
   Future<void> _deleteEntry(_CacheEntry entry) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除缓存项'),
-        content: Text('确定要删除 ${entry.key} 吗？此操作不可恢复。'),
+        title: Text(l10n.cacheDeleteEntryTitle),
+        content: Text(l10n.cacheDeleteEntryContent(entry.key)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+            child: Text(l10n.deleteButton),
           ),
         ],
       ),
@@ -176,10 +178,12 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         await UserManager().init();
       }
       _revealedSensitiveKeys.remove(entry.key);
-      if (mounted) showToast(context, '已删除 ${entry.key}');
+      if (mounted) showToast(context, l10n.cacheEntryDeletedToast(entry.key));
       await _loadEntries();
     } catch (e) {
-      if (mounted) showToast(context, '删除失败：$e', isError: true);
+      if (mounted) {
+        showToast(context, l10n.cacheDeleteFailedToast('$e'), isError: true);
+      }
     }
   }
 
@@ -222,6 +226,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
           .toList(growable: false);
 
   Future<void> _deleteSelectedSections() async {
+    final l10n = AppLocalizations.of(context)!;
     final sections = _selectedSections;
     final imageSections = _selectedImageCacheSections;
     if (sections.isEmpty && imageSections.isEmpty) return;
@@ -233,23 +238,28 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       (sum, section) => sum + section.sizeBytes,
     );
     final deleteTargets = <String>[
-      if (keys.isNotEmpty) '${keys.length} 项本地数据',
+      if (keys.isNotEmpty) l10n.cacheLocalDataTarget(keys.length),
       if (imageSections.isNotEmpty)
-        '${imageSections.length} 个图片缓存（${_formatBytes(imageCacheBytes)}）',
+        l10n.cacheImageDataTarget(
+          imageSections.length,
+          _formatBytes(imageCacheBytes),
+        ),
     ];
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除选中缓存'),
-        content: Text('确定要删除选中卡片中的 ${deleteTargets.join('、')} 吗？此操作不可恢复。'),
+        title: Text(l10n.cacheDeleteSelectedTitle),
+        content: Text(
+          l10n.cacheDeleteSelectedContent(deleteTargets.join(', ')),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+            child: Text(l10n.deleteButton),
           ),
         ],
       ),
@@ -271,34 +281,41 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       _revealedSensitiveKeys.removeAll(keys);
       _selectedSectionIds.clear();
       _selectionMode = false;
-      if (mounted) showToast(context, '已删除选中缓存');
+      if (mounted) showToast(context, l10n.cacheSelectedDeletedToast);
       await _loadEntries();
     } catch (e) {
-      if (mounted) showToast(context, '删除失败：$e', isError: true);
+      if (mounted) {
+        showToast(context, l10n.cacheDeleteFailedToast('$e'), isError: true);
+      }
     }
   }
 
   Future<void> _deleteImageCacheSection(_ImageCacheSection section) async {
+    final l10n = AppLocalizations.of(context)!;
     if (section.isEmpty) {
-      showToast(context, '暂无可清理的图片缓存');
+      showToast(context, l10n.cacheNoImageCacheToClear);
       return;
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('清空图片缓存'),
+        title: Text(l10n.cacheClearImageCacheTitle),
         content: Text(
-          '确定要清空 ${section.label} 吗？将删除 ${section.fileCount} 个文件，释放约 ${_formatBytes(section.sizeBytes)}。',
+          l10n.cacheClearImageCacheContent(
+            section.label,
+            section.fileCount,
+            _formatBytes(section.sizeBytes),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('清空'),
+            child: Text(l10n.cacheClearButton),
           ),
         ],
       ),
@@ -307,30 +324,35 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
 
     try {
       await _clearImageCacheSection(section);
-      if (mounted) showToast(context, '已清空 ${section.label}');
+      if (mounted) {
+        showToast(context, l10n.cacheImageCacheClearedToast(section.label));
+      }
       await _loadEntries();
     } catch (e) {
-      if (mounted) showToast(context, '清理失败：$e', isError: true);
+      if (mounted) {
+        showToast(context, l10n.cacheCleanFailedToast('$e'), isError: true);
+      }
     }
   }
 
   Future<List<_ImageCacheSection>> _loadImageCacheSections() async {
+    final l10n = AppLocalizations.of(context)!;
     final tempDir = await getTemporaryDirectory();
     return [
       await _buildImageCacheSection(
         tempDir: tempDir,
         id: 'image:reader',
         cacheKey: _readerImageCacheKey,
-        label: '图片缓存 / 漫画阅读器',
-        description: '漫画章节图片缓存。再次打开读过的章节时，图片会优先从这里读取。',
+        label: l10n.cacheReaderImageLabel,
+        description: l10n.cacheReaderImageDesc,
         icon: Icons.menu_book_outlined,
       ),
       await _buildImageCacheSection(
         tempDir: tempDir,
         id: 'image:default',
         cacheKey: DefaultCacheManager.key,
-        label: '图片缓存 / 封面与头像',
-        description: '封面、头像等 CachedNetworkImage 默认使用的图片缓存。',
+        label: l10n.cacheDefaultImageLabel,
+        description: l10n.cacheDefaultImageDesc,
         icon: Icons.image_outlined,
       ),
     ];
@@ -594,6 +616,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final localTotal = _sections.fold<int>(
@@ -621,19 +644,23 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectionMode ? '已选 ${_selectedSectionIds.length} 个卡片' : '缓存管理',
+          _selectionMode
+              ? l10n.cacheSelectedCards(_selectedSectionIds.length)
+              : l10n.cacheManagementTitle,
         ),
         actions: [
           if (_selectionMode)
             IconButton(
-              tooltip: '删除选中卡片',
+              tooltip: l10n.cacheDeleteSelectedCardsTooltip,
               onPressed: _selectedSectionIds.isEmpty
                   ? null
                   : _deleteSelectedSections,
               icon: const Icon(Icons.delete_sweep_rounded),
             ),
           IconButton(
-            tooltip: _selectionMode ? '退出多选' : '多选卡片',
+            tooltip: _selectionMode
+                ? l10n.cacheExitMultiSelectTooltip
+                : l10n.cacheMultiSelectTooltip,
             onPressed: _loading ? null : _toggleSelectionMode,
             icon: Icon(
               _selectionMode
@@ -642,7 +669,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             ),
           ),
           IconButton(
-            tooltip: '刷新',
+            tooltip: l10n.refreshButton,
             onPressed: _loading ? null : _loadEntries,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -660,11 +687,13 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                   child: ListTile(
                     leading: const Icon(Icons.info_outline_rounded),
                     title: Text(
-                      '共 $localTotal 项本地数据 · 图片缓存 $imageCacheFiles 个文件 · ${_formatBytes(totalBytes)}',
+                      l10n.cacheSummary(
+                        localTotal,
+                        imageCacheFiles,
+                        _formatBytes(totalBytes),
+                      ),
                     ),
-                    subtitle: const Text(
-                      '按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片文件缓存可单独清理。',
-                    ),
+                    subtitle: Text(l10n.cacheManagementSummaryDesc),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -672,7 +701,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                     child: Text(
-                      '图片缓存',
+                      l10n.cacheImageCacheSection,
                       style: tt.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -697,16 +726,16 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                   child: Text(
-                    '数据缓存',
+                    l10n.cacheDataCacheSection,
                     style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
                 if (_sections.isEmpty)
                   Card(
                     color: cs.surfaceContainerLow,
-                    child: const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: Text('没有可显示的本地键值数据')),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(child: Text(l10n.cacheNoLocalKeyValueData)),
                     ),
                   )
                 else
@@ -725,9 +754,12 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                                   onChanged: (_) =>
                                       _toggleSectionSelected(section),
                                 ),
-                                title: Text(section.label),
+                                title: Text(section.label(l10n)),
                                 subtitle: Text(
-                                  '${section.entries.length} 项 · ${_formatBytes(section.sizeBytes)}',
+                                  l10n.cacheEntryCountSize(
+                                    section.entries.length,
+                                    _formatBytes(section.sizeBytes),
+                                  ),
                                   style: tt.bodySmall,
                                 ),
                                 trailing: Icon(section.category.icon),
@@ -736,9 +768,12 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                                 shape: const Border(),
                                 collapsedShape: const Border(),
                                 leading: Icon(section.category.icon),
-                                title: Text(section.label),
+                                title: Text(section.label(l10n)),
                                 subtitle: Text(
-                                  '${section.entries.length} 项 · ${_formatBytes(section.sizeBytes)}',
+                                  l10n.cacheEntryCountSize(
+                                    section.entries.length,
+                                    _formatBytes(section.sizeBytes),
+                                  ),
                                   style: tt.bodySmall,
                                 ),
                                 children: [
@@ -804,6 +839,7 @@ class _CacheEntryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
 
@@ -827,14 +863,16 @@ class _CacheEntryTile extends StatelessWidget {
         children: [
           if (onToggleSensitive != null)
             IconButton(
-              tooltip: revealed ? '隐藏敏感内容' : '显示敏感内容',
+              tooltip: revealed
+                  ? l10n.cacheHideSensitiveTooltip
+                  : l10n.cacheShowSensitiveTooltip,
               onPressed: onToggleSensitive,
               icon: Icon(
                 revealed ? Icons.visibility_off_rounded : Icons.visibility,
               ),
             ),
           IconButton(
-            tooltip: '删除',
+            tooltip: l10n.deleteButton,
             onPressed: onDelete,
             icon: Icon(Icons.delete_outline_rounded, color: cs.error),
           ),
@@ -847,11 +885,12 @@ class _CacheEntryTile extends StatelessWidget {
     final copied = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext)!;
         final tt = Theme.of(dialogContext).textTheme;
         final maxContentHeight = MediaQuery.sizeOf(dialogContext).height * 0.6;
 
         return AlertDialog(
-          title: const Text('缓存项数据'),
+          title: Text(l10n.cacheEntryDataTitle),
           content: SizedBox(
             width: 560,
             child: Column(
@@ -880,7 +919,7 @@ class _CacheEntryTile extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('关闭'),
+              child: Text(l10n.closeButton),
             ),
             FilledButton.icon(
               onPressed: () async {
@@ -890,7 +929,7 @@ class _CacheEntryTile extends StatelessWidget {
                 }
               },
               icon: const Icon(Icons.copy_rounded),
-              label: const Text('复制'),
+              label: Text(l10n.copyButton),
             ),
           ],
         );
@@ -898,7 +937,7 @@ class _CacheEntryTile extends StatelessWidget {
     );
 
     if (copied == true && context.mounted) {
-      showToast(context, '缓存数据已复制');
+      showToast(context, AppLocalizations.of(context)!.cacheDataCopiedToast);
     }
   }
 }
@@ -922,9 +961,10 @@ class _ImageCacheSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final subtitle = '${section.fileCount} 个文件 · $sizeLabel';
+    final subtitle = l10n.cacheFileCountSize(section.fileCount, sizeLabel);
 
     return Card(
       color: cs.surfaceContainerLow,
@@ -950,12 +990,12 @@ class _ImageCacheSectionCard extends StatelessWidget {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.info_outline_rounded),
-                  title: const Text('说明'),
+                  title: Text(l10n.cacheDescriptionTitle),
                   subtitle: Text(section.description),
                 ),
                 ListTile(
                   leading: const Icon(Icons.key_rounded),
-                  title: const Text('缓存标识'),
+                  title: Text(l10n.cacheKeyTitle),
                   subtitle: SelectableText(
                     section.cacheKey,
                     style: tt.bodySmall?.copyWith(fontFamily: 'monospace'),
@@ -963,7 +1003,7 @@ class _ImageCacheSectionCard extends StatelessWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.folder_outlined),
-                  title: const Text('缓存目录'),
+                  title: Text(l10n.cacheDirectoryTitle),
                   subtitle: SelectableText(
                     section.directoryPath,
                     style: tt.bodySmall?.copyWith(fontFamily: 'monospace'),
@@ -977,7 +1017,7 @@ class _ImageCacheSectionCard extends StatelessWidget {
                       FilledButton.icon(
                         onPressed: section.isEmpty ? null : onClear,
                         icon: const Icon(Icons.cleaning_services_rounded),
-                        label: const Text('清空'),
+                        label: Text(l10n.cacheClearButton),
                       ),
                     ],
                   ),
@@ -1009,7 +1049,7 @@ class _ErrorView extends StatelessWidget {
             FilledButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('重试'),
+              label: Text(AppLocalizations.of(context)!.retryButton),
             ),
           ],
         ),
@@ -1031,12 +1071,13 @@ class _CacheSection {
 
   String get id => '${category.name}:${cacheGroup ?? ''}';
 
-  String get label {
+  String label(AppLocalizations l10n) {
     final cacheGroup = this.cacheGroup;
+    final categoryLabel = category.label(l10n);
     if (category == _CacheCategory.persistentCache && cacheGroup != null) {
-      return '${category.label} / $cacheGroup';
+      return '$categoryLabel / $cacheGroup';
     }
-    return category.label;
+    return categoryLabel;
   }
 
   int get sizeBytes =>
@@ -1101,18 +1142,28 @@ class _DirectoryStats {
 }
 
 enum _CacheCategory {
-  persistentCache(0, '业务缓存', Icons.storage_rounded),
-  account(1, '账号数据', Icons.account_circle_outlined),
-  appSettings(2, '应用设置', Icons.tune_rounded),
-  mangaHistory(3, '漫画阅读历史', Icons.history_edu_rounded),
-  animeHistory(4, '动漫播放历史', Icons.play_circle_outline_rounded),
-  bindings(5, '弹幕绑定', Icons.link_rounded),
-  aiSummaryCache(6, 'AI 总结缓存', Icons.summarize_outlined),
-  other(99, '其他数据', Icons.more_horiz_rounded);
+  persistentCache(0, Icons.storage_rounded),
+  account(1, Icons.account_circle_outlined),
+  appSettings(2, Icons.tune_rounded),
+  mangaHistory(3, Icons.history_edu_rounded),
+  animeHistory(4, Icons.play_circle_outline_rounded),
+  bindings(5, Icons.link_rounded),
+  aiSummaryCache(6, Icons.summarize_outlined),
+  other(99, Icons.more_horiz_rounded);
 
-  const _CacheCategory(this.order, this.label, this.icon);
+  const _CacheCategory(this.order, this.icon);
 
   final int order;
-  final String label;
   final IconData icon;
+
+  String label(AppLocalizations l10n) => switch (this) {
+    _CacheCategory.persistentCache => l10n.cacheCategoryPersistentCache,
+    _CacheCategory.account => l10n.cacheCategoryAccount,
+    _CacheCategory.appSettings => l10n.cacheCategoryAppSettings,
+    _CacheCategory.mangaHistory => l10n.cacheCategoryMangaHistory,
+    _CacheCategory.animeHistory => l10n.cacheCategoryAnimeHistory,
+    _CacheCategory.bindings => l10n.cacheCategoryBindings,
+    _CacheCategory.aiSummaryCache => l10n.cacheCategoryAiSummaryCache,
+    _CacheCategory.other => l10n.cacheCategoryOther,
+  };
 }

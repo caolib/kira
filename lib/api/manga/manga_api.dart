@@ -17,9 +17,9 @@ class MangaApi {
 
   MangaApi(this._t);
 
-  // ── 漫画相关 ──
+  // Manga APIs
 
-  /// 漫画主页
+  /// Manga home.
   Future<MangaHome> getMangaHome() async {
     final data = await _t.get(
       '/api/v3/h5/discoverIndex/freeComic',
@@ -28,17 +28,17 @@ class MangaApi {
     return MangaHome.fromJson(data);
   }
 
-  /// COPY 漫画主页
+  /// COPY manga home.
   Future<CopyMangaHome> getCopyMangaHome() async {
     final data = await _copyGet(
       '/api/v3/h5/homeIndex2',
       params: {'platform': 3},
-      errorMessage: '加载 COPY 首页失败',
+      errorMessage: 'Failed to load COPY home',
     );
     return CopyMangaHome.fromJson(data);
   }
 
-  /// COPY 推荐更多
+  /// More COPY recommendations.
   Future<({List<Comic> list, int total})> getCopyRecommendations({
     int limit = 21,
     int offset = 0,
@@ -46,12 +46,12 @@ class MangaApi {
     final data = await _copyGet(
       '/api/v3/recs',
       params: {'pos': 3200102, 'limit': limit, 'offset': offset, 'platform': 3},
-      errorMessage: '加载 COPY 推荐失败',
+      errorMessage: 'Failed to load COPY recommendations',
     );
     return _parseCopyNestedComicResult(data);
   }
 
-  /// COPY 全新上架更多
+  /// More COPY newest comics.
   Future<({List<Comic> list, int total})> getCopyNewestComics({
     int limit = 21,
     int offset = 0,
@@ -59,12 +59,12 @@ class MangaApi {
     final data = await _copyGet(
       '/api/v3/update/newest',
       params: {'date': '', 'limit': limit, 'offset': offset, 'platform': 3},
-      errorMessage: '加载 COPY 全新上架失败',
+      errorMessage: 'Failed to load COPY newest comics',
     );
     return _parseCopyNestedComicResult(data);
   }
 
-  /// COPY 已完结更多
+  /// More COPY finished comics.
   Future<({List<Comic> list, int total})> getCopyFinishedComics({
     int limit = 21,
     int offset = 0,
@@ -79,12 +79,12 @@ class MangaApi {
         'free_type': 1,
         'platform': 3,
       },
-      errorMessage: '加载 COPY 已完结失败',
+      errorMessage: 'Failed to load COPY finished comics',
     );
     return _parseCopyDirectComicResult(data);
   }
 
-  /// COPY 排行榜更多
+  /// More COPY ranking comics.
   Future<({List<Comic> list, int total})> getCopyRankComics({
     String dateType = 'day',
     String audienceType = 'male',
@@ -101,12 +101,12 @@ class MangaApi {
         'audience_type': audienceType,
         'platform': 3,
       },
-      errorMessage: '加载 COPY 排行榜失败',
+      errorMessage: 'Failed to load COPY ranking',
     );
     return _parseCopyNestedComicResult(data);
   }
 
-  /// 自动获取 COPY App 最新版本号。
+  /// Fetches latest COPY app version automatically.
   Future<String> fetchCopyLatestAppVersion() async {
     final resp = await _copyMinimalDio().get(
       'https://${_t.user.copyApiHost}/api/v3/system/appVersion/last',
@@ -119,8 +119,8 @@ class MangaApi {
     }
 
     final message = data is Map
-        ? (data['message']?.toString() ?? '获取 COPY 版本号失败')
-        : '获取 COPY 版本号失败';
+        ? (data['message']?.toString() ?? 'Failed to fetch COPY app version')
+        : 'Failed to fetch COPY app version';
     NetworkError.throwBadResponse(
       response: resp,
       message: message,
@@ -267,7 +267,7 @@ class MangaApi {
     return int.tryParse(total?.toString() ?? '') ?? fallback;
   }
 
-  // 1. 热门搜索关键词
+  // 1. Hot search keywords
   Future<List<String>> getHotKeywords() async {
     final data = await _t.get(
       '/api/v3/search/key',
@@ -276,7 +276,7 @@ class MangaApi {
     return (data['list'] as List).map((e) => e['keyword'] as String).toList();
   }
 
-  // 2. 全部漫画标签
+  // 2. All comic tags
   Future<List<Theme>> getComicTags() async {
     final data = await _t.get(
       '/api/v3/theme/comic/count',
@@ -285,7 +285,7 @@ class MangaApi {
     return (data['list'] as List).map((e) => Theme.fromJson(e)).toList();
   }
 
-  // 3. 推荐漫画
+  // 3. Recommended comics
   Future<List<Comic>> getRecommendations({
     int pos = 2201202,
     int limit = 24,
@@ -301,7 +301,7 @@ class MangaApi {
         .toList();
   }
 
-  // 4. 漫画列表
+  // 4. Comic list
   Future<({List<Comic> list, int total})> getComicList({
     String ordering = ApiOrdering.popular,
     int limit = 21,
@@ -322,7 +322,7 @@ class MangaApi {
     return (list: list, total: data['total'] as int);
   }
 
-  // 5. 漫画详情
+  // 5. Comic detail
   Future<Comic> getComicDetail(String pathWord) async {
     final data = await _t.get(
       '/api/v3/comic2/$pathWord',
@@ -331,12 +331,12 @@ class MangaApi {
     return Comic.fromDetailJson(data);
   }
 
-  // 6. 用户状态查询
+  // 6. User status query
   Future<Map<String, dynamic>> getComicQuery(String pathWord) async {
     return _t.get('/api/v3/comic2/$pathWord/query');
   }
 
-  // 7. 章节列表
+  // 7. Chapter list
   Future<({List<Chapter> list, int total})> getChapterList(
     String pathWord, {
     String group = 'default',
@@ -353,7 +353,7 @@ class MangaApi {
     return (list: list, total: data['total'] as int);
   }
 
-  // 8. 搜索漫画
+  // 8. Search comics
   Future<({List<Comic> list, int total})> searchComics(
     String query, {
     int limit = 20,
@@ -374,7 +374,7 @@ class MangaApi {
     return (list: list, total: data['total'] as int);
   }
 
-  // 9. 章节详情
+  // 9. Chapter detail
   Future<ChapterDetail> getChapterDetail(
     String pathWord,
     String chapterUuid, {
@@ -417,7 +417,7 @@ class MangaApi {
       '${Uri.encodeComponent(pathWord)}_'
       '${Uri.encodeComponent(chapterUuid)}';
 
-  // 9.1 章节评论
+  // 9.1 Chapter comments
   Future<({List<ChapterComment> list, int total})> getChapterComments(
     String chapterId, {
     int limit = 30,
@@ -441,17 +441,17 @@ class MangaApi {
     return (list: list, total: results['total'] as int? ?? 0);
   }
 
-  // 9.2 章节发表评论
+  // 9.2 Post chapter comment
   Future<void> postChapterComment(String chapterId, String content) async {
     final trimmed = content.trim();
     final length = trimmed.runes.length;
     if (length < 3 || length > 200) {
-      throw ArgumentError('评论字数需在 3-200 之间');
+      throw ArgumentError('comment length must be 3-200 characters');
     }
 
     final token = _t.user.token;
     if (token == null || token.isEmpty) {
-      throw const HttpException('请先登录后再发表评论');
+      throw const HttpException('login required to post comment');
     }
 
     final host = _t.user.copyApiHost;
@@ -469,7 +469,7 @@ class MangaApi {
     if (data is Map) {
       final code = data['code'];
       if (code != null && code != 200) {
-        final message = data['message']?.toString() ?? '发表评论失败';
+        final message = data['message']?.toString() ?? 'Failed to post comment';
         NetworkError.throwBadResponse(
           response: resp,
           message: message,
@@ -479,7 +479,7 @@ class MangaApi {
     }
   }
 
-  // 9.3 发表漫画评论 / 回复漫画评论
+  // 9.3 Post comic comment / reply
   Future<void> postComicComment(
     String comicId,
     String content, {
@@ -488,12 +488,12 @@ class MangaApi {
     final trimmed = content.trim();
     final length = trimmed.runes.length;
     if (length < 3 || length > 200) {
-      throw ArgumentError('评论字数需在 3-200 之间');
+      throw ArgumentError('comment length must be 3-200 characters');
     }
 
     final token = _t.user.token;
     if (token == null || token.isEmpty) {
-      throw const HttpException('请先登录后再发表评论');
+      throw const HttpException('login required to post comment');
     }
 
     final host = _t.user.copyApiHost;
@@ -517,7 +517,7 @@ class MangaApi {
     if (body is Map) {
       final code = body['code'];
       if (code != null && code != 200) {
-        final message = body['message']?.toString() ?? '发表评论失败';
+        final message = body['message']?.toString() ?? 'Failed to post comment';
         NetworkError.throwBadResponse(
           response: resp,
           message: message,
@@ -527,7 +527,7 @@ class MangaApi {
     }
   }
 
-  // 9.4 漫画评论 / 评论回复
+  // 9.4 Comic comments / replies
   Future<({List<ComicComment> list, int total})> getComicComments(
     String comicId, {
     String replyId = '',

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// Shows a "login expired" dialog with customizable [featureName] and
 /// returns `true` if the user taps "去登录", `false` otherwise.
 ///
@@ -9,19 +11,20 @@ Future<bool> showLoginExpiredDialog(
   BuildContext context, {
   required String featureName,
 }) {
+  final l10n = AppLocalizations.of(context)!;
   return showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('登录已过期'),
-      content: Text('$featureName需要登录后才能继续使用，是否现在重新登录？'),
+      title: Text(l10n.loginExpiredTitle),
+      content: Text(l10n.loginExpiredFeatureContent(featureName)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('稍后再说'),
+          child: Text(l10n.laterButton),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('去登录'),
+          child: Text(l10n.goLoginButton),
         ),
       ],
     ),

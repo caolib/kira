@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
+import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../routing/app_router.dart';
 import '../utils/anime_download_manager.dart';
@@ -90,9 +91,15 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
   _AnimeIntroViewData? get _introViewData => _useDandanplayIntro
       ? _AnimeIntroViewData.fromDandanplay(
           _dandanplayBangumi!,
+          l10n: AppLocalizations.of(context)!,
           fallbackAnime: _anime ?? widget.initialAnime,
         )
-      : (_anime == null ? null : _AnimeIntroViewData.fromAnime(_anime!));
+      : (_anime == null
+            ? null
+            : _AnimeIntroViewData.fromAnime(
+                _anime!,
+                AppLocalizations.of(context)!,
+              ));
 
   @override
   void initState() {
@@ -248,7 +255,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         _detailError = e.toString();
       });
       if (_detailReady) {
-        showToast(context, '简介刷新失败', isError: true);
+        final l10n = AppLocalizations.of(context)!;
+        showToast(context, l10n.animeDetailIntroRefreshFailed, isError: true);
       }
     }
   }
@@ -277,7 +285,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         _chapterError = e.toString();
       });
       if (_chapters.isNotEmpty) {
-        showToast(context, '选集刷新失败', isError: true);
+        final l10n = AppLocalizations.of(context)!;
+        showToast(context, l10n.animeDetailEpisodeRefreshFailed, isError: true);
       }
     }
   }
@@ -412,7 +421,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         _danmakuEpisodeBindings = {};
         _syncTabController();
       });
-      showToast(context, '已清除弹弹play绑定');
+      final l10n = AppLocalizations.of(context)!;
+      showToast(context, l10n.animeDetailDandanplayBindingCleared);
       return;
     }
 
@@ -420,6 +430,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     if (record == null) return;
     await _dandanplayBindingStore.save(record);
     if (!mounted) return;
+    final l10n2 = AppLocalizations.of(context)!;
     setState(() {
       _dandanplayBinding = record;
       _dandanplayBangumi = null;
@@ -428,7 +439,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     });
     await _loadDandanplayBangumi(record, applySequential: true);
     if (!mounted) return;
-    showToast(context, '已绑定 ${record.animeTitle}');
+    showToast(context, l10n2.animeDetailDandanplayBound(record.animeTitle));
   }
 
   void _syncDandanplayBindingsAfterChaptersLoaded() {
@@ -653,7 +664,10 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       if (!mounted) return;
       setState(() => _dandanplayBinding = updatedBinding);
       await _applySequentialDandanplayBindings(validEpisodes);
-      if (mounted) showToast(context, '已清除对齐');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        showToast(context, l10n.animeDetailAlignmentCleared);
+      }
       return;
     }
 
@@ -672,7 +686,10 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       chapterStartIndex: chapterIndex,
       episodeStartIndex: episodeIndex,
     );
-    if (mounted) showToast(context, '已重新对齐弹幕');
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      showToast(context, l10n.animeDetailRealigned);
+    }
   }
 
   int _defaultAlignmentChapterIndex(DandanplayBindingRecord binding) {
@@ -821,7 +838,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
   Future<void> _openChapter(AnimeChapter chapter) async {
     final line = _resolveChapterLine(chapter);
     if (line == null || line.isEmpty) {
-      showToast(context, '当前选集暂无可用线路', isError: true);
+      final l10n = AppLocalizations.of(context)!;
+      showToast(context, l10n.animeDetailNoAvailableLine, isError: true);
       return;
     }
 
@@ -845,7 +863,12 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
   Future<void> _continueWatching() async {
     final chapter = _latestPlaybackChapter;
     if (chapter == null) {
-      showToast(context, '播放记录对应选集暂不可用', isError: true);
+      final l10n = AppLocalizations.of(context)!;
+      showToast(
+        context,
+        l10n.animeDetailPlaybackEpisodeUnavailable,
+        isError: true,
+      );
       return;
     }
     await _openChapter(chapter);
@@ -931,7 +954,14 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     if (_selectedUuids.isEmpty) return;
     final anime = await _ensureAnimeForDownload();
     if (anime == null) {
-      if (mounted) showToast(context, '动漫信息加载失败，无法下载', isError: true);
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        showToast(
+          context,
+          l10n.animeDetailInfoLoadFailedForDownload,
+          isError: true,
+        );
+      }
       return;
     }
 
@@ -945,7 +975,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     );
     final line = _resolveChapterLine(first);
     if (line == null || line.isEmpty) {
-      showToast(context, '当前选集暂无可用线路，无法下载', isError: true);
+      final l10n = AppLocalizations.of(context)!;
+      showToast(context, l10n.animeDetailNoLineForDownload, isError: true);
       return;
     }
 
@@ -961,7 +992,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     );
 
     if (mounted) {
-      showToast(context, '已添加 $added 个下载任务');
+      final l10n = AppLocalizations.of(context)!;
+      showToast(context, l10n.animeDetailDownloadTasksAdded(added));
     }
     _exitSelectionMode();
   }
@@ -970,7 +1002,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     final anime = _anime;
     final cartoonId = anime?.uuid;
     if (anime == null || cartoonId == null || cartoonId.isEmpty) {
-      showToast(context, '当前动漫暂时无法收藏', isError: true);
+      final l10n = AppLocalizations.of(context)!;
+      showToast(context, l10n.animeDetailCannotCollect, isError: true);
       return;
     }
     if (_collectSubmitting) return;
@@ -985,20 +1018,28 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       await _api.anime.toggleAnimeCollect(cartoonId, collect: nextState);
       await _saveDetailCache();
       if (!mounted) return;
-      showToast(context, nextState ? '已收藏' : '已取消收藏');
+      final l10n = AppLocalizations.of(context)!;
+      showToast(
+        context,
+        nextState
+            ? l10n.animeDetailCollected
+            : l10n.animeDetailCollectCancelled,
+      );
     } catch (e) {
       debugPrint('AnimeDetailPage toggleCollect error: $e');
       if (!mounted) return;
       setState(() => _isCollected = !nextState);
       await _saveDetailCache();
       if (!mounted) return;
-      showToast(context, '收藏状态修改失败', isError: true);
+      final l10n = AppLocalizations.of(context)!;
+      showToast(context, l10n.animeDetailCollectFailed, isError: true);
     } finally {
       if (mounted) setState(() => _collectSubmitting = false);
     }
   }
 
   Widget? _buildDownloadFab(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final count = _downloads.tasks
         .where((t) => t.pathWord == widget.pathWord)
         .length;
@@ -1010,7 +1051,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         queryParameters: {'tab': '2'},
       ),
       icon: const Icon(Icons.downloading_outlined),
-      label: Text('$count 个任务'),
+      label: Text(l10n.animeDetailDownloadTaskCount(count)),
     );
   }
 
@@ -1101,7 +1142,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     return FloatingActionButton.small(
       heroTag: 'anime_comments_back_to_top_${widget.pathWord}',
       onPressed: () => unawaited(_scrollToTop()),
-      tooltip: '回到顶部',
+      tooltip: AppLocalizations.of(context)!.backToTop,
       child: const Icon(Icons.arrow_upward_rounded),
     );
   }
@@ -1135,6 +1176,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
   }
 
   List<Widget> _buildIntroSlivers(double hp, TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final intro = _introViewData;
     if (intro == null) {
       if (_loadingDetail) {
@@ -1153,7 +1195,9 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
             padding: const EdgeInsets.all(32),
             child: Center(
               child: Text(
-                _detailError == null ? '暂无简介信息' : '简介加载失败，下拉重试',
+                _detailError == null
+                    ? l10n.animeDetailNoIntroInfo
+                    : l10n.animeDetailIntroLoadFailed,
                 style: tt.bodyMedium,
               ),
             ),
@@ -1184,7 +1228,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
           child: Padding(
             padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
             child: Text(
-              '简介刷新失败，当前显示缓存内容',
+              l10n.animeDetailIntroRefreshFailedCached,
               style: tt.bodySmall?.copyWith(color: cs.error),
             ),
           ),
@@ -1193,6 +1237,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
   }
 
   List<Widget> _buildEpisodeSlivers(double hp, TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final boundEpisodes = _dandanplayBangumi == null
         ? const <DandanplayBangumiEpisode>[]
         : _uniqueDandanplayEpisodes(_dandanplayBangumi!.episodes);
@@ -1210,7 +1255,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
-                        '已选 ${_selectedUuids.length} 集',
+                        l10n.animeDetailSelectedEpisodes(_selectedUuids.length),
                         style: tt.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
@@ -1218,18 +1263,18 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
                       ),
                       TextButton(
                         onPressed: _selectAll,
-                        child: const Text('全选未下载'),
+                        child: Text(l10n.animeDetailSelectAllUndownloaded),
                       ),
                       FilledButton.tonal(
                         onPressed: _selectedUuids.isEmpty
                             ? null
                             : _batchDownload,
-                        child: const Text('下载选中'),
+                        child: Text(l10n.animeDetailDownloadSelected),
                       ),
                       IconButton(
                         onPressed: _exitSelectionMode,
                         icon: const Icon(Icons.close),
-                        tooltip: '取消',
+                        tooltip: l10n.cancelButton,
                       ),
                     ],
                   ),
@@ -1241,7 +1286,12 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(32),
-            child: Center(child: Text('选集加载失败，下拉重试', style: tt.bodyMedium)),
+            child: Center(
+              child: Text(
+                l10n.animeDetailEpisodeLoadFailed,
+                style: tt.bodyMedium,
+              ),
+            ),
           ),
         )
       else if (_loadingChapters)
@@ -1255,7 +1305,9 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(32),
-            child: Center(child: Text('暂无选集', style: tt.bodyMedium)),
+            child: Center(
+              child: Text(l10n.animeDetailNoEpisodes, style: tt.bodyMedium),
+            ),
           ),
         )
       else if (_dandanplayBinding != null)
@@ -1266,7 +1318,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
             child: Padding(
               padding: EdgeInsets.fromLTRB(hp, 0, hp, 12),
               child: Text(
-                '选集刷新失败，当前显示上次结果',
+                l10n.animeDetailEpisodeRefreshFailedCached,
                 style: tt.bodySmall?.copyWith(color: cs.error),
               ),
             ),
@@ -1321,6 +1373,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
   }
 
   List<Widget> _buildCommentsSlivers(double hp, TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final binding = _dandanplayBinding;
     final bangumiId = binding?.bangumiId.trim() ?? '';
     if (bangumiId.isEmpty) {
@@ -1330,7 +1383,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
             padding: EdgeInsets.fromLTRB(hp, 24, hp, 0),
             child: Center(
               child: Text(
-                '绑定弹弹play 后才可查看评论',
+                l10n.animeDetailBindToViewComments,
                 style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
             ),
@@ -1362,6 +1415,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
   }
 
   Widget _buildEpisodeActionBar(List<DandanplayBangumiEpisode> boundEpisodes) {
+    final l10n = AppLocalizations.of(context)!;
     final buttons = <({int flex, Widget child})>[
       if (_dandanplayBinding == null)
         (
@@ -1369,8 +1423,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
           child: FilledButton.tonalIcon(
             onPressed: _showDandanplayBindingDialog,
             icon: const Icon(Icons.link_rounded, size: 18),
-            label: const Text(
-              '绑定弹幕',
+            label: Text(
+              l10n.animeDetailBindDanmaku,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1383,8 +1437,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
           child: FilledButton.tonalIcon(
             onPressed: _showDandanplayBindingDialog,
             icon: const Icon(Icons.manage_search_rounded, size: 18),
-            label: const Text(
-              '重新绑定',
+            label: Text(
+              l10n.animeDetailRebind,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1398,8 +1452,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
                 ? null
                 : () => _showDandanplayAlignmentDialog(boundEpisodes),
             icon: const Icon(Icons.align_horizontal_left_rounded, size: 18),
-            label: const Text(
-              '对齐',
+            label: Text(
+              l10n.animeDetailAlign,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1413,8 +1467,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
           child: FilledButton.tonalIcon(
             onPressed: () => setState(() => _selectionMode = true),
             icon: const Icon(Icons.download_for_offline_outlined, size: 18),
-            label: const Text(
-              '下载',
+            label: Text(
+              l10n.animeDetailDownloadButton,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1438,6 +1492,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     TextTheme tt,
     ColorScheme cs,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final bangumi = _dandanplayBangumi;
     final episodes = bangumi == null
         ? const <DandanplayBangumiEpisode>[]
@@ -1449,7 +1504,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
           child: Padding(
             padding: EdgeInsets.fromLTRB(hp, 0, hp, 12),
             child: Text(
-              '选集刷新失败，当前显示上次结果',
+              l10n.animeDetailEpisodeRefreshFailedCached,
               style: tt.bodySmall?.copyWith(color: cs.error),
             ),
           ),
@@ -1503,6 +1558,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final anime = _anime;
     final intro = _introViewData;
     final tabController = _tabController;
@@ -1525,11 +1581,14 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
             children: [
               Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
               const SizedBox(height: 16),
-              Text('选集加载失败', style: tt.titleMedium),
+              Text(
+                l10n.animeDetailEpisodeLoadFailedShort,
+                style: tt.titleMedium,
+              ),
               const SizedBox(height: 8),
               FilledButton.tonal(
                 onPressed: _loadChapters,
-                child: const Text('重试'),
+                child: Text(l10n.retryButton),
               ),
             ],
           ),
@@ -1552,7 +1611,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
               expandedHeight: 280,
               foregroundColor: Colors.white,
               title: Text(
-                intro?.title ?? anime?.name ?? '动漫详情',
+                intro?.title ?? anime?.name ?? l10n.animeDetailTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1573,9 +1632,10 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
                 child: TabBar(
                   controller: tabController,
                   tabs: [
-                    const Tab(text: '简介'),
-                    Tab(text: '选集 ($_chapterTotal)'),
-                    if (_showCommentsTab) const Tab(text: '评论'),
+                    Tab(text: l10n.animeDetailIntroTab),
+                    Tab(text: l10n.animeDetailEpisodesTab(_chapterTotal)),
+                    if (_showCommentsTab)
+                      Tab(text: l10n.chapterCommentsComment),
                   ],
                 ),
               ),

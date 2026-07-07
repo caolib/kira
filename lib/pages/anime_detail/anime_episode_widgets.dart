@@ -25,6 +25,7 @@ class _BoundAnimeChapterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final itemValues = <int?>[null, ...episodes.map((e) => e.episodeId)];
@@ -99,17 +100,19 @@ class _BoundAnimeChapterRow extends StatelessWidget {
                       initialValue: currentValue,
                       isExpanded: true,
                       menuMaxHeight: 360,
-                      decoration: const InputDecoration(
-                        labelText: '弹幕',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.danmakuLabel,
+                        border: const OutlineInputBorder(),
                         isDense: true,
-                        contentPadding: EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: 10,
                           vertical: 8,
                         ),
                       ),
                       items: [
-                        const DropdownMenuItem<int?>(child: Text('未绑定')),
+                        DropdownMenuItem<int?>(
+                          child: Text(l10n.dandanplayBindingUnbound),
+                        ),
                         for (final episode in episodes)
                           DropdownMenuItem<int?>(
                             value: episode.episodeId,
@@ -121,8 +124,8 @@ class _BoundAnimeChapterRow extends StatelessWidget {
                           ),
                       ],
                       selectedItemBuilder: (context) => [
-                        const Text(
-                          '未绑定',
+                        Text(
+                          l10n.dandanplayBindingUnbound,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -171,6 +174,7 @@ class _AnimeChapterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final backgroundColor = selected
@@ -178,11 +182,11 @@ class _AnimeChapterCard extends StatelessWidget {
         : cs.surfaceContainerLow;
     final foregroundColor = selected ? cs.onSecondaryContainer : cs.onSurface;
     final subtitle = isDownloaded
-        ? '已下载'
+        ? l10n.downloadedStatus
         : isDownloading && progress != null
-        ? '下载 ${progress!.completed}/${progress!.total}'
+        ? l10n.comicDetailDownloadProgress(progress!.completed, progress!.total)
         : isQueued
-        ? '排队中'
+        ? l10n.comicDetailQueued
         : null;
 
     return AnimatedContainer(

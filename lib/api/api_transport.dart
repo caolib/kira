@@ -18,10 +18,13 @@ const _hostWeb = 'www.manga2026.xyz';
 const copyAppVersion = defaultCopyAppVersion;
 
 const extraApiHosts = [_hostCopy, _hostWeb];
-const extraApiHostLabels = {
-  _hostComment: 'COPY API',
-  _hostCopy: '拷贝登录',
-  _hostWeb: '热辣登录',
+
+enum ExtraApiHostKind { copyApi, copyLogin, hotLogin, fixed }
+
+const extraApiHostKinds = {
+  _hostComment: ExtraApiHostKind.copyApi,
+  _hostCopy: ExtraApiHostKind.copyLogin,
+  _hostWeb: ExtraApiHostKind.hotLogin,
 };
 
 const routes = [
@@ -116,7 +119,7 @@ class ApiTransport {
                   (data['results'] is Map
                       ? data['results']['detail']?.toString()
                       : null) ??
-                  '请求失败（code: $code）';
+                  'Request failed (code: $code)';
               return handler.reject(
                 DioException(
                   requestOptions: response.requestOptions,

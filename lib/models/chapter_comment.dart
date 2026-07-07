@@ -10,7 +10,7 @@ class ChapterComment {
   final String createAt;
   @JsonKey(defaultValue: '')
   final String userId;
-  @JsonKey(defaultValue: '匿名用户')
+  @JsonKey(defaultValue: '')
   final String userName;
   @JsonKey(defaultValue: '')
   final String userAvatar;
