@@ -99,7 +99,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _maybeCheckRemoteNotice() {
-    if (!mounted || _didCheckRemoteNotice) return;
+    if (!mounted || _didCheckRemoteNotice || !_user.remoteNoticeEnabled) return;
     _didCheckRemoteNotice = true;
     unawaited(RemoteNoticeService.syncSilently());
   }

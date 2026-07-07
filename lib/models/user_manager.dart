@@ -172,6 +172,7 @@ class UserManager extends ChangeNotifier {
   static const _keyNetworkProxyHost = 'network_proxy_host';
   static const _keyNetworkProxyPort = 'network_proxy_port';
   static const _keyAnimeFeatureEnabled = 'anime_feature_enabled';
+  static const _keyRemoteNoticeEnabled = 'remote_notice_enabled';
   static const _keyLocale = 'locale';
   static const _keyBannerVisible = 'banner_visible';
   static const _keyMangaHomeSource = 'manga_home_source';
@@ -252,6 +253,7 @@ class UserManager extends ChangeNotifier {
   String _networkProxyHost = '';
   int _networkProxyPort = 0;
   bool _animeFeatureEnabled = true;
+  bool _remoteNoticeEnabled = true;
   String _locale = ''; // '' = follow system, 'zh' = 简体, 'zh-Hant' = 繁体
   bool _bannerVisible = true;
   String _mangaHomeSource = 'hot';
@@ -351,6 +353,7 @@ class UserManager extends ChangeNotifier {
   bool get hasManualProxy =>
       _networkProxyHost.isNotEmpty && _networkProxyPort > 0;
   bool get animeFeatureEnabled => _animeFeatureEnabled;
+  bool get remoteNoticeEnabled => _remoteNoticeEnabled;
 
   /// '' = follow system, 'zh' = 简体中文, 'zh-Hant' = 繁體中文
   String get locale => _locale;
@@ -564,6 +567,7 @@ class UserManager extends ChangeNotifier {
     _networkProxyHost = prefs.getString(_keyNetworkProxyHost)?.trim() ?? '';
     _networkProxyPort = _normalizeProxyPort(prefs.getInt(_keyNetworkProxyPort));
     _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? true;
+    _remoteNoticeEnabled = prefs.getBool(_keyRemoteNoticeEnabled) ?? true;
     _locale = prefs.getString(_keyLocale) ?? '';
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;
     _mangaHomeSource = prefs.getString(_keyMangaHomeSource) ?? 'hot';
@@ -1208,6 +1212,14 @@ class UserManager extends ChangeNotifier {
     _animeFeatureEnabled = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyAnimeFeatureEnabled, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setRemoteNoticeEnabled(bool enabled) async {
+    if (_remoteNoticeEnabled == enabled) return;
+    _remoteNoticeEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyRemoteNoticeEnabled, enabled);
     notifyListeners();
   }
 

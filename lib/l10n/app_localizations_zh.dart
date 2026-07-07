@@ -425,6 +425,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get animeFeatureDesc => '关闭后隐藏动漫相关功能';
 
   @override
+  String get remoteNoticeTitle => '通知';
+
+  @override
+  String get remoteNoticeDesc => '开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取';
+
+  @override
   String get bannerVisibleTitle => '显示Banner';
 
   @override
@@ -3521,6 +3527,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get animeFeatureDesc => '關閉後隱藏動漫相關功能';
+
+  @override
+  String get remoteNoticeTitle => '通知';
+
+  @override
+  String get remoteNoticeDesc => '開啟後應用啟動時自動檢查通知；關閉後僅在進入通知中心時獲取';
 
   @override
   String get bannerVisibleTitle => '顯示 Banner';

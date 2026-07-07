@@ -823,6 +823,18 @@ abstract class AppLocalizations {
   /// **'关闭后隐藏动漫相关功能'**
   String get animeFeatureDesc;
 
+  /// No description provided for @remoteNoticeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知'**
+  String get remoteNoticeTitle;
+
+  /// No description provided for @remoteNoticeDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取'**
+  String get remoteNoticeDesc;
+
   /// No description provided for @bannerVisibleTitle.
   ///
   /// In zh, this message translates to:
