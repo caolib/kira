@@ -120,6 +120,12 @@ class _LoadMoreTail extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _ChapterDividerActions(
+              commentCount: commentCount,
+              onCatalog: onCatalog,
+              onComments: onComments,
+            ),
+            const SizedBox(height: 16),
             if (isLoading)
               const CircularProgressIndicator(strokeWidth: 2)
             else
@@ -130,12 +136,6 @@ class _LoadMoreTail extends StatelessWidget {
                   ? l10n.readerLoadingNextChapter
                   : l10n.readerContinueScrollLoadNext,
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            _ChapterDividerActions(
-              commentCount: commentCount,
-              onCatalog: onCatalog,
-              onComments: onComments,
             ),
           ],
         ),
