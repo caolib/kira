@@ -10,6 +10,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
@@ -1329,7 +1330,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const CircularProgressIndicator(),
+                              const ExpressiveLoadingIndicator(),
                               if (_buffering && !_loading) ...[
                                 const SizedBox(height: 12),
                                 Text(

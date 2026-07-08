@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -490,7 +491,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
           if (index == _comments.length && _loadingMore) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: ExpressiveLoadingIndicator()),
             );
           }
 

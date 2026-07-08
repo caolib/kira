@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/dandanplay_api.dart';
 import '../l10n/app_localizations.dart';
@@ -177,7 +178,7 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
     if (_loading && _comments.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: ExpressiveLoadingIndicator()),
       );
     }
 
@@ -230,7 +231,7 @@ class BangumiCommentsSectionState extends State<BangumiCommentsSection> {
         ],
         if (_loadingMore) ...[
           const SizedBox(height: 16),
-          const Center(child: CircularProgressIndicator()),
+          const Center(child: ExpressiveLoadingIndicator()),
         ] else if (_hasMore || _error != null) ...[
           const SizedBox(height: 16),
           Center(

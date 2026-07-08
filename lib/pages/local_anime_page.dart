@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
 import '../routing/app_router.dart';
@@ -171,7 +172,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
     final chapters = _downloads.downloadedChapters(widget.pathWord);
 
     if (info == null || chapters.isEmpty) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: ExpressiveLoadingIndicator()));
     }
 
     final l10n = AppLocalizations.of(context)!;

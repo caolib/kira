@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
@@ -127,7 +128,7 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
               .where((item) => item.cover.isNotEmpty)
               .toList();
 
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: ExpressiveLoadingIndicator());
 
     if (_error != null && home == null) {
       return Center(

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
 import '../utils/anime_download_manager.dart' show LocalAnimeEntry;
@@ -226,7 +227,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
     final items = widget.getLocalItems();
 
     final body = _loading
-        ? const Center(child: CircularProgressIndicator())
+        ? const Center(child: ExpressiveLoadingIndicator())
         : items.isEmpty
         ? Center(
             child: Column(

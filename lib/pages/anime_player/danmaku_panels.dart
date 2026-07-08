@@ -284,7 +284,7 @@ class _InlineSearchPanel extends StatelessWidget {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
+                child: ExpressiveLoadingIndicator(),
               ),
             )
           else if (hasResults)

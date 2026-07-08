@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:system_fonts/system_fonts.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
 import '../main.dart' show isDesktop;
@@ -552,7 +553,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
           if (snapshot.connectionState != ConnectionState.done) {
             return const SizedBox(
               height: 220,
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: ExpressiveLoadingIndicator()),
             );
           }
 
@@ -966,7 +967,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                       return const Center(
                         child: Padding(
                           padding: EdgeInsets.all(24),
-                          child: CircularProgressIndicator(),
+                          child: ExpressiveLoadingIndicator(),
                         ),
                       );
                     }

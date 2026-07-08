@@ -165,7 +165,7 @@ class _DandanplayBindingDialogState extends State<_DandanplayBindingDialog> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     if (_searching) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: ExpressiveLoadingIndicator());
     }
     if (_error != null) {
       return Center(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
@@ -1184,7 +1185,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.all(32),
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: ExpressiveLoadingIndicator()),
             ),
           ),
         ];
@@ -1298,7 +1299,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.all(32),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: ExpressiveLoadingIndicator()),
           ),
         )
       else if (_chapters.isEmpty)
@@ -1513,7 +1514,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.all(32),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: ExpressiveLoadingIndicator()),
           ),
         )
       else
@@ -1569,7 +1570,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
     final hp = (screenWidth - contentWidth) / 2 + 16;
 
     if (_loadingChapters && anime == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: ExpressiveLoadingIndicator()));
     }
 
     if (_chapterError != null && anime == null) {

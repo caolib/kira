@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/remote_notice.dart';
@@ -208,7 +209,7 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
 
   Widget _buildBody() {
     if (_loading && _notices.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: ExpressiveLoadingIndicator());
     }
 
     final error = _error;

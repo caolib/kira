@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/ai_api.dart';
 import '../api/api_client.dart';
@@ -23,15 +24,15 @@ import '../utils/toast.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
 
+part 'reader/reader_bottom_bar.dart';
+part 'reader/reader_chapter_widgets.dart';
 part 'reader/reader_image_cache.dart';
 part 'reader/reader_image_viewer.dart';
-part 'reader/reader_settings_panel.dart';
-part 'reader/reader_widgets.dart';
-part 'reader/reader_scroll_item.dart';
 part 'reader/reader_pull_to_refresh.dart';
-part 'reader/reader_chapter_widgets.dart';
+part 'reader/reader_scroll_item.dart';
+part 'reader/reader_settings_panel.dart';
 part 'reader/reader_top_bar.dart';
-part 'reader/reader_bottom_bar.dart';
+part 'reader/reader_widgets.dart';
 
 class ReaderPage extends StatefulWidget {
   final String pathWord;
@@ -2127,7 +2128,7 @@ class _ReaderPageState extends State<ReaderPage> {
         body: Stack(
           children: [
             if (_loading)
-              const Center(child: CircularProgressIndicator())
+              const Center(child: ExpressiveLoadingIndicator())
             else if (_detail != null)
               _buildRefreshableReader(
                 _isPageMode ? _buildPageMode() : _buildScrollMode(),

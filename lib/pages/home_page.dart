@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/comic.dart' hide Theme;
@@ -200,7 +201,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (_loading) {
       return Scaffold(
         floatingActionButton: _buildSourceFab(),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: ExpressiveLoadingIndicator()),
       );
     }
 

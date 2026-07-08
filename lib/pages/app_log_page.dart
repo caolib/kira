@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
 import '../utils/app_logger.dart';
@@ -200,7 +201,7 @@ class _AppLogPageState extends State<AppLogPage> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     !snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: ExpressiveLoadingIndicator());
                 }
 
                 final entries = snapshot.data ?? const <AppLogEntry>[];

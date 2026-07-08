@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -234,7 +235,7 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             const SizedBox(height: 16),
             if (_loadingQuestions)
-              const Center(child: CircularProgressIndicator())
+              const Center(child: ExpressiveLoadingIndicator())
             else ...[
               DropdownButtonFormField<String>(
                 initialValue: _selectedQuestion,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -735,7 +736,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     return Scaffold(
       appBar: AppBar(title: Text(_comic?.name ?? '')),
       body: _loadingComic
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: ExpressiveLoadingIndicator())
           : _comic == null
           ? Center(
               child: Column(
@@ -1475,7 +1476,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveLoadingIndicator()),
               ),
             )
           else

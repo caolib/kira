@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/ai_api.dart';
 import '../api/api_client.dart';
@@ -1725,7 +1726,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             if (dataIndex == entries.length && _loadingMore) {
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveLoadingIndicator()),
               );
             }
 
@@ -1776,7 +1777,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               if (dataIndex == rows.length && _loadingMore) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: ExpressiveLoadingIndicator()),
                 );
               }
 
