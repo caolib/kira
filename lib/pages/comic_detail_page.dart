@@ -115,7 +115,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     _lastBrowseId = widget.lastBrowseId;
     _lastBrowseName = widget.lastBrowseName;
     _downloads.addListener(_handleDownloadChanged);
-    _initializePage();
+    unawaited(_initializePage());
   }
 
   @override
@@ -125,9 +125,25 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   }
 
   Future<void> _initializePage() async {
-    await Future.wait([_downloads.init(), _loadFromCache()]);
+    unawaited(_initializeDownloads());
+    await _loadFromCache();
     await _loadLocalHistory();
     await _loadComic();
+  }
+
+  Future<void> _initializeDownloads() async {
+    try {
+      await _downloads.init();
+      if (mounted) setState(() {});
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comic_detail.initialize_downloads',
+        ),
+      );
+    }
   }
 
   void _handleDownloadChanged() {
@@ -156,6 +172,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _lastBrowsePage = record?.page ?? 1;
       _lastBrowseTotalPage = record?.totalPage ?? 0;
       _readChapterUuids = <String>{...?record?.readChapterUuids};
+      _reversed = _shouldReverseForCurrentPage();
     });
     await _syncNextBrowseChapter();
   }
@@ -183,6 +200,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _chapters = cachedChapters;
       _chapterTotal = canReuseCachedChapters ? cached.chapterTotal : 0;
       _chapterPage = canReuseCachedChapters ? cached.chapterPage : 0;
+      _reversed = _shouldReverseForCurrentPage();
       _isCollected = cached.isCollected;
       _loadingComic = false;
     });
