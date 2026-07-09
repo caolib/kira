@@ -78,6 +78,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   final Set<String> _selectedChapterIds = {};
   String _selectedGroup = 'default';
   bool _loadingComic = true;
+  bool _refreshingComic = false;
   bool _loadingChapters = false;
   bool _keepShowingCachedChapters = false;
   int _chapterTotal = 0;
@@ -218,7 +219,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     final showRefreshNotice = _comic != null;
     if (mounted) {
       setState(() {
-        if (!showRefreshNotice) {
+        if (showRefreshNotice) {
+          _refreshingComic = true;
+        } else {
           _loadingComic = true;
         }
       });
@@ -242,8 +245,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       await _saveCache();
       await _loadChapterPageForHistory(comic: comic, group: selectedGroup);
       await _loadCollectState();
+      if (mounted && showRefreshNotice) {
+        setState(() => _refreshingComic = false);
+      }
     } catch (_) {
-      if (mounted) setState(() => _loadingComic = false);
+      if (mounted) {
+        setState(() {
+          _loadingComic = false;
+          _refreshingComic = false;
+        });
+      }
     }
   }
 
@@ -1438,6 +1449,26 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     )
                   else
                     const Spacer(),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 160),
+                    child: _refreshingComic
+                        ? const Padding(
+                            key: ValueKey('comic_detail_refreshing'),
+                            padding: EdgeInsets.only(left: 8),
+                            child: SizedBox.square(
+                              dimension: 38,
+                              child: Center(
+                                child: SizedBox.square(
+                                  dimension: 22,
+                                  child: ExpressiveLoadingIndicator(),
+                                ),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(
+                            key: ValueKey('comic_detail_not_refreshing'),
+                          ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: FilledButton.tonal(

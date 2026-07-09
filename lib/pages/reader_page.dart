@@ -1354,7 +1354,7 @@ class _ReaderPageState extends State<ReaderPage> {
         placeholder: (_, _) => Container(
           height: estimatedPlaceholderH ?? 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          child: const Center(child: ExpressiveLoadingIndicator()),
         ),
         errorWidget: (_, _, _) {
           final attempts = _imageRetryCounts[key] ?? 0;

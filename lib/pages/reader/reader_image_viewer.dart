@@ -217,7 +217,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
         cacheManager: widget.cacheManager,
         fit: BoxFit.contain,
         placeholder: (_, _) => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          child: ExpressiveLoadingIndicator(color: Colors.white),
         ),
         errorWidget: (_, _, _) => const _ReaderImageViewerError(),
       );
