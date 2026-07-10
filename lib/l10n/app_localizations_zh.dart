@@ -635,6 +635,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get videoLinkPending => '加载后显示视频链接';
 
   @override
+  String get copyVideoLinkButton => '复制视频链接';
+
+  @override
   String get openInBrowserButton => '浏览器打开';
 
   @override
@@ -3026,6 +3029,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String danmakuLoadedTitle(int count) {
+    return '已装载$count发弹幕';
+  }
+
+  @override
   String get danmakuSearchHint => '输入搜索关键词';
 
   @override
@@ -3740,6 +3748,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get videoLinkPending => '載入後顯示影片連結';
+
+  @override
+  String get copyVideoLinkButton => '複製影片連結';
 
   @override
   String get openInBrowserButton => '瀏覽器開啟';
@@ -6130,6 +6141,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String danmakuSearchTitleWithCount(int count) {
     return '彈幕搜尋（$count）';
+  }
+
+  @override
+  String danmakuLoadedTitle(int count) {
+    return '已裝載$count發彈幕';
   }
 
   @override

@@ -547,7 +547,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                                   UserManager()
                                                       .animeSkipSeconds,
                                                 ),
-                                            icon: Icons.fast_forward,
+                                            icon: Icons.more_time,
                                             iconSize: controlButtonSize,
                                             extent: controlButtonExtent,
                                             onPressed: widget.onSkipForward,
@@ -622,7 +622,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   }
 }
 
-class _PlayerPlaylistOverlay extends StatelessWidget {
+class _PlayerPlaylistOverlay extends StatefulWidget {
   final List<AnimeChapter> chapters;
   final String currentChapterUuid;
   final ValueChanged<AnimeChapter> onSelected;
@@ -634,7 +634,35 @@ class _PlayerPlaylistOverlay extends StatelessWidget {
   });
 
   @override
+  State<_PlayerPlaylistOverlay> createState() => _PlayerPlaylistOverlayState();
+}
+
+class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
+  static const _itemExtent = 42.0;
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    final selectedIndex = widget.chapters.indexWhere(
+      (chapter) => chapter.uuid == widget.currentChapterUuid,
+    );
+    _scrollController = ScrollController(
+      initialScrollOffset: selectedIndex > 2
+          ? (selectedIndex - 2) * _itemExtent
+          : 0,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final size = MediaQuery.sizeOf(context);
     const itemTextStyle = TextStyle(
       color: Colors.white,
@@ -643,9 +671,9 @@ class _PlayerPlaylistOverlay extends StatelessWidget {
       height: 1.2,
     );
     final maxWidth = (size.width * 0.34).clamp(240.0, 340.0).toDouble();
-    final textMaxWidth = maxWidth - 56;
+    final textMaxWidth = maxWidth - 76;
     var widestTitle = 0.0;
-    for (final chapter in chapters) {
+    for (final chapter in widget.chapters) {
       final painter = TextPainter(
         text: TextSpan(text: chapter.name, style: itemTextStyle),
         maxLines: 1,
@@ -653,34 +681,76 @@ class _PlayerPlaylistOverlay extends StatelessWidget {
       )..layout(maxWidth: textMaxWidth);
       if (painter.width > widestTitle) widestTitle = painter.width;
     }
-    final width = (widestTitle + 44).clamp(200.0, maxWidth).toDouble();
+    final width = (widestTitle + 76).clamp(240.0, maxWidth).toDouble();
     final maxHeight = (size.height * 0.78).clamp(220.0, 620.0).toDouble();
+    final height = (52 + widget.chapters.length * _itemExtent)
+        .clamp(96.0, maxHeight)
+        .toDouble();
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {},
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: width, maxHeight: maxHeight),
+      child: SizedBox(
+        width: width,
+        height: height,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.78),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white12),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              itemCount: chapters.length,
-              itemBuilder: (context, index) {
-                final chapter = chapters[index];
-                final selected = chapter.uuid == currentChapterUuid;
-                return _PlayerPlaylistItem(
-                  chapter: chapter,
-                  selected: selected,
-                  textStyle: itemTextStyle,
-                  onTap: () => onSelected(chapter),
-                );
-              },
+            borderRadius: BorderRadius.circular(10),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 11, 10, 9),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.playlist_play_rounded,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.animePlayerChapterSelectorWithCount(
+                            widget.chapters.length,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Colors.white12),
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemExtent: _itemExtent,
+                    itemCount: widget.chapters.length,
+                    itemBuilder: (context, index) {
+                      final chapter = widget.chapters[index];
+                      final selected =
+                          chapter.uuid == widget.currentChapterUuid;
+                      return _PlayerPlaylistItem(
+                        chapter: chapter,
+                        selected: selected,
+                        textStyle: itemTextStyle,
+                        onTap: () => widget.onSelected(chapter),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -708,14 +778,25 @@ class _PlayerPlaylistItem extends StatelessWidget {
 
     return Material(
       color: selected
-          ? Colors.white.withValues(alpha: 0.06)
+          ? const Color(0xFF03A9F4).withValues(alpha: 0.16)
           : Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
+              SizedBox(
+                width: 24,
+                child: selected
+                    ? const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Color(0xFF03A9F4),
+                        size: 20,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   chapter.name,

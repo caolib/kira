@@ -445,6 +445,7 @@
   "closeButton": "关闭",
   "videoLinkTitle": "视频链接",
   "videoLinkPending": "加载后显示视频链接",
+  "copyVideoLinkButton": "复制视频链接",
   "openInBrowserButton": "浏览器打开",
   "switchLineTooltip": "切换线路",
   "profileCopyCredentialLabel": "拷贝",
@@ -2039,6 +2040,14 @@
   "danmakuSearchTitle": "弹幕搜索",
   "danmakuSearchTitleWithCount": "弹幕搜索（{count}）",
   "@danmakuSearchTitleWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "danmakuLoadedTitle": "已装载{count}发弹幕",
+  "@danmakuLoadedTitle": {
     "placeholders": {
       "count": {
         "type": "int"

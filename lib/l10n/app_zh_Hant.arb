@@ -445,6 +445,7 @@
   "closeButton": "關閉",
   "videoLinkTitle": "影片連結",
   "videoLinkPending": "載入後顯示影片連結",
+  "copyVideoLinkButton": "複製影片連結",
   "openInBrowserButton": "瀏覽器開啟",
   "switchLineTooltip": "切換線路",
   "profileCopyCredentialLabel": "拷貝",
@@ -2039,6 +2040,14 @@
   "danmakuSearchTitle": "彈幕搜尋",
   "danmakuSearchTitleWithCount": "彈幕搜尋（{count}）",
   "@danmakuSearchTitleWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "danmakuLoadedTitle": "已裝載{count}發彈幕",
+  "@danmakuLoadedTitle": {
     "placeholders": {
       "count": {
         "type": "int"

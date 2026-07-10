@@ -215,7 +215,7 @@ class _InlineSearchPanel extends StatelessWidget {
     final hasResults = results.isNotEmpty;
     final l10n = AppLocalizations.of(context)!;
     final title = loadedDanmakuCount > 0
-        ? l10n.danmakuSearchTitleWithCount(loadedDanmakuCount)
+        ? l10n.danmakuLoadedTitle(loadedDanmakuCount)
         : l10n.danmakuSearchTitle;
 
     return _CollapsiblePlayerCard(
@@ -223,6 +223,13 @@ class _InlineSearchPanel extends StatelessWidget {
       title: title,
       initiallyExpanded: !hasResults && !collapsedByBinding,
       collapseRevision: collapseRevision,
+      trailing: loadedDanmakuCount > 0
+          ? const _CheckedTag(
+              label: '',
+              foreground: Colors.white,
+              background: Colors.green,
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

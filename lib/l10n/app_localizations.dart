@@ -1207,6 +1207,12 @@ abstract class AppLocalizations {
   /// **'加载后显示视频链接'**
   String get videoLinkPending;
 
+  /// No description provided for @copyVideoLinkButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制视频链接'**
+  String get copyVideoLinkButton;
+
   /// No description provided for @openInBrowserButton.
   ///
   /// In zh, this message translates to:
@@ -5500,6 +5506,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'弹幕搜索（{count}）'**
   String danmakuSearchTitleWithCount(int count);
+
+  /// No description provided for @danmakuLoadedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'已装载{count}发弹幕'**
+  String danmakuLoadedTitle(int count);
 
   /// No description provided for @danmakuSearchHint.
   ///

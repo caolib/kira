@@ -1371,7 +1371,13 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
+                    _ChapterSelector(
+                      chapters: _chapters,
+                      currentChapterUuid: _currentChapterUuid,
+                      onSelected: _openChapter,
+                    ),
                     if (_danmakuVisible) ...[
+                      const SizedBox(height: 24),
                       if (_isRestorablePlaybackRecord(_playbackRecord)) ...[
                         _PlaybackProgressHint(
                           record: _playbackRecord!,
@@ -1403,13 +1409,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
                         onSelectResult: (ep) =>
                             unawaited(_loadDanmakuForEpisode(ep.episodeId)),
                       ),
-                      const SizedBox(height: 24),
                     ],
-                    _ChapterSelector(
-                      chapters: _chapters,
-                      currentChapterUuid: _currentChapterUuid,
-                      onSelected: _openChapter,
-                    ),
                     const SizedBox(height: 24),
                     _VideoLinkPanel(
                       videoUrl: _videoUrl,

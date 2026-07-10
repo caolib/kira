@@ -29,9 +29,7 @@ void main() {
     );
     final service = _FakeNoticeService(notices: [notice]);
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     expect(find.text('新通知'), findsOneWidget);
@@ -56,9 +54,7 @@ void main() {
     );
     final service = _FakeNoticeService(notices: [notice]);
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('全部已读'));
@@ -93,9 +89,7 @@ void main() {
     );
     final service = _FakeNoticeService(notices: [first, second]);
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('第一条通知'));
@@ -129,9 +123,7 @@ void main() {
       seenKeys: {RemoteNoticeService.seenKeyFor(notice)},
     );
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     expect(find.text('已读通知标题'), findsOneWidget);
@@ -189,9 +181,7 @@ void main() {
     ];
     final service = _FakeNoticeService(notices: notices);
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     final cards = tester.widgetList<Card>(find.byType(Card)).toList();
@@ -220,9 +210,7 @@ void main() {
     );
     final service = _FakeNoticeService(notices: [notice]);
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     expect(find.text('置顶'), findsNothing);
@@ -249,9 +237,7 @@ void main() {
       seenKeys: {RemoteNoticeService.seenKeyFor(readNotice)},
     );
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     expect(find.text('已读通知标题'), findsOneWidget);
@@ -276,9 +262,7 @@ void main() {
     );
     final service = _FakeNoticeService(notices: [expiredNotice]);
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('全部已读'), findsNothing);
@@ -303,9 +287,7 @@ void main() {
     );
     final service = _FakeNoticeService(notices: [notice]);
 
-    await tester.pumpWidget(
-      _buildTestApp(NoticeCenterPage(service: service)),
-    );
+    await tester.pumpWidget(_buildTestApp(NoticeCenterPage(service: service)));
     await tester.pumpAndSettle();
 
     expect(find.text('2小时前'), findsOneWidget);
