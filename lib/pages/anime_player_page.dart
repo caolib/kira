@@ -5,12 +5,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../api/dandanplay_api.dart';
@@ -108,6 +108,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   int _danmakuLoadSerial = 0;
   int _danmakuSearchCollapseRevision = 0;
   bool _danmakuSearchCollapsedByBinding = false;
+  bool _initialLoadStarted = false;
 
   @override
   void initState() {
@@ -166,8 +167,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         _rawError = _buildPlayerDebugReport(error, l10n: l10n);
       });
     });
+  }
 
-    _load();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialLoadStarted) return;
+    _initialLoadStarted = true;
+    unawaited(_load());
   }
 
   @override
