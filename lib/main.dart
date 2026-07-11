@@ -51,9 +51,7 @@ void main() {
         return true;
       };
 
-      if (!Platform.isWindows) {
-        MediaKit.ensureInitialized();
-      }
+      MediaKit.ensureInitialized();
       await UserManager().init();
       await NetworkProxy.init();
       if (isDesktop) {

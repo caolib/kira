@@ -75,6 +75,10 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     configuration: const PlayerConfiguration(logLevel: MPVLogLevel.warn),
   );
   late final VideoController _videoController = VideoController(_player);
+  final List<StreamSubscription<dynamic>> _playerSubscriptions = [];
+  // 全屏标题/选集：只通知 UI，不重建 Video 本体
+  final ValueNotifier<({String title, String chapterUuid})> _fullscreenMeta =
+      ValueNotifier((title: '', chapterUuid: ''));
   AnimePlayback? _playback;
   late String _currentChapterUuid;
   late String _currentChapterName;
@@ -120,55 +124,71 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     _currentChapterName = widget.chapterName;
     _line = widget.line;
     _danmakuVisible = _user.danmakuEnabled;
+    _fullscreenMeta.value = (
+      title: _currentChapterName,
+      chapterUuid: _currentChapterUuid,
+    );
 
-    _player.stream.playing.listen((playing) {
-      if (!mounted) return;
-      if (playing) {
-        WakelockPlus.enable();
-      } else {
-        WakelockPlus.disable();
-      }
-      if (playing && _danmakuVisible) {
-        _danmakuController?.resume();
-      } else {
-        _danmakuController?.pause();
-      }
-    });
+    _playerSubscriptions.add(
+      _player.stream.playing.listen((playing) {
+        if (!mounted) return;
+        if (playing) {
+          WakelockPlus.enable();
+        } else {
+          WakelockPlus.disable();
+        }
+        _syncDanmakuPlayback();
+      }),
+    );
 
-    _player.stream.position.listen((position) {
-      if (!mounted) return;
-      _maybeSavePlaybackProgress(position);
-      if (_player.state.playing && _danmakuVisible) {
-        final sec = position.inSeconds;
-        if (sec != _lastDanmakuSec) {
-          if ((sec - _lastDanmakuSec).abs() > 2) {
-            _danmakuController?.clear();
-          }
-          _lastDanmakuSec = sec;
-          if (_danmakuItems.containsKey(sec)) {
-            for (final item in _danmakuItems[sec]!) {
-              _danmakuController?.addDanmaku(item);
+    _playerSubscriptions.add(
+      _player.stream.position.listen((position) {
+        if (!mounted) return;
+        _maybeSavePlaybackProgress(position);
+        if (_player.state.playing &&
+            !_player.state.buffering &&
+            _danmakuVisible) {
+          final sec = position.inSeconds;
+          if (sec != _lastDanmakuSec) {
+            if ((sec - _lastDanmakuSec).abs() > 2) {
+              _danmakuController?.clear();
+            }
+            _lastDanmakuSec = sec;
+            if (_danmakuItems.containsKey(sec)) {
+              for (final item in _danmakuItems[sec]!) {
+                _danmakuController?.addDanmaku(item);
+              }
             }
           }
         }
-      }
-    });
+      }),
+    );
 
-    _player.stream.buffering.listen((buffering) {
-      if (!mounted) return;
-      setState(() => _buffering = buffering);
-    });
+    _playerSubscriptions.add(
+      _player.stream.buffering.listen((buffering) {
+        if (!mounted) return;
+        // 仅更新遮罩状态，避免无关字段触发更大范围重建
+        if (_buffering == buffering) {
+          _syncDanmakuPlayback();
+          return;
+        }
+        setState(() => _buffering = buffering);
+        _syncDanmakuPlayback();
+      }),
+    );
 
-    _player.stream.log.listen(_rememberPlayerLog);
-    _player.stream.error.listen((error) {
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      _recordPlayerError(error);
-      setState(() {
-        _error = _formatPlayerError(error, l10n: l10n);
-        _rawError = _buildPlayerDebugReport(error, l10n: l10n);
-      });
-    });
+    _playerSubscriptions.add(_player.stream.log.listen(_rememberPlayerLog));
+    _playerSubscriptions.add(
+      _player.stream.error.listen((error) {
+        if (!mounted) return;
+        final l10n = AppLocalizations.of(context)!;
+        _recordPlayerError(error);
+        setState(() {
+          _error = _formatPlayerError(error, l10n: l10n);
+          _rawError = _buildPlayerDebugReport(error, l10n: l10n);
+        });
+      }),
+    );
   }
 
   @override
@@ -184,6 +204,11 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_savePlaybackProgress(force: true, updateState: false));
     _openMediaSerial++;
+    for (final sub in _playerSubscriptions) {
+      unawaited(sub.cancel());
+    }
+    _playerSubscriptions.clear();
+    _fullscreenMeta.dispose();
     _player.dispose();
     WakelockPlus.disable();
     _searchController.dispose();
@@ -212,12 +237,23 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       _requiresLogin = false;
       _error = null;
       _videoUrl = null;
+      // 切集后立刻用 _currentChapterName，避免标题卡在上一集
+      _playback = null;
       _danmakuItems = {};
       _selectedDanmakuEpisodeId = null;
       _loadingDanmakuEpisodeId = null;
       _playbackRecord = null;
       _danmakuSearchCollapsedByBinding = false;
+      _inlineResults = [];
+      _hasSearched = false;
+      _inlineSearching = false;
+      _searchSegments = [];
+      _selectedSegmentIndices = {};
+      _searchController.clear();
+      _lastDanmakuSec = -1;
     });
+    _danmakuController?.clear();
+    _publishFullscreenMeta();
     unawaited(_loadPlaybackRecord(danmakuSerial));
 
     if (widget.localVideoPath != null) {
@@ -275,6 +311,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         _loading = false;
         _buffering = true;
       });
+      _publishFullscreenMeta();
       unawaited(_openMedia(videoUrl));
       unawaited(_loadSavedDanmakuOrSetupSearch(danmakuSerial));
     } catch (e) {
@@ -613,6 +650,8 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     }
 
     try {
+      // 不要强制 Accept-Encoding:gzip：部分 HLS 源/mpv 会把清单当二进制，
+      // 表现为时长只有单分片（约 4s）并一段段跳。
       await _player.open(Media(videoUrl, httpHeaders: _videoHttpHeaders));
       if (!mounted || serial != _openMediaSerial) return;
       _readyToSavePlaybackProgress = true;
@@ -645,15 +684,33 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   static const _videoHttpHeaders = {
     'User-Agent': _videoUserAgent,
     'Connection': 'Keep-Alive',
-    'Accept-Encoding': 'gzip',
   };
 
   String _resolveVideoUrl(AnimePlaybackChapter chapter) {
-    if (chapter.video.isNotEmpty) return chapter.video;
+    // 优先 m3u8 清单，避免落到单分片 .ts（时长约 4s）
+    String? pickM3u8(Iterable<String> urls) {
+      for (final url in urls) {
+        if (url.isEmpty) continue;
+        final lower = url.toLowerCase();
+        if (lower.contains('.m3u8') || lower.contains('mpegurl')) return url;
+      }
+      return null;
+    }
+
+    final fromList = pickM3u8(chapter.videoList);
+    if (fromList != null) return fromList;
+    if (chapter.video.isNotEmpty) {
+      final lower = chapter.video.toLowerCase();
+      if (lower.contains('.m3u8') ||
+          lower.contains('mpegurl') ||
+          chapter.videoList.isEmpty) {
+        return chapter.video;
+      }
+    }
     for (final url in chapter.videoList) {
       if (url.isNotEmpty) return url;
     }
-    return '';
+    return chapter.video;
   }
 
   bool get _canUsePlaybackHistory =>
@@ -697,6 +754,10 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     await _waitForPlaybackBeforeRestore(serial);
     if (!mounted || serial != _openMediaSerial) return;
 
+    // HLS 刚打开时常先报单分片时长，等稳定后再 seek，避免把进度条钉在 ~4s
+    await _waitForStableDuration(serial);
+    if (!mounted || serial != _openMediaSerial) return;
+
     final restored = await _seekToPlaybackProgress(record!.position, serial);
     if (!mounted || serial != _openMediaSerial) return;
     if (!restored) return;
@@ -716,10 +777,35 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     }
   }
 
+  /// 等 duration 连续两次读取一致且 > 15s（或超时），避免 HLS 首片 ~4s 误导 seek。
+  Future<void> _waitForStableDuration(int serial) async {
+    Duration? last;
+    var stableHits = 0;
+    for (var i = 0; i < 30; i++) {
+      if (!mounted || serial != _openMediaSerial) return;
+      final d = _player.state.duration;
+      if (d > const Duration(seconds: 15)) {
+        if (last != null && (d - last).inMilliseconds.abs() < 500) {
+          stableHits++;
+          if (stableHits >= 2) return;
+        } else {
+          stableHits = 0;
+        }
+        last = d;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+  }
+
   Future<bool> _seekToPlaybackProgress(Duration position, int serial) async {
     for (var attempt = 0; attempt < 10; attempt++) {
       if (!mounted || serial != _openMediaSerial) return false;
       final duration = _player.state.duration;
+      // 时长仍像单分片时不 seek，否则会打乱 HLS 清单播放
+      if (duration > Duration.zero && duration <= const Duration(seconds: 15)) {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        continue;
+      }
       if (duration > Duration.zero &&
           (position >= duration ||
               duration - position <= const Duration(seconds: 5))) {
@@ -749,6 +835,10 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     }
 
     try {
+      final duration = _player.state.duration;
+      if (duration > Duration.zero && duration <= const Duration(seconds: 15)) {
+        return false;
+      }
       await _player.seek(position);
       await Future<void>.delayed(const Duration(milliseconds: 700));
       return mounted &&
@@ -772,6 +862,11 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         position + _playbackProgressSeekTolerance < record!.position) {
       return;
     }
+    // 单分片时长阶段不写入，避免把「播完」误判成进度归零
+    final duration = _player.state.duration;
+    if (duration > Duration.zero && duration <= const Duration(seconds: 15)) {
+      return;
+    }
     final lastSavedAt = _lastPlaybackProgressSavedAt;
     final now = DateTime.now();
     if (lastSavedAt != null &&
@@ -793,6 +888,9 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     final currentPosition = position ?? _player.state.position;
     final duration = _player.state.duration;
     if (currentPosition < _minPlaybackProgressToSave) return;
+    if (duration > Duration.zero && duration <= const Duration(seconds: 15)) {
+      return;
+    }
     final existingRecord = _playbackRecord;
     if (!_playbackProgressRestored &&
         _isRestorablePlaybackRecord(existingRecord) &&
@@ -865,6 +963,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       _currentChapterName = chapter.name;
       _line = line;
     });
+    _publishFullscreenMeta();
     await _load();
   }
 
@@ -912,9 +1011,27 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     }
   }
 
-  String get _title => _playback?.chapter.name.isNotEmpty == true
-      ? _playback!.chapter.name
-      : _currentChapterName;
+  String get _title => _currentChapterName.isNotEmpty
+      ? _currentChapterName
+      : (_playback?.chapter.name ?? widget.chapterName);
+
+  void _publishFullscreenMeta() {
+    _fullscreenMeta.value = (
+      title: _title,
+      chapterUuid: _currentChapterUuid,
+    );
+  }
+
+  /// 弹幕只在「正在播且未缓冲」时滚动，避免卡顿时弹幕继续飞。
+  void _syncDanmakuPlayback() {
+    final shouldRun =
+        _player.state.playing && !_player.state.buffering && _danmakuVisible;
+    if (shouldRun) {
+      _danmakuController?.resume();
+    } else {
+      _danmakuController?.pause();
+    }
+  }
 
   void _skipForward() {
     final duration = _player.state.duration;
@@ -1159,6 +1276,8 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   Widget _buildVideoSurface(
     VideoController controller, {
     required bool fullscreen,
+    String? titleOverride,
+    String? chapterUuidOverride,
   }) {
     Widget? danmakuView;
     if (_danmakuVisible) {
@@ -1166,11 +1285,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         key: ValueKey('danmaku-$fullscreen-$_danmakuSurfaceGeneration'),
         createdController: (c) {
           _danmakuController = c;
-          if (_player.state.playing && _danmakuVisible) {
-            c.resume();
-          } else {
-            c.pause();
-          }
+          _syncDanmakuPlayback();
         },
         option: DanmakuOption(
           fontSize: _user.danmakuFontSize,
@@ -1180,6 +1295,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           hideScroll: _user.danmakuHideScroll,
           hideTop: _user.danmakuHideTop,
           hideBottom: _user.danmakuHideBottom,
+          strokeWidth: 1,
         ),
       );
     }
@@ -1193,9 +1309,9 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       onSkipForward: _skipForward,
       onDanmakuSettings: () => _showSettingsPanel(danmakuOnly: true),
       chapters: _chapters,
-      currentChapterUuid: _currentChapterUuid,
+      currentChapterUuid: chapterUuidOverride ?? _currentChapterUuid,
       onChapterSelected: _openChapter,
-      title: _title,
+      title: titleOverride ?? _title,
       onFullscreen: fullscreen
           ? () => Navigator.maybePop(context)
           : _fullscreen,
@@ -1217,7 +1333,17 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
             backgroundColor: Colors.black,
             body: SafeArea(
               child: Center(
-                child: _buildVideoSurface(_videoController, fullscreen: true),
+                // 全屏路由不随父 setState 重建：只刷新标题/选集，不重建 Video
+                child: ValueListenableBuilder<
+                    ({String title, String chapterUuid})>(
+                  valueListenable: _fullscreenMeta,
+                  builder: (_, meta, _) => _buildVideoSurface(
+                    _videoController,
+                    fullscreen: true,
+                    titleOverride: meta.title,
+                    chapterUuidOverride: meta.chapterUuid,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1317,7 +1443,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         _player.pause();
       },
       child: Scaffold(
-        floatingActionButton: FloatingActionButton.small(
+        floatingActionButton: FloatingActionButton(
           heroTag: 'anime_player_settings',
           tooltip: l10n.animePlayerSetSkipSeconds,
           onPressed: _showSettingsPanel,

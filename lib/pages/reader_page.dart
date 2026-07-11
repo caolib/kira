@@ -1594,8 +1594,8 @@ class _ReaderPageState extends State<ReaderPage> {
     final positions = _itemPositionsListener.itemPositions.value;
     for (final p in positions) {
       if (p.index != _scrollTailIndex) continue;
-      // 尾部组件滚动到屏幕约一半高度位置时触发跳转
-      if (p.itemLeadingEdge <= 0.5) {
+      // 尾部组件滚动到屏幕约 3/5 高度位置时触发跳转
+      if (p.itemLeadingEdge <= 0.4) {
         return true;
       }
       break;

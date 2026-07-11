@@ -118,6 +118,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
 
   // 手势处理状态
   double? _dragStartX;
+  Duration? _dragStartPosition;
   Duration? _dragTargetPosition;
   bool _isDraggingProgress = false;
 
@@ -250,12 +251,15 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                   onDoubleTap: _togglePlay,
                   onHorizontalDragStart: (details) {
                     _dragStartX = details.globalPosition.dx;
-                    _dragTargetPosition = player.state.position;
+                    _dragStartPosition = player.state.position;
+                    _dragTargetPosition = _dragStartPosition;
                     _isDraggingProgress = true;
                     _showControls();
                   },
                   onHorizontalDragUpdate: (details) {
-                    if (_dragStartX == null) return;
+                    if (_dragStartX == null || _dragStartPosition == null) {
+                      return;
+                    }
                     final delta = details.globalPosition.dx - _dragStartX!;
                     final screenWidth = MediaQuery.sizeOf(context).width;
                     // 左右滑动控制进度，滑动全屏距离相当于视频总时长的 1/2
@@ -266,8 +270,9 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                         (delta / screenWidth) *
                         totalDuration.inMilliseconds *
                         0.5;
+                    // 以拖动起点为基准，避免播放中 position 前进导致偏移
                     final targetMs =
-                        player.state.position.inMilliseconds + deltaMs.toInt();
+                        _dragStartPosition!.inMilliseconds + deltaMs.toInt();
                     _dragTargetPosition = Duration(
                       milliseconds: targetMs.clamp(
                         0,
@@ -278,10 +283,11 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                   },
                   onHorizontalDragEnd: (details) {
                     if (_isDraggingProgress && _dragTargetPosition != null) {
-                      player.seek(_dragTargetPosition!);
+                      unawaited(_seekAndPlay(_dragTargetPosition!));
                     }
                     _isDraggingProgress = false;
                     _dragStartX = null;
+                    _dragStartPosition = null;
                     _dragTargetPosition = null;
                   },
                   onVerticalDragStart: (details) async {
@@ -544,11 +550,13 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                     _showControls();
                                   },
                                   onChangeEnd: (v) {
-                                    player.seek(
-                                      Duration(
-                                        milliseconds:
-                                            (duration.inMilliseconds * v)
-                                                .round(),
+                                    unawaited(
+                                      _seekAndPlay(
+                                        Duration(
+                                          milliseconds:
+                                              (duration.inMilliseconds * v)
+                                                  .round(),
+                                        ),
                                       ),
                                     );
                                     _isSliderDragging = false;
@@ -698,6 +706,26 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
       player.play();
     }
     setState(() {});
+  }
+
+  /// 拖进度后恢复播放（暂停时 seek 也应进入播放态）。
+  Future<void> _seekAndPlay(Duration position) async {
+    _showControls();
+    try {
+      await player.seek(position);
+      if (!player.state.playing) {
+        await player.play();
+      }
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'player_controls.seek_and_play',
+        ),
+      );
+    }
+    if (mounted) setState(() {});
   }
 }
 

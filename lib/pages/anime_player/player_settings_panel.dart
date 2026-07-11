@@ -53,6 +53,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
         hideScroll: _hideScroll,
         hideTop: _hideTop,
         hideBottom: _hideBottom,
+        strokeWidth: 1,
       ),
     );
     _user.setDanmakuFontSize(_fontSize);
