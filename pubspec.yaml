@@ -65,3 +65,7 @@ flutter:
     - assets/ic_launcher_1.png
     - assets/github.svg
     - assets/qq.svg
+    - assets/danmaku_on.svg
+    - assets/danmaku_off.svg
+    - assets/danmaku_settings.svg
+

@@ -13,29 +13,22 @@ class _ChapterSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cs = Theme.of(context).colorScheme;
-        final brightness = Theme.of(context).brightness;
-        const maxExtent = 120.0;
-        final columns = (constraints.maxWidth / maxExtent).floor().clamp(1, constraints.maxWidth ~/ maxExtent);
-        return Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final chapter in chapters)
-              SizedBox(
-                width: (constraints.maxWidth - 6 * (columns - 1)) / columns,
-                height: 52,
-                child: _AnimeChapterCard(
-                  chapter: chapter,
-                  selected: chapter.uuid == currentChapterUuid,
-                  brightness: brightness,
-                  cs: cs,
-                  onTap: () => onSelected(chapter),
-                ),
-              ),
-          ],
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: chapters.length,
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 100,
+        mainAxisExtent: 40,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
+      ),
+      itemBuilder: (context, index) {
+        final chapter = chapters[index];
+        return _AnimeChapterCard(
+          chapter: chapter,
+          selected: chapter.uuid == currentChapterUuid,
+          onTap: () => onSelected(chapter),
         );
       },
     );
@@ -45,28 +38,25 @@ class _ChapterSelector extends StatelessWidget {
 class _AnimeChapterCard extends StatelessWidget {
   final AnimeChapter chapter;
   final bool selected;
-  final Brightness brightness;
-  final ColorScheme cs;
   final VoidCallback onTap;
 
   const _AnimeChapterCard({
     required this.chapter,
     required this.selected,
-    required this.brightness,
-    required this.cs,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final brightness = Theme.of(context).brightness;
     final backgroundColor = selected
         ? cs.primaryContainer
         : cs.surfaceContainerLow;
-    final foregroundColor = selected
-        ? cs.onPrimaryContainer
-        : cs.onSurface;
+    final foregroundColor = selected ? cs.onPrimaryContainer : cs.onSurface;
 
+    // 与漫画详情章节卡同构：圆角 + 细边框 + 轻阴影
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       decoration: BoxDecoration(
@@ -99,13 +89,13 @@ class _AnimeChapterCard extends StatelessWidget {
           onTap: onTap,
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Text(
                 chapter.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: tt.bodySmall?.copyWith(
+                style: tt.labelMedium?.copyWith(
                   color: foregroundColor,
                   fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 ),

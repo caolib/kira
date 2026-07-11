@@ -33,11 +33,50 @@ class _PlayerControlButton extends StatelessWidget {
   }
 }
 
+
+/// 播放器栏 SVG 图标（viewBox 统一 24x24）
+class _PlayerSvgControlButton extends StatelessWidget {
+  final String tooltip;
+  final String asset;
+  final double iconSize;
+  final double extent;
+  final VoidCallback? onPressed;
+
+  const _PlayerSvgControlButton({
+    required this.tooltip,
+    required this.asset,
+    required this.iconSize,
+    required this.extent,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: extent,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+        iconSize: iconSize,
+        icon: SvgPicture.asset(
+          asset,
+          width: iconSize,
+          height: iconSize,
+          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+        ),
+      ),
+    );
+  }
+}
+
+
 class _VideoPlayerSurface extends StatefulWidget {
   final VideoController controller;
   final bool fullscreen;
   final VoidCallback onSkipForward;
-  final VoidCallback onSettings;
+  final VoidCallback onDanmakuSettings;
   final VoidCallback onFullscreen;
   final VoidCallback onToggleDanmaku;
   final List<AnimeChapter> chapters;
@@ -51,7 +90,7 @@ class _VideoPlayerSurface extends StatefulWidget {
     required this.controller,
     required this.fullscreen,
     required this.onSkipForward,
-    required this.onSettings,
+    required this.onDanmakuSettings,
     required this.onFullscreen,
     required this.onToggleDanmaku,
     required this.chapters,
@@ -167,6 +206,16 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     final l10n = AppLocalizations.of(context)!;
     const controlButtonSize = 24.0;
     const controlButtonExtent = 40.0;
+    final currentIndex = widget.chapters.indexWhere(
+      (c) => c.uuid == widget.currentChapterUuid,
+    );
+    final prevChapter = currentIndex > 0
+        ? widget.chapters[currentIndex - 1]
+        : null;
+    final nextChapter =
+        currentIndex >= 0 && currentIndex < widget.chapters.length - 1
+        ? widget.chapters[currentIndex + 1]
+        : null;
 
     return StreamBuilder<Object>(
       stream: player.stream.position,
@@ -360,84 +409,90 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                     ),
                   ),
                 ),
-              if (_playlistVisible)
+              if (widget.fullscreen && _playlistVisible)
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onTap: _hidePlaylist,
                     child: Align(
-                      alignment: widget.fullscreen
-                          ? Alignment.centerRight
-                          : Alignment.topRight,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: widget.fullscreen ? 32 : 8,
-                          right: widget.fullscreen ? 56 : 8,
-                          bottom: widget.fullscreen ? 64 : 48,
-                        ),
-                        child: _PlayerPlaylistOverlay(
-                          chapters: widget.chapters,
-                          currentChapterUuid: widget.currentChapterUuid,
-                          onSelected: (chapter) {
-                            _hidePlaylist();
-                            widget.onChapterSelected(chapter);
-                          },
+                      alignment: Alignment.centerRight,
+                      child: SafeArea(
+                        left: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+                          child: _PlayerPlaylistOverlay(
+                            chapters: widget.chapters,
+                            currentChapterUuid: widget.currentChapterUuid,
+                            onSelected: (chapter) {
+                              _hidePlaylist();
+                              widget.onChapterSelected(chapter);
+                            },
+                            onClose: _hidePlaylist,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              if (widget.fullscreen)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  child: IgnorePointer(
-                    ignoring: !_controlsVisible,
-                    child: AnimatedOpacity(
-                      opacity: _controlsVisible ? 1 : 0,
-                      duration: const Duration(milliseconds: 180),
-                      child: Listener(
-                        onPointerDown: (_) => _showControls(),
-                        child: DecoratedBox(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [Colors.transparent, Colors.black87],
-                            ),
+              // 顶部栏：非全屏与全屏都显示
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible,
+                  child: AnimatedOpacity(
+                    opacity: _controlsVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: Listener(
+                      onPointerDown: (_) => _showControls(),
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [Colors.transparent, Colors.black87],
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(4, 8, 16, 16),
-                            child: Row(
-                              children: [
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            4,
+                            widget.fullscreen ? 8 : 4,
+                            16,
+                            widget.fullscreen ? 16 : 8,
+                          ),
+                          child: Row(
+                            children: [
+                              if (widget.fullscreen)
                                 IconButton(
                                   tooltip: l10n.animePlayerExitFullscreen,
                                   onPressed: widget.onFullscreen,
                                   icon: const Icon(Icons.arrow_back),
                                   color: Colors.white,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    widget.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                )
+                              else
+                                const SizedBox(width: 8),
+                              if (widget.fullscreen) const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  widget.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: widget.fullscreen ? 16 : 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
+              ),
               Positioned(
                 left: 0,
                 right: 0,
@@ -506,93 +561,117 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                               ),
                               Row(
                                 children: [
-                                  SizedBox(
-                                    width: widget.fullscreen ? 132 : 104,
-                                    child: Text(
-                                      _isSliderDragging
-                                          ? '${_formatDuration(Duration(milliseconds: (duration.inMilliseconds * _sliderDragValue).round()))} / ${_formatDuration(duration)}'
-                                          : '${_formatDuration(position)} / ${_formatDuration(duration)}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.clip,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: widget.fullscreen ? 14 : 12,
-                                        fontFeatures: const [
-                                          FontFeature.tabularFigures(),
-                                        ],
+                                  // 左侧：上一集/播放/下一集/快进（全屏）+ 时间
+                                  if (widget.fullscreen) ...[
+                                    _PlayerControlButton(
+                                      tooltip: '上一集',
+                                      icon: Icons.skip_previous,
+                                      iconSize: controlButtonSize,
+                                      extent: controlButtonExtent,
+                                      onPressed: prevChapter == null
+                                          ? null
+                                          : () {
+                                              _showControls();
+                                              widget.onChapterSelected(
+                                                prevChapter,
+                                              );
+                                            },
+                                    ),
+                                    const SizedBox(width: 2),
+                                    _PlayerControlButton(
+                                      tooltip: playing
+                                          ? l10n.pauseButton
+                                          : l10n.animePlayerPlay,
+                                      icon: playing
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
+                                      iconSize: controlButtonSize,
+                                      extent: controlButtonExtent,
+                                      onPressed: _togglePlay,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    _PlayerControlButton(
+                                      tooltip: '下一集',
+                                      icon: Icons.skip_next,
+                                      iconSize: controlButtonSize,
+                                      extent: controlButtonExtent,
+                                      onPressed: nextChapter == null
+                                          ? null
+                                          : () {
+                                              _showControls();
+                                              widget.onChapterSelected(
+                                                nextChapter,
+                                              );
+                                            },
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _PlayerControlButton(
+                                      tooltip: l10n.animePlayerFastForward(
+                                        UserManager().animeSkipSeconds,
                                       ),
+                                      icon: Icons.more_time,
+                                      iconSize: controlButtonSize,
+                                      extent: controlButtonExtent,
+                                      onPressed: widget.onSkipForward,
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Text(
+                                    _isSliderDragging
+                                        ? '${_formatDuration(Duration(milliseconds: (duration.inMilliseconds * _sliderDragValue).round()))} / ${_formatDuration(duration)}'
+                                        : '${_formatDuration(position)} / ${_formatDuration(duration)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.clip,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: widget.fullscreen ? 14 : 12,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
                                     ),
                                   ),
-                                  Expanded(
-                                    child: SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      reverse: true,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          _PlayerControlButton(
-                                            tooltip: playing
-                                                ? l10n.pauseButton
-                                                : l10n.animePlayerPlay,
-                                            icon: playing
-                                                ? Icons.pause
-                                                : Icons.play_arrow,
-                                            iconSize: controlButtonSize,
-                                            extent: controlButtonExtent,
-                                            onPressed: _togglePlay,
-                                          ),
-                                          _PlayerControlButton(
-                                            tooltip: l10n
-                                                .animePlayerFastForward(
-                                                  UserManager()
-                                                      .animeSkipSeconds,
-                                                ),
-                                            icon: Icons.more_time,
-                                            iconSize: controlButtonSize,
-                                            extent: controlButtonExtent,
-                                            onPressed: widget.onSkipForward,
-                                          ),
-                                          _PlayerControlButton(
-                                            tooltip: widget.danmakuVisible
-                                                ? l10n.animePlayerHideDanmaku
-                                                : l10n.playerSettingsShowDanmaku,
-                                            icon: widget.danmakuVisible
-                                                ? Icons.subtitles
-                                                : Icons.subtitles_off,
-                                            iconSize: controlButtonSize,
-                                            extent: controlButtonExtent,
-                                            onPressed: widget.onToggleDanmaku,
-                                          ),
-                                          _PlayerControlButton(
-                                            tooltip:
-                                                l10n.animePlayerChapterSelector,
-                                            icon: Icons.playlist_play,
-                                            iconSize: controlButtonSize,
-                                            extent: controlButtonExtent,
-                                            onPressed: _togglePlaylist,
-                                          ),
-                                          _PlayerControlButton(
-                                            tooltip:
-                                                l10n.animePlayerSetSkipSeconds,
-                                            icon: Icons.settings,
-                                            iconSize: controlButtonSize,
-                                            extent: controlButtonExtent,
-                                            onPressed: widget.onSettings,
-                                          ),
-                                          _PlayerControlButton(
-                                            tooltip: widget.fullscreen
-                                                ? l10n.animePlayerExitFullscreen
-                                                : l10n.animePlayerFullscreen,
-                                            icon: widget.fullscreen
-                                                ? Icons.fullscreen_exit
-                                                : Icons.fullscreen,
-                                            iconSize: controlButtonSize,
-                                            extent: controlButtonExtent,
-                                            onPressed: widget.onFullscreen,
-                                          ),
-                                        ],
-                                      ),
+                                  const Spacer(),
+                                  // 右侧：弹幕/设置/选集（全屏）+ 全屏
+                                  if (widget.fullscreen) ...[
+                                    _PlayerSvgControlButton(
+                                      tooltip: widget.danmakuVisible
+                                          ? l10n.animePlayerHideDanmaku
+                                          : l10n.playerSettingsShowDanmaku,
+                                      asset: widget.danmakuVisible
+                                          ? 'assets/danmaku_on.svg'
+                                          : 'assets/danmaku_off.svg',
+                                      iconSize: controlButtonSize,
+                                      extent: controlButtonExtent,
+                                      onPressed: widget.onToggleDanmaku,
                                     ),
+                                    const SizedBox(width: 4),
+                                    _PlayerSvgControlButton(
+                                      tooltip: l10n.playerSettingsDanmakuTitle,
+                                      asset: 'assets/danmaku_settings.svg',
+                                      iconSize: controlButtonSize,
+                                      extent: controlButtonExtent,
+                                      onPressed: widget.onDanmakuSettings,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _PlayerControlButton(
+                                      tooltip: l10n.animePlayerChapterSelector,
+                                      icon: Icons.playlist_play,
+                                      iconSize: controlButtonSize,
+                                      extent: controlButtonExtent,
+                                      onPressed: _togglePlaylist,
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  _PlayerControlButton(
+                                    tooltip: widget.fullscreen
+                                        ? l10n.animePlayerExitFullscreen
+                                        : l10n.animePlayerFullscreen,
+                                    icon: widget.fullscreen
+                                        ? Icons.fullscreen_exit
+                                        : Icons.fullscreen,
+                                    iconSize: controlButtonSize,
+                                    extent: controlButtonExtent,
+                                    onPressed: widget.onFullscreen,
                                   ),
                                 ],
                               ),
@@ -626,11 +705,13 @@ class _PlayerPlaylistOverlay extends StatefulWidget {
   final List<AnimeChapter> chapters;
   final String currentChapterUuid;
   final ValueChanged<AnimeChapter> onSelected;
+  final VoidCallback onClose;
 
   const _PlayerPlaylistOverlay({
     required this.chapters,
     required this.currentChapterUuid,
     required this.onSelected,
+    required this.onClose,
   });
 
   @override
@@ -638,20 +719,19 @@ class _PlayerPlaylistOverlay extends StatefulWidget {
 }
 
 class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
-  static const _itemExtent = 42.0;
+  static const _chipExtent = 40.0;
+  static const _chipMaxCross = 96.0;
+  static const _chipSpacing = 6.0;
+  static const _headerHeight = 48.0;
+  static const _panelPadding = 12.0;
+
   late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
-    final selectedIndex = widget.chapters.indexWhere(
-      (chapter) => chapter.uuid == widget.currentChapterUuid,
-    );
-    _scrollController = ScrollController(
-      initialScrollOffset: selectedIndex > 2
-          ? (selectedIndex - 2) * _itemExtent
-          : 0,
-    );
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
   }
 
   @override
@@ -660,91 +740,118 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
     super.dispose();
   }
 
+  void _scrollToCurrent() {
+    if (!_scrollController.hasClients) return;
+    final index = widget.chapters.indexWhere(
+      (c) => c.uuid == widget.currentChapterUuid,
+    );
+    if (index < 0) return;
+
+    final panelWidth = _scrollController.position.viewportDimension;
+    // 与 GridView 列数估算一致，保证当前集尽量进视口
+    final cols = ((panelWidth + _chipSpacing) / (_chipMaxCross + _chipSpacing))
+        .floor()
+        .clamp(1, 6);
+    final row = index ~/ cols;
+    final target = row * (_chipExtent + _chipSpacing) - _chipExtent;
+    _scrollController.jumpTo(
+      target.clamp(0.0, _scrollController.position.maxScrollExtent),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
     final size = MediaQuery.sizeOf(context);
-    const itemTextStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      height: 1.2,
-    );
-    final maxWidth = (size.width * 0.34).clamp(240.0, 340.0).toDouble();
-    final textMaxWidth = maxWidth - 76;
-    var widestTitle = 0.0;
-    for (final chapter in widget.chapters) {
-      final painter = TextPainter(
-        text: TextSpan(text: chapter.name, style: itemTextStyle),
-        maxLines: 1,
-        textDirection: TextDirection.ltr,
-      )..layout(maxWidth: textMaxWidth);
-      if (painter.width > widestTitle) widestTitle = painter.width;
-    }
-    final width = (widestTitle + 76).clamp(240.0, maxWidth).toDouble();
-    final maxHeight = (size.height * 0.78).clamp(220.0, 620.0).toDouble();
-    final height = (52 + widget.chapters.length * _itemExtent)
-        .clamp(96.0, maxHeight)
-        .toDouble();
+    final width = (size.width * 0.42).clamp(280.0, 420.0).toDouble();
+    final maxHeight = (size.height * 0.88).clamp(240.0, size.height).toDouble();
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {},
+    return Material(
+      color: Colors.transparent,
       child: SizedBox(
         width: width,
-        height: height,
+        height: maxHeight,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.78),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white12),
+            color: const Color(0xE6121212),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 24,
+                offset: const Offset(-4, 0),
+              ),
+            ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 11, 10, 9),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.playlist_play_rounded,
-                        color: Colors.white70,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          l10n.animePlayerChapterSelectorWithCount(
-                            widget.chapters.length,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                SizedBox(
+                  height: _headerHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 4, 0),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.playlist_play_rounded,
+                          color: cs.primary,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.animePlayerChapterSelectorWithCount(
+                              widget.chapters.length,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        IconButton(
+                          tooltip: l10n.closeButton,
+                          onPressed: widget.onClose,
+                          icon: const Icon(Icons.close_rounded),
+                          color: Colors.white70,
+                          iconSize: 20,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const Divider(height: 1, color: Colors.white12),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
                 Expanded(
-                  child: ListView.builder(
+                  child: GridView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemExtent: _itemExtent,
+                    padding: const EdgeInsets.all(_panelPadding),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: _chipMaxCross,
+                          mainAxisExtent: _chipExtent,
+                          mainAxisSpacing: _chipSpacing,
+                          crossAxisSpacing: _chipSpacing,
+                        ),
                     itemCount: widget.chapters.length,
                     itemBuilder: (context, index) {
                       final chapter = widget.chapters[index];
                       final selected =
                           chapter.uuid == widget.currentChapterUuid;
-                      return _PlayerPlaylistItem(
-                        chapter: chapter,
+                      return _PlayerPlaylistChip(
+                        label: chapter.name,
                         selected: selected,
-                        textStyle: itemTextStyle,
+                        primary: cs.primary,
+                        onPrimary: cs.onPrimary,
                         onTap: () => widget.onSelected(chapter),
                       );
                     },
@@ -759,53 +866,54 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
   }
 }
 
-class _PlayerPlaylistItem extends StatelessWidget {
-  final AnimeChapter chapter;
+class _PlayerPlaylistChip extends StatelessWidget {
+  final String label;
   final bool selected;
-  final TextStyle textStyle;
+  final Color primary;
+  final Color onPrimary;
   final VoidCallback onTap;
 
-  const _PlayerPlaylistItem({
-    required this.chapter,
+  const _PlayerPlaylistChip({
+    required this.label,
     required this.selected,
-    required this.textStyle,
+    required this.primary,
+    required this.onPrimary,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? const Color(0xFF03A9F4) : Colors.white;
-
     return Material(
-      color: selected
-          ? const Color(0xFF03A9F4).withValues(alpha: 0.16)
-          : Colors.transparent,
+      color: selected ? primary : Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 24,
-                child: selected
-                    ? const Icon(
-                        Icons.play_arrow_rounded,
-                        color: Color(0xFF03A9F4),
-                        size: 20,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  chapter.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textStyle.copyWith(color: color),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected
+                  ? primary
+                  : Colors.white.withValues(alpha: 0.14),
+              width: selected ? 1.4 : 0.8,
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: selected ? onPrimary : Colors.white,
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

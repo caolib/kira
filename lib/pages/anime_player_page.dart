@@ -4,7 +4,9 @@ import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -701,7 +703,6 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
 
     _lastDanmakuSec = -1;
     _playbackProgressRestored = true;
-    setState(() {});
   }
 
   Future<void> _waitForPlaybackBeforeRestore(int serial) async {
@@ -929,29 +930,6 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
 
   Widget _buildVideoWithControls() {
     return _buildVideoSurface(_videoController, fullscreen: false);
-  }
-
-  Future<void> _resumeFromPlaybackRecord() async {
-    final record = _playbackRecord;
-    if (!_isRestorablePlaybackRecord(record)) return;
-    final restored = await _seekToPlaybackProgress(
-      record!.position,
-      _openMediaSerial,
-    );
-    if (!mounted) return;
-    if (restored) {
-      _lastDanmakuSec = -1;
-      _showPlayerHint(
-        AppLocalizations.of(
-          context,
-        )!.animePlayerSeekedTo(_formatDuration(record.position)),
-      );
-    } else {
-      _showPlayerHint(
-        AppLocalizations.of(context)!.animePlayerSeekLastFailed,
-        isError: true,
-      );
-    }
   }
 
   Future<String> _normalizedAnimeName() async {
@@ -1213,7 +1191,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       danmakuVisible: _danmakuVisible,
       onToggleDanmaku: _toggleDanmaku,
       onSkipForward: _skipForward,
-      onSettings: _showSettingsPanel,
+      onDanmakuSettings: () => _showSettingsPanel(danmakuOnly: true),
       chapters: _chapters,
       currentChapterUuid: _currentChapterUuid,
       onChapterSelected: _openChapter,
@@ -1256,7 +1234,55 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
     }
   }
 
-  void _showSettingsPanel() {
+  void _showSettingsPanel({bool danmakuOnly = false}) {
+    final panel = _PlayerSettingsPanel(
+      onChanged: () => setState(() {}),
+      danmakuController: _danmakuController,
+      danmakuVisible: _danmakuVisible,
+      danmakuOnly: danmakuOnly,
+      onDanmakuVisibleChanged: (v) {
+        setState(() => _danmakuVisible = v);
+        _user.setDanmakuEnabled(v);
+        if (v) _lastDanmakuSec = -1;
+      },
+    );
+
+    // 弹幕设置：右侧侧边栏；完整设置：底部 sheet
+    if (danmakuOnly) {
+      showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'danmaku-settings',
+        barrierColor: Colors.black54,
+        transitionDuration: const Duration(milliseconds: 220),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          final size = MediaQuery.sizeOf(context);
+          final width = (size.width * 0.42).clamp(300.0, 420.0).toDouble();
+          return Align(
+            alignment: Alignment.centerRight,
+            child: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: width,
+                height: size.height,
+                child: panel,
+              ),
+            ),
+          );
+        },
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          final offset = Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          );
+          return SlideTransition(position: offset, child: child);
+        },
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1264,16 +1290,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.5,
       ),
-      builder: (_) => _PlayerSettingsPanel(
-        onChanged: () => setState(() {}),
-        danmakuController: _danmakuController,
-        danmakuVisible: _danmakuVisible,
-        onDanmakuVisibleChanged: (v) {
-          setState(() => _danmakuVisible = v);
-          _user.setDanmakuEnabled(v);
-          if (v) _lastDanmakuSec = -1;
-        },
-      ),
+      builder: (_) => panel,
     );
   }
 
@@ -1300,6 +1317,12 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         _player.pause();
       },
       child: Scaffold(
+        floatingActionButton: FloatingActionButton.small(
+          heroTag: 'anime_player_settings',
+          tooltip: l10n.animePlayerSetSkipSeconds,
+          onPressed: _showSettingsPanel,
+          child: const Icon(Icons.settings),
+        ),
         body: Column(
           children: [
             ColoredBox(
@@ -1378,15 +1401,6 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
                     ),
                     if (_danmakuVisible) ...[
                       const SizedBox(height: 24),
-                      if (_isRestorablePlaybackRecord(_playbackRecord)) ...[
-                        _PlaybackProgressHint(
-                          record: _playbackRecord!,
-                          restored: _playbackProgressRestored,
-                          onResume: () =>
-                              unawaited(_resumeFromPlaybackRecord()),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
                       _InlineSearchPanel(
                         segments: _searchSegments,
                         selectedIndices: _selectedSegmentIndices,

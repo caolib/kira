@@ -4,12 +4,14 @@ class _PlayerSettingsPanel extends StatefulWidget {
   final VoidCallback onChanged;
   final DanmakuController? danmakuController;
   final bool danmakuVisible;
+  final bool danmakuOnly;
   final ValueChanged<bool> onDanmakuVisibleChanged;
 
   const _PlayerSettingsPanel({
     required this.onChanged,
     this.danmakuController,
     required this.danmakuVisible,
+    this.danmakuOnly = false,
     required this.onDanmakuVisibleChanged,
   });
 
@@ -69,81 +71,97 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
 
     return Material(
       color: cs.surface,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: widget.danmakuOnly
+          ? const BorderRadius.horizontal(left: Radius.circular(16))
+          : const BorderRadius.vertical(top: Radius.circular(20)),
       clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
+      child: SafeArea(
+        left: !widget.danmakuOnly,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!widget.danmakuOnly)
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                )
+              else
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: IconButton(
+                    tooltip: AppLocalizations.of(context)!.closeButton,
+                    onPressed: () => Navigator.maybePop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
+              if (!widget.danmakuOnly) const SizedBox(height: 16),
 
-            // Playback settings
-            Text(
-              AppLocalizations.of(context)!.playerSettingsPlaybackTitle,
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context)!.playerSettingsSkipSeconds,
-              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              AppLocalizations.of(context)!.playerSettingsSkipSecondsDesc,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: TextEditingController(text: _skipSeconds.toString()),
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(
-                  context,
-                )!.playerSettingsSecondsLabel,
-                suffixText: AppLocalizations.of(context)!.readerSecondsSuffix,
-                border: const OutlineInputBorder(),
+            if (!widget.danmakuOnly) ...[
+              // Playback settings
+              Text(
+                AppLocalizations.of(context)!.playerSettingsPlaybackTitle,
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              onChanged: (v) {
-                final value = int.tryParse(v);
-                if (value != null && value > 0) {
-                  _skipSeconds = value;
-                  _user.setAnimeSkipSeconds(value);
-                  widget.onChanged();
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                AppLocalizations.of(context)!.playerSettingsRecordProgress,
+              const SizedBox(height: 16),
+              Text(
+                AppLocalizations.of(context)!.playerSettingsSkipSeconds,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
-              subtitle: Text(
-                AppLocalizations.of(context)!.playerSettingsRecordProgressDesc,
+              const SizedBox(height: 4),
+              Text(
+                AppLocalizations.of(context)!.playerSettingsSkipSecondsDesc,
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
-              value: _playbackProgressEnabled,
-              onChanged: (v) {
-                setState(() => _playbackProgressEnabled = v);
-                _user.setAnimePlaybackProgressEnabled(v);
-                widget.onChanged();
-              },
-            ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: TextEditingController(text: _skipSeconds.toString()),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(
+                    context,
+                  )!.playerSettingsSecondsLabel,
+                  suffixText: AppLocalizations.of(context)!.readerSecondsSuffix,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (v) {
+                  final value = int.tryParse(v);
+                  if (value != null && value > 0) {
+                    _skipSeconds = value;
+                    _user.setAnimeSkipSeconds(value);
+                    widget.onChanged();
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  AppLocalizations.of(context)!.playerSettingsRecordProgress,
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  AppLocalizations.of(context)!.playerSettingsRecordProgressDesc,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                value: _playbackProgressEnabled,
+                onChanged: (v) {
+                  setState(() => _playbackProgressEnabled = v);
+                  _user.setAnimePlaybackProgressEnabled(v);
+                  widget.onChanged();
+                },
+              ),
 
-            const Divider(height: 32),
+              const Divider(height: 32),
+            ],
 
             // Danmaku settings
             Text(
@@ -291,6 +309,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
               ),
             ],
           ],
+        ),
         ),
       ),
     );

@@ -56,7 +56,9 @@ Run these from the repository root:
 - `dart run build_runner build` — regenerate `.g.dart` files after model changes
 - `flutter gen-l10n` — regenerate localization files after ARB changes
 
-After completing any code change while a Flutter app is connected through the Dart MCP/DTD tools, run MCP hot reload (`dart_hot_reload`) before reporting completion, then check runtime errors.
+After completing any code change:
+1. Run `flutter analyze` and report results.
+2. If a Flutter app is connected through Dart MCP/DTD tools, run hot reload (`dart_hot_reload`) before reporting completion, then check runtime errors. If DTD is not connected, try `listDtdUris` → `connect` first; if still unavailable, note that hot reload was skipped.
 
 ### Windows Build Note
 If building on Windows and `flutter_secure_storage` fails to find ATL, ensure `windows/CMakeLists.txt` includes the ATL auto-discovery block that scans all MSVC tool versions for `atlmfc`.
