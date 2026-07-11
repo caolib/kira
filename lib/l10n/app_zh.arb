@@ -873,7 +873,7 @@
   "aboutJoinGroupButton": "加入群聊",
   "aboutGroupNumberCopiedToast": "已复制群号",
   "aboutMirrorPrefixTitle": "设置镜像源",
-  "aboutMirrorPrefixDesc": "用于更新弹窗中的镜像下载链接，会拼接在 GitHub 下载地址前。",
+  "aboutMirrorPrefixDesc": "用于更新与播放组件下载的镜像链接，会拼接在 GitHub 下载地址前。",
   "aboutMirrorPrefixLabel": "镜像源地址",
   "aboutMirrorPrefixHelper": "留空将恢复默认镜像源",
   "aboutInvalidMirrorPrefix": "请输入有效的 http(s) 地址",
@@ -948,6 +948,14 @@
       }
     }
   },
+  "cacheMediaKitDataTarget": "播放组件（{size}）",
+  "@cacheMediaKitDataTarget": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "cacheDeleteSelectedTitle": "删除选中缓存",
   "cacheDeleteSelectedContent": "确定要删除选中卡片中的 {targets} 吗？此操作不可恢复。",
   "@cacheDeleteSelectedContent": {
@@ -995,6 +1003,24 @@
   "cacheReaderImageDesc": "漫画章节图片缓存。再次打开读过的章节时，图片会优先从这里读取。",
   "cacheDefaultImageLabel": "图片缓存 / 封面与头像",
   "cacheDefaultImageDesc": "封面、头像等 CachedNetworkImage 默认使用的图片缓存。",
+  "cacheMediaKitLabel": "播放组件 / media_kit",
+  "cacheMediaKitDesc": "动漫播放器原生库（libmpv 等）。首次播放时按需下载；删除后下次播放会重新下载。",
+  "cacheMediaKitSection": "播放组件",
+  "cacheNoMediaKitToClear": "尚未下载播放组件",
+  "cacheClearMediaKitTitle": "删除播放组件",
+  "cacheClearMediaKitContent": "确定删除已下载的播放组件吗？将删除 {fileCount} 个文件，释放约 {size}。下次播放动漫时会重新下载。",
+  "@cacheClearMediaKitContent": {
+    "placeholders": {
+      "fileCount": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheMediaKitClearedToast": "已删除播放组件",
+  "cacheMediaKitVersionLabel": "组件版本",
   "commentSettingsEditBuiltInPromptTitle": "编辑内置提示词",
   "commentSettingsEditPromptTitle": "编辑提示词",
   "commentSettingsAddPromptTitle": "添加提示词",
@@ -1604,9 +1630,10 @@
       }
     }
   },
-  "cacheManagementSummaryDesc": "按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片文件缓存可单独清理。",
+  "cacheManagementSummaryDesc": "按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片与播放组件可单独清理。",
   "cacheImageCacheSection": "图片缓存",
   "cacheDataCacheSection": "数据缓存",
+
   "cacheNoLocalKeyValueData": "没有可显示的本地键值数据",
   "cacheEntryCountSize": "{count} 项 · {size}",
   "@cacheEntryCountSize": {
@@ -2100,5 +2127,74 @@
   "spoilerWarningContent": "真的要打开吗？前方是地狱啊！",
   "openButton": "打开",
   "spoilerSuspectedComment": "这是一条高度剧透嫌疑的评论",
-  "spoilerTapToView": "含剧透，点击查看"
+  "spoilerTapToView": "含剧透，点击查看",
+  "mediaKitDownloadTitle": "需要下载播放组件",
+  "mediaKitDownloadMessage": "首次使用动漫播放功能需下载播放组件（{size}）。下载后会保存在本地，软件更新无需重新下载。",
+  "@mediaKitDownloadMessage": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadSourceLabel": "下载来源",
+  "mediaKitDownloadSourceGithub": "GitHub",
+  "mediaKitDownloadSourceGithubHint": "直连 GitHub 官方资源",
+  "mediaKitDownloadSourceMirror": "镜像下载",
+  "mediaKitDownloadSourceMirrorHint": "使用当前镜像：{mirror}",
+  "@mediaKitDownloadSourceMirrorHint": {
+    "placeholders": {
+      "mirror": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadConfirm": "开始下载",
+  "mediaKitDownloadingTitle": "正在下载播放组件",
+  "mediaKitDownloadFailedTitle": "下载失败",
+  "mediaKitDownloadFailed": "下载播放组件失败：{error}",
+  "@mediaKitDownloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitInitFailed": "播放器初始化失败：{error}",
+  "@mediaKitInitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+    "mediaKitDownloadStageConnect": "正在连接…",
+  "mediaKitDownloadBytesProgress": "{received} / {total}",
+  "@mediaKitDownloadBytesProgress": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadBytesOnly": "已下载 {received}",
+  "@mediaKitDownloadBytesOnly": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadTimeout": "连接或下载超时，请切换 GitHub/镜像后重试",
+  "mediaKitDownloadNetworkError": "网络连接失败，请检查网络或切换下载来源",
+  "mediaKitDownloadStagePrepare": "准备中…",
+  "mediaKitDownloadStageDownload": "正在下载…",
+  "mediaKitDownloadStageVerify": "校验文件…",
+  "mediaKitDownloadStageExtract": "解压组件…",
+  "mediaKitDownloadStageLoad": "加载组件…",
+  "mediaKitDownloadStageDone": "完成"
+
 }

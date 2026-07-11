@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:system_fonts/system_fonts.dart';
 
 import 'l10n/app_localizations.dart';
@@ -51,7 +50,7 @@ void main() {
         return true;
       };
 
-      MediaKit.ensureInitialized();
+      // media_kit 原生库在 Android 上按需下载，首次播放时再 ensureInitialized。
       await UserManager().init();
       await NetworkProxy.init();
       if (isDesktop) {

@@ -1314,7 +1314,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutMirrorPrefixTitle => '设置镜像源';
 
   @override
-  String get aboutMirrorPrefixDesc => '用于更新弹窗中的镜像下载链接，会拼接在 GitHub 下载地址前。';
+  String get aboutMirrorPrefixDesc => '用于更新与播放组件下载的镜像链接，会拼接在 GitHub 下载地址前。';
 
   @override
   String get aboutMirrorPrefixLabel => '镜像源地址';
@@ -1435,6 +1435,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String cacheMediaKitDataTarget(String size) {
+    return '播放组件（$size）';
+  }
+
+  @override
   String get cacheDeleteSelectedTitle => '删除选中缓存';
 
   @override
@@ -1480,6 +1485,32 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cacheDefaultImageDesc => '封面、头像等 CachedNetworkImage 默认使用的图片缓存。';
+
+  @override
+  String get cacheMediaKitLabel => '播放组件 / media_kit';
+
+  @override
+  String get cacheMediaKitDesc => '动漫播放器原生库（libmpv 等）。首次播放时按需下载；删除后下次播放会重新下载。';
+
+  @override
+  String get cacheMediaKitSection => '播放组件';
+
+  @override
+  String get cacheNoMediaKitToClear => '尚未下载播放组件';
+
+  @override
+  String get cacheClearMediaKitTitle => '删除播放组件';
+
+  @override
+  String cacheClearMediaKitContent(int fileCount, String size) {
+    return '确定删除已下载的播放组件吗？将删除 $fileCount 个文件，释放约 $size。下次播放动漫时会重新下载。';
+  }
+
+  @override
+  String get cacheMediaKitClearedToast => '已删除播放组件';
+
+  @override
+  String get cacheMediaKitVersionLabel => '组件版本';
 
   @override
   String get commentSettingsEditBuiltInPromptTitle => '编辑内置提示词';
@@ -2269,7 +2300,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cacheManagementSummaryDesc =>
-      '按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片文件缓存可单独清理。';
+      '按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片与播放组件可单独清理。';
 
   @override
   String get cacheImageCacheSection => '图片缓存';
@@ -3117,6 +3148,87 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get spoilerTapToView => '含剧透，点击查看';
+
+  @override
+  String get mediaKitDownloadTitle => '需要下载播放组件';
+
+  @override
+  String mediaKitDownloadMessage(String size) {
+    return '首次使用动漫播放功能需下载播放组件（$size）。下载后会保存在本地，软件更新无需重新下载。';
+  }
+
+  @override
+  String get mediaKitDownloadSourceLabel => '下载来源';
+
+  @override
+  String get mediaKitDownloadSourceGithub => 'GitHub';
+
+  @override
+  String get mediaKitDownloadSourceGithubHint => '直连 GitHub 官方资源';
+
+  @override
+  String get mediaKitDownloadSourceMirror => '镜像下载';
+
+  @override
+  String mediaKitDownloadSourceMirrorHint(String mirror) {
+    return '使用当前镜像：$mirror';
+  }
+
+  @override
+  String get mediaKitDownloadConfirm => '开始下载';
+
+  @override
+  String get mediaKitDownloadingTitle => '正在下载播放组件';
+
+  @override
+  String get mediaKitDownloadFailedTitle => '下载失败';
+
+  @override
+  String mediaKitDownloadFailed(String error) {
+    return '下载播放组件失败：$error';
+  }
+
+  @override
+  String mediaKitInitFailed(String error) {
+    return '播放器初始化失败：$error';
+  }
+
+  @override
+  String get mediaKitDownloadStageConnect => '正在连接…';
+
+  @override
+  String mediaKitDownloadBytesProgress(String received, String total) {
+    return '$received / $total';
+  }
+
+  @override
+  String mediaKitDownloadBytesOnly(String received) {
+    return '已下载 $received';
+  }
+
+  @override
+  String get mediaKitDownloadTimeout => '连接或下载超时，请切换 GitHub/镜像后重试';
+
+  @override
+  String get mediaKitDownloadNetworkError => '网络连接失败，请检查网络或切换下载来源';
+
+  @override
+  String get mediaKitDownloadStagePrepare => '准备中…';
+
+  @override
+  String get mediaKitDownloadStageDownload => '正在下载…';
+
+  @override
+  String get mediaKitDownloadStageVerify => '校验文件…';
+
+  @override
+  String get mediaKitDownloadStageExtract => '解压组件…';
+
+  @override
+  String get mediaKitDownloadStageLoad => '加载组件…';
+
+  @override
+  String get mediaKitDownloadStageDone => '完成';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -4429,7 +4541,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutMirrorPrefixTitle => '設定鏡像源';
 
   @override
-  String get aboutMirrorPrefixDesc => '用於更新彈窗中的鏡像下載連結，會拼接在 GitHub 下載地址前。';
+  String get aboutMirrorPrefixDesc => '用於更新與播放元件下載的鏡像連結，會拼接在 GitHub 下載地址前。';
 
   @override
   String get aboutMirrorPrefixLabel => '鏡像源地址';
@@ -4550,6 +4662,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String cacheMediaKitDataTarget(String size) {
+    return '播放元件（$size）';
+  }
+
+  @override
   String get cacheDeleteSelectedTitle => '刪除選中快取';
 
   @override
@@ -4595,6 +4712,32 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get cacheDefaultImageDesc => '封面、頭像等 CachedNetworkImage 預設使用的圖片快取。';
+
+  @override
+  String get cacheMediaKitLabel => '播放元件 / media_kit';
+
+  @override
+  String get cacheMediaKitDesc => '動漫播放器原生庫（libmpv 等）。首次播放時按需下載；刪除後下次播放會重新下載。';
+
+  @override
+  String get cacheMediaKitSection => '播放元件';
+
+  @override
+  String get cacheNoMediaKitToClear => '尚未下載播放元件';
+
+  @override
+  String get cacheClearMediaKitTitle => '刪除播放元件';
+
+  @override
+  String cacheClearMediaKitContent(int fileCount, String size) {
+    return '確定刪除已下載的播放元件嗎？將刪除 $fileCount 個檔案，釋放約 $size。下次播放動漫時會重新下載。';
+  }
+
+  @override
+  String get cacheMediaKitClearedToast => '已刪除播放元件';
+
+  @override
+  String get cacheMediaKitVersionLabel => '元件版本';
 
   @override
   String get commentSettingsEditBuiltInPromptTitle => '編輯內建提示詞';
@@ -5384,7 +5527,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get cacheManagementSummaryDesc =>
-      '按快取、帳號、設定、歷史等分類顯示；AI 配置 key 已隱藏；圖片檔案快取可單獨清理。';
+      '按快取、帳號、設定、歷史等分類顯示；AI 配置 key 已隱藏；圖片與播放元件可單獨清理。';
 
   @override
   String get cacheImageCacheSection => '圖片快取';
@@ -6232,4 +6375,85 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get spoilerTapToView => '含劇透，點擊查看';
+
+  @override
+  String get mediaKitDownloadTitle => '需要下載播放元件';
+
+  @override
+  String mediaKitDownloadMessage(String size) {
+    return '首次使用動漫播放功能需下載播放元件（$size）。下載後會保存在本地，軟體更新無需重新下載。';
+  }
+
+  @override
+  String get mediaKitDownloadSourceLabel => '下載來源';
+
+  @override
+  String get mediaKitDownloadSourceGithub => 'GitHub';
+
+  @override
+  String get mediaKitDownloadSourceGithubHint => '直連 GitHub 官方資源';
+
+  @override
+  String get mediaKitDownloadSourceMirror => '鏡像下載';
+
+  @override
+  String mediaKitDownloadSourceMirrorHint(String mirror) {
+    return '使用目前鏡像：$mirror';
+  }
+
+  @override
+  String get mediaKitDownloadConfirm => '開始下載';
+
+  @override
+  String get mediaKitDownloadingTitle => '正在下載播放元件';
+
+  @override
+  String get mediaKitDownloadFailedTitle => '下載失敗';
+
+  @override
+  String mediaKitDownloadFailed(String error) {
+    return '下載播放元件失敗：$error';
+  }
+
+  @override
+  String mediaKitInitFailed(String error) {
+    return '播放器初始化失敗：$error';
+  }
+
+  @override
+  String get mediaKitDownloadStageConnect => '正在連線…';
+
+  @override
+  String mediaKitDownloadBytesProgress(String received, String total) {
+    return '$received / $total';
+  }
+
+  @override
+  String mediaKitDownloadBytesOnly(String received) {
+    return '已下載 $received';
+  }
+
+  @override
+  String get mediaKitDownloadTimeout => '連線或下載逾時，請切換 GitHub/鏡像後重試';
+
+  @override
+  String get mediaKitDownloadNetworkError => '網路連線失敗，請檢查網路或切換下載來源';
+
+  @override
+  String get mediaKitDownloadStagePrepare => '準備中…';
+
+  @override
+  String get mediaKitDownloadStageDownload => '正在下載…';
+
+  @override
+  String get mediaKitDownloadStageVerify => '校驗檔案…';
+
+  @override
+  String get mediaKitDownloadStageExtract => '解壓元件…';
+
+  @override
+  String get mediaKitDownloadStageLoad => '載入元件…';
+
+  @override
+  String get mediaKitDownloadStageDone => '完成';
 }

@@ -19,7 +19,9 @@ import '../utils/dandanplay_episode_binding.dart';
 import '../utils/data_cache.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_cover_card.dart' show ComicCoverCard;
+import '../widgets/media_kit_download_dialog.dart';
 import 'bangumi_comments_section.dart';
+
 
 part 'anime_detail/anime_detail_models.dart';
 part 'anime_detail/anime_detail_widgets.dart';
@@ -843,6 +845,9 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       showToast(context, l10n.animeDetailNoAvailableLine, isError: true);
       return;
     }
+
+    if (!await ensureAnimePlayerReady(context)) return;
+    if (!mounted) return;
 
     await context.pushNamed(
       AppRoutes.animePlayer,

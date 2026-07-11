@@ -11,6 +11,8 @@ import '../utils/cover_brightness_filter.dart';
 import '../utils/toast.dart';
 import '../widgets/detail_chip.dart';
 import '../widgets/local_content_list_page.dart';
+import '../widgets/media_kit_download_dialog.dart';
+
 
 class LocalAnimePage extends StatefulWidget {
   final bool embedded;
@@ -135,7 +137,7 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
     });
   }
 
-  void _playChapter(DownloadedAnimeChapterSummary summary) {
+  Future<void> _playChapter(DownloadedAnimeChapterSummary summary) async {
     final videoPath = _downloads.getLocalVideoPath(
       widget.pathWord,
       summary.chapterUuid,
@@ -148,7 +150,9 @@ class _LocalAnimeDetailPageState extends State<LocalAnimeDetailPage> {
       );
       return;
     }
-    context.pushNamed(
+    if (!await ensureAnimePlayerReady(context)) return;
+    if (!mounted) return;
+    await context.pushNamed(
       AppRoutes.animePlayer,
       pathParameters: {
         'pathWord': widget.pathWord,

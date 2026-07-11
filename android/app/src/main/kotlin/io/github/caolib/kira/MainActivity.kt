@@ -5,8 +5,10 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
+import com.alexmercerind.mediakitandroidhelper.MediaKitAndroidHelper
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -20,9 +22,11 @@ class MainActivity : FlutterActivity() {
     private var hlsChannel: MethodChannel? = null
     private var displayModeChannel: MethodChannel? = null
     private var iconChannel: MethodChannel? = null
+    private var nativeLibsChannel: MethodChannel? = null
     private var interceptVolume = false
 
     companion object {
+        private const val TAG = "KiraMainActivity"
         private val LAUNCHER_ALIASES = listOf(
             ".LauncherDefault",
             ".LauncherAlt1",
@@ -143,6 +147,45 @@ class MainActivity : FlutterActivity() {
                 "getAppIconIndex" -> {
                     val index = getCurrentIconIndex()
                     result.success(index)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        nativeLibsChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "io.github.caolib.kira/native_libs"
+        )
+        nativeLibsChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getPrimaryAbi" -> {
+                    val abis = Build.SUPPORTED_ABIS
+                    result.success(if (abis.isNotEmpty()) abis[0] else "arm64-v8a")
+                }
+                "loadLibraries" -> {
+                    val paths = call.argument<List<String>>("paths")
+                    if (paths.isNullOrEmpty()) {
+                        result.error("bad_request", "Missing paths", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        for (path in paths) {
+                            System.load(path)
+                        }
+                        // Critical: media_kit AndroidHelper polls GetJavaVM in a
+                        // tight sleep loop until setApplicationContextNative stores
+                        // the JavaVM. Without this, the Flutter UI freezes forever.
+                        MediaKitAndroidHelper.setApplicationContextJava(applicationContext)
+                        Log.i(TAG, "media_kit native libs loaded and JavaVM bound")
+                        result.success(null)
+                    } catch (e: Throwable) {
+                        Log.e(TAG, "loadLibraries failed", e)
+                        result.error(
+                            "load_failed",
+                            "${e.javaClass.simpleName}: ${e.message}",
+                            null
+                        )
+                    }
                 }
                 else -> result.notImplemented()
             }

@@ -873,7 +873,7 @@
   "aboutJoinGroupButton": "加入群聊",
   "aboutGroupNumberCopiedToast": "已複製群號",
   "aboutMirrorPrefixTitle": "設定鏡像源",
-  "aboutMirrorPrefixDesc": "用於更新彈窗中的鏡像下載連結，會拼接在 GitHub 下載地址前。",
+  "aboutMirrorPrefixDesc": "用於更新與播放元件下載的鏡像連結，會拼接在 GitHub 下載地址前。",
   "aboutMirrorPrefixLabel": "鏡像源地址",
   "aboutMirrorPrefixHelper": "留空將恢復預設鏡像源",
   "aboutInvalidMirrorPrefix": "請輸入有效的 http(s) 地址",
@@ -948,6 +948,14 @@
       }
     }
   },
+  "cacheMediaKitDataTarget": "播放元件（{size}）",
+  "@cacheMediaKitDataTarget": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "cacheDeleteSelectedTitle": "刪除選中快取",
   "cacheDeleteSelectedContent": "確定要刪除選中卡片中的 {targets} 嗎？此操作無法復原。",
   "@cacheDeleteSelectedContent": {
@@ -995,6 +1003,24 @@
   "cacheReaderImageDesc": "漫畫章節圖片快取。再次開啟讀過的章節時，圖片會優先從這裡讀取。",
   "cacheDefaultImageLabel": "圖片快取 / 封面與頭像",
   "cacheDefaultImageDesc": "封面、頭像等 CachedNetworkImage 預設使用的圖片快取。",
+  "cacheMediaKitLabel": "播放元件 / media_kit",
+  "cacheMediaKitDesc": "動漫播放器原生庫（libmpv 等）。首次播放時按需下載；刪除後下次播放會重新下載。",
+  "cacheMediaKitSection": "播放元件",
+  "cacheNoMediaKitToClear": "尚未下載播放元件",
+  "cacheClearMediaKitTitle": "刪除播放元件",
+  "cacheClearMediaKitContent": "確定刪除已下載的播放元件嗎？將刪除 {fileCount} 個檔案，釋放約 {size}。下次播放動漫時會重新下載。",
+  "@cacheClearMediaKitContent": {
+    "placeholders": {
+      "fileCount": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheMediaKitClearedToast": "已刪除播放元件",
+  "cacheMediaKitVersionLabel": "元件版本",
   "commentSettingsEditBuiltInPromptTitle": "編輯內建提示詞",
   "commentSettingsEditPromptTitle": "編輯提示詞",
   "commentSettingsAddPromptTitle": "新增提示詞",
@@ -1604,9 +1630,10 @@
       }
     }
   },
-  "cacheManagementSummaryDesc": "按快取、帳號、設定、歷史等分類顯示；AI 配置 key 已隱藏；圖片檔案快取可單獨清理。",
+  "cacheManagementSummaryDesc": "按快取、帳號、設定、歷史等分類顯示；AI 配置 key 已隱藏；圖片與播放元件可單獨清理。",
   "cacheImageCacheSection": "圖片快取",
   "cacheDataCacheSection": "資料快取",
+
   "cacheNoLocalKeyValueData": "沒有可顯示的本地鍵值資料",
   "cacheEntryCountSize": "{count} 項 · {size}",
   "@cacheEntryCountSize": {
@@ -2100,5 +2127,74 @@
   "spoilerWarningContent": "真的要打開嗎？前方是地獄啊！",
   "openButton": "打開",
   "spoilerSuspectedComment": "這是一條高度劇透嫌疑的評論",
-  "spoilerTapToView": "含劇透，點擊查看"
+  "spoilerTapToView": "含劇透，點擊查看",
+  "mediaKitDownloadTitle": "需要下載播放元件",
+  "mediaKitDownloadMessage": "首次使用動漫播放功能需下載播放元件（{size}）。下載後會保存在本地，軟體更新無需重新下載。",
+  "@mediaKitDownloadMessage": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadSourceLabel": "下載來源",
+  "mediaKitDownloadSourceGithub": "GitHub",
+  "mediaKitDownloadSourceGithubHint": "直連 GitHub 官方資源",
+  "mediaKitDownloadSourceMirror": "鏡像下載",
+  "mediaKitDownloadSourceMirrorHint": "使用目前鏡像：{mirror}",
+  "@mediaKitDownloadSourceMirrorHint": {
+    "placeholders": {
+      "mirror": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadConfirm": "開始下載",
+  "mediaKitDownloadingTitle": "正在下載播放元件",
+  "mediaKitDownloadFailedTitle": "下載失敗",
+  "mediaKitDownloadFailed": "下載播放元件失敗：{error}",
+  "@mediaKitDownloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitInitFailed": "播放器初始化失敗：{error}",
+  "@mediaKitInitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+    "mediaKitDownloadStageConnect": "正在連線…",
+  "mediaKitDownloadBytesProgress": "{received} / {total}",
+  "@mediaKitDownloadBytesProgress": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadBytesOnly": "已下載 {received}",
+  "@mediaKitDownloadBytesOnly": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaKitDownloadTimeout": "連線或下載逾時，請切換 GitHub/鏡像後重試",
+  "mediaKitDownloadNetworkError": "網路連線失敗，請檢查網路或切換下載來源",
+  "mediaKitDownloadStagePrepare": "準備中…",
+  "mediaKitDownloadStageDownload": "正在下載…",
+  "mediaKitDownloadStageVerify": "校驗檔案…",
+  "mediaKitDownloadStageExtract": "解壓元件…",
+  "mediaKitDownloadStageLoad": "載入元件…",
+  "mediaKitDownloadStageDone": "完成"
+
 }

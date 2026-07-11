@@ -2427,7 +2427,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutMirrorPrefixDesc.
   ///
   /// In zh, this message translates to:
-  /// **'用于更新弹窗中的镜像下载链接，会拼接在 GitHub 下载地址前。'**
+  /// **'用于更新与播放组件下载的镜像链接，会拼接在 GitHub 下载地址前。'**
   String get aboutMirrorPrefixDesc;
 
   /// No description provided for @aboutMirrorPrefixLabel.
@@ -2646,6 +2646,12 @@ abstract class AppLocalizations {
   /// **'{count} 个图片缓存（{size}）'**
   String cacheImageDataTarget(int count, String size);
 
+  /// No description provided for @cacheMediaKitDataTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放组件（{size}）'**
+  String cacheMediaKitDataTarget(String size);
+
   /// No description provided for @cacheDeleteSelectedTitle.
   ///
   /// In zh, this message translates to:
@@ -2723,6 +2729,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'封面、头像等 CachedNetworkImage 默认使用的图片缓存。'**
   String get cacheDefaultImageDesc;
+
+  /// No description provided for @cacheMediaKitLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放组件 / media_kit'**
+  String get cacheMediaKitLabel;
+
+  /// No description provided for @cacheMediaKitDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'动漫播放器原生库（libmpv 等）。首次播放时按需下载；删除后下次播放会重新下载。'**
+  String get cacheMediaKitDesc;
+
+  /// No description provided for @cacheMediaKitSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放组件'**
+  String get cacheMediaKitSection;
+
+  /// No description provided for @cacheNoMediaKitToClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未下载播放组件'**
+  String get cacheNoMediaKitToClear;
+
+  /// No description provided for @cacheClearMediaKitTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除播放组件'**
+  String get cacheClearMediaKitTitle;
+
+  /// No description provided for @cacheClearMediaKitContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除已下载的播放组件吗？将删除 {fileCount} 个文件，释放约 {size}。下次播放动漫时会重新下载。'**
+  String cacheClearMediaKitContent(int fileCount, String size);
+
+  /// No description provided for @cacheMediaKitClearedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除播放组件'**
+  String get cacheMediaKitClearedToast;
+
+  /// No description provided for @cacheMediaKitVersionLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件版本'**
+  String get cacheMediaKitVersionLabel;
 
   /// No description provided for @commentSettingsEditBuiltInPromptTitle.
   ///
@@ -4094,7 +4148,7 @@ abstract class AppLocalizations {
   /// No description provided for @cacheManagementSummaryDesc.
   ///
   /// In zh, this message translates to:
-  /// **'按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片文件缓存可单独清理。'**
+  /// **'按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片与播放组件可单独清理。'**
   String get cacheManagementSummaryDesc;
 
   /// No description provided for @cacheImageCacheSection.
@@ -5668,6 +5722,144 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'含剧透，点击查看'**
   String get spoilerTapToView;
+
+  /// No description provided for @mediaKitDownloadTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要下载播放组件'**
+  String get mediaKitDownloadTitle;
+
+  /// No description provided for @mediaKitDownloadMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'首次使用动漫播放功能需下载播放组件（{size}）。下载后会保存在本地，软件更新无需重新下载。'**
+  String mediaKitDownloadMessage(String size);
+
+  /// No description provided for @mediaKitDownloadSourceLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载来源'**
+  String get mediaKitDownloadSourceLabel;
+
+  /// No description provided for @mediaKitDownloadSourceGithub.
+  ///
+  /// In zh, this message translates to:
+  /// **'GitHub'**
+  String get mediaKitDownloadSourceGithub;
+
+  /// No description provided for @mediaKitDownloadSourceGithubHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'直连 GitHub 官方资源'**
+  String get mediaKitDownloadSourceGithubHint;
+
+  /// No description provided for @mediaKitDownloadSourceMirror.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像下载'**
+  String get mediaKitDownloadSourceMirror;
+
+  /// No description provided for @mediaKitDownloadSourceMirrorHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用当前镜像：{mirror}'**
+  String mediaKitDownloadSourceMirrorHint(String mirror);
+
+  /// No description provided for @mediaKitDownloadConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始下载'**
+  String get mediaKitDownloadConfirm;
+
+  /// No description provided for @mediaKitDownloadingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在下载播放组件'**
+  String get mediaKitDownloadingTitle;
+
+  /// No description provided for @mediaKitDownloadFailedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败'**
+  String get mediaKitDownloadFailedTitle;
+
+  /// No description provided for @mediaKitDownloadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载播放组件失败：{error}'**
+  String mediaKitDownloadFailed(String error);
+
+  /// No description provided for @mediaKitInitFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放器初始化失败：{error}'**
+  String mediaKitInitFailed(String error);
+
+  /// No description provided for @mediaKitDownloadStageConnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在连接…'**
+  String get mediaKitDownloadStageConnect;
+
+  /// No description provided for @mediaKitDownloadBytesProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'{received} / {total}'**
+  String mediaKitDownloadBytesProgress(String received, String total);
+
+  /// No description provided for @mediaKitDownloadBytesOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'已下载 {received}'**
+  String mediaKitDownloadBytesOnly(String received);
+
+  /// No description provided for @mediaKitDownloadTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接或下载超时，请切换 GitHub/镜像后重试'**
+  String get mediaKitDownloadTimeout;
+
+  /// No description provided for @mediaKitDownloadNetworkError.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络连接失败，请检查网络或切换下载来源'**
+  String get mediaKitDownloadNetworkError;
+
+  /// No description provided for @mediaKitDownloadStagePrepare.
+  ///
+  /// In zh, this message translates to:
+  /// **'准备中…'**
+  String get mediaKitDownloadStagePrepare;
+
+  /// No description provided for @mediaKitDownloadStageDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在下载…'**
+  String get mediaKitDownloadStageDownload;
+
+  /// No description provided for @mediaKitDownloadStageVerify.
+  ///
+  /// In zh, this message translates to:
+  /// **'校验文件…'**
+  String get mediaKitDownloadStageVerify;
+
+  /// No description provided for @mediaKitDownloadStageExtract.
+  ///
+  /// In zh, this message translates to:
+  /// **'解压组件…'**
+  String get mediaKitDownloadStageExtract;
+
+  /// No description provided for @mediaKitDownloadStageLoad.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载组件…'**
+  String get mediaKitDownloadStageLoad;
+
+  /// No description provided for @mediaKitDownloadStageDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'完成'**
+  String get mediaKitDownloadStageDone;
 }
 
 class _AppLocalizationsDelegate

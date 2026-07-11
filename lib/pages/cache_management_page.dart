@@ -11,6 +11,7 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/app_storage.dart';
+import '../utils/media_kit_native_loader.dart';
 import '../utils/toast.dart';
 
 class CacheManagementPage extends StatefulWidget {
@@ -22,6 +23,7 @@ class CacheManagementPage extends StatefulWidget {
 
 class _CacheManagementPageState extends State<CacheManagementPage> {
   static const _readerImageCacheKey = 'readerImageCache';
+  static const _mediaKitSectionId = 'media_kit_native';
 
   static const _aiConfigKeys = <String>{
     'zhipu_api_key',
@@ -60,6 +62,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   String? _error;
   List<_CacheSection> _sections = const [];
   List<_ImageCacheSection> _imageCacheSections = const [];
+  _MediaKitCacheSection? _mediaKitSection;
   final Set<String> _revealedSensitiveKeys = {};
   bool _selectionMode = false;
   final Set<String> _selectedSectionIds = {};
@@ -124,16 +127,20 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       }
 
       final imageCacheSections = await _loadImageCacheSections();
+      final mediaKitSection = await _loadMediaKitSection();
 
       if (!mounted) return;
       setState(() {
         _sections = sections;
         _imageCacheSections = imageCacheSections;
+        _mediaKitSection = mediaKitSection;
         final sectionIds = <String>{
           ...sections.map((section) => section.id),
           ...imageCacheSections
               .where((section) => !section.isEmpty)
               .map((section) => section.id),
+          if (mediaKitSection != null && !mediaKitSection.isEmpty)
+            mediaKitSection.id,
         };
         _selectedSectionIds.removeWhere((id) => !sectionIds.contains(id));
         if (sectionIds.isEmpty) {
@@ -206,6 +213,11 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     _toggleSectionIdSelected(section.id);
   }
 
+  void _toggleMediaKitSectionSelected(_MediaKitCacheSection section) {
+    if (section.isEmpty) return;
+    _toggleSectionIdSelected(section.id);
+  }
+
   void _toggleSectionIdSelected(String id) {
     setState(() {
       if (!_selectedSectionIds.add(id)) {
@@ -226,11 +238,19 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
           )
           .toList(growable: false);
 
+  bool get _mediaKitSelected {
+    final section = _mediaKitSection;
+    return section != null &&
+        !section.isEmpty &&
+        _selectedSectionIds.contains(section.id);
+  }
+
   Future<void> _deleteSelectedSections() async {
     final l10n = AppLocalizations.of(context)!;
     final sections = _selectedSections;
     final imageSections = _selectedImageCacheSections;
-    if (sections.isEmpty && imageSections.isEmpty) return;
+    final mediaKit = _mediaKitSelected ? _mediaKitSection : null;
+    if (sections.isEmpty && imageSections.isEmpty && mediaKit == null) return;
 
     final entries = sections.expand((section) => section.entries).toList();
     final keys = entries.map((entry) => entry.key).toSet();
@@ -245,6 +265,8 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
           imageSections.length,
           _formatBytes(imageCacheBytes),
         ),
+      if (mediaKit != null)
+        l10n.cacheMediaKitDataTarget(_formatBytes(mediaKit.sizeBytes)),
     ];
     final confirmed = await showDialog<bool>(
       context: context,
@@ -274,6 +296,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       }
       for (final section in imageSections) {
         await _clearImageCacheSection(section);
+      }
+      if (mediaKit != null) {
+        await MediaKitNativeLoader.instance.uninstall();
       }
       if (entries.any((entry) => entry.category == _CacheCategory.account)) {
         ApiClient().user.clearAuthState();
@@ -336,6 +361,50 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     }
   }
 
+  Future<void> _deleteMediaKitSection(_MediaKitCacheSection section) async {
+    final l10n = AppLocalizations.of(context)!;
+    if (section.isEmpty) {
+      showToast(context, l10n.cacheNoMediaKitToClear);
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.cacheClearMediaKitTitle),
+        content: Text(
+          l10n.cacheClearMediaKitContent(
+            section.fileCount,
+            _formatBytes(section.sizeBytes),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancelButton),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.deleteButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await MediaKitNativeLoader.instance.uninstall();
+      if (mounted) {
+        showToast(context, l10n.cacheMediaKitClearedToast);
+      }
+      await _loadEntries();
+    } catch (e) {
+      if (mounted) {
+        showToast(context, l10n.cacheCleanFailedToast('$e'), isError: true);
+      }
+    }
+  }
+
   Future<List<_ImageCacheSection>> _loadImageCacheSections() async {
     final l10n = AppLocalizations.of(context)!;
     final tempDir = await getTemporaryDirectory();
@@ -357,6 +426,24 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         icon: Icons.image_outlined,
       ),
     ];
+  }
+
+  Future<_MediaKitCacheSection?> _loadMediaKitSection() async {
+    final loader = MediaKitNativeLoader.instance;
+    if (!loader.needsOnDemandDownload) return null;
+
+    final l10n = AppLocalizations.of(context)!;
+    final info = await loader.installInfo();
+    return _MediaKitCacheSection(
+      id: _mediaKitSectionId,
+      label: l10n.cacheMediaKitLabel,
+      description: l10n.cacheMediaKitDesc,
+      directoryPath: info.directoryPath,
+      fileCount: info.fileCount,
+      sizeBytes: info.sizeBytes,
+      version: info.version,
+      isInstalled: info.isInstalled,
+    );
   }
 
   Future<_ImageCacheSection> _buildImageCacheSection({
@@ -636,11 +723,13 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       0,
       (sum, section) => sum + section.sizeBytes,
     );
-    final totalBytes = localBytes + imageCacheBytes;
+    final mediaKitBytes = _mediaKitSection?.sizeBytes ?? 0;
+    final totalBytes = localBytes + imageCacheBytes + mediaKitBytes;
     final maxSectionCardHeight = MediaQuery.sizeOf(context).height * 0.5;
     final maxSectionEntriesHeight = (maxSectionCardHeight - 73)
         .clamp(96.0, maxSectionCardHeight)
         .toDouble();
+    final mediaKitSection = _mediaKitSection;
 
     return Scaffold(
       appBar: AppBar(
@@ -720,6 +809,32 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                             _toggleImageSectionSelected(section),
                         onClear: () => _deleteImageCacheSection(section),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (mediaKitSection != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                    child: Text(
+                      l10n.cacheMediaKitSection,
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _MediaKitCacheSectionCard(
+                      section: mediaKitSection,
+                      selectionMode: _selectionMode,
+                      selected: _selectedSectionIds.contains(
+                        mediaKitSection.id,
+                      ),
+                      sizeLabel: _formatBytes(mediaKitSection.sizeBytes),
+                      onToggleSelected: () =>
+                          _toggleMediaKitSectionSelected(mediaKitSection),
+                      onClear: () => _deleteMediaKitSection(mediaKitSection),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1029,6 +1144,92 @@ class _ImageCacheSectionCard extends StatelessWidget {
   }
 }
 
+class _MediaKitCacheSectionCard extends StatelessWidget {
+  const _MediaKitCacheSectionCard({
+    required this.section,
+    required this.selectionMode,
+    required this.selected,
+    required this.sizeLabel,
+    required this.onToggleSelected,
+    required this.onClear,
+  });
+
+  final _MediaKitCacheSection section;
+  final bool selectionMode;
+  final bool selected;
+  final String sizeLabel;
+  final VoidCallback onToggleSelected;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final subtitle = section.isEmpty
+        ? l10n.cacheNoMediaKitToClear
+        : l10n.cacheFileCountSize(section.fileCount, sizeLabel);
+
+    return Card(
+      color: cs.surfaceContainerLow,
+      child: selectionMode
+          ? ListTile(
+              enabled: !section.isEmpty,
+              onTap: section.isEmpty ? null : onToggleSelected,
+              leading: Checkbox(
+                value: selected,
+                onChanged: section.isEmpty ? null : (_) => onToggleSelected(),
+              ),
+              title: Text(section.label),
+              subtitle: Text(subtitle, style: tt.bodySmall),
+              trailing: const Icon(Icons.video_settings_rounded),
+            )
+          : ExpansionTile(
+              shape: const Border(),
+              collapsedShape: const Border(),
+              leading: const Icon(Icons.video_settings_rounded),
+              title: Text(section.label),
+              subtitle: Text(subtitle, style: tt.bodySmall),
+              children: [
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.info_outline_rounded),
+                  title: Text(l10n.cacheDescriptionTitle),
+                  subtitle: Text(section.description),
+                ),
+                if (section.version != null && section.version!.isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.tag_rounded),
+                    title: Text(l10n.cacheMediaKitVersionLabel),
+                    subtitle: Text(section.version!),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.folder_outlined),
+                  title: Text(l10n.cacheDirectoryTitle),
+                  subtitle: SelectableText(
+                    section.directoryPath,
+                    style: tt.bodySmall?.copyWith(fontFamily: 'monospace'),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Row(
+                    children: [
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: section.isEmpty ? null : onClear,
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: Text(l10n.deleteButton),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
 class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.error, required this.onRetry});
 
@@ -1131,6 +1332,30 @@ class _ImageCacheSection {
   final int fileCount;
   final int sizeBytes;
   final IconData icon;
+
+  bool get isEmpty => fileCount == 0 && sizeBytes == 0;
+}
+
+class _MediaKitCacheSection {
+  const _MediaKitCacheSection({
+    required this.id,
+    required this.label,
+    required this.description,
+    required this.directoryPath,
+    required this.fileCount,
+    required this.sizeBytes,
+    required this.version,
+    required this.isInstalled,
+  });
+
+  final String id;
+  final String label;
+  final String description;
+  final String directoryPath;
+  final int fileCount;
+  final int sizeBytes;
+  final String? version;
+  final bool isInstalled;
 
   bool get isEmpty => fileCount == 0 && sizeBytes == 0;
 }
