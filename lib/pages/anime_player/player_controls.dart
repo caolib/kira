@@ -747,11 +747,11 @@ class _PlayerPlaylistOverlay extends StatefulWidget {
 }
 
 class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
-  static const _chipExtent = 40.0;
-  static const _chipMaxCross = 96.0;
-  static const _chipSpacing = 6.0;
-  static const _headerHeight = 48.0;
-  static const _panelPadding = 12.0;
+  static const _chipExtent = 52.0;
+  static const _chipMaxCross = 120.0;
+  static const _chipSpacing = 8.0;
+  static const _headerHeight = 52.0;
+  static const _panelPadding = 14.0;
 
   late final ScrollController _scrollController;
 
@@ -792,7 +792,7 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final size = MediaQuery.sizeOf(context);
-    final width = (size.width * 0.42).clamp(280.0, 420.0).toDouble();
+    final width = (size.width * 0.52).clamp(300.0, 480.0).toDouble();
     final maxHeight = (size.height * 0.88).clamp(240.0, size.height).toDouble();
 
     return Material(
@@ -913,13 +913,13 @@ class _PlayerPlaylistChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected ? primary : Colors.white.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: selected
                   ? primary
@@ -929,7 +929,7 @@ class _PlayerPlaylistChip extends StatelessWidget {
           ),
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 label,
                 maxLines: 1,
@@ -937,7 +937,7 @@ class _PlayerPlaylistChip extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: selected ? onPrimary : Colors.white,
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
