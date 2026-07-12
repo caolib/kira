@@ -554,6 +554,63 @@
   "appearanceSystemDefault": "系统默认",
   "appearanceChooseFont": "选择字体",
   "appearanceSearchFont": "搜索字体",
+  "appearanceFontDeleteTitle": "删除字体",
+  "appearanceFontDeleteContent": "确定要删除字体 {fontId} 吗？删除后将恢复为系统默认字体。",
+  "@appearanceFontDeleteContent": {
+    "placeholders": {
+      "fontId": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceFontNeedDownload": "请先下载字体后再使用",
+  "appearanceFontDownloaded": "{fontId} 下载完成",
+  "@appearanceFontDownloaded": {
+    "placeholders": {
+      "fontId": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceFontDownloadFailed": "字体下载失败",
+  "appearanceFontDownloadTooltip": "下载字体",
+  "appearanceFontNotDownloaded": "未下载",
+  "appearanceFontDownloadTitle": "下载字体",
+  "appearanceFontDownloadPrompt": "字体 {fontName} 尚未下载，是否现在下载并应用？",
+  "@appearanceFontDownloadPrompt": {
+    "placeholders": {
+      "fontName": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheFontSection": "字体缓存",
+  "cacheFontLabel": "下载字体",
+  "cacheFontDesc": "已下载的字体文件，删除后将恢复为系统默认字体。",
+  "cacheClearFontTitle": "清除字体缓存",
+  "cacheClearFontContent": "确定要删除 {count} 个字体文件（{size}）吗？删除后将恢复为系统默认字体。",
+  "@cacheClearFontContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheFontClearedToast": "字体缓存已清除",
+  "cacheFontDataTarget": "{count} 个字体文件（{size}）",
+  "@cacheFontDataTarget": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "networkTitle": "网络",
   "networkApiRouteTitle": "API 线路",
   "networkRouteLabel": "线路 {index}",
@@ -983,6 +1040,14 @@
     }
   },
   "cacheClearButton": "清空",
+  "cacheClearDataSectionContent": "确定要清空 {sectionLabel} 中的所有数据吗？",
+  "@cacheClearDataSectionContent": {
+    "placeholders": {
+      "sectionLabel": {
+        "type": "String"
+      }
+    }
+  },
   "cacheImageCacheClearedToast": "已清空 {label}",
   "@cacheImageCacheClearedToast": {
     "placeholders": {
@@ -1616,7 +1681,7 @@
   "cacheDeleteSelectedCardsTooltip": "删除选中卡片",
   "cacheExitMultiSelectTooltip": "退出多选",
   "cacheMultiSelectTooltip": "多选卡片",
-  "cacheSummary": "共 {localTotal} 项本地数据 · 图片缓存 {imageCacheFiles} 个文件 · {size}",
+  "cacheSummary": "共 {localTotal} 项本地数据 · {size}",
   "@cacheSummary": {
     "placeholders": {
       "localTotal": {

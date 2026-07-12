@@ -801,6 +801,64 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearanceSearchFont => '搜索字体';
 
   @override
+  String get appearanceFontDeleteTitle => '删除字体';
+
+  @override
+  String appearanceFontDeleteContent(String fontId) {
+    return '确定要删除字体 $fontId 吗？删除后将恢复为系统默认字体。';
+  }
+
+  @override
+  String get appearanceFontNeedDownload => '请先下载字体后再使用';
+
+  @override
+  String appearanceFontDownloaded(String fontId) {
+    return '$fontId 下载完成';
+  }
+
+  @override
+  String get appearanceFontDownloadFailed => '字体下载失败';
+
+  @override
+  String get appearanceFontDownloadTooltip => '下载字体';
+
+  @override
+  String get appearanceFontNotDownloaded => '未下载';
+
+  @override
+  String get appearanceFontDownloadTitle => '下载字体';
+
+  @override
+  String appearanceFontDownloadPrompt(String fontName) {
+    return '字体 $fontName 尚未下载，是否现在下载并应用？';
+  }
+
+  @override
+  String get cacheFontSection => '字体缓存';
+
+  @override
+  String get cacheFontLabel => '下载字体';
+
+  @override
+  String get cacheFontDesc => '已下载的字体文件，删除后将恢复为系统默认字体。';
+
+  @override
+  String get cacheClearFontTitle => '清除字体缓存';
+
+  @override
+  String cacheClearFontContent(int count, String size) {
+    return '确定要删除 $count 个字体文件（$size）吗？删除后将恢复为系统默认字体。';
+  }
+
+  @override
+  String get cacheFontClearedToast => '字体缓存已清除';
+
+  @override
+  String cacheFontDataTarget(int count, String size) {
+    return '$count 个字体文件（$size）';
+  }
+
+  @override
   String get networkTitle => '网络';
 
   @override
@@ -1463,6 +1521,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cacheClearButton => '清空';
+
+  @override
+  String cacheClearDataSectionContent(String sectionLabel) {
+    return '确定要清空 $sectionLabel 中的所有数据吗？';
+  }
 
   @override
   String cacheImageCacheClearedToast(String label) {
@@ -2295,7 +2358,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String cacheSummary(int localTotal, int imageCacheFiles, String size) {
-    return '共 $localTotal 项本地数据 · 图片缓存 $imageCacheFiles 个文件 · $size';
+    return '共 $localTotal 项本地数据 · $size';
   }
 
   @override
@@ -4028,6 +4091,64 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get appearanceSearchFont => '搜尋字型';
 
   @override
+  String get appearanceFontDeleteTitle => '刪除字型';
+
+  @override
+  String appearanceFontDeleteContent(String fontId) {
+    return '確定要刪除字型 $fontId 嗎？刪除後將恢復為系統預設字型。';
+  }
+
+  @override
+  String get appearanceFontNeedDownload => '請先下載字型後再使用';
+
+  @override
+  String appearanceFontDownloaded(String fontId) {
+    return '$fontId 下載完成';
+  }
+
+  @override
+  String get appearanceFontDownloadFailed => '字型下載失敗';
+
+  @override
+  String get appearanceFontDownloadTooltip => '下載字型';
+
+  @override
+  String get appearanceFontNotDownloaded => '未下載';
+
+  @override
+  String get appearanceFontDownloadTitle => '下載字型';
+
+  @override
+  String appearanceFontDownloadPrompt(String fontName) {
+    return '字型 $fontName 尚未下載，是否現在下載並套用？';
+  }
+
+  @override
+  String get cacheFontSection => '字型快取';
+
+  @override
+  String get cacheFontLabel => '下載字型';
+
+  @override
+  String get cacheFontDesc => '已下載的字型的字型檔案，刪除後將恢復為系統預設字型。';
+
+  @override
+  String get cacheClearFontTitle => '清除字型快取';
+
+  @override
+  String cacheClearFontContent(int count, String size) {
+    return '確定要刪除 $count 個字型檔案（$size）嗎？刪除後將恢復為系統預設字型。';
+  }
+
+  @override
+  String get cacheFontClearedToast => '字型快取已清除';
+
+  @override
+  String cacheFontDataTarget(int count, String size) {
+    return '$count 個字型檔案（$size）';
+  }
+
+  @override
   String get networkTitle => '網路';
 
   @override
@@ -4690,6 +4811,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get cacheClearButton => '清空';
+
+  @override
+  String cacheClearDataSectionContent(String sectionLabel) {
+    return '確定要清空 $sectionLabel 中的所有資料嗎？';
+  }
 
   @override
   String cacheImageCacheClearedToast(String label) {
@@ -5522,7 +5648,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String cacheSummary(int localTotal, int imageCacheFiles, String size) {
-    return '共 $localTotal 項本地資料 · 圖片快取 $imageCacheFiles 個檔案 · $size';
+    return '共 $localTotal 項本地資料 · $size';
   }
 
   @override

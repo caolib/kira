@@ -11,6 +11,7 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/app_storage.dart';
+import '../utils/font_manager.dart';
 import '../utils/media_kit_native_loader.dart';
 import '../utils/toast.dart';
 
@@ -24,6 +25,7 @@ class CacheManagementPage extends StatefulWidget {
 class _CacheManagementPageState extends State<CacheManagementPage> {
   static const _readerImageCacheKey = 'readerImageCache';
   static const _mediaKitSectionId = 'media_kit_native';
+  static const _fontSectionId = 'downloaded_fonts';
 
   static const _aiConfigKeys = <String>{
     'zhipu_api_key',
@@ -63,6 +65,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   List<_CacheSection> _sections = const [];
   List<_ImageCacheSection> _imageCacheSections = const [];
   _MediaKitCacheSection? _mediaKitSection;
+  _FontCacheSection? _fontSection;
   final Set<String> _revealedSensitiveKeys = {};
   bool _selectionMode = false;
   final Set<String> _selectedSectionIds = {};
@@ -128,12 +131,14 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
 
       final imageCacheSections = await _loadImageCacheSections();
       final mediaKitSection = await _loadMediaKitSection();
+      final fontSection = await _loadFontSection();
 
       if (!mounted) return;
       setState(() {
         _sections = sections;
         _imageCacheSections = imageCacheSections;
         _mediaKitSection = mediaKitSection;
+        _fontSection = fontSection;
         final sectionIds = <String>{
           ...sections.map((section) => section.id),
           ...imageCacheSections
@@ -218,6 +223,11 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     _toggleSectionIdSelected(section.id);
   }
 
+  void _toggleFontSectionSelected(_FontCacheSection section) {
+    if (section.isEmpty) return;
+    _toggleSectionIdSelected(section.id);
+  }
+
   void _toggleSectionIdSelected(String id) {
     setState(() {
       if (!_selectedSectionIds.add(id)) {
@@ -245,12 +255,20 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         _selectedSectionIds.contains(section.id);
   }
 
+  bool get _fontSelected {
+    final section = _fontSection;
+    return section != null &&
+        !section.isEmpty &&
+        _selectedSectionIds.contains(section.id);
+  }
+
   Future<void> _deleteSelectedSections() async {
     final l10n = AppLocalizations.of(context)!;
     final sections = _selectedSections;
     final imageSections = _selectedImageCacheSections;
     final mediaKit = _mediaKitSelected ? _mediaKitSection : null;
-    if (sections.isEmpty && imageSections.isEmpty && mediaKit == null) return;
+    final font = _fontSelected ? _fontSection : null;
+    if (sections.isEmpty && imageSections.isEmpty && mediaKit == null && font == null) return;
 
     final entries = sections.expand((section) => section.entries).toList();
     final keys = entries.map((entry) => entry.key).toSet();
@@ -267,6 +285,8 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         ),
       if (mediaKit != null)
         l10n.cacheMediaKitDataTarget(_formatBytes(mediaKit.sizeBytes)),
+      if (font != null)
+        l10n.cacheFontDataTarget(font.fonts.length, _formatBytes(font.sizeBytes)),
     ];
     final confirmed = await showDialog<bool>(
       context: context,
@@ -299,6 +319,14 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       }
       if (mediaKit != null) {
         await MediaKitNativeLoader.instance.uninstall();
+      }
+      if (font != null) {
+        for (final f in font.fonts) {
+          await FontManager().deleteFont(f.id);
+        }
+        if (UserManager().theme.appFontFamily.isNotEmpty) {
+          await UserManager().theme.setAppFontFamily(FontManager.defaultFontId);
+        }
       }
       if (entries.any((entry) => entry.category == _CacheCategory.account)) {
         ApiClient().user.clearAuthState();
@@ -405,6 +433,91 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     }
   }
 
+  Future<void> _deleteFontSection(_FontCacheSection section) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.cacheClearFontTitle),
+        content: Text(
+          l10n.cacheClearFontContent(
+            section.fonts.length,
+            _formatBytes(section.sizeBytes),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancelButton),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.deleteButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      for (final f in section.fonts) {
+        await FontManager().deleteFont(f.id);
+      }
+      if (UserManager().theme.appFontFamily.isNotEmpty) {
+        await UserManager().theme.setAppFontFamily(FontManager.defaultFontId);
+      }
+      if (mounted) {
+        showToast(context, l10n.cacheFontClearedToast);
+      }
+      await _loadEntries();
+    } catch (e) {
+      if (mounted) {
+        showToast(context, l10n.cacheCleanFailedToast('$e'), isError: true);
+      }
+    }
+  }
+
+  Future<void> _deleteCacheSection(_CacheSection section) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteButton),
+        content: Text(l10n.cacheClearDataSectionContent(section.label(l10n))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancelButton),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.deleteButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final prefs = await AppStorage.sharedPreferences();
+      final keys = section.entries.map((e) => e.key).toSet();
+      await Future.wait(keys.map(prefs.remove));
+      if (section.entries.any((e) => e.category == _CacheCategory.account)) {
+        ApiClient().user.clearAuthState();
+        await UserManager().init();
+      }
+      _revealedSensitiveKeys.removeAll(keys);
+      if (mounted) {
+        showToast(context, l10n.cacheSelectedDeletedToast);
+      }
+      await _loadEntries();
+    } catch (e) {
+      if (mounted) {
+        showToast(context, l10n.cacheCleanFailedToast('$e'), isError: true);
+      }
+    }
+  }
+
   Future<List<_ImageCacheSection>> _loadImageCacheSections() async {
     final l10n = AppLocalizations.of(context)!;
     final tempDir = await getTemporaryDirectory();
@@ -443,6 +556,40 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       sizeBytes: info.sizeBytes,
       version: info.version,
       isInstalled: info.isInstalled,
+    );
+  }
+
+  Future<_FontCacheSection?> _loadFontSection() async {
+    final fontManager = FontManager();
+    final downloaded = await fontManager.listDownloadedFonts();
+    if (downloaded.isEmpty) return null;
+
+    final fonts = <_FontCacheEntry>[];
+    int totalBytes = 0;
+
+    for (final name in downloaded) {
+      final path = await fontManager.fontFilePath(name);
+      final file = File(path);
+      int sizeBytes = 0;
+      if (await file.exists()) {
+        try {
+          sizeBytes = await file.length();
+        } catch (_) {}
+      }
+      totalBytes += sizeBytes;
+      fonts.add(_FontCacheEntry(id: name, name: name, sizeBytes: sizeBytes));
+    }
+
+    if (fonts.isEmpty) return null;
+    if (!mounted) return null;
+
+    final l10n = AppLocalizations.of(context)!;
+    return _FontCacheSection(
+      id: _fontSectionId,
+      label: l10n.cacheFontLabel,
+      description: l10n.cacheFontDesc,
+      fonts: fonts,
+      sizeBytes: totalBytes,
     );
   }
 
@@ -724,12 +871,14 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       (sum, section) => sum + section.sizeBytes,
     );
     final mediaKitBytes = _mediaKitSection?.sizeBytes ?? 0;
-    final totalBytes = localBytes + imageCacheBytes + mediaKitBytes;
+    final fontBytes = _fontSection?.sizeBytes ?? 0;
+    final totalBytes = localBytes + imageCacheBytes + mediaKitBytes + fontBytes;
     final maxSectionCardHeight = MediaQuery.sizeOf(context).height * 0.5;
     final maxSectionEntriesHeight = (maxSectionCardHeight - 73)
         .clamp(96.0, maxSectionCardHeight)
         .toDouble();
     final mediaKitSection = _mediaKitSection;
+    final fontSection = _fontSection;
 
     return Scaffold(
       appBar: AppBar(
@@ -783,7 +932,6 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                         _formatBytes(totalBytes),
                       ),
                     ),
-                    subtitle: Text(l10n.cacheManagementSummaryDesc),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -835,6 +983,30 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                       onToggleSelected: () =>
                           _toggleMediaKitSectionSelected(mediaKitSection),
                       onClear: () => _deleteMediaKitSection(mediaKitSection),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (fontSection != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                    child: Text(
+                      l10n.cacheFontSection,
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _FontCacheSectionCard(
+                      section: fontSection,
+                      selectionMode: _selectionMode,
+                      selected: _selectedSectionIds.contains(fontSection.id),
+                      sizeLabel: _formatBytes(fontSection.sizeBytes),
+                      onToggleSelected: () =>
+                          _toggleFontSectionSelected(fontSection),
+                      onClear: () => _deleteFontSection(fontSection),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -921,6 +1093,19 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                                           onDelete: () => _deleteEntry(entry),
                                         );
                                       },
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                    child: Row(
+                                      children: [
+                                        const Spacer(),
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _deleteCacheSection(section),
+                                          icon: const Icon(Icons.delete_outline_rounded),
+                                          label: Text(l10n.cacheClearButton),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -1096,49 +1281,15 @@ class _ImageCacheSectionCard extends StatelessWidget {
               subtitle: Text(subtitle, style: tt.bodySmall),
               trailing: Icon(section.icon),
             )
-          : ExpansionTile(
-              shape: const Border(),
-              collapsedShape: const Border(),
+          : ListTile(
               leading: Icon(section.icon),
               title: Text(section.label),
               subtitle: Text(subtitle, style: tt.bodySmall),
-              children: [
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.info_outline_rounded),
-                  title: Text(l10n.cacheDescriptionTitle),
-                  subtitle: Text(section.description),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.key_rounded),
-                  title: Text(l10n.cacheKeyTitle),
-                  subtitle: SelectableText(
-                    section.cacheKey,
-                    style: tt.bodySmall?.copyWith(fontFamily: 'monospace'),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.folder_outlined),
-                  title: Text(l10n.cacheDirectoryTitle),
-                  subtitle: SelectableText(
-                    section.directoryPath,
-                    style: tt.bodySmall?.copyWith(fontFamily: 'monospace'),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Row(
-                    children: [
-                      const Spacer(),
-                      FilledButton.icon(
-                        onPressed: section.isEmpty ? null : onClear,
-                        icon: const Icon(Icons.cleaning_services_rounded),
-                        label: Text(l10n.cacheClearButton),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              trailing: FilledButton.tonalIcon(
+                onPressed: section.isEmpty ? null : onClear,
+                icon: const Icon(Icons.cleaning_services_rounded),
+                label: Text(l10n.cacheClearButton),
+              ),
             ),
     );
   }
@@ -1184,47 +1335,15 @@ class _MediaKitCacheSectionCard extends StatelessWidget {
               subtitle: Text(subtitle, style: tt.bodySmall),
               trailing: const Icon(Icons.video_settings_rounded),
             )
-          : ExpansionTile(
-              shape: const Border(),
-              collapsedShape: const Border(),
+          : ListTile(
               leading: const Icon(Icons.video_settings_rounded),
               title: Text(section.label),
               subtitle: Text(subtitle, style: tt.bodySmall),
-              children: [
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.info_outline_rounded),
-                  title: Text(l10n.cacheDescriptionTitle),
-                  subtitle: Text(section.description),
-                ),
-                if (section.version != null && section.version!.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.tag_rounded),
-                    title: Text(l10n.cacheMediaKitVersionLabel),
-                    subtitle: Text(section.version!),
-                  ),
-                ListTile(
-                  leading: const Icon(Icons.folder_outlined),
-                  title: Text(l10n.cacheDirectoryTitle),
-                  subtitle: SelectableText(
-                    section.directoryPath,
-                    style: tt.bodySmall?.copyWith(fontFamily: 'monospace'),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Row(
-                    children: [
-                      const Spacer(),
-                      FilledButton.icon(
-                        onPressed: section.isEmpty ? null : onClear,
-                        icon: const Icon(Icons.delete_outline_rounded),
-                        label: Text(l10n.deleteButton),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              trailing: FilledButton.tonalIcon(
+                onPressed: section.isEmpty ? null : onClear,
+                icon: const Icon(Icons.delete_outline_rounded),
+                label: Text(l10n.deleteButton),
+              ),
             ),
     );
   }
@@ -1365,6 +1484,120 @@ class _DirectoryStats {
 
   final int fileCount;
   final int sizeBytes;
+}
+
+class _FontCacheEntry {
+  const _FontCacheEntry({
+    required this.id,
+    required this.name,
+    required this.sizeBytes,
+  });
+
+  final String id;
+  final String name;
+  final int sizeBytes;
+}
+
+class _FontCacheSection {
+  const _FontCacheSection({
+    required this.id,
+    required this.label,
+    required this.description,
+    required this.fonts,
+    required this.sizeBytes,
+  });
+
+  final String id;
+  final String label;
+  final String description;
+  final List<_FontCacheEntry> fonts;
+  final int sizeBytes;
+
+  bool get isEmpty => fonts.isEmpty;
+}
+
+class _FontCacheSectionCard extends StatelessWidget {
+  const _FontCacheSectionCard({
+    required this.section,
+    required this.selectionMode,
+    required this.selected,
+    required this.sizeLabel,
+    required this.onToggleSelected,
+    required this.onClear,
+  });
+
+  final _FontCacheSection section;
+  final bool selectionMode;
+  final bool selected;
+  final String sizeLabel;
+  final VoidCallback onToggleSelected;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final subtitle = l10n.cacheFileCountSize(section.fonts.length, sizeLabel);
+
+    return Card(
+      color: cs.surfaceContainerLow,
+      child: selectionMode
+          ? ListTile(
+              enabled: !section.isEmpty,
+              onTap: section.isEmpty ? null : onToggleSelected,
+              leading: Checkbox(
+                value: selected,
+                onChanged: section.isEmpty ? null : (_) => onToggleSelected(),
+              ),
+              title: Text(section.label),
+              subtitle: Text(subtitle, style: tt.bodySmall),
+              trailing: const Icon(Icons.font_download_outlined),
+            )
+          : ExpansionTile(
+              shape: const Border(),
+              collapsedShape: const Border(),
+              leading: const Icon(Icons.font_download_outlined),
+              title: Text(section.label),
+              subtitle: Text(subtitle, style: tt.bodySmall),
+              children: [
+                const Divider(height: 1),
+                for (final font in section.fonts)
+                  ListTile(
+                    leading: const Icon(Icons.text_fields),
+                    title: Text(font.name),
+                    trailing: Text(
+                      _FontCacheSectionCard._formatFileSize(font.sizeBytes),
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Row(
+                    children: [
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: section.isEmpty ? null : onClear,
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: Text(l10n.deleteButton),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  static String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    final kb = bytes / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(kb < 10 ? 1 : 0)} KB';
+    final mb = kb / 1024;
+    return '${mb.toStringAsFixed(mb < 10 ? 1 : 0)} MB';
+  }
 }
 
 enum _CacheCategory {

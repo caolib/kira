@@ -554,6 +554,63 @@
   "appearanceSystemDefault": "系統預設",
   "appearanceChooseFont": "選擇字型",
   "appearanceSearchFont": "搜尋字型",
+  "appearanceFontDeleteTitle": "刪除字型",
+  "appearanceFontDeleteContent": "確定要刪除字型 {fontId} 嗎？刪除後將恢復為系統預設字型。",
+  "@appearanceFontDeleteContent": {
+    "placeholders": {
+      "fontId": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceFontNeedDownload": "請先下載字型後再使用",
+  "appearanceFontDownloaded": "{fontId} 下載完成",
+  "@appearanceFontDownloaded": {
+    "placeholders": {
+      "fontId": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceFontDownloadFailed": "字型下載失敗",
+  "appearanceFontDownloadTooltip": "下載字型",
+  "appearanceFontNotDownloaded": "未下載",
+  "appearanceFontDownloadTitle": "下載字型",
+  "appearanceFontDownloadPrompt": "字型 {fontName} 尚未下載，是否現在下載並套用？",
+  "@appearanceFontDownloadPrompt": {
+    "placeholders": {
+      "fontName": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheFontSection": "字型快取",
+  "cacheFontLabel": "下載字型",
+  "cacheFontDesc": "已下載的字型的字型檔案，刪除後將恢復為系統預設字型。",
+  "cacheClearFontTitle": "清除字型快取",
+  "cacheClearFontContent": "確定要刪除 {count} 個字型檔案（{size}）嗎？刪除後將恢復為系統預設字型。",
+  "@cacheClearFontContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cacheFontClearedToast": "字型快取已清除",
+  "cacheFontDataTarget": "{count} 個字型檔案（{size}）",
+  "@cacheFontDataTarget": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "networkTitle": "網路",
   "networkApiRouteTitle": "API 線路",
   "networkRouteLabel": "線路 {index}",
@@ -983,6 +1040,14 @@
     }
   },
   "cacheClearButton": "清空",
+  "cacheClearDataSectionContent": "確定要清空 {sectionLabel} 中的所有資料嗎？",
+  "@cacheClearDataSectionContent": {
+    "placeholders": {
+      "sectionLabel": {
+        "type": "String"
+      }
+    }
+  },
   "cacheImageCacheClearedToast": "已清空 {label}",
   "@cacheImageCacheClearedToast": {
     "placeholders": {
@@ -1616,7 +1681,7 @@
   "cacheDeleteSelectedCardsTooltip": "刪除選中卡片",
   "cacheExitMultiSelectTooltip": "退出多選",
   "cacheMultiSelectTooltip": "多選卡片",
-  "cacheSummary": "共 {localTotal} 項本地資料 · 圖片快取 {imageCacheFiles} 個檔案 · {size}",
+  "cacheSummary": "共 {localTotal} 項本地資料 · {size}",
   "@cacheSummary": {
     "placeholders": {
       "localTotal": {

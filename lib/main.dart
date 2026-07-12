@@ -15,6 +15,7 @@ import 'models/user_manager.dart';
 import 'routing/app_router.dart';
 import 'utils/app_logger.dart';
 import 'utils/display_mode_preference.dart';
+import 'utils/font_manager.dart';
 import 'utils/network_proxy.dart';
 
 bool get isDesktop =>
@@ -68,6 +69,10 @@ void main() {
             );
           }
         }
+      }
+      final appFont = UserManager().theme.appFontFamily;
+      if (appFont.isNotEmpty) {
+        unawaited(FontManager().ensureFontReady(appFont));
       }
       unawaited(
         SystemChrome.setEnabledSystemUIMode(
@@ -173,13 +178,21 @@ class _KiraAppState extends ConsumerState<KiraApp> {
       );
     }
 
+    final appFont = _user.theme.appFontFamily;
+    final desktopFont = _user.desktopFontFamily;
+
+    String? resolvedFont;
+    if (appFont.isNotEmpty) {
+      resolvedFont = appFont;
+    } else if (isDesktop && desktopFont.isNotEmpty) {
+      resolvedFont = desktopFont;
+    }
+
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
       cardTheme: _cardTheme,
-      fontFamily: isDesktop && _user.desktopFontFamily.isNotEmpty
-          ? _user.desktopFontFamily
-          : null,
+      fontFamily: resolvedFont,
     );
   }
 

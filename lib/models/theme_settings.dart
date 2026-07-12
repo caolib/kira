@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/font_manager.dart';
 import 'app_theme_option.dart';
 import 'prefs_store.dart';
 
@@ -44,6 +45,7 @@ class ThemeSettings extends PrefsStore {
   static const _keyNavOrder = 'nav_order';
   static const _keyLastNavKey = 'last_nav_key';
   static const _keyDesktopFontFamily = 'desktop_font_family';
+  static const _keyAppFontFamily = 'app_font_family';
   static const _keyDisplayModeRefreshRate = 'pref_display_mode_refresh_rate';
   static const _keyLogoIndex = 'logo_index';
   static const _keyBannerVisible = 'banner_visible';
@@ -59,6 +61,7 @@ class ThemeSettings extends PrefsStore {
   List<String> _navOrder = defaultNavOrder;
   String _lastNavKey = defaultNavKey;
   String _desktopFontFamily = '';
+  String _appFontFamily = '';
   int _displayModeRefreshRate = defaultDisplayModeRefreshRate;
   int _logoIndex = 1;
   bool _bannerVisible = true;
@@ -74,6 +77,7 @@ class ThemeSettings extends PrefsStore {
   List<String> get navOrder => _navOrder;
   String get lastNavKey => _lastNavKey;
   String get desktopFontFamily => _desktopFontFamily;
+  String get appFontFamily => _appFontFamily;
   int get displayModeRefreshRate => _displayModeRefreshRate;
   int get logoIndex => _logoIndex;
   bool get bannerVisible => _bannerVisible;
@@ -123,6 +127,7 @@ class ThemeSettings extends PrefsStore {
       await prefs.setString(_keyLastNavKey, _lastNavKey);
     }
     _desktopFontFamily = prefs.getString(_keyDesktopFontFamily) ?? '';
+    _appFontFamily = prefs.getString(_keyAppFontFamily) ?? '';
     _displayModeRefreshRate = _normalizeDisplayModeRefreshRate(
       prefs.getInt(_keyDisplayModeRefreshRate),
     );
@@ -205,6 +210,17 @@ class ThemeSettings extends PrefsStore {
       await remove(_keyDesktopFontFamily);
     } else {
       await setString(_keyDesktopFontFamily, fontFamily);
+    }
+  }
+
+  Future<void> setAppFontFamily(String fontFamily) async {
+    final next = fontFamily == FontManager.defaultFontId ? '' : fontFamily;
+    if (_appFontFamily == next) return;
+    _appFontFamily = next;
+    if (next.isEmpty) {
+      await remove(_keyAppFontFamily);
+    } else {
+      await setString(_keyAppFontFamily, next);
     }
   }
 

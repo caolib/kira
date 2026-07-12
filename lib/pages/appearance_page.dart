@@ -10,6 +10,7 @@ import '../main.dart' show isDesktop;
 import '../models/app_theme_option.dart';
 import '../models/user_manager.dart';
 import '../utils/display_mode_preference.dart';
+import '../utils/font_manager.dart';
 import '../utils/toast.dart';
 
 class AppearancePage extends StatefulWidget {
@@ -208,6 +209,8 @@ class _AppearancePageState extends State<AppearancePage> {
             const SizedBox(height: 8),
             _DesktopFontCard(user: _user),
           ],
+          const SizedBox(height: 8),
+          _AppFontCard(user: _user),
           const SizedBox(height: 8),
           Card(
             color: cs.surfaceContainerLow,
@@ -1075,6 +1078,275 @@ class _LogoOptionTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AppFontCard extends StatefulWidget {
+  final UserManager user;
+
+  const _AppFontCard({required this.user});
+
+  @override
+  State<_AppFontCard> createState() => _AppFontCardState();
+}
+
+class _AppFontCardState extends State<_AppFontCard> {
+  final _fontManager = FontManager();
+  List<RemoteFontInfo> _fonts = const [];
+  Map<String, bool> _downloadedCache = {};
+  final _downloadStates = <String, bool>{};
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshDownloadStates();
+  }
+
+  Future<void> _refreshDownloadStates() async {
+    final downloaded = await _fontManager.listDownloadedFonts();
+    final results = <String, bool>{};
+    for (final name in downloaded) {
+      results[name] = true;
+    }
+    if (mounted) setState(() => _downloadedCache = results);
+  }
+
+  Future<void> _loadFonts({bool force = false}) async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    final fonts = await _fontManager.fetchAvailableFonts(force: force);
+    await _refreshDownloadStates();
+    if (mounted) {
+      setState(() {
+        _fonts = fonts;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _selectFont(String fontName) async {
+    if (_downloadStates[fontName] == true) return;
+
+    final currentFont = widget.user.theme.appFontFamily;
+
+    if (fontName == FontManager.defaultFontId) {
+      if (currentFont.isEmpty) return;
+      await widget.user.theme.setAppFontFamily(FontManager.defaultFontId);
+      return;
+    }
+
+    if (currentFont == fontName) return;
+
+    final isDownloaded = _downloadedCache[fontName] ?? false;
+    if (!isDownloaded) {
+      final font = _fontManager.infoForName(fontName);
+      if (font == null) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          final l10n = AppLocalizations.of(ctx)!;
+          return AlertDialog(
+            title: Text(l10n.appearanceFontDownloadTitle),
+            content: Text(l10n.appearanceFontDownloadPrompt(font.name)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l10n.cancelButton),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(l10n.appearanceFontDownloadTooltip),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) return;
+      await _downloadFont(fontName);
+      if (!(_downloadedCache[fontName] ?? false)) return;
+    }
+
+    final loaded = await _fontManager.loadFont(fontName);
+    if (loaded != null) {
+      await widget.user.theme.setAppFontFamily(fontName);
+    }
+  }
+
+  Future<void> _downloadFont(String fontName) async {
+    if (_downloadStates[fontName] == true) return;
+
+    final font = _fontManager.infoForName(fontName);
+    if (font == null) return;
+
+    setState(() => _downloadStates[fontName] = true);
+    try {
+      final ok = await _fontManager.downloadFont(font);
+      if (ok) {
+        await _fontManager.loadFont(fontName);
+      } else if (mounted) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.appearanceFontDownloadFailed,
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _downloadStates[fontName] = false);
+        await _refreshDownloadStates();
+      }
+    }
+  }
+
+  Future<void> _deleteFont(String fontName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.appearanceFontDeleteTitle),
+        content: Text(
+          AppLocalizations.of(context)!.appearanceFontDeleteContent(fontName),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(AppLocalizations.of(context)!.cancelButton),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(AppLocalizations.of(context)!.confirmButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    if (widget.user.theme.appFontFamily == fontName) {
+      await widget.user.theme.setAppFontFamily(FontManager.defaultFontId);
+    }
+    await _fontManager.deleteFont(fontName);
+    await _refreshDownloadStates();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final currentFont = widget.user.theme.appFontFamily;
+    final currentLabel =
+        currentFont.isEmpty ? l10n.appearanceSystemDefault : currentFont;
+
+    return Card(
+      color: cs.surfaceContainerLow,
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: Icon(Icons.text_fields, color: cs.onSurfaceVariant),
+        title: Text(l10n.appearanceAppFont),
+        subtitle: Text(
+          currentLabel,
+          style: tt.bodySmall?.copyWith(
+            fontFamily: currentFont.isEmpty ? null : currentFont,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : IconButton(
+                    tooltip: l10n.refreshButton,
+                    onPressed: () => _loadFonts(force: true),
+                    icon: Icon(
+                      Icons.refresh_rounded,
+                      size: 20,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+            const Icon(Icons.expand_more),
+          ],
+        ),
+        onExpansionChanged: (expanded) {
+          if (expanded && _fonts.isEmpty && !_loading) {
+            _loadFonts();
+          }
+        },
+        children: [
+          const Divider(height: 1),
+          if (_loading && _fonts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+              ),
+            )
+          else ...[
+            RadioGroup<String>(
+              groupValue: currentFont.isEmpty
+                  ? FontManager.defaultFontId
+                  : currentFont,
+              onChanged: (value) {
+                if (value != null) _selectFont(value);
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<String>(
+                    value: FontManager.defaultFontId,
+                    title: Text(l10n.appearanceSystemDefault),
+                  ),
+                  for (final font in _fonts)
+                    RadioListTile<String>(
+                      value: font.name,
+                      title: Text(font.name),
+                      subtitle: _downloadedCache[font.name] == true
+                          ? null
+                          : Text(l10n.appearanceFontNotDownloaded),
+                      secondary: _downloadStates[font.name] == true
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : (_downloadedCache[font.name] == true
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.delete_outline,
+                                    size: 20,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                  tooltip: l10n.appearanceFontDeleteTitle,
+                                  onPressed: () => _deleteFont(font.name),
+                                  visualDensity: VisualDensity.compact,
+                                )
+                              : IconButton(
+                                  icon: Icon(
+                                    Icons.download_outlined,
+                                    size: 20,
+                                    color: cs.primary,
+                                  ),
+                                  tooltip: l10n.appearanceFontDownloadTooltip,
+                                  onPressed: () => _downloadFont(font.name),
+                                  visualDensity: VisualDensity.compact,
+                                )),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

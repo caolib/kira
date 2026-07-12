@@ -1507,6 +1507,102 @@ abstract class AppLocalizations {
   /// **'搜索字体'**
   String get appearanceSearchFont;
 
+  /// No description provided for @appearanceFontDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除字体'**
+  String get appearanceFontDeleteTitle;
+
+  /// No description provided for @appearanceFontDeleteContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除字体 {fontId} 吗？删除后将恢复为系统默认字体。'**
+  String appearanceFontDeleteContent(String fontId);
+
+  /// No description provided for @appearanceFontNeedDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先下载字体后再使用'**
+  String get appearanceFontNeedDownload;
+
+  /// No description provided for @appearanceFontDownloaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'{fontId} 下载完成'**
+  String appearanceFontDownloaded(String fontId);
+
+  /// No description provided for @appearanceFontDownloadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体下载失败'**
+  String get appearanceFontDownloadFailed;
+
+  /// No description provided for @appearanceFontDownloadTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载字体'**
+  String get appearanceFontDownloadTooltip;
+
+  /// No description provided for @appearanceFontNotDownloaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'未下载'**
+  String get appearanceFontNotDownloaded;
+
+  /// No description provided for @appearanceFontDownloadTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载字体'**
+  String get appearanceFontDownloadTitle;
+
+  /// No description provided for @appearanceFontDownloadPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体 {fontName} 尚未下载，是否现在下载并应用？'**
+  String appearanceFontDownloadPrompt(String fontName);
+
+  /// No description provided for @cacheFontSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体缓存'**
+  String get cacheFontSection;
+
+  /// No description provided for @cacheFontLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载字体'**
+  String get cacheFontLabel;
+
+  /// No description provided for @cacheFontDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'已下载的字体文件，删除后将恢复为系统默认字体。'**
+  String get cacheFontDesc;
+
+  /// No description provided for @cacheClearFontTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除字体缓存'**
+  String get cacheClearFontTitle;
+
+  /// No description provided for @cacheClearFontContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除 {count} 个字体文件（{size}）吗？删除后将恢复为系统默认字体。'**
+  String cacheClearFontContent(int count, String size);
+
+  /// No description provided for @cacheFontClearedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体缓存已清除'**
+  String get cacheFontClearedToast;
+
+  /// No description provided for @cacheFontDataTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个字体文件（{size}）'**
+  String cacheFontDataTarget(int count, String size);
+
   /// No description provided for @networkTitle.
   ///
   /// In zh, this message translates to:
@@ -2693,6 +2789,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'清空'**
   String get cacheClearButton;
+
+  /// No description provided for @cacheClearDataSectionContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要清空 {sectionLabel} 中的所有数据吗？'**
+  String cacheClearDataSectionContent(String sectionLabel);
 
   /// No description provided for @cacheImageCacheClearedToast.
   ///
@@ -4142,7 +4244,7 @@ abstract class AppLocalizations {
   /// No description provided for @cacheSummary.
   ///
   /// In zh, this message translates to:
-  /// **'共 {localTotal} 项本地数据 · 图片缓存 {imageCacheFiles} 个文件 · {size}'**
+  /// **'共 {localTotal} 项本地数据 · {size}'**
   String cacheSummary(int localTotal, int imageCacheFiles, String size);
 
   /// No description provided for @cacheManagementSummaryDesc.
