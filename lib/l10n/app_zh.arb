@@ -2018,6 +2018,8 @@
   "playerSettingsBlocklist": "屏蔽词",
   "playerSettingsBlocklistDesc": "包含屏蔽词的弹幕将被自动过滤",
   "playerSettingsBlocklistHint": "输入屏蔽词",
+  "playerSettingsDanmakuFont": "弹幕字体",
+  "playerSettingsDanmakuFontSystem": "跟随系统",
   "playerSettingsChineseConvertTooltip": "简繁转换",
   "readerImageLinksRefreshed": "图片链接已刷新",
   "refreshFailedWithError": "刷新失败：{error}",

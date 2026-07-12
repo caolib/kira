@@ -25,6 +25,7 @@ import '../utils/anime_playback_history.dart';
 import '../utils/app_dio.dart';
 import '../utils/app_logger.dart';
 import '../utils/chinese_converter.dart';
+import '../utils/font_manager.dart';
 import '../utils/network_error.dart';
 
 part 'anime_player/chapter_selector.dart';
@@ -226,6 +227,12 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
   }
 
   Future<void> _load({bool forceRefresh = false}) async {
+    // Ensure the saved danmaku font is loaded into the engine.
+    final danmakuFont = _user.danmakuFontFamily;
+    if (danmakuFont.isNotEmpty) {
+      unawaited(FontManager().ensureFontReady(danmakuFont));
+    }
+
     final l10n = AppLocalizations.of(context)!;
     _readyToSavePlaybackProgress = false;
     _lastPlaybackProgressSavedAt = null;
@@ -1296,6 +1303,9 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           hideTop: _user.danmakuHideTop,
           hideBottom: _user.danmakuHideBottom,
           strokeWidth: 1,
+          fontFamily: _user.danmakuFontFamily.isEmpty
+              ? null
+              : _user.danmakuFontFamily,
         ),
       );
     }

@@ -191,6 +191,7 @@ class UserManager extends ChangeNotifier {
   static const _keyDanmakuHideTop = 'danmaku_hide_top';
   static const _keyDanmakuHideBottom = 'danmaku_hide_bottom';
   static const _keyDanmakuBlocklist = 'danmaku_blocklist';
+  static const _keyDanmakuFontFamily = 'danmaku_font_family';
   static const _keyCommentBlockedUsers = 'comment_blocked_users';
   static const _keyCommentBlockNoRemind = 'comment_block_no_remind';
   static const _keyLogoIndex = 'logo_index';
@@ -271,6 +272,7 @@ class UserManager extends ChangeNotifier {
   bool _danmakuHideTop = false;
   bool _danmakuHideBottom = false;
   List<String> _danmakuBlocklist = [];
+  String _danmakuFontFamily = '';
 
   /// 评论屏蔽用户黑名单，元素为 `userId|userName` 形式
   List<String> _commentBlockedUsers = [];
@@ -374,6 +376,7 @@ class UserManager extends ChangeNotifier {
   bool get danmakuHideTop => _danmakuHideTop;
   bool get danmakuHideBottom => _danmakuHideBottom;
   List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
+  String get danmakuFontFamily => _danmakuFontFamily;
   List<String> get commentBlockedUsers =>
       List.unmodifiable(_commentBlockedUsers);
   bool get commentBlockNoRemind => _commentBlockNoRemind;
@@ -591,6 +594,7 @@ class UserManager extends ChangeNotifier {
     _danmakuHideTop = prefs.getBool(_keyDanmakuHideTop) ?? false;
     _danmakuHideBottom = prefs.getBool(_keyDanmakuHideBottom) ?? false;
     _danmakuBlocklist = prefs.getStringList(_keyDanmakuBlocklist) ?? [];
+    _danmakuFontFamily = prefs.getString(_keyDanmakuFontFamily) ?? '';
     _commentBlockedUsers = prefs.getStringList(_keyCommentBlockedUsers) ?? [];
     _commentBlockNoRemind = prefs.getBool(_keyCommentBlockNoRemind) ?? false;
     _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(
@@ -1365,6 +1369,14 @@ class UserManager extends ChangeNotifier {
     _danmakuBlocklist = List.from(list);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_keyDanmakuBlocklist, list);
+    notifyListeners();
+  }
+
+  Future<void> setDanmakuFontFamily(String value) async {
+    if (_danmakuFontFamily == value) return;
+    _danmakuFontFamily = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyDanmakuFontFamily, value);
     notifyListeners();
   }
 

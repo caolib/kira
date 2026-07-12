@@ -5213,6 +5213,18 @@ abstract class AppLocalizations {
   /// **'输入屏蔽词'**
   String get playerSettingsBlocklistHint;
 
+  /// No description provided for @playerSettingsDanmakuFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'弹幕字体'**
+  String get playerSettingsDanmakuFont;
+
+  /// No description provided for @playerSettingsDanmakuFontSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统'**
+  String get playerSettingsDanmakuFontSystem;
+
   /// No description provided for @playerSettingsChineseConvertTooltip.
   ///
   /// In zh, this message translates to:

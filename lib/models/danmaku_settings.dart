@@ -18,6 +18,7 @@ class DanmakuSettings extends PrefsStore {
   static const _keyHideTop = 'danmaku_hide_top';
   static const _keyHideBottom = 'danmaku_hide_bottom';
   static const _keyBlocklist = 'danmaku_blocklist';
+  static const _keyFontFamily = 'danmaku_font_family';
 
   // ── Fields ─────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ class DanmakuSettings extends PrefsStore {
   bool _hideTop = false;
   bool _hideBottom = false;
   List<String> _blocklist = [];
+  String _fontFamily = '';
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -40,6 +42,7 @@ class DanmakuSettings extends PrefsStore {
   bool get hideTop => _hideTop;
   bool get hideBottom => _hideBottom;
   List<String> get blocklist => List.unmodifiable(_blocklist);
+  String get fontFamily => _fontFamily;
 
   // ── Init ───────────────────────────────────────────────────────────
 
@@ -52,6 +55,7 @@ class DanmakuSettings extends PrefsStore {
     _hideTop = prefs.getBool(_keyHideTop) ?? false;
     _hideBottom = prefs.getBool(_keyHideBottom) ?? false;
     _blocklist = prefs.getStringList(_keyBlocklist) ?? [];
+    _fontFamily = prefs.getString(_keyFontFamily) ?? '';
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -101,5 +105,11 @@ class DanmakuSettings extends PrefsStore {
   Future<void> setBlocklist(List<String> list) async {
     _blocklist = List.from(list);
     await setStringList(_keyBlocklist, list);
+  }
+
+  Future<void> setFontFamily(String value) async {
+    if (_fontFamily == value) return;
+    _fontFamily = value;
+    await setString(_keyFontFamily, value);
   }
 }

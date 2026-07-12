@@ -2886,6 +2886,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get playerSettingsBlocklistHint => '输入屏蔽词';
 
   @override
+  String get playerSettingsDanmakuFont => '弹幕字体';
+
+  @override
+  String get playerSettingsDanmakuFontSystem => '跟随系统';
+
+  @override
   String get playerSettingsChineseConvertTooltip => '简繁转换';
 
   @override
@@ -6174,6 +6180,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get playerSettingsBlocklistHint => '輸入屏蔽詞';
+
+  @override
+  String get playerSettingsDanmakuFont => '彈幕字體';
+
+  @override
+  String get playerSettingsDanmakuFontSystem => '跟隨系統';
 
   @override
   String get playerSettingsChineseConvertTooltip => '簡繁轉換';

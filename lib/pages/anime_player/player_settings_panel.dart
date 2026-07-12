@@ -21,6 +21,7 @@ class _PlayerSettingsPanel extends StatefulWidget {
 
 class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
   final _user = UserManager();
+  final _fontManager = FontManager();
   late int _skipSeconds;
   late bool _playbackProgressEnabled;
   late double _fontSize;
@@ -29,6 +30,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
   late bool _hideScroll;
   late bool _hideTop;
   late bool _hideBottom;
+  String _fontFamily = '';
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
     _hideScroll = _user.danmakuHideScroll;
     _hideTop = _user.danmakuHideTop;
     _hideBottom = _user.danmakuHideBottom;
+    _fontFamily = _user.danmakuFontFamily;
   }
 
   void _updateDanmakuOption() {
@@ -54,6 +57,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
         hideTop: _hideTop,
         hideBottom: _hideBottom,
         strokeWidth: 1,
+        fontFamily: _fontFamily.isEmpty ? null : _fontFamily,
       ),
     );
     _user.setDanmakuFontSize(_fontSize);
@@ -62,6 +66,7 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
     _user.setDanmakuHideScroll(_hideScroll);
     _user.setDanmakuHideTop(_hideTop);
     _user.setDanmakuHideBottom(_hideBottom);
+    _user.setDanmakuFontFamily(_fontFamily);
     widget.onChanged();
   }
 
@@ -188,6 +193,34 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
             // Details shown when danmaku is enabled.
             if (widget.danmakuVisible) ...[
               const SizedBox(height: 4),
+              // Font family picker
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  AppLocalizations.of(context)!.playerSettingsDanmakuFont,
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _fontFamily.isEmpty
+                          ? AppLocalizations.of(context)!
+                              .playerSettingsDanmakuFontSystem
+                          : _fontFamily,
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontFamily: _fontFamily.isEmpty ? null : _fontFamily,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.chevron_right, size: 18, color: cs.onSurfaceVariant),
+                  ],
+                ),
+                onTap: () => _showDanmakuFontPicker(context),
+              ),
+
+              const SizedBox(height: 4),
               Row(
                 children: [
                   Text(
@@ -313,6 +346,83 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
         ),
         ),
       ),
+    );
+  }
+
+  void _showDanmakuFontPicker(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        return FutureBuilder<List<String>>(
+          future: _fontManager.listDownloadedFonts(),
+          builder: (context, snapshot) {
+            final downloadedFontNames = snapshot.data ?? <String>[];
+
+            // Ensure selected custom font is listed
+            if (_fontFamily.isNotEmpty &&
+                !downloadedFontNames.contains(_fontFamily)) {
+              downloadedFontNames.add(_fontFamily);
+            }
+
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      l10n.playerSettingsDanmakuFont,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: RadioGroup<String>(
+                        groupValue: _fontFamily.isEmpty
+                            ? FontManager.defaultFontId
+                            : _fontFamily,
+                        onChanged: (value) async {
+                          Navigator.pop(sheetContext);
+                          final selected = value == FontManager.defaultFontId
+                              ? ''
+                              : value!;
+                          // Load the font into the Flutter engine if needed
+                          if (selected.isNotEmpty) {
+                            await _fontManager.ensureFontReady(selected);
+                          }
+                          if (!mounted) return;
+                          setState(() => _fontFamily = selected);
+                          _updateDanmakuOption();
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            RadioListTile<String>(
+                              value: FontManager.defaultFontId,
+                              title: Text(l10n.playerSettingsDanmakuFontSystem),
+                            ),
+                            for (final name in downloadedFontNames)
+                              RadioListTile<String>(
+                                value: name,
+                                title: Text(
+                                  name,
+                                  style: TextStyle(fontFamily: name),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
