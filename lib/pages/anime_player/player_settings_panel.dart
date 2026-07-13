@@ -111,239 +111,256 @@ class _PlayerSettingsPanelState extends State<_PlayerSettingsPanel> {
                 ),
               if (!widget.danmakuOnly) const SizedBox(height: 16),
 
-            if (!widget.danmakuOnly) ...[
-              // Playback settings
-              Text(
-                AppLocalizations.of(context)!.playerSettingsPlaybackTitle,
-                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                AppLocalizations.of(context)!.playerSettingsSkipSeconds,
-                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                AppLocalizations.of(context)!.playerSettingsSkipSecondsDesc,
-                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: TextEditingController(text: _skipSeconds.toString()),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(
-                    context,
-                  )!.playerSettingsSecondsLabel,
-                  suffixText: AppLocalizations.of(context)!.readerSecondsSuffix,
-                  border: const OutlineInputBorder(),
+              if (!widget.danmakuOnly) ...[
+                // Playback settings
+                Text(
+                  AppLocalizations.of(context)!.playerSettingsPlaybackTitle,
+                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                onChanged: (v) {
-                  final value = int.tryParse(v);
-                  if (value != null && value > 0) {
-                    _skipSeconds = value;
-                    _user.setAnimeSkipSeconds(value);
-                    widget.onChanged();
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppLocalizations.of(context)!.playerSettingsRecordProgress,
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.playerSettingsSkipSeconds,
                   style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                subtitle: Text(
-                  AppLocalizations.of(context)!.playerSettingsRecordProgressDesc,
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.of(context)!.playerSettingsSkipSecondsDesc,
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
-                value: _playbackProgressEnabled,
-                onChanged: (v) {
-                  setState(() => _playbackProgressEnabled = v);
-                  _user.setAnimePlaybackProgressEnabled(v);
-                  widget.onChanged();
-                },
+                const SizedBox(height: 8),
+                TextField(
+                  controller: TextEditingController(
+                    text: _skipSeconds.toString(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(
+                      context,
+                    )!.playerSettingsSecondsLabel,
+                    suffixText: AppLocalizations.of(
+                      context,
+                    )!.readerSecondsSuffix,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (v) {
+                    final value = int.tryParse(v);
+                    if (value != null && value > 0) {
+                      _skipSeconds = value;
+                      _user.setAnimeSkipSeconds(value);
+                      widget.onChanged();
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppLocalizations.of(context)!.playerSettingsRecordProgress,
+                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    AppLocalizations.of(
+                      context,
+                    )!.playerSettingsRecordProgressDesc,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  value: _playbackProgressEnabled,
+                  onChanged: (v) {
+                    setState(() => _playbackProgressEnabled = v);
+                    _user.setAnimePlaybackProgressEnabled(v);
+                    widget.onChanged();
+                  },
+                ),
+
+                const Divider(height: 32),
+              ],
+
+              // Danmaku settings
+              Text(
+                AppLocalizations.of(context)!.playerSettingsDanmakuTitle,
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 12),
 
-              const Divider(height: 32),
-            ],
-
-            // Danmaku settings
-            Text(
-              AppLocalizations.of(context)!.playerSettingsDanmakuTitle,
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            // Danmaku toggle
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                AppLocalizations.of(context)!.playerSettingsShowDanmaku,
-                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              value: widget.danmakuVisible,
-              onChanged: (v) {
-                widget.onDanmakuVisibleChanged(v);
-                setState(() {});
-              },
-            ),
-
-            // Details shown when danmaku is enabled.
-            if (widget.danmakuVisible) ...[
-              const SizedBox(height: 4),
-              // Font family picker
-              ListTile(
+              // Danmaku toggle
+              SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(
-                  AppLocalizations.of(context)!.playerSettingsDanmakuFont,
+                  AppLocalizations.of(context)!.playerSettingsShowDanmaku,
                   style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+                value: widget.danmakuVisible,
+                onChanged: (v) {
+                  widget.onDanmakuVisibleChanged(v);
+                  setState(() {});
+                },
+              ),
+
+              // Details shown when danmaku is enabled.
+              if (widget.danmakuVisible) ...[
+                const SizedBox(height: 4),
+                // Font family picker
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppLocalizations.of(context)!.playerSettingsDanmakuFont,
+                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _fontFamily.isEmpty
+                            ? AppLocalizations.of(
+                                context,
+                              )!.playerSettingsDanmakuFontSystem
+                            : _fontFamily,
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontFamily: _fontFamily.isEmpty ? null : _fontFamily,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                  onTap: () => _showDanmakuFontPicker(context),
+                ),
+
+                const SizedBox(height: 4),
+                Row(
                   children: [
                     Text(
-                      _fontFamily.isEmpty
-                          ? AppLocalizations.of(context)!
-                              .playerSettingsDanmakuFontSystem
-                          : _fontFamily,
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontFamily: _fontFamily.isEmpty ? null : _fontFamily,
+                      AppLocalizations.of(context)!.playerSettingsFontSize,
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.chevron_right, size: 18, color: cs.onSurfaceVariant),
+                    const Spacer(),
+                    Text(
+                      _fontSize.toStringAsFixed(0),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
                   ],
                 ),
-                onTap: () => _showDanmakuFontPicker(context),
-              ),
-
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.playerSettingsFontSize,
-                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _fontSize.toStringAsFixed(0),
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-              Slider(
-                value: _fontSize,
-                min: 10,
-                max: 30,
-                divisions: 20,
-                label: _fontSize.toStringAsFixed(0),
-                onChanged: (v) => setState(() => _fontSize = v),
-                onChangeEnd: (v) => _updateDanmakuOption(),
-              ),
-
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.playerSettingsDisplayArea,
-                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${(_area * 100).toStringAsFixed(0)}%',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-              Slider(
-                value: _area,
-                min: 0.1,
-                divisions: 9,
-                label: '${(_area * 100).toStringAsFixed(0)}%',
-                onChanged: (v) => setState(() => _area = v),
-                onChangeEnd: (v) => _updateDanmakuOption(),
-              ),
-
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.playerSettingsOpacity,
-                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${(_opacity * 100).toStringAsFixed(0)}%',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-              Slider(
-                value: _opacity,
-                min: 0.1,
-                divisions: 9,
-                label: '${(_opacity * 100).toStringAsFixed(0)}%',
-                onChanged: (v) => setState(() => _opacity = v),
-                onChangeEnd: (v) => _updateDanmakuOption(),
-              ),
-
-              const SizedBox(height: 4),
-              Text(
-                AppLocalizations.of(context)!.playerSettingsDanmakuType,
-                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppLocalizations.of(context)!.playerSettingsScrollDanmaku,
-                  style: tt.bodyMedium,
+                Slider(
+                  value: _fontSize,
+                  min: 10,
+                  max: 30,
+                  divisions: 20,
+                  label: _fontSize.toStringAsFixed(0),
+                  onChanged: (v) => setState(() => _fontSize = v),
+                  onChangeEnd: (v) => _updateDanmakuOption(),
                 ),
-                value: !_hideScroll,
-                onChanged: (v) {
-                  setState(() => _hideScroll = !v);
-                  _updateDanmakuOption();
-                },
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppLocalizations.of(context)!.playerSettingsTopDanmaku,
-                  style: tt.bodyMedium,
-                ),
-                value: !_hideTop,
-                onChanged: (v) {
-                  setState(() => _hideTop = !v);
-                  _updateDanmakuOption();
-                },
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppLocalizations.of(context)!.playerSettingsBottomDanmaku,
-                  style: tt.bodyMedium,
-                ),
-                value: !_hideBottom,
-                onChanged: (v) {
-                  setState(() => _hideBottom = !v);
-                  _updateDanmakuOption();
-                },
-              ),
 
-              // Blocklist settings
-              const SizedBox(height: 8),
-              _DanmakuBlocklistEditor(
-                blocklist: _user.danmakuBlocklist,
-                onChanged: (list) {
-                  _user.setDanmakuBlocklist(list);
-                  widget.onChanged();
-                },
-              ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.playerSettingsDisplayArea,
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${(_area * 100).toStringAsFixed(0)}%',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: _area,
+                  min: 0.1,
+                  divisions: 9,
+                  label: '${(_area * 100).toStringAsFixed(0)}%',
+                  onChanged: (v) => setState(() => _area = v),
+                  onChangeEnd: (v) => _updateDanmakuOption(),
+                ),
+
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.playerSettingsOpacity,
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${(_opacity * 100).toStringAsFixed(0)}%',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: _opacity,
+                  min: 0.1,
+                  divisions: 9,
+                  label: '${(_opacity * 100).toStringAsFixed(0)}%',
+                  onChanged: (v) => setState(() => _opacity = v),
+                  onChangeEnd: (v) => _updateDanmakuOption(),
+                ),
+
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.of(context)!.playerSettingsDanmakuType,
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppLocalizations.of(context)!.playerSettingsScrollDanmaku,
+                    style: tt.bodyMedium,
+                  ),
+                  value: !_hideScroll,
+                  onChanged: (v) {
+                    setState(() => _hideScroll = !v);
+                    _updateDanmakuOption();
+                  },
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppLocalizations.of(context)!.playerSettingsTopDanmaku,
+                    style: tt.bodyMedium,
+                  ),
+                  value: !_hideTop,
+                  onChanged: (v) {
+                    setState(() => _hideTop = !v);
+                    _updateDanmakuOption();
+                  },
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppLocalizations.of(context)!.playerSettingsBottomDanmaku,
+                    style: tt.bodyMedium,
+                  ),
+                  value: !_hideBottom,
+                  onChanged: (v) {
+                    setState(() => _hideBottom = !v);
+                    _updateDanmakuOption();
+                  },
+                ),
+
+                // Blocklist settings
+                const SizedBox(height: 8),
+                _DanmakuBlocklistEditor(
+                  blocklist: _user.danmakuBlocklist,
+                  onChanged: (list) {
+                    _user.setDanmakuBlocklist(list);
+                    widget.onChanged();
+                  },
+                ),
+              ],
             ],
-          ],
-        ),
+          ),
         ),
       ),
     );

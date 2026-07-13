@@ -13,7 +13,6 @@ import '../widgets/detail_chip.dart';
 import '../widgets/local_content_list_page.dart';
 import '../widgets/media_kit_download_dialog.dart';
 
-
 class LocalAnimePage extends StatefulWidget {
   final bool embedded;
 

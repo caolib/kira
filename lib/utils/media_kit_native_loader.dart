@@ -417,11 +417,7 @@ class MediaKitNativeLoader {
     await ensureInitialized();
 
     emit(
-      const MediaKitNativeProgress(
-        fraction: 1,
-        stage: 'done',
-        detail: '完成',
-      ),
+      const MediaKitNativeProgress(fraction: 1, stage: 'done', detail: '完成'),
     );
   }
 
@@ -490,8 +486,9 @@ class MediaKitNativeLoader {
         throw HttpException('HTTP $status from $hostLabel', uri: uri);
       }
 
-      final total =
-          response.contentLength > 0 ? response.contentLength : expectedSize;
+      final total = response.contentLength > 0
+          ? response.contentLength
+          : expectedSize;
 
       onProgress(
         MediaKitNativeProgress(
@@ -518,8 +515,9 @@ class MediaKitNativeLoader {
         if (isDone ||
             now.difference(lastEmit) >= const Duration(milliseconds: 150)) {
           lastEmit = now;
-          final fraction =
-              total > 0 ? (received / total).clamp(0.0, 0.99) : null;
+          final fraction = total > 0
+              ? (received / total).clamp(0.0, 0.99)
+              : null;
           onProgress(
             MediaKitNativeProgress(
               fraction: fraction,

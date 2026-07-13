@@ -268,7 +268,11 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     final imageSections = _selectedImageCacheSections;
     final mediaKit = _mediaKitSelected ? _mediaKitSection : null;
     final font = _fontSelected ? _fontSection : null;
-    if (sections.isEmpty && imageSections.isEmpty && mediaKit == null && font == null) return;
+    if (sections.isEmpty &&
+        imageSections.isEmpty &&
+        mediaKit == null &&
+        font == null)
+      return;
 
     final entries = sections.expand((section) => section.entries).toList();
     final keys = entries.map((entry) => entry.key).toSet();
@@ -286,7 +290,10 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       if (mediaKit != null)
         l10n.cacheMediaKitDataTarget(_formatBytes(mediaKit.sizeBytes)),
       if (font != null)
-        l10n.cacheFontDataTarget(font.fonts.length, _formatBytes(font.sizeBytes)),
+        l10n.cacheFontDataTarget(
+          font.fonts.length,
+          _formatBytes(font.sizeBytes),
+        ),
     ];
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1096,13 +1103,21 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      12,
+                                    ),
                                     child: Row(
                                       children: [
                                         const Spacer(),
                                         FilledButton.tonalIcon(
-                                          onPressed: () => _deleteCacheSection(section),
-                                          icon: const Icon(Icons.delete_outline_rounded),
+                                          onPressed: () =>
+                                              _deleteCacheSection(section),
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                          ),
                                           label: Text(l10n.cacheClearButton),
                                         ),
                                       ],
@@ -1568,9 +1583,7 @@ class _FontCacheSectionCard extends StatelessWidget {
                     title: Text(font.name),
                     trailing: Text(
                       _FontCacheSectionCard._formatFileSize(font.sizeBytes),
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
                 Padding(

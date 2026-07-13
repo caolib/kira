@@ -165,9 +165,7 @@ class _MediaKitDownloadConfirmDialogState
                     title: Text(l10n.mediaKitDownloadSourceGithub),
                     subtitle: Text(
                       l10n.mediaKitDownloadSourceGithubHint,
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                     secondary: SvgPicture.asset(
                       'assets/github.svg',
@@ -185,9 +183,7 @@ class _MediaKitDownloadConfirmDialogState
                     title: Text(l10n.mediaKitDownloadSourceMirror),
                     subtitle: Text(
                       l10n.mediaKitDownloadSourceMirrorHint(mirrorPrefix),
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                     secondary: Icon(Icons.public, color: cs.primary),
                     contentPadding: EdgeInsets.zero,

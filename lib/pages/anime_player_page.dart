@@ -1023,10 +1023,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       : (_playback?.chapter.name ?? widget.chapterName);
 
   void _publishFullscreenMeta() {
-    _fullscreenMeta.value = (
-      title: _title,
-      chapterUuid: _currentChapterUuid,
-    );
+    _fullscreenMeta.value = (title: _title, chapterUuid: _currentChapterUuid);
   }
 
   /// 弹幕只在「正在播且未缓冲」时滚动，避免卡顿时弹幕继续飞。
@@ -1344,16 +1341,18 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
             body: SafeArea(
               child: Center(
                 // 全屏路由不随父 setState 重建：只刷新标题/选集，不重建 Video
-                child: ValueListenableBuilder<
-                    ({String title, String chapterUuid})>(
-                  valueListenable: _fullscreenMeta,
-                  builder: (_, meta, _) => _buildVideoSurface(
-                    _videoController,
-                    fullscreen: true,
-                    titleOverride: meta.title,
-                    chapterUuidOverride: meta.chapterUuid,
-                  ),
-                ),
+                child:
+                    ValueListenableBuilder<
+                      ({String title, String chapterUuid})
+                    >(
+                      valueListenable: _fullscreenMeta,
+                      builder: (_, meta, _) => _buildVideoSurface(
+                        _videoController,
+                        fullscreen: true,
+                        titleOverride: meta.title,
+                        chapterUuidOverride: meta.chapterUuid,
+                      ),
+                    ),
               ),
             ),
           ),
@@ -1398,21 +1397,18 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
             alignment: Alignment.centerRight,
             child: Material(
               color: Colors.transparent,
-              child: SizedBox(
-                width: width,
-                height: size.height,
-                child: panel,
-              ),
+              child: SizedBox(width: width, height: size.height, child: panel),
             ),
           );
         },
         transitionBuilder: (context, animation, secondaryAnimation, child) {
-          final offset = Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          );
+          final offset =
+              Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              );
           return SlideTransition(position: offset, child: child);
         },
       );

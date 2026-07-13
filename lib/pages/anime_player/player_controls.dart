@@ -33,7 +33,6 @@ class _PlayerControlButton extends StatelessWidget {
   }
 }
 
-
 /// 播放器栏 SVG 图标（viewBox 统一 24x24）
 class _PlayerSvgControlButton extends StatelessWidget {
   final String tooltip;
@@ -70,7 +69,6 @@ class _PlayerSvgControlButton extends StatelessWidget {
     );
   }
 }
-
 
 class _VideoPlayerSurface extends StatefulWidget {
   final VideoController controller;
@@ -921,9 +919,7 @@ class _PlayerPlaylistChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: selected
-                  ? primary
-                  : Colors.white.withValues(alpha: 0.14),
+              color: selected ? primary : Colors.white.withValues(alpha: 0.14),
               width: selected ? 1.4 : 0.8,
             ),
           ),

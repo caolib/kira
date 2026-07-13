@@ -22,7 +22,6 @@ import '../widgets/comic_cover_card.dart' show ComicCoverCard;
 import '../widgets/media_kit_download_dialog.dart';
 import 'bangumi_comments_section.dart';
 
-
 part 'anime_detail/anime_detail_models.dart';
 part 'anime_detail/anime_detail_widgets.dart';
 part 'anime_detail/anime_episode_widgets.dart';
