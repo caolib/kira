@@ -1561,6 +1561,66 @@ abstract class AppLocalizations {
   /// **'字体 {fontName} 尚未下载，是否现在下载并应用？'**
   String appearanceFontDownloadPrompt(String fontName);
 
+  /// No description provided for @appearanceAddCustomFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加自定义字体'**
+  String get appearanceAddCustomFont;
+
+  /// No description provided for @appearanceCustomFontNameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体名称'**
+  String get appearanceCustomFontNameLabel;
+
+  /// No description provided for @appearanceCustomFontNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如：Source Han Sans'**
+  String get appearanceCustomFontNameHint;
+
+  /// No description provided for @appearanceCustomFontUrlLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体下载链接'**
+  String get appearanceCustomFontUrlLabel;
+
+  /// No description provided for @appearanceCustomFontUrlHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'https://example.com/font.ttf'**
+  String get appearanceCustomFontUrlHint;
+
+  /// No description provided for @appearanceCustomFontInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写有效的字体名称和 HTTP(S) 下载链接'**
+  String get appearanceCustomFontInvalid;
+
+  /// No description provided for @appearanceCustomFontAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加字体 {fontName}'**
+  String appearanceCustomFontAdded(String fontName);
+
+  /// No description provided for @appearanceCustomFontBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get appearanceCustomFontBadge;
+
+  /// No description provided for @appearanceCustomFontRemoveTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'移除自定义字体'**
+  String get appearanceCustomFontRemoveTitle;
+
+  /// No description provided for @appearanceCustomFontRemoveContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要移除自定义字体 {fontName} 吗？本地文件也会被删除。'**
+  String appearanceCustomFontRemoveContent(String fontName);
+
   /// No description provided for @cacheFontSection.
   ///
   /// In zh, this message translates to:

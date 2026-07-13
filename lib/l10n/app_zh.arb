@@ -584,6 +584,30 @@
       }
     }
   },
+  "appearanceAddCustomFont": "添加自定义字体",
+  "appearanceCustomFontNameLabel": "字体名称",
+  "appearanceCustomFontNameHint": "例如：Source Han Sans",
+  "appearanceCustomFontUrlLabel": "字体下载链接",
+  "appearanceCustomFontUrlHint": "https://example.com/font.ttf",
+  "appearanceCustomFontInvalid": "请填写有效的字体名称和 HTTP(S) 下载链接",
+  "appearanceCustomFontAdded": "已添加字体 {fontName}",
+  "@appearanceCustomFontAdded": {
+    "placeholders": {
+      "fontName": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceCustomFontBadge": "自定义",
+  "appearanceCustomFontRemoveTitle": "移除自定义字体",
+  "appearanceCustomFontRemoveContent": "确定要移除自定义字体 {fontName} 吗？本地文件也会被删除。",
+  "@appearanceCustomFontRemoveContent": {
+    "placeholders": {
+      "fontName": {
+        "type": "String"
+      }
+    }
+  },
   "cacheFontSection": "字体缓存",
   "cacheFontLabel": "下载字体",
   "cacheFontDesc": "已下载的字体文件，删除后将恢复为系统默认字体。",
@@ -1698,7 +1722,6 @@
   "cacheManagementSummaryDesc": "按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片与播放组件可单独清理。",
   "cacheImageCacheSection": "图片缓存",
   "cacheDataCacheSection": "数据缓存",
-
   "cacheNoLocalKeyValueData": "没有可显示的本地键值数据",
   "cacheEntryCountSize": "{count} 项 · {size}",
   "@cacheEntryCountSize": {
@@ -2235,7 +2258,7 @@
       }
     }
   },
-    "mediaKitDownloadStageConnect": "正在连接…",
+  "mediaKitDownloadStageConnect": "正在连接…",
   "mediaKitDownloadBytesProgress": "{received} / {total}",
   "@mediaKitDownloadBytesProgress": {
     "placeholders": {
@@ -2263,5 +2286,4 @@
   "mediaKitDownloadStageExtract": "解压组件…",
   "mediaKitDownloadStageLoad": "加载组件…",
   "mediaKitDownloadStageDone": "完成"
-
 }

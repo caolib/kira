@@ -7,18 +7,42 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app_logger.dart';
 import 'app_storage.dart';
+import 'json_helpers.dart';
 
 /// Metadata for a downloadable remote font.
 class RemoteFontInfo {
   final String name;
   final String url;
+  final bool isCustom;
 
-  const RemoteFontInfo({required this.name, required this.url});
+  const RemoteFontInfo({
+    required this.name,
+    required this.url,
+    this.isCustom = false,
+  });
 
-  factory RemoteFontInfo.fromJson(Map<String, dynamic> json) {
+  factory RemoteFontInfo.fromJson(
+    Map<String, dynamic> json, {
+    bool isCustom = false,
+  }) {
     return RemoteFontInfo(
-      name: json['name'] as String,
-      url: json['url'] as String,
+      name: jsonString(json, 'name'),
+      url: jsonString(json, 'url'),
+      isCustom: isCustom || jsonBool(json, 'is_custom'),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'url': url,
+    if (isCustom) 'is_custom': true,
+  };
+
+  RemoteFontInfo copyWith({String? name, String? url, bool? isCustom}) {
+    return RemoteFontInfo(
+      name: name ?? this.name,
+      url: url ?? this.url,
+      isCustom: isCustom ?? this.isCustom,
     );
   }
 }
@@ -33,52 +57,116 @@ class FontManager {
   static const fontListUrl = 'https://cdn.caolib.qzz.io/fonts/list.json';
   static const _cacheKey = 'font_list_v1';
   static const _cacheTtl = Duration(hours: 6);
+  static const _customFontsPrefsKey = 'custom_fonts_v1';
 
   /// The font family name to use when no custom font is selected.
   static const defaultFontId = 'system';
 
-  List<RemoteFontInfo> _cachedList = const [];
-  List<RemoteFontInfo> get cachedList => _cachedList;
+  List<RemoteFontInfo> _remoteList = const [];
+  List<RemoteFontInfo> _customList = const [];
+  bool _customFontsLoaded = false;
 
-  List<RemoteFontInfo> _parseFontList(dynamic data) {
+  /// Combined catalog: remote fonts first, then user-added custom fonts.
+  /// Custom entries override remote ones with the same name.
+  List<RemoteFontInfo> get cachedList =>
+      _mergedFontList(_remoteList, _customList);
+
+  List<RemoteFontInfo> get customFonts => List.unmodifiable(_customList);
+
+  List<RemoteFontInfo> _parseFontList(dynamic data, {bool isCustom = false}) {
     if (data is Map<String, dynamic> && data['fonts'] is List) {
       return (data['fonts'] as List)
-          .map((e) => RemoteFontInfo.fromJson(e as Map<String, dynamic>))
+          .whereType<Map>()
+          .map(
+            (entry) => RemoteFontInfo.fromJson(
+              Map<String, dynamic>.from(entry),
+              isCustom: isCustom,
+            ),
+          )
+          .where((font) => font.name.isNotEmpty && font.url.isNotEmpty)
+          .toList();
+    }
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map(
+            (entry) => RemoteFontInfo.fromJson(
+              Map<String, dynamic>.from(entry),
+              isCustom: isCustom,
+            ),
+          )
+          .where((font) => font.name.isNotEmpty && font.url.isNotEmpty)
           .toList();
     }
     return const [];
+  }
+
+  List<RemoteFontInfo> _mergedFontList(
+    List<RemoteFontInfo> remoteFonts,
+    List<RemoteFontInfo> customFonts,
+  ) {
+    final byName = <String, RemoteFontInfo>{};
+    for (final font in remoteFonts) {
+      byName[font.name] = font;
+    }
+    for (final font in customFonts) {
+      byName[font.name] = font;
+    }
+    return byName.values.toList();
+  }
+
+  Future<void> _ensureCustomFontsLoaded() async {
+    if (_customFontsLoaded) return;
+    final raw = await AppStorage.preferences.getJson(_customFontsPrefsKey);
+    _customList = _parseFontList(
+      raw,
+      isCustom: true,
+    ).map((font) => font.copyWith(isCustom: true)).toList();
+    _customFontsLoaded = true;
+  }
+
+  Future<void> _persistCustomFonts() async {
+    await AppStorage.preferences.setJson(
+      _customFontsPrefsKey,
+      _customList.map((font) => font.toJson()).toList(),
+    );
   }
 
   /// Loads the font list with a 6-hour persistent cache strategy:
   /// - Always returns cached data immediately if available (even if stale).
   /// - If cached data is missing or expired, fetches from remote and updates cache.
   /// - [force] bypasses cache entirely for a fresh fetch.
+  /// User-added custom fonts are always merged into the result.
   Future<List<RemoteFontInfo>> fetchAvailableFonts({bool force = false}) async {
-    if (!force && _cachedList.isNotEmpty) return _cachedList;
+    await _ensureCustomFontsLoaded();
+
+    if (!force && _remoteList.isNotEmpty) {
+      return cachedList;
+    }
 
     final cached = await AppStorage.cache.get(_cacheKey);
 
     if (!force && cached != null) {
       final fonts = _parseFontList(cached);
       if (fonts.isNotEmpty) {
-        _cachedList = fonts;
-        return fonts;
+        _remoteList = fonts;
+        return cachedList;
       }
     }
 
     final fresh = await _fetchFromRemote();
     if (fresh.isNotEmpty) {
-      _cachedList = fresh;
+      _remoteList = fresh;
       await AppStorage.cache.put(_cacheKey, {
-        'fonts': fresh.map((f) => {'name': f.name, 'url': f.url}).toList(),
+        'fonts': fresh.map((font) => font.toJson()).toList(),
       }, ttl: _cacheTtl);
     } else if (cached != null) {
       final fonts = _parseFontList(cached);
-      _cachedList = fonts;
-      return fonts;
+      _remoteList = fonts;
+      return cachedList;
     }
 
-    return _cachedList;
+    return cachedList;
   }
 
   Future<List<RemoteFontInfo>> _fetchFromRemote() async {
@@ -97,8 +185,11 @@ class FontManager {
       }
       client.close();
 
-      final json = jsonDecode(utf8.decode(body)) as Map<String, dynamic>;
-      return _parseFontList(json);
+      final json = jsonDecode(utf8.decode(body));
+      if (json is Map<String, dynamic>) {
+        return _parseFontList(json);
+      }
+      return const [];
     } catch (e, stack) {
       await AppLogger.instance.recordError(
         e,
@@ -109,12 +200,72 @@ class FontManager {
     }
   }
 
-  /// Looks up a font by name from the cached list.
+  /// Looks up a font by name from the merged catalog (remote + custom).
   RemoteFontInfo? infoForName(String name) {
-    for (final f in _cachedList) {
-      if (f.name == name) return f;
+    for (final font in cachedList) {
+      if (font.name == name) return font;
     }
     return null;
+  }
+
+  /// Adds or updates a user-defined font (name + download URL).
+  ///
+  /// Returns `false` when [name] or [url] is empty, or [url] is not a valid
+  /// absolute HTTP(S) URI.
+  Future<bool> addCustomFont({
+    required String name,
+    required String url,
+  }) async {
+    final trimmedName = name.trim();
+    final trimmedUrl = url.trim();
+    if (trimmedName.isEmpty || trimmedUrl.isEmpty) return false;
+    if (trimmedName == defaultFontId) return false;
+
+    final uri = Uri.tryParse(trimmedUrl);
+    if (uri == null ||
+        !uri.hasScheme ||
+        !(uri.scheme == 'http' || uri.scheme == 'https') ||
+        uri.host.isEmpty) {
+      return false;
+    }
+
+    await _ensureCustomFontsLoaded();
+
+    final entry = RemoteFontInfo(
+      name: trimmedName,
+      url: trimmedUrl,
+      isCustom: true,
+    );
+    final existingIndex = _customList.indexWhere(
+      (font) => font.name == trimmedName,
+    );
+    if (existingIndex >= 0) {
+      _customList = List<RemoteFontInfo>.from(_customList)
+        ..[existingIndex] = entry;
+    } else {
+      _customList = [..._customList, entry];
+    }
+    await _persistCustomFonts();
+    return true;
+  }
+
+  /// Removes a user-defined font entry and its local file (if present).
+  Future<void> removeCustomFont(String fontName) async {
+    if (fontName.isEmpty || fontName == defaultFontId) return;
+    await _ensureCustomFontsLoaded();
+    final beforeCount = _customList.length;
+    _customList = _customList
+        .where((font) => font.name != fontName)
+        .toList(growable: false);
+    if (_customList.length != beforeCount) {
+      await _persistCustomFonts();
+    }
+    try {
+      await deleteFont(fontName);
+    } catch (error, stackTrace) {
+      // Local file cleanup is best-effort (e.g. missing path_provider in tests).
+      await AppLogger.instance.recordWarning(error, stackTrace: stackTrace);
+    }
   }
 
   Directory? _fontDir;
@@ -172,7 +323,12 @@ class FontManager {
       if (await outFile.exists()) {
         try {
           await outFile.delete();
-        } catch (_) {}
+        } catch (deleteError, deleteStack) {
+          await AppLogger.instance.recordWarning(
+            deleteError,
+            stackTrace: deleteStack,
+          );
+        }
       }
       await AppLogger.instance.recordError(
         e,
@@ -216,6 +372,8 @@ class FontManager {
   Future<String?> ensureFontReady(String fontName) async {
     if (fontName.isEmpty || fontName == defaultFontId) return null;
 
+    await _ensureCustomFontsLoaded();
+
     final isDownloaded = await isFontDownloaded(fontName);
     if (!isDownloaded) {
       final font = infoForName(fontName);
@@ -248,5 +406,14 @@ class FontManager {
       }
     }
     return result;
+  }
+
+  /// Test-only: clear in-memory state so prefs can be re-read.
+  void resetForTest() {
+    _remoteList = const [];
+    _customList = const [];
+    _customFontsLoaded = false;
+    _fontDir = null;
+    _dirInitialized = false;
   }
 }

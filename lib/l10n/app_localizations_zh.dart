@@ -834,6 +834,40 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get appearanceAddCustomFont => '添加自定义字体';
+
+  @override
+  String get appearanceCustomFontNameLabel => '字体名称';
+
+  @override
+  String get appearanceCustomFontNameHint => '例如：Source Han Sans';
+
+  @override
+  String get appearanceCustomFontUrlLabel => '字体下载链接';
+
+  @override
+  String get appearanceCustomFontUrlHint => 'https://example.com/font.ttf';
+
+  @override
+  String get appearanceCustomFontInvalid => '请填写有效的字体名称和 HTTP(S) 下载链接';
+
+  @override
+  String appearanceCustomFontAdded(String fontName) {
+    return '已添加字体 $fontName';
+  }
+
+  @override
+  String get appearanceCustomFontBadge => '自定义';
+
+  @override
+  String get appearanceCustomFontRemoveTitle => '移除自定义字体';
+
+  @override
+  String appearanceCustomFontRemoveContent(String fontName) {
+    return '确定要移除自定义字体 $fontName 吗？本地文件也会被删除。';
+  }
+
+  @override
   String get cacheFontSection => '字体缓存';
 
   @override
@@ -4127,6 +4161,40 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String appearanceFontDownloadPrompt(String fontName) {
     return '字型 $fontName 尚未下載，是否現在下載並套用？';
+  }
+
+  @override
+  String get appearanceAddCustomFont => '新增自訂字型';
+
+  @override
+  String get appearanceCustomFontNameLabel => '字型名稱';
+
+  @override
+  String get appearanceCustomFontNameHint => '例如：Source Han Sans';
+
+  @override
+  String get appearanceCustomFontUrlLabel => '字型下載連結';
+
+  @override
+  String get appearanceCustomFontUrlHint => 'https://example.com/font.ttf';
+
+  @override
+  String get appearanceCustomFontInvalid => '請填寫有效的字型名稱與 HTTP(S) 下載連結';
+
+  @override
+  String appearanceCustomFontAdded(String fontName) {
+    return '已新增字型 $fontName';
+  }
+
+  @override
+  String get appearanceCustomFontBadge => '自訂';
+
+  @override
+  String get appearanceCustomFontRemoveTitle => '移除自訂字型';
+
+  @override
+  String appearanceCustomFontRemoveContent(String fontName) {
+    return '確定要移除自訂字型 $fontName 嗎？本機檔案也會一併刪除。';
   }
 
   @override

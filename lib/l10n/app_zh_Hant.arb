@@ -584,6 +584,30 @@
       }
     }
   },
+  "appearanceAddCustomFont": "新增自訂字型",
+  "appearanceCustomFontNameLabel": "字型名稱",
+  "appearanceCustomFontNameHint": "例如：Source Han Sans",
+  "appearanceCustomFontUrlLabel": "字型下載連結",
+  "appearanceCustomFontUrlHint": "https://example.com/font.ttf",
+  "appearanceCustomFontInvalid": "請填寫有效的字型名稱與 HTTP(S) 下載連結",
+  "appearanceCustomFontAdded": "已新增字型 {fontName}",
+  "@appearanceCustomFontAdded": {
+    "placeholders": {
+      "fontName": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceCustomFontBadge": "自訂",
+  "appearanceCustomFontRemoveTitle": "移除自訂字型",
+  "appearanceCustomFontRemoveContent": "確定要移除自訂字型 {fontName} 嗎？本機檔案也會一併刪除。",
+  "@appearanceCustomFontRemoveContent": {
+    "placeholders": {
+      "fontName": {
+        "type": "String"
+      }
+    }
+  },
   "cacheFontSection": "字型快取",
   "cacheFontLabel": "下載字型",
   "cacheFontDesc": "已下載的字型的字型檔案，刪除後將恢復為系統預設字型。",
@@ -1698,7 +1722,6 @@
   "cacheManagementSummaryDesc": "按快取、帳號、設定、歷史等分類顯示；AI 配置 key 已隱藏；圖片與播放元件可單獨清理。",
   "cacheImageCacheSection": "圖片快取",
   "cacheDataCacheSection": "資料快取",
-
   "cacheNoLocalKeyValueData": "沒有可顯示的本地鍵值資料",
   "cacheEntryCountSize": "{count} 項 · {size}",
   "@cacheEntryCountSize": {
@@ -2235,7 +2258,7 @@
       }
     }
   },
-    "mediaKitDownloadStageConnect": "正在連線…",
+  "mediaKitDownloadStageConnect": "正在連線…",
   "mediaKitDownloadBytesProgress": "{received} / {total}",
   "@mediaKitDownloadBytesProgress": {
     "placeholders": {
@@ -2263,5 +2286,4 @@
   "mediaKitDownloadStageExtract": "解壓元件…",
   "mediaKitDownloadStageLoad": "載入元件…",
   "mediaKitDownloadStageDone": "完成"
-
 }

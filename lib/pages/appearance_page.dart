@@ -1201,33 +1201,129 @@ class _AppFontCardState extends State<_AppFontCard> {
     }
   }
 
-  Future<void> _deleteFont(String fontName) async {
+  Future<void> _deleteFont(RemoteFontInfo font) async {
+    final l10n = AppLocalizations.of(context)!;
+    final isCustom = font.isCustom;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.appearanceFontDeleteTitle),
+        title: Text(
+          isCustom
+              ? l10n.appearanceCustomFontRemoveTitle
+              : l10n.appearanceFontDeleteTitle,
+        ),
         content: Text(
-          AppLocalizations.of(context)!.appearanceFontDeleteContent(fontName),
+          isCustom
+              ? l10n.appearanceCustomFontRemoveContent(font.name)
+              : l10n.appearanceFontDeleteContent(font.name),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(AppLocalizations.of(context)!.cancelButton),
+            child: Text(l10n.cancelButton),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(AppLocalizations.of(context)!.confirmButton),
+            child: Text(l10n.confirmButton),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
 
-    if (widget.user.theme.appFontFamily == fontName) {
+    if (widget.user.theme.appFontFamily == font.name) {
       await widget.user.theme.setAppFontFamily(FontManager.defaultFontId);
     }
-    await _fontManager.deleteFont(fontName);
+    if (isCustom) {
+      await _fontManager.removeCustomFont(font.name);
+    } else {
+      await _fontManager.deleteFont(font.name);
+    }
     await _refreshDownloadStates();
+    if (mounted) {
+      setState(() {
+        _fonts = List<RemoteFontInfo>.from(_fontManager.cachedList);
+      });
+    }
+  }
+
+  Future<void> _showAddCustomFontDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+    final nameController = TextEditingController();
+    final urlController = TextEditingController();
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.appearanceAddCustomFont),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: l10n.appearanceCustomFontNameLabel,
+                  hintText: l10n.appearanceCustomFontNameHint,
+                  border: const OutlineInputBorder(),
+                ),
+                textInputAction: TextInputAction.next,
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: urlController,
+                decoration: InputDecoration(
+                  labelText: l10n.appearanceCustomFontUrlLabel,
+                  hintText: l10n.appearanceCustomFontUrlHint,
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.done,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancelButton),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.confirmButton),
+          ),
+        ],
+      ),
+    );
+
+    final fontName = nameController.text.trim();
+    final fontUrl = urlController.text.trim();
+    // Dispose after the dialog route finishes unmounting its TextFields.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      nameController.dispose();
+      urlController.dispose();
+    });
+
+    if (submitted != true || !mounted) return;
+
+    final added = await _fontManager.addCustomFont(
+      name: fontName,
+      url: fontUrl,
+    );
+    if (!mounted) return;
+
+    if (!added) {
+      showToast(context, l10n.appearanceCustomFontInvalid, isError: true);
+      return;
+    }
+
+    await _refreshDownloadStates();
+    if (!mounted) return;
+    setState(() {
+      _fonts = List<RemoteFontInfo>.from(_fontManager.cachedList);
+    });
+    showToast(context, l10n.appearanceCustomFontAdded(fontName));
   }
 
   @override
@@ -1236,8 +1332,9 @@ class _AppFontCardState extends State<_AppFontCard> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final currentFont = widget.user.theme.appFontFamily;
-    final currentLabel =
-        currentFont.isEmpty ? l10n.appearanceSystemDefault : currentFont;
+    final currentLabel = currentFont.isEmpty
+        ? l10n.appearanceSystemDefault
+        : currentFont;
 
     return Card(
       color: cs.surfaceContainerLow,
@@ -1252,27 +1349,70 @@ class _AppFontCardState extends State<_AppFontCard> {
             fontFamily: currentFont.isEmpty ? null : currentFont,
           ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _loading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : IconButton(
-                    tooltip: l10n.refreshButton,
-                    onPressed: () => _loadFonts(force: true),
-                    icon: Icon(
-                      Icons.refresh_rounded,
-                      size: 20,
-                      color: cs.onSurfaceVariant,
+        trailing: SizedBox(
+          height: 40,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: l10n.appearanceAddCustomFont,
+                onPressed: _showAddCustomFontDialog,
+                icon: Icon(Icons.add_rounded, color: cs.primary),
+                iconSize: 22,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 40,
+                  height: 40,
+                ),
+                style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 4),
+              if (_loading)
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    visualDensity: VisualDensity.compact,
                   ),
-            const Icon(Icons.expand_more),
-          ],
+                )
+              else
+                IconButton(
+                  tooltip: l10n.refreshButton,
+                  onPressed: () => _loadFonts(force: true),
+                  icon: Icon(Icons.refresh_rounded, color: cs.onSurfaceVariant),
+                  iconSize: 22,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: Center(
+                  child: Icon(
+                    Icons.expand_more,
+                    size: 22,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         onExpansionChanged: (expanded) {
           if (expanded && _fonts.isEmpty && !_loading) {
@@ -1311,36 +1451,8 @@ class _AppFontCardState extends State<_AppFontCard> {
                     RadioListTile<String>(
                       value: font.name,
                       title: Text(font.name),
-                      subtitle: _downloadedCache[font.name] == true
-                          ? null
-                          : Text(l10n.appearanceFontNotDownloaded),
-                      secondary: _downloadStates[font.name] == true
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : (_downloadedCache[font.name] == true
-                              ? IconButton(
-                                  icon: Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                  tooltip: l10n.appearanceFontDeleteTitle,
-                                  onPressed: () => _deleteFont(font.name),
-                                  visualDensity: VisualDensity.compact,
-                                )
-                              : IconButton(
-                                  icon: Icon(
-                                    Icons.download_outlined,
-                                    size: 20,
-                                    color: cs.primary,
-                                  ),
-                                  tooltip: l10n.appearanceFontDownloadTooltip,
-                                  onPressed: () => _downloadFont(font.name),
-                                  visualDensity: VisualDensity.compact,
-                                )),
+                      subtitle: _buildFontSubtitle(font, l10n, cs),
+                      secondary: _buildFontActions(font, l10n, cs),
                     ),
                 ],
               ),
@@ -1349,5 +1461,92 @@ class _AppFontCardState extends State<_AppFontCard> {
         ],
       ),
     );
+  }
+
+  Widget? _buildFontSubtitle(
+    RemoteFontInfo font,
+    AppLocalizations l10n,
+    ColorScheme colorScheme,
+  ) {
+    final isDownloaded = _downloadedCache[font.name] == true;
+    if (!font.isCustom && isDownloaded) return null;
+
+    final parts = <Widget>[];
+    if (font.isCustom) {
+      parts.add(
+        Text(
+          l10n.appearanceCustomFontBadge,
+          style: TextStyle(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+    if (!isDownloaded) {
+      if (parts.isNotEmpty) {
+        parts.add(
+          Text(' · ', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+        );
+      }
+      parts.add(Text(l10n.appearanceFontNotDownloaded));
+    }
+
+    if (parts.isEmpty) return null;
+    return Row(mainAxisSize: MainAxisSize.min, children: parts);
+  }
+
+  Widget _buildFontActions(
+    RemoteFontInfo font,
+    AppLocalizations l10n,
+    ColorScheme colorScheme,
+  ) {
+    if (_downloadStates[font.name] == true) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    final isDownloaded = _downloadedCache[font.name] == true;
+    final actions = <Widget>[];
+
+    if (!isDownloaded) {
+      actions.add(
+        IconButton(
+          icon: Icon(
+            Icons.download_outlined,
+            size: 20,
+            color: colorScheme.primary,
+          ),
+          tooltip: l10n.appearanceFontDownloadTooltip,
+          onPressed: () => _downloadFont(font.name),
+          visualDensity: VisualDensity.compact,
+        ),
+      );
+    }
+
+    // Custom fonts can always be removed (even before download).
+    // Built-in remote fonts only expose delete after they are downloaded.
+    if (font.isCustom || isDownloaded) {
+      actions.add(
+        IconButton(
+          icon: Icon(
+            Icons.delete_outline,
+            size: 20,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          tooltip: font.isCustom
+              ? l10n.appearanceCustomFontRemoveTitle
+              : l10n.appearanceFontDeleteTitle,
+          onPressed: () => _deleteFont(font),
+          visualDensity: VisualDensity.compact,
+        ),
+      );
+    }
+
+    if (actions.length == 1) return actions.single;
+    return Row(mainAxisSize: MainAxisSize.min, children: actions);
   }
 }
