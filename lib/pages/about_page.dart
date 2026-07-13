@@ -187,17 +187,17 @@ class _AboutPageState extends State<AboutPage> {
     final controller = TextEditingController(text: _user.updateMirrorPrefix);
     final formKey = GlobalKey<FormState>();
 
-    try {
-      final result = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          final cs = Theme.of(dialogContext).colorScheme;
-          final tt = Theme.of(dialogContext).textTheme;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        final tt = Theme.of(dialogContext).textTheme;
 
-          return AlertDialog(
-            title: Text(l10n.aboutMirrorPrefixTitle),
-            content: Form(
-              key: formKey,
+        return AlertDialog(
+          title: Text(l10n.aboutMirrorPrefixTitle),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,38 +232,42 @@ class _AboutPageState extends State<AboutPage> {
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(
-                  dialogContext,
-                  UserManager.defaultUpdateMirrorPrefix,
-                ),
-                child: Text(l10n.aboutRestoreDefaultButton),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                UserManager.defaultUpdateMirrorPrefix,
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(l10n.cancelButton),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (formKey.currentState?.validate() ?? false) {
-                    Navigator.pop(dialogContext, controller.text);
-                  }
-                },
-                child: Text(l10n.aboutSaveButton),
-              ),
-            ],
-          );
-        },
-      );
+              child: Text(l10n.aboutRestoreDefaultButton),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(l10n.cancelButton),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(dialogContext, controller.text);
+                }
+              },
+              child: Text(l10n.aboutSaveButton),
+            ),
+          ],
+        );
+      },
+    );
 
-      if (result == null) return;
-      await _user.setUpdateMirrorPrefix(result);
-      if (!mounted) return;
-      showToast(context, l10n.aboutMirrorPrefixSavedToast);
-    } finally {
+    final mirrorPrefix = result;
+    // Dispose after the dialog route finishes unmounting its TextFormField.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.dispose();
-    }
+    });
+
+    if (mirrorPrefix == null) return;
+    await _user.setUpdateMirrorPrefix(mirrorPrefix);
+    if (!mounted) return;
+    showToast(context, l10n.aboutMirrorPrefixSavedToast);
   }
 
   Widget _buildUpdateChannelChip(ColorScheme cs, AppLocalizations l10n) {
