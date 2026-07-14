@@ -258,7 +258,7 @@ class _CommentCardState extends State<_CommentCard> {
     final contentSpacing = compact ? 9.0 : 8.0;
     final userStyle = _buildCommentUserStyle(tt, cs, compact: compact);
     final timeStyle = _buildCommentTimeStyle(tt, cs);
-    final bodyStyle = _buildCommentBodyStyle(
+    final bodyStyle = buildCommentBodyStyle(
       tt,
       compact: compact,
       fontScale: fontScale,

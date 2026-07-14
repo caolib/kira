@@ -271,8 +271,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     if (sections.isEmpty &&
         imageSections.isEmpty &&
         mediaKit == null &&
-        font == null)
+        font == null) {
       return;
+    }
 
     final entries = sections.expand((section) => section.entries).toList();
     final keys = entries.map((entry) => entry.key).toSet();

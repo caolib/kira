@@ -12,7 +12,8 @@ import '../models/user_manager.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
-import 'chapter_comments_sheet.dart' show CommentSettingsPanel;
+import 'chapter_comments_sheet.dart'
+    show CommentSettingsPanel, buildCommentBodyStyle;
 
 class ComicCommentsSheet extends StatefulWidget {
   final String comicId;
@@ -517,9 +518,10 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       color: cs.onSurfaceVariant.withValues(alpha: 0.72),
       fontWeight: FontWeight.w400,
     );
-    final bodyStyle = (tt.bodyLarge ?? tt.bodyMedium)?.copyWith(
-      height: 1.55,
-      fontWeight: FontWeight.w500,
+    final bodyStyle = buildCommentBodyStyle(
+      tt,
+      compact: false,
+      fontScale: user.commentFontScale,
     );
 
     return GestureDetector(
@@ -795,10 +797,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       color: cs.onSurfaceVariant.withValues(alpha: 0.72),
       fontWeight: FontWeight.w400,
     );
-    final bodyStyle = tt.bodyMedium?.copyWith(
-      height: 1.45,
-      fontWeight: FontWeight.w500,
-    );
+    final bodyStyle = buildCommentBodyStyle(
+      tt,
+      compact: true,
+      fontScale: user.commentFontScale,
+    )?.copyWith(height: 1.45);
 
     return GestureDetector(
       onTap: () => _showPostCommentDialog(replyTo: reply),

@@ -1353,7 +1353,6 @@ class _AppFontCardState extends State<_AppFontCard> {
           height: 40,
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               IconButton(
                 tooltip: l10n.appearanceAddCustomFont,

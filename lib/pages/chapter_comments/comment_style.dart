@@ -183,7 +183,7 @@ TextStyle? _buildCommentTimeStyle(
   );
 }
 
-TextStyle? _buildCommentBodyStyle(
+TextStyle? buildCommentBodyStyle(
   TextTheme textTheme, {
   required bool compact,
   required double fontScale,

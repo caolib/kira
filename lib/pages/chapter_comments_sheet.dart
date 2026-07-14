@@ -2053,7 +2053,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     final preferredMaxWidth = maxWidth * 0.8;
 
     final estimatedWidths = entries.map((entry) {
-      final compactBodyStyle = _buildCommentBodyStyle(
+      final compactBodyStyle = buildCommentBodyStyle(
         textTheme,
         compact: true,
         fontScale: _commentFontScale,

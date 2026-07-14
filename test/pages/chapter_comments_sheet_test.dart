@@ -77,6 +77,26 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  test('comment body style applies configured font scale', () {
+    const textTheme = TextTheme(
+      bodyLarge: TextStyle(fontSize: 16),
+      bodyMedium: TextStyle(fontSize: 14),
+    );
+
+    expect(
+      buildCommentBodyStyle(
+        textTheme,
+        compact: false,
+        fontScale: 1.5,
+      )?.fontSize,
+      24,
+    );
+    expect(
+      buildCommentBodyStyle(textTheme, compact: true, fontScale: 1.5)?.fontSize,
+      24,
+    );
+  });
+
   testWidgets('merged compact comments keep one line when avatars are hidden', (
     tester,
   ) async {
