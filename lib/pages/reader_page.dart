@@ -129,6 +129,12 @@ class _ReaderPageState extends State<ReaderPage> {
   // 连续阅读：按阅读顺序拼接的章节链。首项为用户进入时打开的章节。
   // _chainIndex 指向当前"所在章节"（用于导航栏显示与历史记录）。
   // 加载下一话时追加到链尾，不重建视图，从而避免闪屏与状态丢失。
+  // 为避免长会话内存与主线程开销无限增长，仅保留「前1后1」窗口：
+  // 当前章 + 前一话 + 后一话（最多 3 章）。
+  static const int _maxChainChaptersBehind = 1;
+  static const int _maxChainChaptersAhead = 1;
+  static const int _maxImageNaturalSizes = 120;
+
   final List<ChapterDetail> _chain = [];
   int _chainIndex = 0;
   bool _loadingNextChainChapter = false;
@@ -139,12 +145,20 @@ class _ReaderPageState extends State<ReaderPage> {
   // 图片原始尺寸缓存：key 为图片 URL / 本地路径。
   // 用于在竖向滚动模式下为占位符和错误 Widget 提供与真实图片一致的预估高度，
   // 避免 placeholder → 真图尺寸不同导致的页面跳动。
+  // Map 保持插入序，超限时淘汰最早写入的项。
   final Map<String, Size> _imageNaturalSizes = {};
 
   // 评论缓存按章节 uuid 存放，连续阅读链中各章均可独立缓存，
   // 供分隔区评论按钮显示数量并避免重复打开时重新加载。
   final Map<String, List<ChapterComment>> _commentCache = {};
   final Map<String, int> _commentTotalCache = {};
+
+  // 滚动列表结构缓存：仅在章节链变化时重建，避免每次 setState 全量 new 列表。
+  List<_ScrollItem> _scrollItems = const [];
+  // 每章第一张图的全局图片索引 / 滚动 item 索引，支持 O(log n) 定位。
+  final List<int> _chapterImageStarts = [];
+  final List<int> _chapterScrollStarts = [];
+  int _cachedChainImageCount = 0;
 
   bool get _isPageMode => _user.readerMode == 1;
   bool get _isVerticalPageMode =>
@@ -158,46 +172,188 @@ class _ReaderPageState extends State<ReaderPage> {
   bool get _continuousReading => _isPageMode || _user.readerContinuousReading;
 
   /// 链中所有章节图片的累计数量（用于渲染 PageView / 滚动列表的总条目数）。
-  int get _chainImageCount =>
-      _chain.fold(0, (sum, c) => sum + c.contents.length);
+  int get _chainImageCount => _cachedChainImageCount;
 
   /// 全局图片索引 -> (章节索引, 章节内图片索引)。
   (int chapterIndex, int imageIndex) _resolveChainImage(int globalIndex) {
-    var remaining = globalIndex;
-    for (var i = 0; i < _chain.length; i++) {
-      final count = _chain[i].contents.length;
-      if (remaining < count) return (i, remaining);
-      remaining -= count;
+    if (_chain.isEmpty) return (0, 0);
+    if (_chapterImageStarts.isEmpty) {
+      _rebuildChainStructure();
     }
-    return (_chain.length - 1, _chain.last.contents.length - 1);
+    if (globalIndex <= 0) return (0, 0);
+    if (globalIndex >= _cachedChainImageCount) {
+      return (_chain.length - 1, _chain.last.contents.length - 1);
+    }
+    final chapterIndex = _upperBoundStarts(_chapterImageStarts, globalIndex);
+    return (chapterIndex, globalIndex - _chapterImageStarts[chapterIndex]);
   }
 
   /// 章节索引在链中的起始全局图片索引。
   int _chainChapterStart(int chapterIndex) {
-    var start = 0;
-    for (var i = 0; i < chapterIndex; i++) {
-      start += _chain[i].contents.length;
+    if (_chapterImageStarts.isEmpty) {
+      _rebuildChainStructure();
     }
-    return start;
+    if (chapterIndex <= 0) return 0;
+    if (chapterIndex >= _chapterImageStarts.length) {
+      return _cachedChainImageCount;
+    }
+    return _chapterImageStarts[chapterIndex];
   }
 
-  /// 当前滚动列表的总条目数（仅在 _buildScrollMode 中使用，用于判断是否到达 loadMore）。
-  /// 非连续：header(可选) + 图片 + tail。
-  /// 连续：header(可选) + 各章(图片+分隔) + tail/loadMore（分隔只在非末章之后）。
+  /// 当前滚动列表的总条目数。
   int get _scrollItemCount {
-    final firstChapter = _chain.first;
-    final hasHeader = firstChapter.prev == null;
-    var count = hasHeader ? 1 : 0;
-    for (final chapter in _chain) {
-      count += chapter.contents.length;
+    if (_scrollItems.isEmpty && _chain.isNotEmpty) {
+      _rebuildChainStructure();
     }
+    return _scrollItems.length;
+  }
+
+  /// 在非降 starts 中找最后一个 `starts[i] <= value` 的下标。
+  int _upperBoundStarts(List<int> starts, int value) {
+    var lo = 0;
+    var hi = starts.length - 1;
+    while (lo < hi) {
+      final mid = (lo + hi + 1) >> 1;
+      if (starts[mid] <= value) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return lo;
+  }
+
+  /// 根据章节链重建滚动 item 列表与索引缓存。
+  void _rebuildChainStructure() {
+    _chapterImageStarts.clear();
+    _chapterScrollStarts.clear();
+    _cachedChainImageCount = 0;
+
+    if (_chain.isEmpty) {
+      _scrollItems = const [];
+      return;
+    }
+
+    final items = <_ScrollItem>[];
+    final hasHeader = _chain.first.prev == null;
+    if (hasHeader) {
+      items.add(_ScrollItem.header());
+    }
+
+    var imageCursor = 0;
     if (_continuousReading) {
-      // N 章之间有 N-1 个分隔 + 末尾 1 个 tail/loadMore = N
-      count += _chain.length;
+      for (var ci = 0; ci < _chain.length; ci++) {
+        final chapter = _chain[ci];
+        _chapterImageStarts.add(imageCursor);
+        _chapterScrollStarts.add(items.length);
+        for (var i = 0; i < chapter.contents.length; i++) {
+          items.add(_ScrollItem.image(chapter, i, imageCursor + i));
+        }
+        imageCursor += chapter.contents.length;
+
+        final isLast = ci == _chain.length - 1;
+        if (isLast) {
+          if (chapter.next == null) {
+            items.add(_ScrollItem.tail());
+          } else {
+            items.add(_ScrollItem.loadMore());
+          }
+        } else {
+          items.add(_ScrollItem.chapterDivider(chapter));
+        }
+      }
     } else {
-      count += 1; // tail
+      final chapter = _detail ?? _chain.first;
+      _chapterImageStarts.add(0);
+      _chapterScrollStarts.add(items.length);
+      for (var i = 0; i < chapter.contents.length; i++) {
+        items.add(_ScrollItem.image(chapter, i, i));
+      }
+      imageCursor = chapter.contents.length;
+      items.add(_ScrollItem.tail());
     }
-    return count;
+
+    _cachedChainImageCount = imageCursor;
+    _scrollItems = items;
+  }
+
+  /// 清理被裁剪章节关联的缓存状态。
+  void _discardPrunedChapters(List<ChapterDetail> prunedChapters) {
+    for (final chapter in prunedChapters) {
+      _commentCache.remove(chapter.uuid);
+      _commentTotalCache.remove(chapter.uuid);
+      for (final source in chapter.contents) {
+        _imageNaturalSizes.remove(source);
+      }
+    }
+  }
+
+  /// 按「前1后1」窗口裁剪连续阅读链，限制长会话内存与列表规模。
+  /// 返回是否实际裁剪。调用方负责随后 setState。
+  bool _pruneChainWindow() {
+    if (!_continuousReading || _chain.isEmpty) return false;
+
+    final behindRemoveCount = _chainIndex - _maxChainChaptersBehind;
+    final maxKeepIndex = _chainIndex + _maxChainChaptersAhead;
+    final aheadRemoveCount = _chain.length - 1 - maxKeepIndex;
+
+    if (behindRemoveCount <= 0 && aheadRemoveCount <= 0) return false;
+
+    final prunedChapters = <ChapterDetail>[];
+    var shifted = false;
+    if (aheadRemoveCount > 0) {
+      prunedChapters.addAll(_chain.sublist(_chain.length - aheadRemoveCount));
+      _chain.removeRange(_chain.length - aheadRemoveCount, _chain.length);
+    }
+    if (behindRemoveCount > 0) {
+      prunedChapters.addAll(_chain.sublist(0, behindRemoveCount));
+      _chain.removeRange(0, behindRemoveCount);
+      _chainIndex -= behindRemoveCount;
+      shifted = true;
+    }
+
+    _discardPrunedChapters(prunedChapters);
+    if (shifted) {
+      // 全局图片索引会因头部裁剪而重编号，清空以全局索引为键的重试状态。
+      _imageReloadVersions.clear();
+      _imageRetryCounts.clear();
+      _imageRetryTokens.clear();
+    }
+
+    _rebuildChainStructure();
+
+    // 仅头部裁剪会移动当前项索引，需要重建阅读控件对齐位置。
+    // 只裁链尾时保持现有滚动/翻页位置。
+    if (shifted) {
+      final page = _currentPage.clamp(
+        1,
+        _detail?.contents.isNotEmpty == true ? _detail!.contents.length : 1,
+      );
+      if (_isPageMode) {
+        final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
+        final oldController = _pageController;
+        _pageController = PageController(initialPage: initialIndex);
+        _scrollWidgetVersion++;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          oldController.dispose();
+        });
+      } else if (_chain.isNotEmpty) {
+        _scrollModeInitialIndex = _scrollItemIndexFor(
+          chainIndex: _chainIndex,
+          page: page,
+        );
+        _scrollWidgetVersion++;
+        // 列表重建会打断自动滚动，裁剪后按需恢复。
+        if (_autoScrollEnabled && !_isPageMode) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _autoScrollEnabled && !_isPageMode) {
+              _restartAutoScroll();
+            }
+          });
+        }
+      }
+    }
+    return true;
   }
 
   int get _commentCount {
@@ -348,32 +504,35 @@ class _ReaderPageState extends State<ReaderPage> {
                 ? widget.initialPage.clamp(1, detail.contents.length)
                 : 1);
       _isFirstLoad = false;
-      final hasHeader = detail.prev == null;
       setState(() {
         _detail = detail;
         _loading = false;
         _refreshingChapter = false;
         _currentPage = startPage;
-        _scrollModeInitialIndex = _scrollItemIndexFor(
-          chainIndex: 0,
-          page: startPage,
-          hasHeader: hasHeader,
-        );
-        _scrollWidgetVersion++;
         _imageReloadVersions.clear();
         _imageRetryCounts.clear();
         _imageRetryTokens.clear();
+        _imageNaturalSizes.clear();
         // 重置连续阅读链：首项即当前章节。
         _chain
           ..clear()
           ..add(detail);
         _chainIndex = 0;
         _loadingNextChainChapter = false;
+        _rebuildChainStructure();
+        _scrollModeInitialIndex = _scrollItemIndexFor(
+          chainIndex: 0,
+          page: startPage,
+        );
+        _scrollWidgetVersion++;
       });
       if (_isPageMode) {
-        _pageController.dispose();
+        final oldController = _pageController;
         final initialIndex = _chainChapterStart(_chainIndex) + (startPage - 1);
         _pageController = PageController(initialPage: initialIndex);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          oldController.dispose();
+        });
       }
       _autoAdvancingChapter = false;
       _saveReadingHistory();
@@ -459,6 +618,7 @@ class _ReaderPageState extends State<ReaderPage> {
             if (_chainIndex < _chain.length) {
               _chain[_chainIndex] = updated;
             }
+            _rebuildChainStructure();
           });
         })
         .catchError((Object _) {
@@ -654,6 +814,9 @@ class _ReaderPageState extends State<ReaderPage> {
       setState(() {
         _chain.add(next);
         _loadingNextChainChapter = false;
+        _rebuildChainStructure();
+        // 链尾增长后按「前1后1」窗口裁剪，避免长会话无限膨胀。
+        _pruneChainWindow();
       });
       // 追加后立即预加载该话评论，使分隔区评论按钮能显示数量
       if (_user.commentPreload) unawaited(_preloadComments(chapter: next));
@@ -672,6 +835,13 @@ class _ReaderPageState extends State<ReaderPage> {
     _chainIndex = chapterIndex;
     _detail = newDetail;
     _currentUuid = newDetail.uuid;
+    // 章节切换后延后裁剪窗口，避免滚动过程中同步重建列表。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_pruneChainWindow()) {
+        setState(() {});
+      }
+    });
     return true;
   }
 
@@ -810,17 +980,19 @@ class _ReaderPageState extends State<ReaderPage> {
         ..add(_detail!);
       _chainIndex = 0;
     }
+    _rebuildChainStructure();
     if (_isPageMode) {
-      _pageController.dispose();
+      final oldController = _pageController;
       final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
       _pageController = PageController(initialPage: initialIndex);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        oldController.dispose();
+      });
     } else {
       // 滚动模式:让 ScrollablePositionedList 带新 initialScrollIndex 重建,保持当前页
-      final hasHeader = _chain.first.prev == null;
       _scrollModeInitialIndex = _scrollItemIndexFor(
         chainIndex: _chainIndex,
         page: page,
-        hasHeader: hasHeader,
       );
       _scrollWidgetVersion++;
     }
@@ -978,7 +1150,6 @@ class _ReaderPageState extends State<ReaderPage> {
             ? _scrollItemIndexFor(
                 chainIndex: _chain.length - 1,
                 page: lastChapter.contents.length,
-                hasHeader: hasHeader,
               )
             : (hasHeader ? 1 : 0) + (_detail!.contents.length - 1);
         final isLastImageFullyVisible = positions.any((p) {
@@ -1109,7 +1280,34 @@ class _ReaderPageState extends State<ReaderPage> {
   /// 记录单张图片的原始尺寸，供占位符/错误 Widget 估算高度。
   void _recordImageNaturalSize(String source, Size size) {
     if (size.isEmpty) return;
+    // 重新插入可刷新插入序，避免活跃图片被 LRU 误淘汰。
+    _imageNaturalSizes.remove(source);
     _imageNaturalSizes[source] = size;
+    while (_imageNaturalSizes.length > _maxImageNaturalSizes) {
+      _imageNaturalSizes.remove(_imageNaturalSizes.keys.first);
+    }
+  }
+
+  /// 解析并缓存图片原始尺寸，完成后释放 ImageInfo / listener。
+  void _resolveAndCacheImageSize(ImageProvider provider, String source) {
+    if (_imageNaturalSizes.containsKey(source)) return;
+    late final ImageStreamListener listener;
+    final stream = provider.resolve(ImageConfiguration.empty);
+    listener = ImageStreamListener(
+      (info, _) {
+        stream.removeListener(listener);
+        final size = Size(
+          info.image.width.toDouble(),
+          info.image.height.toDouble(),
+        );
+        info.dispose();
+        _recordImageNaturalSize(source, size);
+      },
+      onError: (_, _) {
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
   }
 
   /// 从已加载的图片中统计出最常见的宽高比（频率最高的桶）。
@@ -1269,23 +1467,16 @@ class _ReaderPageState extends State<ReaderPage> {
         fit: imageFit,
         width: _isHorizontalScrollMode ? null : double.infinity,
         height: useFullViewport ? double.infinity : null,
+        // 与网络图一致：按屏幕尺寸限制解码，避免原图像素常驻内存。
+        cacheWidth: _isHorizontalScrollMode ? null : memCacheWidth,
+        cacheHeight: _isHorizontalScrollMode ? memCacheWidth : null,
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
           // 图片首帧渲染后，异步解析原始尺寸并缓存。
-          // containsKey 保证只 resolve 一次，避免重复创建 ImageStream。
           if (frame == 0 && !_imageNaturalSizes.containsKey(imageSource)) {
-            FileImage(File(imageSource))
-                .resolve(ImageConfiguration.empty)
-                .addListener(
-                  ImageStreamListener((info, _) {
-                    _recordImageNaturalSize(
-                      imageSource,
-                      Size(
-                        info.image.width.toDouble(),
-                        info.image.height.toDouble(),
-                      ),
-                    );
-                  }),
-                );
+            _resolveAndCacheImageSize(
+              FileImage(File(imageSource)),
+              imageSource,
+            );
           }
           return child;
         },
@@ -1329,21 +1520,7 @@ class _ReaderPageState extends State<ReaderPage> {
         imageBuilder: (_, imageProvider) {
           _clearImageRetryState(key);
           // 图片加载成功后，异步解析其原始尺寸并缓存。
-          if (!_imageNaturalSizes.containsKey(imageSource)) {
-            imageProvider
-                .resolve(ImageConfiguration.empty)
-                .addListener(
-                  ImageStreamListener((info, _) {
-                    _recordImageNaturalSize(
-                      imageSource,
-                      Size(
-                        info.image.width.toDouble(),
-                        info.image.height.toDouble(),
-                      ),
-                    );
-                  }),
-                );
-          }
+          _resolveAndCacheImageSize(imageProvider, imageSource);
           return Image(
             image: imageProvider,
             fit: imageFit,
@@ -1439,20 +1616,18 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   /// 计算滚动模式下某章某页对应的列表 item 索引。
-  /// 布局：header(可选) + 每章[divider + images]。
-  int _scrollItemIndexFor({
-    required int chainIndex,
-    required int page,
-    required bool hasHeader,
-  }) {
-    // 布局：header(可选) + 各章[图片 + 分隔(非末章)] + tail/loadMore
-    // 目标章之前每章贡献：图片数 + 1 个分隔
-    var idx = hasHeader ? 1 : 0;
-    for (var ci = 0; ci < chainIndex; ci++) {
-      idx += _chain[ci].contents.length + 1;
+  /// 布局：header(可选) + 各章[图片 + 分隔(非末章)] + tail/loadMore。
+  int _scrollItemIndexFor({required int chainIndex, required int page}) {
+    if (_chapterScrollStarts.isEmpty) {
+      _rebuildChainStructure();
     }
-    idx += page - 1;
-    return idx;
+    if (_chapterScrollStarts.isEmpty) {
+      return 0;
+    }
+    final chapterIndex = chainIndex.clamp(0, _chapterScrollStarts.length - 1);
+    final imageCount = _chain[chapterIndex].contents.length;
+    final local = (page - 1).clamp(0, imageCount > 0 ? imageCount - 1 : 0);
+    return _chapterScrollStarts[chapterIndex] + local;
   }
 
   void _jumpToScrollPage(int page, {int? totalPages}) {
@@ -1465,7 +1640,6 @@ class _ReaderPageState extends State<ReaderPage> {
       targetIndex = _scrollItemIndexFor(
         chainIndex: _chainIndex,
         page: clampedPage,
-        hasHeader: _chain.first.prev == null,
       );
     } else {
       final hasHeader = _detail?.prev == null;
@@ -1516,34 +1690,28 @@ class _ReaderPageState extends State<ReaderPage> {
 
   /// 连续阅读滚动模式：根据 item 索引解析所属章节与章内页码，更新导航栏与历史。
   void _onItemPositionsChangedContinuous(Iterable<ItemPosition> positions) {
-    // 计算各章在列表中的图片起始 item 索引
-    final firstChapter = _chain.first;
-    final hasHeader = firstChapter.prev == null;
-    var cursor = hasHeader ? 1 : 0;
-    final starts = <int>[];
-    for (final chapter in _chain) {
-      starts.add(cursor);
-      cursor += chapter.contents.length + 1; // Images + trailing separator/tail
+    if (_chapterScrollStarts.isEmpty) {
+      _rebuildChainStructure();
     }
-    // 找到可见面积最大的图片 item
+    if (_chapterScrollStarts.isEmpty) return;
+
+    // 找到可见面积最大的图片 item（O(visible * log chapters)）。
     int? bestChapterIndex;
     int? bestLocalIndex;
     double bestVisible = -1;
     for (final p in positions) {
-      for (var ci = 0; ci < _chain.length; ci++) {
-        final s = starts[ci];
-        final count = _chain[ci].contents.length;
-        if (p.index >= s && p.index < s + count) {
-          final top = p.itemLeadingEdge.clamp(0.0, 1.0);
-          final bottom = p.itemTrailingEdge.clamp(0.0, 1.0);
-          final visible = bottom - top;
-          if (visible > bestVisible) {
-            bestVisible = visible;
-            bestChapterIndex = ci;
-            bestLocalIndex = p.index - s;
-          }
-          break;
-        }
+      final chapterIndex = _upperBoundStarts(_chapterScrollStarts, p.index);
+      final start = _chapterScrollStarts[chapterIndex];
+      final count = _chain[chapterIndex].contents.length;
+      if (p.index < start || p.index >= start + count) continue;
+
+      final top = p.itemLeadingEdge.clamp(0.0, 1.0);
+      final bottom = p.itemTrailingEdge.clamp(0.0, 1.0);
+      final visible = bottom - top;
+      if (visible > bestVisible) {
+        bestVisible = visible;
+        bestChapterIndex = chapterIndex;
+        bestLocalIndex = p.index - start;
       }
     }
     if (bestChapterIndex == null || bestLocalIndex == null) return;
@@ -1641,8 +1809,6 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildScrollMode() {
-    final firstChapter = _chain.first;
-    final hasHeader = firstChapter.prev == null;
     final scrollDirection = _isHorizontalScrollMode
         ? Axis.horizontal
         : Axis.vertical;
@@ -1651,37 +1817,11 @@ class _ReaderPageState extends State<ReaderPage> {
     // 连续阅读：将链中各章图片依次拼接，每话末尾追加操作按钮（目录/评论）。
     // 最后一话末尾用 tail（无下一话）或 loadMore（有下一话）替换，两者自带按钮。
     // 非连续阅读：沿用原有 header + 单章图片 + tail 结构。
-    final List<_ScrollItem> items = [];
-    if (hasHeader) items.add(_ScrollItem.header());
-    if (_continuousReading) {
-      for (var ci = 0; ci < _chain.length; ci++) {
-        final chapter = _chain[ci];
-        final start = _chainChapterStart(ci);
-        for (var i = 0; i < chapter.contents.length; i++) {
-          items.add(_ScrollItem.image(chapter, i, start + i));
-        }
-        final isLast = ci == _chain.length - 1;
-        if (isLast) {
-          // 链尾用 tail / loadMore（自带目录/评论/下一章按钮）
-          final lastChapter = _chain.last;
-          if (lastChapter.next == null) {
-            items.add(_ScrollItem.tail());
-          } else {
-            items.add(_ScrollItem.loadMore());
-          }
-        } else {
-          // 其他话末尾放操作按钮
-          items.add(_ScrollItem.chapterDivider(chapter));
-        }
-      }
-    } else {
-      final chapter = _detail!;
-      const start = 0;
-      for (var i = 0; i < chapter.contents.length; i++) {
-        items.add(_ScrollItem.image(chapter, i, start + i));
-      }
-      items.add(_ScrollItem.tail());
+    // items 由 _rebuildChainStructure 缓存，避免每次 build 全量重建。
+    if (_scrollItems.isEmpty && _chain.isNotEmpty) {
+      _rebuildChainStructure();
     }
+    final items = _scrollItems;
     final totalItems = items.length;
     // 记录尾部 item 索引，用于检测是否应返回目录
     _scrollTailIndex =
@@ -1845,11 +1985,9 @@ class _ReaderPageState extends State<ReaderPage> {
       return;
     }
     // 链尾章节最后两张图片的 item 索引
-    final hasHeader = _chain.first.prev == null;
     final lastImageIndex = _scrollItemIndexFor(
       chainIndex: _chain.length - 1,
       page: lastChapter.contents.length,
-      hasHeader: hasHeader,
     );
     final triggerIndex = lastImageIndex - 1; // Second-to-last image
     final positions = _itemPositionsListener.itemPositions.value;
