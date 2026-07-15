@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/chapter_comment.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/chapter_comments_sheet.dart';
@@ -64,6 +65,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ChapterCommentsSheet(
             chapterUuid: 'chapter-1',
@@ -107,5 +110,23 @@ void main() {
 
     expect(tester.getSize(find.text('会赢的')).height, lessThan(30));
     expect(tester.getSize(find.text('圣地巡礼')).height, lessThan(30));
+  });
+
+  testWidgets('floating buttons reappear at the bottom', (tester) async {
+    await pumpCommentsSheet(tester);
+
+    final list = find.byType(ListView).last;
+    final opacity = find.ancestor(
+      of: find.byIcon(Icons.comment_outlined),
+      matching: find.byType(AnimatedOpacity),
+    );
+
+    await tester.drag(list, const Offset(0, -80));
+    await tester.pumpAndSettle();
+    expect(tester.widget<AnimatedOpacity>(opacity).opacity, 0);
+
+    await tester.fling(list, const Offset(0, -10000), 10000);
+    await tester.pumpAndSettle();
+    expect(tester.widget<AnimatedOpacity>(opacity).opacity, 1);
   });
 }

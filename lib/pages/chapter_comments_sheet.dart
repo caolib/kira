@@ -353,8 +353,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   }
 
   void _handleScrollDirection() {
-    final offset = _scrollController.offset;
-    if (offset > _lastScrollOffset + 2 && _showFloatingButtons.value) {
+    final position = _scrollController.position;
+    final offset = position.pixels;
+    if (offset >= position.maxScrollExtent && !_showFloatingButtons.value) {
+      _showFloatingButtons.value = true;
+    } else if (offset > _lastScrollOffset + 2 && _showFloatingButtons.value) {
       _showFloatingButtons.value = false;
     } else if (offset < _lastScrollOffset - 2 && !_showFloatingButtons.value) {
       _showFloatingButtons.value = true;
