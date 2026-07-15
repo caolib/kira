@@ -115,23 +115,47 @@ class _NetworkPageState extends State<NetworkPage> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      Text(l10n.networkSelectionMode, style: tt.labelLarge),
+                      const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
-                        child: SegmentedButton<int>(
+                        child: SegmentedButton<NetworkSelectionMode>(
                           segments: [
                             ButtonSegment(
-                              value: 0,
-                              label: Text(l10n.networkRouteLabel(1)),
+                              value: NetworkSelectionMode.route,
+                              label: Text(l10n.networkModeRoute),
                             ),
                             ButtonSegment(
-                              value: 1,
-                              label: Text(l10n.networkRouteLabel(2)),
+                              value: NetworkSelectionMode.fixedNode,
+                              label: Text(l10n.networkModeFixedNode),
                             ),
                           ],
-                          selected: {_user.apiRoute},
-                          onSelectionChanged: (v) => _user.setApiRoute(v.first),
+                          selected: {_user.networkSelectionMode},
+                          onSelectionChanged: (v) => _setSelectionMode(v.first),
                         ),
                       ),
+                      if (_user.networkSelectionMode ==
+                          NetworkSelectionMode.route) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<int>(
+                            segments: [
+                              ButtonSegment(
+                                value: 0,
+                                label: Text(l10n.networkRouteLabel(1)),
+                              ),
+                              ButtonSegment(
+                                value: 1,
+                                label: Text(l10n.networkRouteLabel(2)),
+                              ),
+                            ],
+                            selected: {_user.apiRoute},
+                            onSelectionChanged: (v) =>
+                                _user.setApiRoute(v.first),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -270,6 +294,35 @@ class _NetworkPageState extends State<NetworkPage> {
     }
 
     return bestRoute;
+  }
+
+  int _nodeNumber(int routeIndex, int localIndex) =>
+      routes.take(routeIndex).fold(0, (sum, route) => sum + route.length) +
+      localIndex +
+      1;
+
+  String? _bestLatencyHost(Map<int, Map<String, int?>> results) {
+    String? bestHost;
+    int? bestLatency;
+    for (var route = 0; route < ApiClient.routeCount; route++) {
+      final entries = results[route]?.entries;
+      if (entries == null) continue;
+      for (final entry in entries) {
+        final latency = entry.value;
+        if (latency != null && (bestLatency == null || latency < bestLatency)) {
+          bestHost = entry.key;
+          bestLatency = latency;
+        }
+      }
+    }
+    return bestHost;
+  }
+
+  Future<void> _setSelectionMode(NetworkSelectionMode mode) async {
+    if (mode == NetworkSelectionMode.fixedNode && _user.fixedNodeHost == null) {
+      await _user.setFixedNodeHost(ApiClient().network.getRouteHosts(0).first);
+    }
+    await _user.setNetworkSelectionMode(mode);
   }
 
   String _latencyHostKey(int index, String host) => '$index|$host';
@@ -763,12 +816,15 @@ class _NetworkPageState extends State<NetworkPage> {
                               hostEntries[i].key,
                               l10n,
                             )
-                          : l10n.networkNodeLabel(i + 1);
+                          : l10n.networkNodeLabel(_nodeNumber(index, i));
+                      final host = hostEntries[i].key;
                       final latency = hostEntries[i].value;
-                      final isPending = _isLatencyPending(
-                        index,
-                        hostEntries[i].key,
-                      );
+                      final isPending = _isLatencyPending(index, host);
+                      final isSelected =
+                          index >= 0 &&
+                          _user.networkSelectionMode ==
+                              NetworkSelectionMode.fixedNode &&
+                          _user.fixedNodeHost == host;
 
                       Color statusColor;
                       if (isPending) {
@@ -785,54 +841,66 @@ class _NetworkPageState extends State<NetworkPage> {
 
                       return SizedBox(
                         width: itemWidth,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest.withValues(
-                              alpha: 0.4,
+                        child: GestureDetector(
+                          onTap:
+                              index >= 0 &&
+                                  _user.networkSelectionMode ==
+                                      NetworkSelectionMode.fixedNode
+                              ? () => _user.setFixedNodeHost(host)
+                              : null,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
                             ),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: statusColor.withValues(
-                                alpha: latency != null
-                                    ? 0.3
-                                    : isPending
-                                    ? 0.16
-                                    : 0.1,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? cs.primaryContainer
+                                  : cs.surfaceContainerHighest.withValues(
+                                      alpha: 0.4,
+                                    ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? cs.primary
+                                    : statusColor.withValues(
+                                        alpha: latency != null
+                                            ? 0.3
+                                            : isPending
+                                            ? 0.16
+                                            : 0.1,
+                                      ),
+                                width: isSelected ? 2 : 1.2,
                               ),
-                              width: 1.2,
                             ),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: tt.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  isPending
-                                      ? l10n.networkTesting
-                                      : latency != null
-                                      ? '$latency ms'
-                                      : l10n.networkTimeout,
-                                  style: tt.labelMedium?.copyWith(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.bold,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  isSelected ? '✓ $title' : title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tt.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 6),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    isPending
+                                        ? l10n.networkTesting
+                                        : latency != null
+                                        ? '$latency ms'
+                                        : l10n.networkTimeout,
+                                    style: tt.labelMedium?.copyWith(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -904,9 +972,21 @@ class _NetworkPageState extends State<NetworkPage> {
             .then((r) => MapEntry(-1, r)),
       ]);
       final latencyResults = Map<int, Map<String, int?>>.fromEntries(results);
-      final bestRoute = _bestLatencyRoute(latencyResults);
-      if (bestRoute != null && bestRoute != _user.apiRoute) {
-        await _user.setApiRoute(bestRoute);
+      if (_user.networkSelectionMode == NetworkSelectionMode.fixedNode) {
+        final bestHost = _bestLatencyHost(latencyResults);
+        if (bestHost != null && bestHost != _user.fixedNodeHost) {
+          await _user.setFixedNodeHost(bestHost);
+          if (mounted) {
+            _showToast(
+              AppLocalizations.of(context)!.networkFixedNodeAutoSelected,
+            );
+          }
+        }
+      } else {
+        final bestRoute = _bestLatencyRoute(latencyResults);
+        if (bestRoute != null && bestRoute != _user.apiRoute) {
+          await _user.setApiRoute(bestRoute);
+        }
       }
       if (!mounted) return;
       setState(() {

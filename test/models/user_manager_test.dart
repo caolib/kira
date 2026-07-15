@@ -74,6 +74,20 @@ void main() {
     expect(user.animeFeatureEnabled, isFalse);
   });
 
+  test('network selection mode and fixed node persist', () async {
+    final user = UserManager();
+    await user.init();
+
+    expect(user.networkSelectionMode, NetworkSelectionMode.route);
+
+    await user.setFixedNodeHost('mapi.hotmangasd.com');
+    await user.setNetworkSelectionMode(NetworkSelectionMode.fixedNode);
+    await user.init();
+
+    expect(user.networkSelectionMode, NetworkSelectionMode.fixedNode);
+    expect(user.fixedNodeHost, 'mapi.hotmangasd.com');
+  });
+
   test('last nav key defaults to comic and persists', () async {
     final user = UserManager();
     await user.init();

@@ -185,6 +185,12 @@ class ApiTransport {
   }
 
   String nextHost() {
+    if (user.networkSelectionMode == NetworkSelectionMode.fixedNode) {
+      final fixed = user.fixedNodeHost;
+      if (fixed != null && routes.expand((route) => route).contains(fixed)) {
+        return fixed;
+      }
+    }
     final route = routes[user.apiRoute];
 
     double totalWeight = 0.0;

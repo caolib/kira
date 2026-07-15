@@ -1723,6 +1723,30 @@ abstract class AppLocalizations {
   /// **'API 线路'**
   String get networkApiRouteTitle;
 
+  /// No description provided for @networkSelectionMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择模式'**
+  String get networkSelectionMode;
+
+  /// No description provided for @networkModeRoute.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路模式'**
+  String get networkModeRoute;
+
+  /// No description provided for @networkModeFixedNode.
+  ///
+  /// In zh, this message translates to:
+  /// **'固定节点模式'**
+  String get networkModeFixedNode;
+
+  /// No description provided for @networkFixedNodeAutoSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速后已选择延迟最低的节点'**
+  String get networkFixedNodeAutoSelected;
+
   /// No description provided for @networkRouteLabel.
   ///
   /// In zh, this message translates to:

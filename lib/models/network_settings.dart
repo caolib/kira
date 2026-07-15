@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'network_proxy_types.dart';
 import 'prefs_store.dart';
 
+enum NetworkSelectionMode { route, fixedNode }
+
 /// Network configuration settings, extracted from UserManager.
 class NetworkSettings extends PrefsStore {
   static final NetworkSettings _instance = NetworkSettings._();
@@ -16,6 +18,8 @@ class NetworkSettings extends PrefsStore {
   // ── Preference keys ────────────────────────────────────────────────
 
   static const _keyApiRoute = 'api_route';
+  static const _keySelectionMode = 'network_selection_mode';
+  static const _keyFixedNodeHost = 'network_fixed_node_host';
   static const _keyProxyMode = 'network_proxy_mode';
   static const _keyProxyType = 'network_proxy_type';
   static const _keyProxyHost = 'network_proxy_host';
@@ -24,6 +28,8 @@ class NetworkSettings extends PrefsStore {
   // ── Fields ─────────────────────────────────────────────────────────
 
   int _apiRoute = 0;
+  NetworkSelectionMode _selectionMode = NetworkSelectionMode.route;
+  String? _fixedNodeHost;
   NetworkProxyMode _proxyMode = NetworkProxyMode.system;
   NetworkProxyType _proxyType = NetworkProxyType.http;
   String _proxyHost = '';
@@ -32,6 +38,8 @@ class NetworkSettings extends PrefsStore {
   // ── Getters ────────────────────────────────────────────────────────
 
   int get apiRoute => _apiRoute;
+  NetworkSelectionMode get selectionMode => _selectionMode;
+  String? get fixedNodeHost => _fixedNodeHost;
   NetworkProxyMode get proxyMode => _proxyMode;
   NetworkProxyType get proxyType => _proxyType;
   String get proxyHost => _proxyHost;
@@ -42,6 +50,8 @@ class NetworkSettings extends PrefsStore {
 
   Future<void> initFromPrefs(SharedPreferences prefs) async {
     _apiRoute = prefs.getInt(_keyApiRoute) ?? 0;
+    _selectionMode = _normalizeSelectionMode(prefs.getInt(_keySelectionMode));
+    _fixedNodeHost = prefs.getString(_keyFixedNodeHost)?.trim();
     _proxyMode = _normalizeProxyMode(prefs.getInt(_keyProxyMode));
     _proxyType = _normalizeProxyType(prefs.getInt(_keyProxyType));
     _proxyHost = prefs.getString(_keyProxyHost)?.trim() ?? '';
@@ -53,6 +63,25 @@ class NetworkSettings extends PrefsStore {
   Future<void> setApiRoute(int route) async {
     _apiRoute = route;
     await setInt(_keyApiRoute, route);
+  }
+
+  Future<void> setSelectionMode(NetworkSelectionMode mode) async {
+    if (_selectionMode == mode) return;
+    _selectionMode = mode;
+    await setInt(_keySelectionMode, mode.index);
+    notifyListeners();
+  }
+
+  Future<void> setFixedNodeHost(String? host) async {
+    final next = host?.trim();
+    _fixedNodeHost = next == null || next.isEmpty ? null : next;
+    final p = await prefs;
+    if (_fixedNodeHost == null) {
+      await p.remove(_keyFixedNodeHost);
+    } else {
+      await p.setString(_keyFixedNodeHost, _fixedNodeHost!);
+    }
+    notifyListeners();
   }
 
   Future<void> setProxyMode(NetworkProxyMode mode) async {
@@ -112,6 +141,15 @@ class NetworkSettings extends PrefsStore {
       return NetworkProxyType.http;
     }
     return NetworkProxyType.values[index];
+  }
+
+  static NetworkSelectionMode _normalizeSelectionMode(int? index) {
+    if (index == null ||
+        index < 0 ||
+        index >= NetworkSelectionMode.values.length) {
+      return NetworkSelectionMode.route;
+    }
+    return NetworkSelectionMode.values[index];
   }
 
   static int _normalizePort(int? port) => isValidProxyPort(port) ? port! : 0;

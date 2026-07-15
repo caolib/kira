@@ -19,6 +19,7 @@ import 'reader_settings.dart';
 import 'theme_settings.dart';
 
 export 'network_proxy_types.dart';
+export 'network_settings.dart' show NetworkSelectionMode;
 export 'theme_settings.dart' show BottomNavLabelMode;
 
 class SavedCredential {
@@ -296,6 +297,7 @@ class UserManager extends ChangeNotifier {
   Color get customThemeColor => Color(_customThemeColorValue);
   double get darkModeCoverBrightness => _darkModeCoverBrightness;
   BottomNavLabelMode get bottomNavLabelMode => _bottomNavLabelMode;
+
   /// Compatibility: true when labels are not fully hidden.
   bool get bottomNavShowLabels =>
       _bottomNavLabelMode != BottomNavLabelMode.hidden;
@@ -353,6 +355,8 @@ class UserManager extends ChangeNotifier {
   bool get disclaimerAccepted => _disclaimerAccepted;
   String get loginSource => _loginSource;
   int get apiRoute => _apiRoute;
+  NetworkSelectionMode get networkSelectionMode => network.selectionMode;
+  String? get fixedNodeHost => network.fixedNodeHost;
   NetworkProxyMode get networkProxyMode => _networkProxyMode;
   NetworkProxyType get networkProxyType => _networkProxyType;
   String get networkProxyHost => _networkProxyHost;
@@ -1177,6 +1181,16 @@ class UserManager extends ChangeNotifier {
     _apiRoute = route;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyApiRoute, route);
+    notifyListeners();
+  }
+
+  Future<void> setNetworkSelectionMode(NetworkSelectionMode mode) async {
+    await network.setSelectionMode(mode);
+    notifyListeners();
+  }
+
+  Future<void> setFixedNodeHost(String? host) async {
+    await network.setFixedNodeHost(host);
     notifyListeners();
   }
 

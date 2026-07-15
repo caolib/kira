@@ -133,13 +133,14 @@ class NetworkApi {
               : host;
           final port = uri != null && uri.hasPort ? uri.port : 443;
           final sw = Stopwatch()..start();
-          await SecureSocket.connect(
+          final socket = await SecureSocket.connect(
             socketHost,
             port,
             timeout: const Duration(seconds: 3),
           );
           sw.stop();
           latency = sw.elapsedMilliseconds;
+          await socket.close();
         } catch (_) {
           latency = null;
         }

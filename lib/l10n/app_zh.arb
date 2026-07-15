@@ -645,6 +645,10 @@
   },
   "networkTitle": "网络",
   "networkApiRouteTitle": "API 线路",
+  "networkSelectionMode": "选择模式",
+  "networkModeRoute": "线路模式",
+  "networkModeFixedNode": "固定节点模式",
+  "networkFixedNodeAutoSelected": "测速后已选择延迟最低的节点",
   "networkRouteLabel": "线路 {index}",
   "@networkRouteLabel": {
     "placeholders": {

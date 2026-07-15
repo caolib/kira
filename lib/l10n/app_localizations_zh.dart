@@ -923,6 +923,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkApiRouteTitle => 'API 线路';
 
   @override
+  String get networkSelectionMode => '选择模式';
+
+  @override
+  String get networkModeRoute => '线路模式';
+
+  @override
+  String get networkModeFixedNode => '固定节点模式';
+
+  @override
+  String get networkFixedNodeAutoSelected => '测速后已选择延迟最低的节点';
+
+  @override
   String networkRouteLabel(int index) {
     return '线路 $index';
   }
@@ -4275,6 +4287,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkApiRouteTitle => 'API 線路';
+
+  @override
+  String get networkSelectionMode => '選擇模式';
+
+  @override
+  String get networkModeRoute => '線路模式';
+
+  @override
+  String get networkModeFixedNode => '固定節點模式';
+
+  @override
+  String get networkFixedNodeAutoSelected => '測速後已選擇延遲最低的節點';
 
   @override
   String networkRouteLabel(int index) {
