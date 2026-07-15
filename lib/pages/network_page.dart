@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/api_transport.dart';
+import '../api/automatic_node_selector.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/network_proxy.dart';
@@ -21,6 +22,7 @@ class _NetworkPageState extends State<NetworkPage> {
   static const _googleConnectivityTimeout = Duration(seconds: 3);
 
   final _user = UserManager();
+  final _networkApi = ApiClient().network;
   final _proxyAddressController = TextEditingController();
   final _copyApiHostController = TextEditingController();
   final _copyAppVersionController = TextEditingController();
@@ -45,11 +47,13 @@ class _NetworkPageState extends State<NetworkPage> {
     _copyAppVersionController.text = _user.copyAppVersion;
     _manualProxyType = _user.networkProxyType;
     _user.addListener(_onChanged);
+    _networkApi.addAutomaticNodeListener(_onChanged);
   }
 
   @override
   void dispose() {
     _user.removeListener(_onChanged);
+    _networkApi.removeAutomaticNodeListener(_onChanged);
     _proxyAddressController.dispose();
     _copyApiHostController.dispose();
     _copyAppVersionController.dispose();
@@ -68,6 +72,114 @@ class _NetworkPageState extends State<NetworkPage> {
 
   void _onChanged() {
     if (mounted) setState(() {});
+  }
+
+  Widget _buildAutomaticNodePanel(TextTheme tt, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
+    final statuses = _networkApi.automaticNodeStatuses;
+    final bestIndex = statuses.indexWhere((status) => status.isBest);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.networkAutomaticStatsTitle,
+            style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            bestIndex < 0
+                ? l10n.networkAutomaticLearning
+                : l10n.networkAutomaticBestNode(
+                    l10n.networkNodeLabel(bestIndex + 1),
+                  ),
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 8.0;
+              final width = (constraints.maxWidth - spacing * 2) / 3;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: List.generate(statuses.length, (index) {
+                  final status = statuses[index];
+                  return SizedBox(
+                    width: width,
+                    child: _buildAutomaticNodeStatus(status, index, tt, cs),
+                  );
+                }),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutomaticNodeStatus(
+    AutomaticNodeStatus status,
+    int index,
+    TextTheme tt,
+    ColorScheme cs,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final latency = status.averageLatencyMs;
+    final color = status.circuitOpen || (latency != null && latency > 2000)
+        ? cs.error
+        : status.consecutiveFailures > 0 || (latency != null && latency > 800)
+        ? Colors.orange
+        : latency == null
+        ? cs.onSurfaceVariant
+        : Colors.green;
+
+    return SizedBox(
+      height: 76,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.42), width: 1.2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              l10n.networkNodeLabel(index + 1),
+              style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              status.circuitOpen
+                  ? l10n.networkAutomaticCircuitOpen
+                  : latency == null
+                  ? l10n.networkAutomaticWaiting
+                  : '$latency ms',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: tt.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Text(
+              l10n.networkAutomaticRequestCount(status.samples),
+              style: tt.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.72),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -129,6 +241,10 @@ class _NetworkPageState extends State<NetworkPage> {
                               value: NetworkSelectionMode.fixedNode,
                               label: Text(l10n.networkModeFixedNode),
                             ),
+                            ButtonSegment(
+                              value: NetworkSelectionMode.automatic,
+                              label: Text(l10n.networkModeAutomatic),
+                            ),
                           ],
                           selected: {_user.networkSelectionMode},
                           onSelectionChanged: (v) => _setSelectionMode(v.first),
@@ -155,6 +271,10 @@ class _NetworkPageState extends State<NetworkPage> {
                                 _user.setApiRoute(v.first),
                           ),
                         ),
+                      ] else if (_user.networkSelectionMode ==
+                          NetworkSelectionMode.automatic) ...[
+                        const SizedBox(height: 16),
+                        _buildAutomaticNodePanel(tt, cs),
                       ],
                     ],
                   ),
@@ -178,7 +298,10 @@ class _NetworkPageState extends State<NetworkPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  l10n.networkTestLatency,
+                                  _user.networkSelectionMode ==
+                                          NetworkSelectionMode.automatic
+                                      ? l10n.networkTestOtherLatency
+                                      : l10n.networkTestLatency,
                                   style: tt.bodyLarge,
                                 ),
                                 if (_testingLatency) ...[
@@ -749,10 +872,15 @@ class _NetworkPageState extends State<NetworkPage> {
 
   Widget _buildLatencyDetail(TextTheme tt, ColorScheme cs) {
     final l10n = AppLocalizations.of(context)!;
-    if (_latencyResults.isEmpty) return const SizedBox.shrink();
+    final entries = _latencyResults.entries.where(
+      (entry) =>
+          _user.networkSelectionMode != NetworkSelectionMode.automatic ||
+          entry.key < 0,
+    );
+    if (entries.isEmpty) return const SizedBox.shrink();
 
     return Column(
-      children: _latencyResults.entries.map((entry) {
+      children: entries.map((entry) {
         final index = entry.key;
         final hosts = entry.value;
         final hostEntries = hosts.entries.toList();
@@ -919,13 +1047,15 @@ class _NetworkPageState extends State<NetworkPage> {
     final api = ApiClient();
     final pendingResults = <int, Map<String, int?>>{};
     final pendingHosts = <String>{};
-    for (var i = 0; i < ApiClient.routeCount; i++) {
-      pendingResults[i] = {
-        for (final host in api.network.getRouteHosts(i)) host: null,
-      };
-      pendingHosts.addAll(
-        api.network.getRouteHosts(i).map((host) => _latencyHostKey(i, host)),
-      );
+    if (_user.networkSelectionMode != NetworkSelectionMode.automatic) {
+      for (var i = 0; i < ApiClient.routeCount; i++) {
+        pendingResults[i] = {
+          for (final host in api.network.getRouteHosts(i)) host: null,
+        };
+        pendingHosts.addAll(
+          api.network.getRouteHosts(i).map((host) => _latencyHostKey(i, host)),
+        );
+      }
     }
     pendingResults[-1] = {
       for (final host in api.network.getExtraApiHosts()) host: null,
@@ -949,28 +1079,28 @@ class _NetworkPageState extends State<NetworkPage> {
       _pendingLatencyHosts = pendingHosts;
     });
     try {
-      final results = await Future.wait([
-        api.network
-            .testRouteLatency(
-              0,
-              onHostResult: (host, latency) =>
-                  updateHostLatency(0, host, latency),
-            )
-            .then((r) => MapEntry(0, r)),
-        api.network
-            .testRouteLatency(
-              1,
-              onHostResult: (host, latency) =>
-                  updateHostLatency(1, host, latency),
-            )
-            .then((r) => MapEntry(1, r)),
+      final tests = <Future<MapEntry<int, Map<String, int?>>>>[
         api.network
             .testExtraApiLatency(
               onHostResult: (host, latency) =>
                   updateHostLatency(-1, host, latency),
             )
             .then((r) => MapEntry(-1, r)),
-      ]);
+      ];
+      if (_user.networkSelectionMode != NetworkSelectionMode.automatic) {
+        for (var route = 0; route < ApiClient.routeCount; route++) {
+          tests.add(
+            api.network
+                .testRouteLatency(
+                  route,
+                  onHostResult: (host, latency) =>
+                      updateHostLatency(route, host, latency),
+                )
+                .then((result) => MapEntry(route, result)),
+          );
+        }
+      }
+      final results = await Future.wait(tests);
       final latencyResults = Map<int, Map<String, int?>>.fromEntries(results);
       if (_user.networkSelectionMode == NetworkSelectionMode.fixedNode) {
         final bestHost = _bestLatencyHost(latencyResults);
@@ -982,7 +1112,7 @@ class _NetworkPageState extends State<NetworkPage> {
             );
           }
         }
-      } else {
+      } else if (_user.networkSelectionMode == NetworkSelectionMode.route) {
         final bestRoute = _bestLatencyRoute(latencyResults);
         if (bestRoute != null && bestRoute != _user.apiRoute) {
           await _user.setApiRoute(bestRoute);

@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'network_proxy_types.dart';
 import 'prefs_store.dart';
 
-enum NetworkSelectionMode { route, fixedNode }
+enum NetworkSelectionMode { route, fixedNode, automatic }
 
 /// Network configuration settings, extracted from UserManager.
 class NetworkSettings extends PrefsStore {

@@ -1732,14 +1732,62 @@ abstract class AppLocalizations {
   /// No description provided for @networkModeRoute.
   ///
   /// In zh, this message translates to:
-  /// **'线路模式'**
+  /// **'线路'**
   String get networkModeRoute;
 
   /// No description provided for @networkModeFixedNode.
   ///
   /// In zh, this message translates to:
-  /// **'固定节点模式'**
+  /// **'固定节点'**
   String get networkModeFixedNode;
+
+  /// No description provided for @networkModeAutomatic.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动选择'**
+  String get networkModeAutomatic;
+
+  /// No description provided for @networkAutomaticStatsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动选择状态'**
+  String get networkAutomaticStatsTitle;
+
+  /// No description provided for @networkAutomaticBestNode.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前最佳：{node}'**
+  String networkAutomaticBestNode(String node);
+
+  /// No description provided for @networkAutomaticLearning.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前最佳：学习中'**
+  String get networkAutomaticLearning;
+
+  /// No description provided for @networkAutomaticCircuitOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'已熔断'**
+  String get networkAutomaticCircuitOpen;
+
+  /// No description provided for @networkAutomaticWaiting.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待数据'**
+  String get networkAutomaticWaiting;
+
+  /// No description provided for @networkAutomaticRequestCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 次请求'**
+  String networkAutomaticRequestCount(int count);
+
+  /// No description provided for @networkTestOtherLatency.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试其他节点延迟'**
+  String get networkTestOtherLatency;
 
   /// No description provided for @networkFixedNodeAutoSelected.
   ///

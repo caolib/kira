@@ -25,4 +25,24 @@ void main() {
     expect(transport.nextHost(), routes[1][2]);
     expect(transport.nextHost(), routes[1][2]);
   });
+
+  test('automatic mode uses recent node performance', () async {
+    SharedPreferences.setMockInitialValues({});
+    final user = UserManager();
+    await user.init();
+    await user.setNetworkSelectionMode(NetworkSelectionMode.automatic);
+
+    final transport = ApiTransport(
+      dio: Dio(),
+      commentDio: Dio(),
+      user: user,
+      cache: DataCache(),
+    );
+    final hosts = routes.expand((route) => route).toList();
+    for (var i = 0; i < hosts.length; i++) {
+      transport.recordNodeProbe(hosts[i], 600 - i * 50);
+    }
+
+    expect(transport.nextHost(), hosts.last);
+  });
 }

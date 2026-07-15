@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../models/user_manager.dart';
 import '../utils/app_dio.dart';
 import '../utils/data_cache.dart';
+import 'automatic_node_selector.dart';
 
 const defaultCopyApiHost = 'api.copy2000.online';
 const defaultCopyAppVersion = '3.0.8';
@@ -47,6 +48,7 @@ class ApiTransport {
   Completer<bool>? _autoLoginCompleter;
 
   final Map<String, double> _hostWeights = {};
+  final AutomaticNodeSelector _automaticNodeSelector = AutomaticNodeSelector();
 
   /// Login callbacks used by the 401 auto-login interceptor.
   /// Set by ApiClient after constructing the transport and user API.
@@ -62,6 +64,10 @@ class ApiTransport {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          if (_isApiNode(options.uri.host)) {
+            options.extra['_nodeRequestStartedAt'] =
+                DateTime.now().microsecondsSinceEpoch;
+          }
           options.headers.addAll({
             'Accept': 'application/json',
             'Content-Encoding': 'gzip, compress, br',
@@ -90,6 +96,7 @@ class ApiTransport {
           handler.next(options);
         },
         onResponse: (response, handler) {
+          _recordNodeSuccess(response.requestOptions);
           // 宽松解析 set-cookie，避免 Dart 严格解析报错
           final setCookies = response.headers['set-cookie'];
           if (setCookies != null) {
@@ -134,6 +141,7 @@ class ApiTransport {
           handler.next(response);
         },
         onError: (error, handler) async {
+          _recordNodeError(error);
           if (error.response?.statusCode == 401 && user.autoLogin) {
             final username = user.savedUsername;
             final password = user.savedPassword;
@@ -190,6 +198,11 @@ class ApiTransport {
       if (fixed != null && routes.expand((route) => route).contains(fixed)) {
         return fixed;
       }
+    }
+    if (user.networkSelectionMode == NetworkSelectionMode.automatic) {
+      return _automaticNodeSelector.select(
+        routes.expand((route) => route).toList(),
+      );
     }
     final route = routes[user.apiRoute];
 
@@ -263,5 +276,67 @@ class ApiTransport {
 
   void setHostWeight(String host, double weight) {
     _hostWeights[host] = weight;
+  }
+
+  void recordNodeProbe(String host, int? latencyMs) {
+    if (latencyMs == null || latencyMs <= 0) {
+      _automaticNodeSelector.recordFailure(
+        host,
+        routes.expand((route) => route),
+      );
+    } else {
+      _automaticNodeSelector.recordSuccess(
+        host,
+        Duration(milliseconds: latencyMs),
+      );
+    }
+  }
+
+  List<AutomaticNodeStatus> get automaticNodeStatuses =>
+      _automaticNodeSelector.statuses(routes.expand((route) => route).toList());
+
+  void addAutomaticNodeListener(void Function() listener) =>
+      _automaticNodeSelector.addListener(listener);
+
+  void removeAutomaticNodeListener(void Function() listener) =>
+      _automaticNodeSelector.removeListener(listener);
+
+  bool _isApiNode(String host) => routes.any((route) => route.contains(host));
+
+  void _recordNodeSuccess(RequestOptions options) {
+    if (options.extra['_nodePerformanceRecorded'] == true) return;
+    final elapsed = _nodeRequestElapsed(options);
+    if (elapsed == null) return;
+    options.extra['_nodePerformanceRecorded'] = true;
+    _automaticNodeSelector.recordSuccess(options.uri.host, elapsed);
+  }
+
+  void _recordNodeError(DioException error) {
+    final options = error.requestOptions;
+    if (options.extra['_nodePerformanceRecorded'] == true ||
+        !_isApiNode(options.uri.host)) {
+      return;
+    }
+    options.extra['_nodePerformanceRecorded'] = true;
+    final statusCode = error.response?.statusCode;
+    if (statusCode != null && statusCode < 500) {
+      final elapsed = _nodeRequestElapsed(options);
+      if (elapsed != null) {
+        _automaticNodeSelector.recordSuccess(options.uri.host, elapsed);
+      }
+      return;
+    }
+    _automaticNodeSelector.recordFailure(
+      options.uri.host,
+      routes.expand((route) => route),
+    );
+  }
+
+  Duration? _nodeRequestElapsed(RequestOptions options) {
+    final startedAt = options.extra['_nodeRequestStartedAt'];
+    if (startedAt is! int) return null;
+    return Duration(
+      microseconds: DateTime.now().microsecondsSinceEpoch - startedAt,
+    );
   }
 }

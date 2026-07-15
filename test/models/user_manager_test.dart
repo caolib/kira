@@ -86,6 +86,10 @@ void main() {
 
     expect(user.networkSelectionMode, NetworkSelectionMode.fixedNode);
     expect(user.fixedNodeHost, 'mapi.hotmangasd.com');
+
+    await user.setNetworkSelectionMode(NetworkSelectionMode.automatic);
+    await user.init();
+    expect(user.networkSelectionMode, NetworkSelectionMode.automatic);
   });
 
   test('last nav key defaults to comic and persists', () async {

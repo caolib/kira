@@ -7,11 +7,21 @@ import '../../l10n/app_localizations.dart';
 import '../../utils/app_dio.dart';
 import '../../utils/network_error.dart';
 import '../api_transport.dart';
+import '../automatic_node_selector.dart';
 
 class NetworkApi {
   final ApiTransport _t;
 
   NetworkApi(this._t);
+
+  List<AutomaticNodeStatus> get automaticNodeStatuses =>
+      _t.automaticNodeStatuses;
+
+  void addAutomaticNodeListener(void Function() listener) =>
+      _t.addAutomaticNodeListener(listener);
+
+  void removeAutomaticNodeListener(void Function() listener) =>
+      _t.removeAutomaticNodeListener(listener);
 
   // ── 线路延迟测试 ──
 
@@ -51,6 +61,7 @@ class NetworkApi {
     );
 
     for (final entry in results.entries) {
+      _t.recordNodeProbe(entry.key, entry.value);
       if (entry.value == null || entry.value! <= 0) {
         _t.setHostWeight(entry.key, 0.0);
       } else {

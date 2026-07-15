@@ -926,10 +926,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkSelectionMode => '选择模式';
 
   @override
-  String get networkModeRoute => '线路模式';
+  String get networkModeRoute => '线路';
 
   @override
-  String get networkModeFixedNode => '固定节点模式';
+  String get networkModeFixedNode => '固定节点';
+
+  @override
+  String get networkModeAutomatic => '自动选择';
+
+  @override
+  String get networkAutomaticStatsTitle => '自动选择状态';
+
+  @override
+  String networkAutomaticBestNode(String node) {
+    return '当前最佳：$node';
+  }
+
+  @override
+  String get networkAutomaticLearning => '当前最佳：学习中';
+
+  @override
+  String get networkAutomaticCircuitOpen => '已熔断';
+
+  @override
+  String get networkAutomaticWaiting => '等待数据';
+
+  @override
+  String networkAutomaticRequestCount(int count) {
+    return '$count 次请求';
+  }
+
+  @override
+  String get networkTestOtherLatency => '测试其他节点延迟';
 
   @override
   String get networkFixedNodeAutoSelected => '测速后已选择延迟最低的节点';
@@ -4292,10 +4320,38 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkSelectionMode => '選擇模式';
 
   @override
-  String get networkModeRoute => '線路模式';
+  String get networkModeRoute => '線路';
 
   @override
-  String get networkModeFixedNode => '固定節點模式';
+  String get networkModeFixedNode => '固定節點';
+
+  @override
+  String get networkModeAutomatic => '自動選擇';
+
+  @override
+  String get networkAutomaticStatsTitle => '自動選擇狀態';
+
+  @override
+  String networkAutomaticBestNode(String node) {
+    return '目前最佳：$node';
+  }
+
+  @override
+  String get networkAutomaticLearning => '目前最佳：學習中';
+
+  @override
+  String get networkAutomaticCircuitOpen => '已熔斷';
+
+  @override
+  String get networkAutomaticWaiting => '等待資料';
+
+  @override
+  String networkAutomaticRequestCount(int count) {
+    return '$count 次請求';
+  }
+
+  @override
+  String get networkTestOtherLatency => '測試其他節點延遲';
 
   @override
   String get networkFixedNodeAutoSelected => '測速後已選擇延遲最低的節點';
