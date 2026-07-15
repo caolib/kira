@@ -19,6 +19,7 @@ import 'reader_settings.dart';
 import 'theme_settings.dart';
 
 export 'network_proxy_types.dart';
+export 'theme_settings.dart' show BottomNavLabelMode;
 
 class SavedCredential {
   final String username;
@@ -125,6 +126,7 @@ class UserManager extends ChangeNotifier {
   static const _keyCustomThemeColor = 'custom_theme_color';
   static const _keyDarkModeCoverBrightness = 'dark_mode_cover_brightness';
   static const _keyBottomNavShowLabels = 'bottom_nav_show_labels';
+  static const _keyBottomNavLabelMode = 'bottom_nav_label_mode';
   static const _keyNavOrder = 'nav_order';
   static const _keyLastNavKey = 'last_nav_key';
   static const _keyDesktopFontFamily = 'desktop_font_family';
@@ -209,7 +211,7 @@ class UserManager extends ChangeNotifier {
   DynamicSchemeVariant _themeVariant = appThemeVariantOptions.first.variant;
   int _customThemeColorValue = defaultCustomThemeColor.toARGB32();
   double _darkModeCoverBrightness = defaultDarkModeCoverBrightness;
-  bool _bottomNavShowLabels = true;
+  BottomNavLabelMode _bottomNavLabelMode = BottomNavLabelMode.selectedOnly;
   List<String> _navOrder = defaultNavOrder;
   String _lastNavKey = defaultNavKey;
   String _desktopFontFamily = '';
@@ -293,7 +295,10 @@ class UserManager extends ChangeNotifier {
   DynamicSchemeVariant get themeVariant => _themeVariant;
   Color get customThemeColor => Color(_customThemeColorValue);
   double get darkModeCoverBrightness => _darkModeCoverBrightness;
-  bool get bottomNavShowLabels => _bottomNavShowLabels;
+  BottomNavLabelMode get bottomNavLabelMode => _bottomNavLabelMode;
+  /// Compatibility: true when labels are not fully hidden.
+  bool get bottomNavShowLabels =>
+      _bottomNavLabelMode != BottomNavLabelMode.hidden;
   List<String> get navOrder => _navOrder;
   String get lastNavKey => _lastNavKey;
   String get desktopFontFamily => _desktopFontFamily;
@@ -491,7 +496,7 @@ class UserManager extends ChangeNotifier {
       prefs.getDouble(_keyDarkModeCoverBrightness) ??
           defaultDarkModeCoverBrightness,
     );
-    _bottomNavShowLabels = prefs.getBool(_keyBottomNavShowLabels) ?? true;
+    _bottomNavLabelMode = _loadBottomNavLabelMode(prefs);
     final savedNavOrder = prefs.getStringList(_keyNavOrder);
     _navOrder = _normalizeNavOrder(savedNavOrder);
     if (savedNavOrder != null &&
@@ -861,11 +866,18 @@ class UserManager extends ChangeNotifier {
   }
 
   Future<void> setBottomNavShowLabels(bool enabled) async {
-    if (_bottomNavShowLabels == enabled) return;
+    await setBottomNavLabelMode(
+      enabled ? BottomNavLabelMode.selectedOnly : BottomNavLabelMode.hidden,
+    );
+  }
 
-    _bottomNavShowLabels = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyBottomNavShowLabels, enabled);
+  Future<void> setBottomNavLabelMode(BottomNavLabelMode mode) async {
+    if (_bottomNavLabelMode == mode) return;
+
+    _bottomNavLabelMode = mode;
+    // ThemeSettings is the canonical store for appearance prefs; keep it
+    // aligned so direct ThemeSettings readers see the same mode.
+    await theme.setBottomNavLabelMode(mode);
     notifyListeners();
   }
 
@@ -1469,6 +1481,21 @@ class UserManager extends ChangeNotifier {
     return value
         .clamp(minDarkModeCoverBrightness, maxDarkModeCoverBrightness)
         .toDouble();
+  }
+
+  /// Prefer the new string key; fall back to the legacy bool for upgrades.
+  static BottomNavLabelMode _loadBottomNavLabelMode(SharedPreferences prefs) {
+    final saved = prefs.getString(_keyBottomNavLabelMode);
+    if (saved != null) {
+      for (final mode in BottomNavLabelMode.values) {
+        if (mode.name == saved) return mode;
+      }
+    }
+    // Upgrades: old "show labels" becomes the new capsule selected-only
+    // mode so users pick up the new bar without staying on classic always.
+    final legacy = prefs.getBool(_keyBottomNavShowLabels);
+    if (legacy == false) return BottomNavLabelMode.hidden;
+    return BottomNavLabelMode.selectedOnly;
   }
 
   static String _normalizeNavKey(String? key) {

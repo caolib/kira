@@ -74,6 +74,83 @@ class _AppearancePageState extends State<AppearancePage> {
     );
   }
 
+  Future<void> _showBottomNavLabelModeSheet(AppLocalizations l10n) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: RadioGroup<BottomNavLabelMode>(
+            groupValue: _user.bottomNavLabelMode,
+            onChanged: (value) {
+              if (value == null) return;
+              _user.setBottomNavLabelMode(value);
+              Navigator.of(sheetContext).pop();
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final mode in BottomNavLabelMode.values)
+                  RadioListTile<BottomNavLabelMode>(
+                    value: mode,
+                    title: Text(_bottomNavLabelModeLabel(mode, l10n)),
+                    subtitle: Text(_bottomNavLabelModeDesc(mode, l10n)),
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _bottomNavLabelModeLabel(
+    BottomNavLabelMode mode,
+    AppLocalizations l10n,
+  ) => switch (mode) {
+    BottomNavLabelMode.selectedOnly =>
+      l10n.appearanceBottomNavLabelModeSelectedOnly,
+    BottomNavLabelMode.hidden => l10n.appearanceBottomNavLabelModeHidden,
+    BottomNavLabelMode.always => l10n.appearanceBottomNavLabelModeAlways,
+  };
+
+  String _bottomNavLabelModeDesc(
+    BottomNavLabelMode mode,
+    AppLocalizations l10n,
+  ) => switch (mode) {
+    BottomNavLabelMode.selectedOnly =>
+      l10n.appearanceBottomNavLabelModeSelectedOnlyDesc,
+    BottomNavLabelMode.hidden => l10n.appearanceBottomNavLabelModeHiddenDesc,
+    BottomNavLabelMode.always => l10n.appearanceBottomNavLabelModeAlwaysDesc,
+  };
+
+  /// Give the selected capsule a bit more room so icon+label doesn't overflow
+  /// the equally-split preview slots.
+  List<double> _navPreviewItemWidths({
+    required double availableWidth,
+    required int itemCount,
+    required int selectedIndex,
+    required BottomNavLabelMode labelMode,
+  }) {
+    if (itemCount <= 0) return const [];
+    final equal = availableWidth / itemCount;
+    if (labelMode != BottomNavLabelMode.selectedOnly ||
+        selectedIndex < 0 ||
+        selectedIndex >= itemCount ||
+        equal >= 72) {
+      return List<double>.filled(itemCount, equal);
+    }
+
+    final selectedWidth = (equal + 28).clamp(equal, availableWidth * 0.34);
+    final remaining = availableWidth - selectedWidth;
+    final otherWidth = remaining / (itemCount - 1);
+    return [
+      for (var i = 0; i < itemCount; i++)
+        i == selectedIndex ? selectedWidth.toDouble() : otherWidth,
+    ];
+  }
+
   Future<void> _pickCustomThemeColor() async {
     var selectedColor = _user.customThemeColor;
     final l10n = AppLocalizations.of(context)!;
@@ -134,39 +211,70 @@ class _AppearancePageState extends State<AppearancePage> {
             color: cs.surfaceContainerLow,
             child: Column(
               children: [
-                SwitchListTile(
-                  secondary: Icon(
+                ListTile(
+                  leading: Icon(
                     Icons.text_fields_rounded,
                     color: cs.onSurfaceVariant,
                   ),
-                  title: Text(l10n.appearanceBottomNavShowLabels),
-                  value: _user.bottomNavShowLabels,
-                  onChanged: _user.setBottomNavShowLabels,
+                  title: Text(l10n.appearanceBottomNavLabelMode),
+                  subtitle: Text(
+                    _bottomNavLabelModeLabel(_user.bottomNavLabelMode, l10n),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showBottomNavLabelModeSheet(l10n),
                 ),
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.swap_vert,
-                        color: cs.onSurfaceVariant,
-                        size: 20,
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Icon(
+                          Icons.swap_vert,
+                          color: cs.onSurfaceVariant,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 16),
-                      Text(l10n.appearanceNavOrder, style: tt.titleSmall),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.appearanceNavOrder,
+                              style: tt.titleSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              l10n.appearanceNavOrderDragHint,
+                              style: tt.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 SizedBox(
-                  height: _user.bottomNavShowLabels ? 80 : 64,
+                  height:
+                      _user.bottomNavLabelMode == BottomNavLabelMode.always
+                      ? 80
+                      : 56,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final itemCount = _user.navOrder.length;
-                      final itemWidth = constraints.maxWidth / itemCount;
-                      final constrainedItemWidth = itemWidth < 56
-                          ? 56.0
-                          : itemWidth;
+                      final widths = _navPreviewItemWidths(
+                        availableWidth: constraints.maxWidth,
+                        itemCount: itemCount,
+                        selectedIndex: _user.navOrder.indexOf(
+                          _user.lastNavKey,
+                        ),
+                        labelMode: _user.bottomNavLabelMode,
+                      );
 
                       return ReorderableListView.builder(
                         scrollDirection: Axis.horizontal,
@@ -184,7 +292,7 @@ class _AppearancePageState extends State<AppearancePage> {
                           final meta = _navMeta[key]!;
                           return SizedBox(
                             key: ValueKey(key),
-                            width: constrainedItemWidth,
+                            width: widths[index],
                             child: ReorderableDragStartListener(
                               index: index,
                               child: _NavOrderDestination(
@@ -192,7 +300,7 @@ class _AppearancePageState extends State<AppearancePage> {
                                 selectedIcon: meta.$2,
                                 label: _navLabel(key, l10n),
                                 selected: key == _user.lastNavKey,
-                                showLabel: _user.bottomNavShowLabels,
+                                labelMode: _user.bottomNavLabelMode,
                               ),
                             ),
                           );
@@ -443,14 +551,14 @@ class _NavOrderDestination extends StatelessWidget {
   final IconData selectedIcon;
   final String label;
   final bool selected;
-  final bool showLabel;
+  final BottomNavLabelMode labelMode;
 
   const _NavOrderDestination({
     required this.icon,
     required this.selectedIcon,
     required this.label,
     required this.selected,
-    required this.showLabel,
+    required this.labelMode,
   });
 
   @override
@@ -458,29 +566,67 @@ class _NavOrderDestination extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final foreground = selected ? cs.onSecondaryContainer : cs.onSurfaceVariant;
+    final showUnderLabel = labelMode == BottomNavLabelMode.always;
+    final showCapsuleLabel =
+        labelMode == BottomNavLabelMode.selectedOnly && selected;
 
     return MouseRegion(
       cursor: SystemMouseCursors.grab,
-      child: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: 64,
-              height: 32,
-              decoration: BoxDecoration(
-                color: selected ? cs.secondaryContainer : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                selected ? selectedIcon : icon,
-                color: foreground,
-                size: 24,
+            Align(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 32),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? cs.secondaryContainer
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: showCapsuleLabel ? 8 : 10,
+                      vertical: 6,
+                    ),
+                    child: showCapsuleLabel
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                selectedIcon,
+                                color: foreground,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  label,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tt.labelSmall?.copyWith(
+                                    color: foreground,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Icon(
+                            selected ? selectedIcon : icon,
+                            color: foreground,
+                            size: 20,
+                          ),
+                  ),
+                ),
               ),
             ),
-            if (showLabel) ...[
+            if (showUnderLabel) ...[
               const SizedBox(height: 4),
               Text(
                 label,

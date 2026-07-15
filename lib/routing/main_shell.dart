@@ -3,11 +3,43 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/app_update.dart';
 import '../utils/remote_notice_service.dart';
+
+// Navigation key → branch index mapping.
+// The branch order in StatefulShellRoute must match this.
+const _navKeyToBranchIndex = {
+  'comic': 0,
+  'anime': 1,
+  'search': 2,
+  'bookshelf': 3,
+  'profile': 4,
+};
+
+List<String> _visibleNavKeys(UserManager user) {
+  final keys = user.navOrder
+      .where(_navKeyToBranchIndex.containsKey)
+      .where((key) => user.isLoggedIn || key != 'bookshelf')
+      .where((key) => user.animeFeatureEnabled || key != 'anime')
+      .toList();
+  return keys.isEmpty ? const [UserManager.defaultNavKey] : keys;
+}
+
+/// Keeps every StatefulShellRoute branch alive while animating branch changes.
+Widget buildMainShellNavigatorContainer(
+  BuildContext context,
+  StatefulNavigationShell navigationShell,
+  List<Widget> children,
+) {
+  return _AnimatedBranchContainer(
+    currentIndex: navigationShell.currentIndex,
+    children: children,
+  );
+}
 
 /// Shell widget that wraps the bottom navigation bar around the
 /// [StatefulNavigationShell] provided by GoRouter's [StatefulShellRoute].
@@ -25,6 +57,7 @@ class _MainShellState extends State<MainShell> {
   bool _didAutoCheckUpdate = false;
   bool _didCheckDisclaimer = false;
   bool _didCheckRemoteNotice = false;
+  double _horizontalDragDistance = 0;
 
   @override
   void initState() {
@@ -104,40 +137,30 @@ class _MainShellState extends State<MainShell> {
     unawaited(RemoteNoticeService.syncSilently());
   }
 
-  // Navigation key → branch index mapping.
-  // The branch order in StatefulShellRoute must match this.
-  static const _navKeyToBranchIndex = {
-    'comic': 0,
-    'anime': 1,
-    'search': 2,
-    'bookshelf': 3,
-    'profile': 4,
-  };
-
   static const _navItemData = {
     'comic': _NavItem(
-      icon: Icon(Icons.menu_book_outlined),
-      selectedIcon: Icon(Icons.menu_book),
+      icon: Icons.menu_book_outlined,
+      selectedIcon: Icons.menu_book,
       labelKey: 'comic',
     ),
     'anime': _NavItem(
-      icon: Icon(Icons.movie_outlined),
-      selectedIcon: Icon(Icons.movie),
+      icon: Icons.movie_outlined,
+      selectedIcon: Icons.movie,
       labelKey: 'anime',
     ),
     'search': _NavItem(
-      icon: Icon(Icons.search_outlined),
-      selectedIcon: Icon(Icons.search),
+      icon: Icons.search_outlined,
+      selectedIcon: Icons.search,
       labelKey: 'search',
     ),
     'bookshelf': _NavItem(
-      icon: Icon(Icons.bookmark_border),
-      selectedIcon: Icon(Icons.bookmark),
+      icon: Icons.bookmark_border,
+      selectedIcon: Icons.bookmark,
       labelKey: 'bookshelf',
     ),
     'profile': _NavItem(
-      icon: Icon(Icons.person_outline),
-      selectedIcon: Icon(Icons.person),
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person,
       labelKey: 'profile',
     ),
   };
@@ -159,15 +182,6 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
-  List<String> _visibleNavKeys() {
-    final keys = _user.navOrder
-        .where(_navItemData.containsKey)
-        .where((k) => _user.isLoggedIn || k != 'bookshelf')
-        .where((k) => _user.animeFeatureEnabled || k != 'anime')
-        .toList();
-    return keys.isEmpty ? const [UserManager.defaultNavKey] : keys;
-  }
-
   int _selectedIndex(List<String> orderedKeys) {
     final currentBranch = widget.navigationShell.currentIndex;
     // Map current branch index back to nav key
@@ -186,65 +200,292 @@ class _MainShellState extends State<MainShell> {
     return 0;
   }
 
+  void _goToDestination(
+    List<String> orderedKeys,
+    int index, {
+    bool resetIfSelected = false,
+  }) {
+    final navKey = orderedKeys[index];
+    final branchIndex = _navKeyToBranchIndex[navKey];
+    if (branchIndex != null) {
+      widget.navigationShell.goBranch(
+        branchIndex,
+        initialLocation:
+            resetIfSelected &&
+            branchIndex == widget.navigationShell.currentIndex,
+      );
+    }
+    unawaited(_user.setLastNavKey(navKey));
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details, List<String> orderedKeys) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (_horizontalDragDistance.abs() < 48 && velocity.abs() < 400) return;
+
+    final selectedIndex = _selectedIndex(orderedKeys);
+    final direction = velocity.abs() >= 400
+        ? velocity.sign
+        : _horizontalDragDistance.sign;
+    final nextIndex = selectedIndex + (direction < 0 ? 1 : -1);
+    if (nextIndex >= 0 && nextIndex < orderedKeys.length) {
+      _goToDestination(orderedKeys, nextIndex);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final orderedKeys = _visibleNavKeys();
-    final destinations = [
-      for (final key in orderedKeys)
-        _buildDestination(key: key, label: _navLabel(l10n, key)),
-    ];
+    final orderedKeys = _visibleNavKeys(_user);
     final selectedIndex = _selectedIndex(orderedKeys);
+    final labelMode = _user.bottomNavLabelMode;
 
     return Scaffold(
-      body: widget.navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (i) {
-          final navKey = orderedKeys[i];
-          final branchIndex = _navKeyToBranchIndex[navKey];
-          if (branchIndex != null) {
-            widget.navigationShell.goBranch(
-              branchIndex,
-              initialLocation:
-                  branchIndex == widget.navigationShell.currentIndex,
-            );
-          }
-          unawaited(_user.setLastNavKey(navKey));
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
+        onHorizontalDragUpdate: (details) {
+          _horizontalDragDistance += details.primaryDelta ?? 0;
         },
-        height: _user.bottomNavShowLabels ? null : 64,
-        labelBehavior: _user.bottomNavShowLabels
-            ? NavigationDestinationLabelBehavior.alwaysShow
-            : NavigationDestinationLabelBehavior.alwaysHide,
-        destinations: destinations,
+        onHorizontalDragEnd: (details) {
+          _onHorizontalDragEnd(details, orderedKeys);
+          _horizontalDragDistance = 0;
+        },
+        onHorizontalDragCancel: () => _horizontalDragDistance = 0,
+        child: widget.navigationShell,
       ),
+      bottomNavigationBar: labelMode == BottomNavLabelMode.always
+          ? _buildClassicNavBar(
+              orderedKeys: orderedKeys,
+              selectedIndex: selectedIndex,
+              l10n: l10n,
+            )
+          : _buildCapsuleNavBar(
+              orderedKeys: orderedKeys,
+              selectedIndex: selectedIndex,
+              l10n: l10n,
+              showSelectedLabel: labelMode == BottomNavLabelMode.selectedOnly,
+            ),
     );
   }
 
-  NavigationDestination _buildDestination({
+  Widget _buildClassicNavBar({
+    required List<String> orderedKeys,
+    required int selectedIndex,
+    required AppLocalizations l10n,
+  }) {
+    return NavigationBar(
+      selectedIndex: selectedIndex,
+      onDestinationSelected: (index) =>
+          _goToDestination(orderedKeys, index, resetIfSelected: true),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      destinations: [
+        for (final key in orderedKeys)
+          _buildClassicDestination(key: key, label: _navLabel(l10n, key)),
+      ],
+    );
+  }
+
+  NavigationDestination _buildClassicDestination({
     required String key,
     required String label,
   }) {
     final item = _navItemData[key]!;
     if (key != 'profile') {
       return NavigationDestination(
-        icon: item.icon,
-        selectedIcon: item.selectedIcon,
+        icon: Icon(item.icon),
+        selectedIcon: Icon(item.selectedIcon),
         label: label,
       );
     }
 
     return NavigationDestination(
-      icon: _NoticeBadgeIcon(child: item.icon),
-      selectedIcon: _NoticeBadgeIcon(child: item.selectedIcon),
+      icon: _NoticeBadgeIcon(child: Icon(item.icon)),
+      selectedIcon: _NoticeBadgeIcon(child: Icon(item.selectedIcon)),
       label: label,
+    );
+  }
+
+  Widget _buildCapsuleNavBar({
+    required List<String> orderedKeys,
+    required int selectedIndex,
+    required AppLocalizations l10n,
+    required bool showSelectedLabel,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surfaceContainer,
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.15),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: GNav(
+            selectedIndex: selectedIndex,
+            onTabChange: (index) =>
+                _goToDestination(orderedKeys, index, resetIfSelected: true),
+            gap: showSelectedLabel ? 8 : 0,
+            iconSize: 24,
+            // Match Bettbox's capsule indicator timing/feel.
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            color: cs.onSurfaceVariant,
+            activeColor: cs.onSecondaryContainer,
+            tabBackgroundColor: cs.secondaryContainer,
+            rippleColor: cs.onSurface.withValues(alpha: 0.12),
+            hoverColor: cs.onSurface.withValues(alpha: 0.08),
+            padding: EdgeInsets.symmetric(
+              horizontal: showSelectedLabel ? 16 : 18,
+              vertical: 12,
+            ),
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            tabs: [
+              for (final key in orderedKeys)
+                _buildGButton(
+                  key: key,
+                  label: showSelectedLabel ? _navLabel(l10n, key) : '',
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  GButton _buildGButton({required String key, required String label}) {
+    final item = _navItemData[key]!;
+    if (key != 'profile') {
+      return GButton(icon: item.selectedIcon, text: label);
+    }
+
+    return GButton(
+      icon: item.selectedIcon,
+      text: label,
+      leading: _NoticeBadgeIcon(child: Icon(item.selectedIcon, size: 24)),
+    );
+  }
+}
+
+/// Dual-page linked slide between shell branches (no intermediate-page sweep).
+///
+/// Hidden tabs stay mounted offstage so branch state is preserved.
+class _AnimatedBranchContainer extends StatefulWidget {
+  const _AnimatedBranchContainer({
+    required this.currentIndex,
+    required this.children,
+  });
+
+  final int currentIndex;
+  final List<Widget> children;
+
+  @override
+  State<_AnimatedBranchContainer> createState() =>
+      _AnimatedBranchContainerState();
+}
+
+class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
+    with SingleTickerProviderStateMixin {
+  static const _duration = kTabScrollDuration;
+
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  int? _outgoingIndex;
+  double _direction = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: _duration)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && _outgoingIndex != null) {
+          setState(() => _outgoingIndex = null);
+        }
+      });
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _controller.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedBranchContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentIndex == widget.currentIndex) return;
+
+    final orderedKeys = _visibleNavKeys(UserManager());
+    final oldPosition = _branchPosition(oldWidget.currentIndex, orderedKeys);
+    final newPosition = _branchPosition(widget.currentIndex, orderedKeys);
+    _outgoingIndex = oldWidget.currentIndex;
+    _direction = newPosition >= oldPosition ? 1 : -1;
+    _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  double _branchPosition(int branchIndex, List<String> orderedKeys) {
+    final navKey = _navKeyToBranchIndex.entries
+        .where((entry) => entry.value == branchIndex)
+        .map((entry) => entry.key)
+        .firstOrNull;
+    final visibleIndex = navKey == null ? -1 : orderedKeys.indexOf(navKey);
+    return visibleIndex < 0 ? branchIndex.toDouble() : visibleIndex.toDouble();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, _) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            for (var index = 0; index < widget.children.length; index++)
+              _buildBranch(index),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBranch(int index) {
+    final isCurrent = index == widget.currentIndex;
+    final isOutgoing = index == _outgoingIndex;
+    final isActive = isCurrent || isOutgoing;
+
+    // Linked PageView-style offsets, but only between the two endpoints:
+    // - incoming starts at +direction and settles at 0
+    // - outgoing starts at 0 and exits to -direction
+    final double dx;
+    if (isCurrent) {
+      dx = (1 - _animation.value) * _direction;
+    } else if (isOutgoing) {
+      dx = -_animation.value * _direction;
+    } else {
+      dx = 0;
+    }
+
+    return Offstage(
+      offstage: !isActive,
+      child: TickerMode(
+        enabled: isCurrent,
+        child: IgnorePointer(
+          ignoring: !isCurrent,
+          child: FractionalTranslation(
+            translation: Offset(dx, 0),
+            child: widget.children[index],
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _NavItem {
-  final Icon icon;
-  final Icon selectedIcon;
+  final IconData icon;
+  final IconData selectedIcon;
   final String labelKey;
   const _NavItem({
     required this.icon,

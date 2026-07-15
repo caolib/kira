@@ -700,7 +700,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearanceBottomNavShowLabels => '底部导航栏显示文字';
 
   @override
+  String get appearanceBottomNavLabelMode => '底部导航栏文字';
+
+  @override
+  String get appearanceBottomNavLabelModeSelectedOnly => '选中时显示';
+
+  @override
+  String get appearanceBottomNavLabelModeSelectedOnlyDesc => '胶囊导航，仅选中项显示文字';
+
+  @override
+  String get appearanceBottomNavLabelModeHidden => '不显示文字';
+
+  @override
+  String get appearanceBottomNavLabelModeHiddenDesc => '胶囊导航，只显示图标';
+
+  @override
+  String get appearanceBottomNavLabelModeAlways => '始终显示文字';
+
+  @override
+  String get appearanceBottomNavLabelModeAlwaysDesc => '经典导航，文字显示在图标下方';
+
+  @override
   String get appearanceNavOrder => '导航栏顺序';
+
+  @override
+  String get appearanceNavOrderDragHint => '长按可拖放排序';
 
   @override
   String get appearanceAppIcon => '应用图标';
@@ -4030,7 +4054,31 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get appearanceBottomNavShowLabels => '底部導覽列顯示文字';
 
   @override
+  String get appearanceBottomNavLabelMode => '底部導覽列文字';
+
+  @override
+  String get appearanceBottomNavLabelModeSelectedOnly => '選中時顯示';
+
+  @override
+  String get appearanceBottomNavLabelModeSelectedOnlyDesc => '膠囊導覽，僅選中項顯示文字';
+
+  @override
+  String get appearanceBottomNavLabelModeHidden => '不顯示文字';
+
+  @override
+  String get appearanceBottomNavLabelModeHiddenDesc => '膠囊導覽，只顯示圖示';
+
+  @override
+  String get appearanceBottomNavLabelModeAlways => '始終顯示文字';
+
+  @override
+  String get appearanceBottomNavLabelModeAlwaysDesc => '經典導覽，文字顯示在圖示下方';
+
+  @override
   String get appearanceNavOrder => '導覽列順序';
+
+  @override
+  String get appearanceNavOrderDragHint => '長按可拖放排序';
 
   @override
   String get appearanceAppIcon => '應用圖示';

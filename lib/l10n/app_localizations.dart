@@ -1333,11 +1333,59 @@ abstract class AppLocalizations {
   /// **'底部导航栏显示文字'**
   String get appearanceBottomNavShowLabels;
 
+  /// No description provided for @appearanceBottomNavLabelMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'底部导航栏文字'**
+  String get appearanceBottomNavLabelMode;
+
+  /// No description provided for @appearanceBottomNavLabelModeSelectedOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'选中时显示'**
+  String get appearanceBottomNavLabelModeSelectedOnly;
+
+  /// No description provided for @appearanceBottomNavLabelModeSelectedOnlyDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'胶囊导航，仅选中项显示文字'**
+  String get appearanceBottomNavLabelModeSelectedOnlyDesc;
+
+  /// No description provided for @appearanceBottomNavLabelModeHidden.
+  ///
+  /// In zh, this message translates to:
+  /// **'不显示文字'**
+  String get appearanceBottomNavLabelModeHidden;
+
+  /// No description provided for @appearanceBottomNavLabelModeHiddenDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'胶囊导航，只显示图标'**
+  String get appearanceBottomNavLabelModeHiddenDesc;
+
+  /// No description provided for @appearanceBottomNavLabelModeAlways.
+  ///
+  /// In zh, this message translates to:
+  /// **'始终显示文字'**
+  String get appearanceBottomNavLabelModeAlways;
+
+  /// No description provided for @appearanceBottomNavLabelModeAlwaysDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'经典导航，文字显示在图标下方'**
+  String get appearanceBottomNavLabelModeAlwaysDesc;
+
   /// No description provided for @appearanceNavOrder.
   ///
   /// In zh, this message translates to:
   /// **'导航栏顺序'**
   String get appearanceNavOrder;
+
+  /// No description provided for @appearanceNavOrderDragHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'长按可拖放排序'**
+  String get appearanceNavOrderDragHint;
 
   /// No description provided for @appearanceAppIcon.
   ///

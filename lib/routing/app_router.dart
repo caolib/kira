@@ -153,7 +153,8 @@ GoRouter createAppRouter() {
   return GoRouter(
     initialLocation: '/',
     routes: [
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
+        navigatorContainerBuilder: buildMainShellNavigatorContainer,
         builder: (context, state, navigationShell) {
           return MainShell(navigationShell: navigationShell);
         },

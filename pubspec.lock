@@ -421,6 +421,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "14.8.1"
+  google_nav_bar:
+    dependency: "direct main"
+    description:
+      name: google_nav_bar
+      sha256: bb12dd21514ee1b041ab3127673e2fd85e693337df308f7f2b75cd1e8e92eaf4
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "5.0.7"
   graphs:
     dependency: transitive
     description:

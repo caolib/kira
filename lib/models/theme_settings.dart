@@ -42,6 +42,7 @@ class ThemeSettings extends PrefsStore {
   static const _keyCustomThemeColor = 'custom_theme_color';
   static const _keyDarkModeCoverBrightness = 'dark_mode_cover_brightness';
   static const _keyBottomNavShowLabels = 'bottom_nav_show_labels';
+  static const _keyBottomNavLabelMode = 'bottom_nav_label_mode';
   static const _keyNavOrder = 'nav_order';
   static const _keyLastNavKey = 'last_nav_key';
   static const _keyDesktopFontFamily = 'desktop_font_family';
@@ -57,7 +58,7 @@ class ThemeSettings extends PrefsStore {
   DynamicSchemeVariant _themeVariant = appThemeVariantOptions.first.variant;
   int _customThemeColorValue = defaultCustomThemeColor.toARGB32();
   double _darkModeCoverBrightness = defaultDarkModeCoverBrightness;
-  bool _bottomNavShowLabels = true;
+  BottomNavLabelMode _bottomNavLabelMode = BottomNavLabelMode.selectedOnly;
   List<String> _navOrder = defaultNavOrder;
   String _lastNavKey = defaultNavKey;
   String _desktopFontFamily = '';
@@ -73,7 +74,10 @@ class ThemeSettings extends PrefsStore {
   DynamicSchemeVariant get themeVariant => _themeVariant;
   Color get customThemeColor => Color(_customThemeColorValue);
   double get darkModeCoverBrightness => _darkModeCoverBrightness;
-  bool get bottomNavShowLabels => _bottomNavShowLabels;
+  BottomNavLabelMode get bottomNavLabelMode => _bottomNavLabelMode;
+  /// Compatibility: any mode that still shows label text somewhere.
+  bool get bottomNavShowLabels =>
+      _bottomNavLabelMode != BottomNavLabelMode.hidden;
   List<String> get navOrder => _navOrder;
   String get lastNavKey => _lastNavKey;
   String get desktopFontFamily => _desktopFontFamily;
@@ -114,7 +118,7 @@ class ThemeSettings extends PrefsStore {
       prefs.getDouble(_keyDarkModeCoverBrightness) ??
           defaultDarkModeCoverBrightness,
     );
-    _bottomNavShowLabels = prefs.getBool(_keyBottomNavShowLabels) ?? true;
+    _bottomNavLabelMode = _loadBottomNavLabelMode(prefs);
     final savedNavOrder = prefs.getStringList(_keyNavOrder);
     _navOrder = _normalizeNavOrder(savedNavOrder);
     if (savedNavOrder != null &&
@@ -186,9 +190,22 @@ class ThemeSettings extends PrefsStore {
   }
 
   Future<void> setBottomNavShowLabels(bool enabled) async {
-    if (_bottomNavShowLabels == enabled) return;
-    _bottomNavShowLabels = enabled;
-    await setBool(_keyBottomNavShowLabels, enabled);
+    await setBottomNavLabelMode(
+      enabled ? BottomNavLabelMode.selectedOnly : BottomNavLabelMode.hidden,
+    );
+  }
+
+  Future<void> setBottomNavLabelMode(BottomNavLabelMode mode) async {
+    if (_bottomNavLabelMode == mode) return;
+    _bottomNavLabelMode = mode;
+    final p = await prefs;
+    await p.setString(_keyBottomNavLabelMode, mode.name);
+    // Keep legacy bool in sync for older builds / external readers.
+    await p.setBool(
+      _keyBottomNavShowLabels,
+      mode != BottomNavLabelMode.hidden,
+    );
+    notifyListeners();
   }
 
   Future<void> setNavOrder(List<String> order) async {
@@ -270,4 +287,30 @@ class ThemeSettings extends PrefsStore {
     }
     return refreshRate;
   }
+
+  /// Prefer the new string key; fall back to the legacy bool for upgrades.
+  static BottomNavLabelMode _loadBottomNavLabelMode(SharedPreferences prefs) {
+    final saved = prefs.getString(_keyBottomNavLabelMode);
+    if (saved != null) {
+      for (final mode in BottomNavLabelMode.values) {
+        if (mode.name == saved) return mode;
+      }
+    }
+    // Upgrades: old "show labels" becomes the new capsule selected-only
+    // mode so users pick up the new bar without staying on classic always.
+    final legacy = prefs.getBool(_keyBottomNavShowLabels);
+    if (legacy == false) return BottomNavLabelMode.hidden;
+    return BottomNavLabelMode.selectedOnly;
+  }
+}
+
+/// Bottom navigation label presentation.
+///
+/// - [selectedOnly]: capsule bar; label only on the selected tab (default)
+/// - [hidden]: capsule bar; icons only
+/// - [always]: classic Material bar; labels always under icons
+enum BottomNavLabelMode {
+  selectedOnly,
+  hidden,
+  always,
 }
