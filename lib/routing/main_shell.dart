@@ -537,7 +537,13 @@ class _NoticeBadgeIcon extends StatelessWidget {
     return ValueListenableBuilder<int>(
       valueListenable: RemoteNoticeService.unreadActiveCount,
       builder: (_, count, _) {
-        return _BadgeIcon(showBadge: count > 0, child: child);
+        return ValueListenableBuilder<bool>(
+          valueListenable: AppUpdateService.hasUnseenUpdate,
+          builder: (_, hasUnseenUpdate, _) {
+            final showBadge = count > 0 || hasUnseenUpdate;
+            return _BadgeIcon(showBadge: showBadge, child: child);
+          },
+        );
       },
     );
   }

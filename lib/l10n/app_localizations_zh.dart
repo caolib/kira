@@ -1518,9 +1518,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutGotItButton => '知道了';
 
   @override
-  String get aboutStableChannelSwitchedToast => '已切换到稳定版';
-
-  @override
   String get aboutRepositoryLabel => '仓库';
 
   @override
@@ -3107,6 +3104,53 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updateDisableAutoCheck => '取消自动检查更新';
+
+  @override
+  String get updateInstallInApp => '应用内安装';
+
+  @override
+  String get updateInstallInAppMirror => '镜像应用内安装';
+
+  @override
+  String updateDownloading(int percent) {
+    return '下载中 $percent%';
+  }
+
+  @override
+  String get updateDownloadFailed => '下载失败，请稍后重试';
+
+  @override
+  String get updateInstallFailed => '无法启动安装，请改用浏览器下载';
+
+  @override
+  String get updateInstallPermissionNeeded => '需要「安装未知应用」权限才能安装更新';
+
+  @override
+  String get updateDownloadPreparing => '准备下载…';
+
+  @override
+  String get updateInstalling => '正在安装…';
+
+  @override
+  String get updateCardChecking => '正在检查更新…';
+
+  @override
+  String get updateCardLatest => '当前已是最新版本';
+
+  @override
+  String get updateCardFailed => '检查更新失败，点击重试';
+
+  @override
+  String get updateCardRetry => '重试';
+
+  @override
+  String get updateButtonUpdate => '更新';
+
+  @override
+  String get updateManualDownload => '手动下载';
+
+  @override
+  String get updateUseMirror => '使用镜像';
 
   @override
   String get totalRank => '总榜';
@@ -4912,9 +4956,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutGotItButton => '知道了';
 
   @override
-  String get aboutStableChannelSwitchedToast => '已切換到穩定版';
-
-  @override
   String get aboutRepositoryLabel => '倉庫';
 
   @override
@@ -6501,6 +6542,53 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get updateDisableAutoCheck => '取消自動檢查更新';
+
+  @override
+  String get updateInstallInApp => '應用內安裝';
+
+  @override
+  String get updateInstallInAppMirror => '鏡像應用內安裝';
+
+  @override
+  String updateDownloading(int percent) {
+    return '下載中 $percent%';
+  }
+
+  @override
+  String get updateDownloadFailed => '下載失敗，請稍後重試';
+
+  @override
+  String get updateInstallFailed => '無法啟動安裝，請改用瀏覽器下載';
+
+  @override
+  String get updateInstallPermissionNeeded => '需要「安裝未知應用」權限才能安裝更新';
+
+  @override
+  String get updateDownloadPreparing => '準備下載…';
+
+  @override
+  String get updateInstalling => '正在安裝…';
+
+  @override
+  String get updateCardChecking => '正在檢查更新…';
+
+  @override
+  String get updateCardLatest => '目前已是最新版本';
+
+  @override
+  String get updateCardFailed => '檢查更新失敗，點擊重試';
+
+  @override
+  String get updateCardRetry => '重試';
+
+  @override
+  String get updateButtonUpdate => '更新';
+
+  @override
+  String get updateManualDownload => '手動下載';
+
+  @override
+  String get updateUseMirror => '使用鏡像';
 
   @override
   String get totalRank => '總榜';

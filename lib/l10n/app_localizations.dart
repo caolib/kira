@@ -2796,12 +2796,6 @@ abstract class AppLocalizations {
   /// **'知道了'**
   String get aboutGotItButton;
 
-  /// No description provided for @aboutStableChannelSwitchedToast.
-  ///
-  /// In zh, this message translates to:
-  /// **'已切换到稳定版'**
-  String get aboutStableChannelSwitchedToast;
-
   /// No description provided for @aboutRepositoryLabel.
   ///
   /// In zh, this message translates to:
@@ -5626,6 +5620,96 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'取消自动检查更新'**
   String get updateDisableAutoCheck;
+
+  /// No description provided for @updateInstallInApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用内安装'**
+  String get updateInstallInApp;
+
+  /// No description provided for @updateInstallInAppMirror.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像应用内安装'**
+  String get updateInstallInAppMirror;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载中 {percent}%'**
+  String updateDownloading(int percent);
+
+  /// No description provided for @updateDownloadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败，请稍后重试'**
+  String get updateDownloadFailed;
+
+  /// No description provided for @updateInstallFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法启动安装，请改用浏览器下载'**
+  String get updateInstallFailed;
+
+  /// No description provided for @updateInstallPermissionNeeded.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要「安装未知应用」权限才能安装更新'**
+  String get updateInstallPermissionNeeded;
+
+  /// No description provided for @updateDownloadPreparing.
+  ///
+  /// In zh, this message translates to:
+  /// **'准备下载…'**
+  String get updateDownloadPreparing;
+
+  /// No description provided for @updateInstalling.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在安装…'**
+  String get updateInstalling;
+
+  /// No description provided for @updateCardChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检查更新…'**
+  String get updateCardChecking;
+
+  /// No description provided for @updateCardLatest.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前已是最新版本'**
+  String get updateCardLatest;
+
+  /// No description provided for @updateCardFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败，点击重试'**
+  String get updateCardFailed;
+
+  /// No description provided for @updateCardRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get updateCardRetry;
+
+  /// No description provided for @updateButtonUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新'**
+  String get updateButtonUpdate;
+
+  /// No description provided for @updateManualDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动下载'**
+  String get updateManualDownload;
+
+  /// No description provided for @updateUseMirror.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用镜像'**
+  String get updateUseMirror;
 
   /// No description provided for @totalRank.
   ///

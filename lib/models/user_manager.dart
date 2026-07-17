@@ -166,6 +166,7 @@ class UserManager extends ChangeNotifier {
   static const _keyUpdateMirrorPrefix = 'update_mirror_prefix';
   static const _keyUpdateChannel = 'update_channel'; // stable | beta
   static const _keyLastBetaAssetName = 'last_beta_asset_name';
+  static const _keyUseUpdateMirror = 'use_update_mirror';
   static const _keyAutoLogin = 'auto_login';
   static const _keyDisclaimerAccepted = 'disclaimer_accepted';
   static const _keyLoginSource = 'login_source';
@@ -248,6 +249,7 @@ class UserManager extends ChangeNotifier {
   String _updateMirrorPrefix = defaultUpdateMirrorPrefix;
   String _updateChannel = 'stable'; // stable | beta
   String? _lastBetaAssetName;
+  bool _useUpdateMirror = false;
   bool _autoLogin = false;
   bool _disclaimerAccepted = false;
   String _loginSource = 'hotmanga';
@@ -351,6 +353,7 @@ class UserManager extends ChangeNotifier {
   String get updateChannel => _updateChannel;
   bool get isBetaUpdateChannel => _updateChannel == 'beta';
   String? get lastBetaAssetName => _lastBetaAssetName;
+  bool get useUpdateMirror => _useUpdateMirror;
   bool get autoLogin => _autoLogin;
   bool get disclaimerAccepted => _disclaimerAccepted;
   String get loginSource => _loginSource;
@@ -566,6 +569,7 @@ class UserManager extends ChangeNotifier {
         ? 'beta'
         : 'stable';
     _lastBetaAssetName = prefs.getString(_keyLastBetaAssetName);
+    _useUpdateMirror = prefs.getBool(_keyUseUpdateMirror) ?? false;
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
     _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
     _loginSource = prefs.getString(_keyLoginSource) ?? 'hotmanga';
@@ -1154,6 +1158,14 @@ class UserManager extends ChangeNotifier {
     } else {
       await prefs.setString(_keyLastBetaAssetName, name);
     }
+    notifyListeners();
+  }
+
+  Future<void> setUseUpdateMirror(bool value) async {
+    if (_useUpdateMirror == value) return;
+    _useUpdateMirror = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyUseUpdateMirror, value);
     notifyListeners();
   }
 

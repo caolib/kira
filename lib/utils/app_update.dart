@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
-import '../widgets/github_markdown.dart';
 import 'app_dio.dart';
+import 'app_logger.dart';
 import 'time_format.dart';
 import 'toast.dart';
 
@@ -87,6 +87,24 @@ class AppUpdateInfo {
   });
 }
 
+/// Observable state for the update flow. The About page listens to
+/// [AppUpdateService.state] to render an inline update card.
+/// Entry dots use [AppUpdateService.hasUnseenUpdate] instead, so visiting
+/// About can dismiss the badge without clearing the update card.
+class AppUpdateState {
+  final AppUpdateStatus status;
+  final AppUpdateInfo? info;
+  const AppUpdateState._({required this.status, this.info});
+  const AppUpdateState.idle() : this._(status: AppUpdateStatus.idle);
+  const AppUpdateState.checking() : this._(status: AppUpdateStatus.checking);
+  const AppUpdateState.available(AppUpdateInfo info)
+    : this._(status: AppUpdateStatus.available, info: info);
+  const AppUpdateState.latest() : this._(status: AppUpdateStatus.latest);
+  const AppUpdateState.failed() : this._(status: AppUpdateStatus.failed);
+}
+
+enum AppUpdateStatus { idle, checking, available, latest, failed }
+
 class AppUpdateService {
   static const _latestReleaseUrl =
       'https://api.github.com/repos/caolib/kira/releases/latest';
@@ -103,6 +121,30 @@ class AppUpdateService {
       receiveTimeout: const Duration(seconds: 15),
     ),
   );
+
+  /// App-wide observable update state. About page update card listens here.
+  static final ValueNotifier<AppUpdateState> state = ValueNotifier(
+    const AppUpdateState.idle(),
+  );
+
+  /// Profile "About" entry / bottom-nav badge. Set when an update becomes
+  /// available; cleared when the user opens the About page (or update is gone).
+  static final ValueNotifier<bool> hasUnseenUpdate = ValueNotifier(false);
+
+  static AppUpdateInfo? get availableUpdate => state.value.info;
+
+  /// Dismiss entry dots without clearing [state] (update card stays visible).
+  ///
+  /// Deferred to the next frame so callers (e.g. AboutPage.initState) do not
+  /// notify [ValueListenableBuilder]s while the tree is still building.
+  static void markUpdateBadgeSeen() {
+    if (!hasUnseenUpdate.value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (hasUnseenUpdate.value) {
+        hasUnseenUpdate.value = false;
+      }
+    });
+  }
 
   static Future<AppUpdateInfo?> checkForUpdate({
     bool respectSkippedVersion = true,
@@ -277,16 +319,21 @@ class AppUpdateService {
     return assets;
   }
 
+  /// Checks for an update and writes the result to [state]. No dialog.
+  /// [auto] = true: silent background check, only surfaces an available update.
+  /// [auto] = false: manual check from the About page — shows a toast on
+  /// latest/failed so the user gets feedback for their tap.
   static Future<void> checkAndPrompt(
     BuildContext context, {
     bool auto = false,
   }) async {
+    state.value = const AppUpdateState.checking();
     try {
       final updateInfo = await checkForUpdate(respectSkippedVersion: auto);
-      if (!context.mounted) return;
-
       if (updateInfo == null) {
-        if (!auto) {
+        state.value = const AppUpdateState.latest();
+        hasUnseenUpdate.value = false;
+        if (!auto && context.mounted) {
           showToast(context, AppLocalizations.of(context)!.updateAlreadyLatest);
         }
         return;
@@ -297,12 +344,13 @@ class AppUpdateService {
         await UserManager().setLastBetaAssetName(updateInfo.assets.first.name);
       }
 
-      if (!context.mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => _UpdateDialog(updateInfo: updateInfo),
-      );
+      state.value = AppUpdateState.available(updateInfo);
+      // Manual check is only triggered from About; keep the badge off so
+      // leaving the page does not re-light a dot the user already saw.
+      hasUnseenUpdate.value = auto;
     } catch (_) {
+      state.value = const AppUpdateState.failed();
+      hasUnseenUpdate.value = false;
       if (!context.mounted || auto) return;
       showToast(
         context,
@@ -367,341 +415,194 @@ class AppUpdateService {
   }
 }
 
-class _UpdateDialog extends StatefulWidget {
-  final AppUpdateInfo updateInfo;
+/// Native bridge + downloader for in-app APK self-update (Android only).
+/// Downloads the release APK to the app cache dir and asks the system
+/// PackageInstaller to install it. Non-Android platforms throw on use;
+/// callers gate the UI behind `Platform.isAndroid`.
+class ApkInstaller {
+  static const _channel = MethodChannel('io.github.caolib.kira/install_apk');
 
-  const _UpdateDialog({required this.updateInfo});
+  /// Downloads [url] into the temp cache as [fileName], reporting progress.
+  /// Returns the absolute path of the downloaded file.
+  static Future<String> downloadToCache(
+    String url,
+    String fileName, {
+    void Function(int received, int total)? onProgress,
+  }) async {
+    final dir = await getTemporaryDirectory();
+    final savePath = '${dir.path}/$fileName';
+    final file = File(savePath);
+    if (await file.exists()) {
+      await file.delete();
+    }
+    await AppUpdateService._dio.download(
+      url,
+      savePath,
+      onReceiveProgress: (received, total) => onProgress?.call(received, total),
+    );
+    return savePath;
+  }
 
-  @override
-  State<_UpdateDialog> createState() => _UpdateDialogState();
+  /// Returns true if the app is allowed to request package installs
+  /// (Android O+ "install unknown apps"). Always true on older Android.
+  static Future<bool> ensureInstallPermission() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      final granted = await _channel.invokeMethod<bool>(
+        'canRequestInstallPackages',
+      );
+      if (granted == true) return true;
+      await _channel.invokeMethod<void>('openInstallPermissionSettings');
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Hands the downloaded APK at [path] to the system installer.
+  static Future<void> install(String path) async {
+    if (!Platform.isAndroid) {
+      throw UnsupportedError('In-app install is Android-only');
+    }
+    await _channel.invokeMethod<void>('installApk', {'path': path});
+  }
 }
 
-class _UpdateDialogState extends State<_UpdateDialog> {
-  bool _submitting = false;
-  bool _betaAssetsExpanded = false;
+/// State of an in-app APK install, decoupled from any widget lifecycle.
+/// Lives in [InAppInstaller.state] so the download survives leaving the
+/// About page; re-entering the page re-binds to the same progress.
+class InstallState {
+  final InstallStatus status;
+  final String? assetName;
+  final int received; // bytes
+  final int total; // bytes, -1 when unknown
+  final bool needsPermission; // true when the failure is a missing install perm
 
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!mounted) return;
-    if (!launched) {
-      showToast(
-        context,
-        AppLocalizations.of(context)!.updateOpenDownloadFailed,
-        isError: true,
+  const InstallState._({
+    required this.status,
+    this.assetName,
+    this.received = 0,
+    this.total = -1,
+    this.needsPermission = false,
+  });
+
+  const InstallState.idle() : this._(status: InstallStatus.idle);
+  const InstallState.preparing(String name)
+    : this._(status: InstallStatus.preparing, assetName: name);
+  const InstallState.downloading(
+    String name, {
+    int received = 0,
+    int total = -1,
+  }) : this._(
+         status: InstallStatus.downloading,
+         assetName: name,
+         received: received,
+         total: total,
+       );
+  const InstallState.installing(String name)
+    : this._(status: InstallStatus.installing, assetName: name);
+  const InstallState.done() : this._(status: InstallStatus.done);
+  const InstallState.error(String name, {bool needsPermission = false})
+    : this._(
+        status: InstallStatus.error,
+        assetName: name,
+        needsPermission: needsPermission,
       );
-      return;
+
+  bool get isBusy =>
+      status == InstallStatus.preparing ||
+      status == InstallStatus.downloading ||
+      status == InstallStatus.installing;
+}
+
+enum InstallStatus { idle, preparing, downloading, installing, done, error }
+
+/// App-wide singleton driving the in-app update install flow. Decoupled from
+/// widget lifecycle — download continues if the user leaves the About page,
+/// and the system installer is launched automatically on completion.
+class InAppInstaller {
+  InAppInstaller._();
+  static final instance = InAppInstaller._();
+
+  final ValueNotifier<InstallState> state = ValueNotifier(
+    const InstallState.idle(),
+  );
+
+  bool _busy = false;
+
+  /// Formats a byte count as a human-readable size.
+  static String formatSize(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const kb = 1024;
+    const mb = 1024 * 1024;
+    const gb = 1024 * 1024 * 1024;
+    if (bytes >= gb) return '${(bytes / gb).toStringAsFixed(2)} GB';
+    if (bytes >= mb) return '${(bytes / mb).toStringAsFixed(1)} MB';
+    if (bytes >= kb) return '${(bytes / kb).toStringAsFixed(1)} KB';
+    return '$bytes B';
+  }
+
+  /// "received / total" progress label, or a plain "preparing" fallback when
+  /// total size is still unknown.
+  String progressLabel() {
+    final s = state.value;
+    if (s.total > 0) {
+      return '${formatSize(s.received)} / ${formatSize(s.total)}';
     }
-    Navigator.pop(context);
+    return '';
   }
 
-  Future<void> _skipVersion() async {
-    setState(() => _submitting = true);
-    await UserManager().setSkippedUpdateVersion(
-      widget.updateInfo.latestVersion,
-    );
-    if (!mounted) return;
-    Navigator.pop(context);
-  }
-
-  Future<void> _disableAutoCheck() async {
-    setState(() => _submitting = true);
-    await UserManager().setAutoCheckUpdate(false);
-    if (!mounted) return;
-    Navigator.pop(context);
-  }
-
-  Widget _buildReleaseNotes(String notes, ColorScheme cs, TextTheme tt) {
-    if (notes.trim().isEmpty) {
-      return Text(
-        AppLocalizations.of(context)!.updateNoReleaseNotes,
-        style: TextStyle(color: cs.onSurfaceVariant, height: 1.5),
-      );
-    }
-
-    return GitHubMarkdown(
-      data: notes,
-      styleSheet: githubMarkdownStyleSheet(
-        context,
-        foreground: cs.onSurfaceVariant,
-      ),
-    );
-  }
-
-  Widget _buildAssetTile(
-    ReleaseAsset asset,
-    ColorScheme cs,
-    TextTheme tt, {
-    bool showCreated = false,
-    String? badge,
-    AppLocalizations? l10n,
-  }) {
-    final subtitleParts = <String>[asset.platform.label];
-    if (asset.sizeLabel.isNotEmpty) subtitleParts.add(asset.sizeLabel);
-    if (showCreated) {
-      subtitleParts.add(asset.relativeCreatedLabel(l10n));
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Icon(asset.platform.icon, size: 22, color: cs.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        asset.name,
-                        style: tt.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (badge != null) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.primary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          badge,
-                          style: tt.labelSmall?.copyWith(
-                            color: cs.onPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (subtitleParts.isNotEmpty)
-                  Text(
-                    subtitleParts.join(' · '),
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: AppLocalizations.of(context)!.animeDetailDownloadButton,
-            visualDensity: VisualDensity.compact,
-            onPressed: _submitting ? null : () => _openUrl(asset.downloadUrl),
-            icon: SvgPicture.asset(
-              'assets/github.svg',
-              width: 18,
-              height: 18,
-              colorFilter: ColorFilter.mode(cs.primary, BlendMode.srcIn),
-            ),
-          ),
-          IconButton(
-            tooltip: AppLocalizations.of(context)!.updateMirrorDownload,
-            visualDensity: VisualDensity.compact,
-            onPressed: _submitting ? null : () => _openUrl(asset.mirrorUrl),
-            icon: Icon(Icons.public, size: 20, color: cs.primary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Beta channel: latest build is pinned and other builds are collapsed by default.
-  List<Widget> _buildBetaAssetWidgets(
-    List<ReleaseAsset> assets,
-    ColorScheme cs,
-    TextTheme tt,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-    final widgets = <Widget>[];
-    if (assets.isEmpty) return widgets;
-    widgets.add(
-      _buildAssetTile(
-        assets.first,
-        cs,
-        tt,
-        showCreated: true,
-        badge: l10n.updateLatestBadge,
-        l10n: l10n,
-      ),
-    );
-    if (assets.length > 1) {
-      widgets.add(_buildBetaExpandToggle(cs, tt, assets.length - 1));
-      if (_betaAssetsExpanded) {
-        for (final asset in assets.skip(1)) {
-          widgets.add(
-            _buildAssetTile(asset, cs, tt, showCreated: true, l10n: l10n),
+  /// Runs the full download → permission → install pipeline. Safe to call
+  /// without a [BuildContext]; UI listens via [state]. Re-entrant calls are
+  /// ignored while a task is in flight.
+  Future<void> downloadAndInstall(
+    ReleaseAsset asset, {
+    bool useMirror = false,
+  }) async {
+    if (_busy) return;
+    if (!Platform.isAndroid) return;
+    _busy = true;
+    state.value = InstallState.preparing(asset.name);
+    try {
+      final path = await ApkInstaller.downloadToCache(
+        useMirror ? asset.mirrorUrl : asset.downloadUrl,
+        asset.name,
+        onProgress: (received, total) {
+          state.value = InstallState.downloading(
+            asset.name,
+            received: received,
+            total: total,
           );
-        }
+        },
+      );
+      state.value = InstallState.installing(asset.name);
+      final granted = await ApkInstaller.ensureInstallPermission();
+      if (!granted) {
+        // Permission flow is async; user returns from settings later. Mark
+        // so UI can prompt; the download itself already finished.
+        state.value = InstallState.error(asset.name, needsPermission: true);
+        return;
       }
+      await ApkInstaller.install(path);
+      state.value = const InstallState.done();
+    } catch (e, st) {
+      await AppLogger.instance.recordWarning(
+        'in-app update install failed: $e',
+        stackTrace: st,
+        source: 'app_update',
+      );
+      state.value = InstallState.error(
+        asset.name,
+        needsPermission: e is PlatformException,
+      );
+    } finally {
+      _busy = false;
     }
-    return widgets;
   }
 
-  Widget _buildBetaExpandToggle(ColorScheme cs, TextTheme tt, int count) {
-    return InkWell(
-      onTap: _submitting
-          ? null
-          : () => setState(() => _betaAssetsExpanded = !_betaAssetsExpanded),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _betaAssetsExpanded ? Icons.expand_less : Icons.expand_more,
-              size: 18,
-              color: cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              _betaAssetsExpanded
-                  ? AppLocalizations.of(context)!.updateCollapseOtherVersions
-                  : AppLocalizations.of(context)!.updateViewMoreVersions(count),
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final isBeta = widget.updateInfo.isBetaChannel;
-    final notes = widget.updateInfo.releaseNotes.isEmpty
-        ? (isBeta
-              ? AppLocalizations.of(context)!.updateCiBuildUnstable
-              : AppLocalizations.of(context)!.updateNoReleaseNotes)
-        : widget.updateInfo.releaseNotes;
-
-    return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      title: Row(
-        children: [
-          Expanded(child: Text(AppLocalizations.of(context)!.hasUpdate)),
-          IconButton(
-            tooltip: AppLocalizations.of(context)!.updateOpenReleasePage,
-            visualDensity: VisualDensity.compact,
-            onPressed: _submitting
-                ? null
-                : () => _openUrl(widget.updateInfo.releasePageUrl),
-            icon: const Icon(Icons.open_in_new, size: 20),
-          ),
-        ],
-      ),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.updateInfo.releaseName, style: tt.titleSmall),
-            const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: SingleChildScrollView(
-                child: _buildReleaseNotes(notes, cs, tt),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  isBeta
-                      ? AppLocalizations.of(context)!.updatePackagesBeta
-                      : AppLocalizations.of(context)!.updatePackages,
-                  style: tt.labelLarge?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Divider(
-                    color: cs.outlineVariant.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: isBeta
-                      ? _buildBetaAssetWidgets(widget.updateInfo.assets, cs, tt)
-                      : [
-                          for (final asset in widget.updateInfo.assets)
-                            _buildAssetTile(
-                              asset,
-                              cs,
-                              tt,
-                              l10n: AppLocalizations.of(context)!,
-                            ),
-                        ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.end,
-              children: [
-                if (!isBeta)
-                  TextButton(
-                    onPressed: _submitting ? null : _skipVersion,
-                    child: Text(
-                      AppLocalizations.of(context)!.updateSkipVersion,
-                    ),
-                  ),
-                TextButton(
-                  onPressed: _submitting ? null : _disableAutoCheck,
-                  child: Text(
-                    AppLocalizations.of(context)!.updateDisableAutoCheck,
-                  ),
-                ),
-                TextButton(
-                  onPressed: _submitting ? null : () => Navigator.pop(context),
-                  child: Text(AppLocalizations.of(context)!.closeButton),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  /// Resets to idle. Called when the user dismisses a finished/error state.
+  void reset() {
+    if (state.value.isBusy) return;
+    state.value = const InstallState.idle();
   }
 }

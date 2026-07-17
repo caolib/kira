@@ -651,12 +651,24 @@
   "networkModeAutomatic": "自動選擇",
   "networkAutomaticStatsTitle": "自動選擇狀態",
   "networkAutomaticBestNode": "目前最佳：{node}",
-  "@networkAutomaticBestNode": {"placeholders": {"node": {"type": "String"}}},
+  "@networkAutomaticBestNode": {
+    "placeholders": {
+      "node": {
+        "type": "String"
+      }
+    }
+  },
   "networkAutomaticLearning": "目前最佳：學習中",
   "networkAutomaticCircuitOpen": "已熔斷",
   "networkAutomaticWaiting": "等待資料",
   "networkAutomaticRequestCount": "{count} 次請求",
-  "@networkAutomaticRequestCount": {"placeholders": {"count": {"type": "int"}}},
+  "@networkAutomaticRequestCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "networkTestOtherLatency": "測試其他節點延遲",
   "networkFixedNodeAutoSelected": "測速後已選擇延遲最低的節點",
   "networkRouteLabel": "線路 {index}",
@@ -992,7 +1004,6 @@
   "aboutBetaChannelSwitchedTitle": "已切換到預覽版",
   "aboutBetaChannelSwitchedContent": "預覽版一般用於測試新功能或修復問題，可能存在更多問題。",
   "aboutGotItButton": "知道了",
-  "aboutStableChannelSwitchedToast": "已切換到穩定版",
   "aboutRepositoryLabel": "倉庫",
   "aboutFeedbackLabel": "回饋",
   "aboutCommunityLabel": "交流",
@@ -2133,6 +2144,28 @@
   "updatePackages": "安裝包",
   "updateSkipVersion": "跳過此版本",
   "updateDisableAutoCheck": "取消自動檢查更新",
+  "updateInstallInApp": "應用內安裝",
+  "updateInstallInAppMirror": "鏡像應用內安裝",
+  "updateDownloading": "下載中 {percent}%",
+  "@updateDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "updateDownloadFailed": "下載失敗，請稍後重試",
+  "updateInstallFailed": "無法啟動安裝，請改用瀏覽器下載",
+  "updateInstallPermissionNeeded": "需要「安裝未知應用」權限才能安裝更新",
+  "updateDownloadPreparing": "準備下載…",
+  "updateInstalling": "正在安裝…",
+  "updateCardChecking": "正在檢查更新…",
+  "updateCardLatest": "目前已是最新版本",
+  "updateCardFailed": "檢查更新失敗，點擊重試",
+  "updateCardRetry": "重試",
+  "updateButtonUpdate": "更新",
+  "updateManualDownload": "手動下載",
+  "updateUseMirror": "使用鏡像",
   "totalRank": "總榜",
   "maleAudience": "男生",
   "femaleAudience": "女生",

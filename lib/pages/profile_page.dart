@@ -471,14 +471,33 @@ class _ProfilePageState extends State<ProfilePage> {
                     elevation: 8,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: ListTile(
-                        leading: const _SettingIcon(
-                          icon: Icons.info_rounded,
-                          color: Color(0xFF4FA8FF),
-                        ),
-                        title: Text(l10n.aboutTitle),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.pushNamed(AppRoutes.about),
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: AppUpdateService.hasUnseenUpdate,
+                        builder: (context, hasUnseenUpdate, _) {
+                          return ListTile(
+                            leading: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                const _SettingIcon(
+                                  icon: Icons.info_rounded,
+                                  color: Color(0xFF4FA8FF),
+                                ),
+                                if (hasUnseenUpdate)
+                                  Positioned(
+                                    right: -1,
+                                    top: -1,
+                                    child: _NoticeRedDot(
+                                      color: const Color(0xFF4FA8FF),
+                                      borderColor: cs.surfaceContainerLow,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            title: Text(l10n.aboutTitle),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.pushNamed(AppRoutes.about),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -2029,8 +2048,6 @@ class _AboutPageState extends State<AboutPage> {
             ],
           ),
         );
-      } else {
-        showToast(context, l10n.aboutStableChannelSwitchedToast);
       }
     }
   }
