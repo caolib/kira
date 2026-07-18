@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:system_fonts/system_fonts.dart';
 
+import 'api/copy_settings_auto_updater.dart';
 import 'l10n/app_localizations.dart';
 import 'models/user_manager.dart';
 import 'routing/app_router.dart';
@@ -54,6 +55,8 @@ void main() {
       // media_kit 原生库在 Android 上按需下载，首次播放时再 ensureInitialized。
       await UserManager().init();
       await NetworkProxy.init();
+      // 启动时若 COPY 高级设置过时（>1天），后台自动更新；失败静默。
+      CopySettingsAutoUpdater.maybeUpdateOnStartup();
       if (isDesktop) {
         final font = UserManager().desktopFontFamily;
         if (font.isNotEmpty) {

@@ -182,6 +182,8 @@ class UserManager extends ChangeNotifier {
   static const _keyMangaHomeSource = 'manga_home_source';
   static const _keyCopyApiHost = 'copy_api_host';
   static const _keyCopyAppVersion = 'copy_app_version';
+  static const _keyCopyAutoUpdate = 'copy_auto_update';
+  static const _keyCopySettingsUpdatedAt = 'copy_settings_updated_at';
   static const _keyCopyHomeSectionCollapsed = 'copy_home_section_collapsed';
   static const _keyAnimeHomeBannerCollapsed = 'anime_home_banner_collapsed';
   static const _keyAnimeSkipSeconds = 'anime_skip_seconds';
@@ -265,6 +267,8 @@ class UserManager extends ChangeNotifier {
   String _mangaHomeSource = 'hot';
   String _copyApiHost = defaultCopyApiHost;
   String _copyAppVersion = defaultCopyAppVersion;
+  bool _copyAutoUpdate = true;
+  int? _copySettingsUpdatedAt;
   Map<String, bool> _copyHomeSectionCollapsed = {};
   bool _animeHomeBannerCollapsed = false;
   int _animeSkipSeconds = 86;
@@ -375,6 +379,8 @@ class UserManager extends ChangeNotifier {
   String get mangaHomeSource => _mangaHomeSource;
   String get copyApiHost => _copyApiHost;
   String get copyAppVersion => _copyAppVersion;
+  bool get copyAutoUpdate => _copyAutoUpdate;
+  int? get copySettingsUpdatedAt => _copySettingsUpdatedAt;
   bool isCopyHomeSectionCollapsed(String key) =>
       _copyHomeSectionCollapsed[key] ?? false;
   bool get animeHomeBannerCollapsed => _animeHomeBannerCollapsed;
@@ -591,6 +597,8 @@ class UserManager extends ChangeNotifier {
     _copyAppVersion = normalizeCopyAppVersion(
       prefs.getString(_keyCopyAppVersion),
     );
+    _copyAutoUpdate = prefs.getBool(_keyCopyAutoUpdate) ?? true;
+    _copySettingsUpdatedAt = prefs.getInt(_keyCopySettingsUpdatedAt);
     _copyHomeSectionCollapsed = _decodeBoolMap(
       prefs.getString(_keyCopyHomeSectionCollapsed),
     );
@@ -1310,6 +1318,23 @@ class UserManager extends ChangeNotifier {
     _copyAppVersion = normalized;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyCopyAppVersion, normalized);
+    notifyListeners();
+  }
+
+  Future<void> setCopyAutoUpdate(bool enabled) async {
+    if (_copyAutoUpdate == enabled) return;
+    _copyAutoUpdate = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCopyAutoUpdate, enabled);
+    notifyListeners();
+  }
+
+  /// 记录「本次启动已尝试自动更新 COPY 高级设置」，内部调用。
+  Future<void> markCopySettingsUpdated() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _copySettingsUpdatedAt = now;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyCopySettingsUpdatedAt, now);
     notifyListeners();
   }
 

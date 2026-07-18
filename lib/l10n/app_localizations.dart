@@ -1969,6 +1969,24 @@ abstract class AppLocalizations {
   /// **'COPY 请求版本号'**
   String get networkCopyAppVersion;
 
+  /// No description provided for @networkCopyAutoUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'每天自动更新'**
+  String get networkCopyAutoUpdate;
+
+  /// No description provided for @networkCopyAutoUpdateNever.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未更新'**
+  String get networkCopyAutoUpdateNever;
+
+  /// No description provided for @networkCopyAutoUpdateLast.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次更新：{time}'**
+  String networkCopyAutoUpdateLast(String time);
+
   /// No description provided for @networkFill.
   ///
   /// In zh, this message translates to:

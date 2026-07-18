@@ -8,8 +8,8 @@ import '../utils/app_dio.dart';
 import '../utils/data_cache.dart';
 import 'automatic_node_selector.dart';
 
-const defaultCopyApiHost = 'api.copy2000.online';
-const defaultCopyAppVersion = '3.0.8';
+const defaultCopyApiHost = 'api.copy202601.com';
+const defaultCopyAppVersion = '3.0.9';
 
 const _hostComment = defaultCopyApiHost;
 const _hostCopy = 'www.mangacopy.com';

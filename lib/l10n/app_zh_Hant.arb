@@ -721,6 +721,16 @@
   "networkGoogleConnectivity": "Google 連通性",
   "networkAdvancedSettings": "進階設定",
   "networkCopyAppVersion": "COPY 請求版本號",
+  "networkCopyAutoUpdate": "每天自動更新",
+  "networkCopyAutoUpdateNever": "尚未更新",
+  "networkCopyAutoUpdateLast": "上次更新：{time}",
+  "@networkCopyAutoUpdateLast": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "networkFill": "填入",
   "networkAverageTesting": "平均：檢測中",
   "networkAverageTimeout": "平均：逾時",

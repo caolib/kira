@@ -1057,6 +1057,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkCopyAppVersion => 'COPY 请求版本号';
 
   @override
+  String get networkCopyAutoUpdate => '每天自动更新';
+
+  @override
+  String get networkCopyAutoUpdateNever => '尚未更新';
+
+  @override
+  String networkCopyAutoUpdateLast(String time) {
+    return '上次更新：$time';
+  }
+
+  @override
   String get networkFill => '填充';
 
   @override
@@ -4499,6 +4510,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkCopyAppVersion => 'COPY 請求版本號';
+
+  @override
+  String get networkCopyAutoUpdate => '每天自動更新';
+
+  @override
+  String get networkCopyAutoUpdateNever => '尚未更新';
+
+  @override
+  String networkCopyAutoUpdateLast(String time) {
+    return '上次更新：$time';
+  }
 
   @override
   String get networkFill => '填入';

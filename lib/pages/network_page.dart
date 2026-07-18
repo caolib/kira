@@ -9,6 +9,7 @@ import '../api/automatic_node_selector.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/network_proxy.dart';
+import '../utils/time_format.dart';
 import '../utils/toast.dart';
 
 class NetworkPage extends StatefulWidget {
@@ -794,6 +795,33 @@ class _NetworkPageState extends State<NetworkPage> {
             ),
             if (_advancedSettingsExpanded) ...[
               const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    l10n.networkCopyAutoUpdate,
+                    style: tt.bodyMedium,
+                  ),
+                  subtitle: Text(
+                    _user.copySettingsUpdatedAt == null
+                        ? l10n.networkCopyAutoUpdateNever
+                        : l10n.networkCopyAutoUpdateLast(
+                            TimeFormat.relative(
+                              DateTime.fromMillisecondsSinceEpoch(
+                                _user.copySettingsUpdatedAt!,
+                              ),
+                              l10n,
+                            ),
+                          ),
+                    style: tt.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: _user.copyAutoUpdate,
+                  onChanged: (v) => _user.setCopyAutoUpdate(v),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
