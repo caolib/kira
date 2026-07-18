@@ -326,16 +326,26 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  /// 右下角切换 hot / copy 首页数据源的悬浮按钮
+  /// 右下角切换 hot / copy 首页数据源的悬浮按钮，图标旁显示当前数据源
   Widget _buildSourceFab() {
     final isCopy = _isCopySource;
-    return FloatingActionButton.small(
+    return FloatingActionButton.extended(
       heroTag: 'home-source-switch',
       tooltip: isCopy
           ? AppLocalizations.of(context)!.switchToHotHome
           : AppLocalizations.of(context)!.switchToCopyHome,
       onPressed: () => _user.setMangaHomeSource(isCopy ? 'hot' : 'copy'),
-      child: const Icon(Icons.swap_horiz),
+      icon: const Icon(Icons.swap_horiz, size: 20),
+      label: Text(
+        isCopy
+            ? AppLocalizations.of(context)!.homeSourceCopy
+            : AppLocalizations.of(context)!.homeSourceHot,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          letterSpacing: 0.5,
+        ),
+      ),
     );
   }
 

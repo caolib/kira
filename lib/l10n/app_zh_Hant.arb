@@ -34,6 +34,8 @@
   "copyFinished": "已完結",
   "switchToHotHome": "切換到 HOT 首頁",
   "switchToCopyHome": "切換到 COPY 首頁",
+  "homeSourceHot": "熱辣",
+  "homeSourceCopy": "拷貝",
   "localComicsTitle": "本地漫畫",
   "noLocalComicsTitle": "還沒有本地漫畫",
   "noLocalComicsSubtitle": "去漫畫詳情頁下載章節後，這裡會顯示離線內容",

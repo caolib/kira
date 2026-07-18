@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -45,7 +44,6 @@ class _SearchPageState extends State<SearchPage> {
   _SearchMode _mode = _SearchMode.comic;
   String? _selectedTag;
   String _ordering = ApiOrdering.popular;
-  bool _loading = true;
   bool _loadingMore = false;
   bool _searching = false;
   int _offset = 0;
@@ -84,36 +82,27 @@ class _SearchPageState extends State<SearchPage> {
 
   Future<void> _loadFromCache() async {
     final cached = await _searchInitRepo.loadFromCache();
-    if (!mounted || cached == null || !_loading) return;
+    if (!mounted || cached == null) return;
     setState(() {
       _keywords = cached.keywords;
       _tags = cached.tags;
-      _loading = false;
     });
   }
 
   Future<void> _loadInit({bool forceRefresh = false}) async {
-    if (!forceRefresh && (_keywords.isNotEmpty || _tags.isNotEmpty)) {
-      setState(() => _refreshing = true);
-    } else if (forceRefresh) {
-      setState(() => _refreshing = true);
-    }
+    setState(() => _refreshing = true);
     try {
       final data = await _searchInitRepo.load();
       if (!mounted) return;
       setState(() {
         _keywords = data.keywords;
         _tags = data.tags;
-        _loading = false;
         _refreshing = false;
       });
     } catch (e) {
       debugPrint('SearchPage loadInit error: $e');
       if (mounted) {
-        setState(() {
-          _loading = false;
-          _refreshing = false;
-        });
+        setState(() => _refreshing = false);
       }
     }
   }
@@ -305,8 +294,6 @@ class _SearchPageState extends State<SearchPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth.clamp(0.0, 900.0);
     final hp = (screenWidth - contentWidth) / 2 + 16;
-
-    if (_loading) return const Center(child: ExpressiveLoadingIndicator());
 
     return RefreshIndicator(
       onRefresh: () => _loadInit(forceRefresh: true),

@@ -301,6 +301,18 @@ abstract class AppLocalizations {
   /// **'切换到 COPY 首页'**
   String get switchToCopyHome;
 
+  /// No description provided for @homeSourceHot.
+  ///
+  /// In zh, this message translates to:
+  /// **'热辣'**
+  String get homeSourceHot;
+
+  /// No description provided for @homeSourceCopy.
+  ///
+  /// In zh, this message translates to:
+  /// **'拷贝'**
+  String get homeSourceCopy;
+
   /// No description provided for @localComicsTitle.
   ///
   /// In zh, this message translates to:

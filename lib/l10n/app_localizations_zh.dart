@@ -112,6 +112,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get switchToCopyHome => '切换到 COPY 首页';
 
   @override
+  String get homeSourceHot => '热辣';
+
+  @override
+  String get homeSourceCopy => '拷贝';
+
+  @override
   String get localComicsTitle => '本地漫画';
 
   @override
@@ -3548,6 +3554,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get switchToCopyHome => '切換到 COPY 首頁';
+
+  @override
+  String get homeSourceHot => '熱辣';
+
+  @override
+  String get homeSourceCopy => '拷貝';
 
   @override
   String get localComicsTitle => '本地漫畫';
