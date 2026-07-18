@@ -54,6 +54,10 @@ class _ChapterDividerActions extends StatelessWidget {
   }
 }
 
+/// 连续阅读中「章间目录/评论条」与「加载下一话」共用同一紧凑高度，
+/// 避免 loadMore 替换为 divider 时高度突变导致跳动。
+const double _chapterBridgeStripHeight = 80;
+
 /// Divider shown between chained chapters in continuous scroll mode.
 class _ChapterDivider extends StatelessWidget {
   final int commentCount;
@@ -72,23 +76,24 @@ class _ChapterDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ChapterDividerActions(
-            commentCount: commentCount,
-            onCatalog: onCatalog,
-            onComments: onComments,
-          ),
-        ],
+    final content = Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: _ChapterDividerActions(
+          commentCount: commentCount,
+          onCatalog: onCatalog,
+          onComments: onComments,
+        ),
       ),
     );
-    if (isHorizontalScroll) {
-      return SizedBox(width: tailExtent, child: content);
-    }
-    return ColoredBox(color: Colors.black, child: content);
+    return ColoredBox(
+      color: Colors.black,
+      child: SizedBox(
+        width: isHorizontalScroll ? tailExtent : null,
+        height: isHorizontalScroll ? null : _chapterBridgeStripHeight,
+        child: content,
+      ),
+    );
   }
 }
 
@@ -114,9 +119,9 @@ class _LoadMoreTail extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final content = Padding(
-      padding: const EdgeInsets.fromLTRB(32, 48, 32, 32),
-      child: Center(
+    final content = Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -125,17 +130,20 @@ class _LoadMoreTail extends StatelessWidget {
               onCatalog: onCatalog,
               onComments: onComments,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             if (isLoading)
-              const CircularProgressIndicator(strokeWidth: 2)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             else
-              Icon(Icons.expand_more, color: cs.onSurfaceVariant, size: 32),
-            const SizedBox(height: 8),
+              Icon(Icons.expand_more, color: cs.onSurfaceVariant, size: 18),
             Text(
               isLoading
                   ? l10n.readerLoadingNextChapter
                   : l10n.readerContinueScrollLoadNext,
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11),
             ),
           ],
         ),
@@ -145,8 +153,9 @@ class _LoadMoreTail extends StatelessWidget {
       color: Colors.black,
       child: SizedBox(
         width: isHorizontalScroll ? tailExtent : null,
-        height: isHorizontalScroll ? null : tailExtent * 0.6,
-        child: Align(alignment: Alignment.topCenter, child: content),
+        // 与 _ChapterDivider 同高，追加下一话时不产生高度差跳动。
+        height: isHorizontalScroll ? null : _chapterBridgeStripHeight,
+        child: content,
       ),
     );
   }

@@ -124,6 +124,8 @@ class _ReaderPageState extends State<ReaderPage> {
   bool _instantTurnCommitted = false;
   bool _volumeChannelAvailable = true;
   int _scrollModeInitialIndex = 0;
+  // 列表因裁剪重建时保留当前可见项在视口中的相对位置，避免突然顶对齐。
+  double _scrollModeInitialAlignment = 0.0;
   int _scrollWidgetVersion = 0;
 
   // 连续阅读：按阅读顺序拼接的章节链。首项为用户进入时打开的章节。
@@ -299,6 +301,14 @@ class _ReaderPageState extends State<ReaderPage> {
 
     if (behindRemoveCount <= 0 && aheadRemoveCount <= 0) return false;
 
+    // 在改动链结构前记录视口锚点，裁剪后按相同 alignment 还原，避免顶对齐跳动。
+    final viewportAnchor = (!_isPageMode && behindRemoveCount > 0)
+        ? _captureLeadingScrollAnchor()
+        : null;
+    final removedLeadingScrollItems = behindRemoveCount > 0
+        ? _leadingScrollItemCount(behindRemoveCount)
+        : 0;
+
     final prunedChapters = <ChapterDetail>[];
     var shifted = false;
     if (aheadRemoveCount > 0) {
@@ -338,10 +348,21 @@ class _ReaderPageState extends State<ReaderPage> {
           oldController.dispose();
         });
       } else if (_chain.isNotEmpty) {
-        _scrollModeInitialIndex = _scrollItemIndexFor(
-          chainIndex: _chainIndex,
-          page: page,
-        );
+        if (viewportAnchor != null) {
+          final maxIndex = _scrollItems.isEmpty ? 0 : _scrollItems.length - 1;
+          _scrollModeInitialIndex =
+              (viewportAnchor.index - removedLeadingScrollItems).clamp(
+                0,
+                maxIndex,
+              );
+          _scrollModeInitialAlignment = viewportAnchor.alignment;
+        } else {
+          _scrollModeInitialIndex = _scrollItemIndexFor(
+            chainIndex: _chainIndex,
+            page: page,
+          );
+          _scrollModeInitialAlignment = 0.0;
+        }
         _scrollWidgetVersion++;
         // 列表重建会打断自动滚动，裁剪后按需恢复。
         if (_autoScrollEnabled && !_isPageMode) {
@@ -354,6 +375,39 @@ class _ReaderPageState extends State<ReaderPage> {
       }
     }
     return true;
+  }
+
+  /// 视口中最靠近起始侧的可见项（leadingEdge 最小）。
+  ({int index, double alignment})? _captureLeadingScrollAnchor() {
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return null;
+
+    ItemPosition? leadingPosition;
+    for (final position in positions) {
+      if (leadingPosition == null ||
+          position.itemLeadingEdge < leadingPosition.itemLeadingEdge) {
+        leadingPosition = position;
+      }
+    }
+    if (leadingPosition == null) return null;
+    return (
+      index: leadingPosition.index,
+      alignment: leadingPosition.itemLeadingEdge,
+    );
+  }
+
+  /// 裁剪链头 [chapterCount] 章时，滚动列表会从开头删掉的 item 数量。
+  /// 必须在 `_rebuildChainStructure` 之前、基于旧结构计算。
+  int _leadingScrollItemCount(int chapterCount) {
+    if (chapterCount <= 0) return 0;
+    if (_chapterScrollStarts.isEmpty) {
+      _rebuildChainStructure();
+    }
+    if (_chapterScrollStarts.isEmpty) return 0;
+    if (chapterCount >= _chapterScrollStarts.length) {
+      return _scrollItems.length;
+    }
+    return _chapterScrollStarts[chapterCount];
   }
 
   int get _commentCount {
@@ -524,6 +578,7 @@ class _ReaderPageState extends State<ReaderPage> {
           chainIndex: 0,
           page: startPage,
         );
+        _scrollModeInitialAlignment = 0.0;
         _scrollWidgetVersion++;
       });
       if (_isPageMode) {
@@ -994,6 +1049,7 @@ class _ReaderPageState extends State<ReaderPage> {
         chainIndex: _chainIndex,
         page: page,
       );
+      _scrollModeInitialAlignment = 0.0;
       _scrollWidgetVersion++;
     }
     setState(() {});
@@ -1878,6 +1934,7 @@ class _ReaderPageState extends State<ReaderPage> {
             itemPositionsListener: _itemPositionsListener,
             scrollOffsetController: _scrollOffsetController,
             initialScrollIndex: _scrollModeInitialIndex,
+            initialAlignment: _scrollModeInitialAlignment,
             scrollDirection: scrollDirection,
             reverse: _isReversedScrollMode,
             padding: EdgeInsets.zero,
