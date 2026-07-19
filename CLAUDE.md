@@ -55,10 +55,7 @@ Run these from the repository root:
 - `dart format lib test` — format source files before review
 - `dart run build_runner build` — regenerate `.g.dart` files after model changes
 - `flutter gen-l10n` — regenerate localization files after ARB changes
-
-After completing any code change:
-1. Run `flutter analyze` and report results.
-2. If a Flutter app is connected through Dart MCP/DTD tools, run hot reload (`dart_hot_reload`) before reporting completion, then check runtime errors. If DTD is not connected, try `listDtdUris` → `connect` first; if still unavailable, note that hot reload was skipped.
+- `run-kira` - use this skill(if there is) when you need to start or hot-reload or hot-restart this application.
 
 ### Windows Build Note
 If building on Windows and `flutter_secure_storage` fails to find ATL, ensure `windows/CMakeLists.txt` includes the ATL auto-discovery block that scans all MSVC tool versions for `atlmfc`.
@@ -93,8 +90,6 @@ When extracting a shared widget, place it in `lib/widgets/` and follow these pat
 Emoji-prefixed Conventional Commit types with concise Chinese summaries:
 - `✨ feat: 添加检查更新功能`
 - `🐛 fix: 登录过期后提醒用户登录`
-- `♻️ refactor: API层解耦为Transport+Domain类`
-- `💄 ui: 骨架屏组件提取到widgets/`
 
 PRs should include a short behavior summary, linked issues, test/analyze results, and screenshots for UI changes. Update `docs/CHANGELOG.md` if the change affects a release.
 
