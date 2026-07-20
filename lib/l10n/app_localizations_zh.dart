@@ -1150,6 +1150,82 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get networkStatusGood => '网络通畅';
+
+  @override
+  String networkStatusGoodHint(Object ms) {
+    return '当前最佳延迟 $ms ms，状态良好';
+  }
+
+  @override
+  String get networkStatusGoodFallback => '连接正常，状态良好';
+
+  @override
+  String get networkStatusWarn => '延迟偏高';
+
+  @override
+  String networkStatusWarnHint(Object ms) {
+    return '当前延迟约 $ms ms，建议开启代理';
+  }
+
+  @override
+  String get networkStatusBad => '连接异常';
+
+  @override
+  String get networkStatusBusy => '正在检测';
+
+  @override
+  String get networkStatusUnknown => '尚未检测';
+
+  @override
+  String get networkStatusUnknownHint => '点击下方按钮测速，了解各节点延迟';
+
+  @override
+  String get networkTestLatencyShort => '测速';
+
+  @override
+  String get networkAutomaticBestNodeShort => '最佳节点';
+
+  @override
+  String get networkAutomaticLearningShort => '学习中';
+
+  @override
+  String get networkNodeGridRouteHint => '选择一条线路，测速后自动切换到最快的';
+
+  @override
+  String get networkNodeGridFixedHint => '点击节点卡片即可固定到该节点';
+
+  @override
+  String get networkModeFixedNodeShort => '节点';
+
+  @override
+  String get networkModeAutomaticShort => '自动';
+
+  @override
+  String get networkAutomaticMeasuredShort => '实测';
+
+  @override
+  String get networkAutomaticUnmeasuredShort => '未测';
+
+  @override
+  String get networkAutomaticFluentLocked => '已锁定 · 通路中';
+
+  @override
+  String get networkAutomaticFluentScanning => '重新选优中';
+
+  @override
+  String get networkAutomaticClearHistory => '清除自动选择历史';
+
+  @override
+  String get networkAutomaticHistoryCleared => '已清除自动选择历史';
+
+  @override
+  String get networkAutomaticHistoryHint => '保留最近 7 天使用记录，近期权重更高，据此自动选优';
+
+  @override
+  String get networkStatusAutoGoodHint => '基于真实请求自动选择，状态健康';
+
+  @override
   String get aiConfigTitle => 'AI配置';
 
   @override

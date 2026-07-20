@@ -2107,6 +2107,150 @@ abstract class AppLocalizations {
   /// **'测试失败，{proxyRule}：{error}'**
   String networkTestFailed(String proxyRule, String error);
 
+  /// No description provided for @networkStatusGood.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络通畅'**
+  String get networkStatusGood;
+
+  /// No description provided for @networkStatusGoodHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前最佳延迟 {ms} ms，状态良好'**
+  String networkStatusGoodHint(Object ms);
+
+  /// No description provided for @networkStatusGoodFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接正常，状态良好'**
+  String get networkStatusGoodFallback;
+
+  /// No description provided for @networkStatusWarn.
+  ///
+  /// In zh, this message translates to:
+  /// **'延迟偏高'**
+  String get networkStatusWarn;
+
+  /// No description provided for @networkStatusWarnHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前延迟约 {ms} ms，建议开启代理'**
+  String networkStatusWarnHint(Object ms);
+
+  /// No description provided for @networkStatusBad.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接异常'**
+  String get networkStatusBad;
+
+  /// No description provided for @networkStatusBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检测'**
+  String get networkStatusBusy;
+
+  /// No description provided for @networkStatusUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未检测'**
+  String get networkStatusUnknown;
+
+  /// No description provided for @networkStatusUnknownHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击下方按钮测速，了解各节点延迟'**
+  String get networkStatusUnknownHint;
+
+  /// No description provided for @networkTestLatencyShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速'**
+  String get networkTestLatencyShort;
+
+  /// No description provided for @networkAutomaticBestNodeShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'最佳节点'**
+  String get networkAutomaticBestNodeShort;
+
+  /// No description provided for @networkAutomaticLearningShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'学习中'**
+  String get networkAutomaticLearningShort;
+
+  /// No description provided for @networkNodeGridRouteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择一条线路，测速后自动切换到最快的'**
+  String get networkNodeGridRouteHint;
+
+  /// No description provided for @networkNodeGridFixedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击节点卡片即可固定到该节点'**
+  String get networkNodeGridFixedHint;
+
+  /// No description provided for @networkModeFixedNodeShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'节点'**
+  String get networkModeFixedNodeShort;
+
+  /// No description provided for @networkModeAutomaticShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get networkModeAutomaticShort;
+
+  /// No description provided for @networkAutomaticMeasuredShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'实测'**
+  String get networkAutomaticMeasuredShort;
+
+  /// No description provided for @networkAutomaticUnmeasuredShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'未测'**
+  String get networkAutomaticUnmeasuredShort;
+
+  /// No description provided for @networkAutomaticFluentLocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已锁定 · 通路中'**
+  String get networkAutomaticFluentLocked;
+
+  /// No description provided for @networkAutomaticFluentScanning.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新选优中'**
+  String get networkAutomaticFluentScanning;
+
+  /// No description provided for @networkAutomaticClearHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除自动选择历史'**
+  String get networkAutomaticClearHistory;
+
+  /// No description provided for @networkAutomaticHistoryCleared.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除自动选择历史'**
+  String get networkAutomaticHistoryCleared;
+
+  /// No description provided for @networkAutomaticHistoryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留最近 7 天使用记录，近期权重更高，据此自动选优'**
+  String get networkAutomaticHistoryHint;
+
+  /// No description provided for @networkStatusAutoGoodHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'基于真实请求自动选择，状态健康'**
+  String get networkStatusAutoGoodHint;
+
   /// No description provided for @aiConfigTitle.
   ///
   /// In zh, this message translates to:

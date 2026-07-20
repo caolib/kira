@@ -23,6 +23,13 @@ class NetworkApi {
   void removeAutomaticNodeListener(void Function() listener) =>
       _t.removeAutomaticNodeListener(listener);
 
+  /// 自动节点是否处于通畅锁定状态(本次请求 ≤1500ms 后锁定,直到下次失败)。
+  bool get automaticFluentLocked => _t.automaticFluentLocked;
+
+  /// 清空自动节点的长期使用记录。
+  Future<void> clearAutomaticNodeHistory() =>
+      _t.clearAutomaticNodeHistory();
+
   // ── 线路延迟测试 ──
 
   /// 获取指定线路的所有 host

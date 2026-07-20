@@ -866,6 +866,59 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     await _loadComic();
   }
 
+  Widget _buildGroupSegments(Comic comic) {
+    return SegmentedButton<String>(
+      segments: comic.groups!.entries
+          .map(
+            (e) => ButtonSegment(
+              value: e.key,
+              label: Text(
+                '${e.value.name}(${e.value.count})',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+          )
+          .toList(),
+      selected: {_selectedGroup},
+      onSelectionChanged: (v) async {
+        final group = v.first;
+        setState(() => _selectedGroup = group);
+        await _loadLocalHistory(group: group);
+        await _loadChapterPageForHistory(group: group);
+      },
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
+  Widget _buildSortButton(ColorScheme cs) {return FilledButton.tonal(
+      onPressed: () => setState(() => _reversed = !_reversed),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(38, 38),
+        maximumSize: const Size(38, 38),
+        fixedSize: const Size(38, 38),
+        padding: EdgeInsets.zero,
+        backgroundColor: cs.surfaceContainerHigh,
+        foregroundColor: cs.onSurfaceVariant,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Tooltip(
+        message: _reversed
+            ? AppLocalizations.of(context)!.sortReverse
+            : AppLocalizations.of(context)!.sortNormal,
+        child: Icon(
+          _reversed ? Icons.arrow_downward : Icons.arrow_upward,
+          size: 20,
+        ),
+      ),
+    );
+  }
+
   Widget _buildDownloadToolbar(ColorScheme cs, TextTheme tt) {
     final pendingCount = _downloads.pendingCountForComic(widget.pathWord);
     final downloadedCount = _downloads
@@ -1380,39 +1433,51 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: SegmentedButton<String>(
-                  segments: comic.groups!.entries
-                      .map(
-                        (e) => ButtonSegment(
-                          value: e.key,
-                          label: Text(
-                            '${e.value.name}(${e.value.count})',
-                            style: const TextStyle(fontSize: 13),
+                child: _totalPages <= 1
+                    // 无分页时把排序按钮放到分组按钮后面，节省空间
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: _buildGroupSegments(comic),
                           ),
-                        ),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 160),
+                            child: _refreshingComic
+                                ? const Padding(
+                                    key: ValueKey('comic_detail_refreshing'),
+                                    padding: EdgeInsets.only(left: 8),
+                                    child: SizedBox.square(
+                                      dimension: 38,
+                                      child: Center(
+                                        child: SizedBox.square(
+                                          dimension: 22,
+                                          child: ExpressiveLoadingIndicator(),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(
+                                    key: ValueKey(
+                                      'comic_detail_not_refreshing',
+                                    ),
+                                  ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: _buildSortButton(cs),
+                          ),
+                        ],
                       )
-                      .toList(),
-                  selected: {_selectedGroup},
-                  onSelectionChanged: (v) async {
-                    final group = v.first;
-                    setState(() => _selectedGroup = group);
-                    await _loadLocalHistory(group: group);
-                    await _loadChapterPageForHistory(group: group);
-                  },
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
+                    : _buildGroupSegments(comic),
               ),
             ),
-          // ── 章节标题 + 排序 + 分页 ──
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-              child: Row(
-                children: [
-                  if (_totalPages > 1)
+          // ── 章节标题 + 排序 + 分页（单页时排序按钮已合并到分组行）──
+          if (_totalPages > 1)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                child: Row(
+                  children: [
                     Expanded(
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -1464,60 +1529,35 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           }),
                         ),
                       ),
-                    )
-                  else
-                    const Spacer(),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 160),
-                    child: _refreshingComic
-                        ? const Padding(
-                            key: ValueKey('comic_detail_refreshing'),
-                            padding: EdgeInsets.only(left: 8),
-                            child: SizedBox.square(
-                              dimension: 38,
-                              child: Center(
-                                child: SizedBox.square(
-                                  dimension: 22,
-                                  child: ExpressiveLoadingIndicator(),
+                    ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 160),
+                      child: _refreshingComic
+                          ? const Padding(
+                              key: ValueKey('comic_detail_refreshing'),
+                              padding: EdgeInsets.only(left: 8),
+                              child: SizedBox.square(
+                                dimension: 38,
+                                child: Center(
+                                  child: SizedBox.square(
+                                    dimension: 22,
+                                    child: ExpressiveLoadingIndicator(),
+                                  ),
                                 ),
                               ),
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey('comic_detail_not_refreshing'),
                             ),
-                          )
-                        : const SizedBox.shrink(
-                            key: ValueKey('comic_detail_not_refreshing'),
-                          ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: FilledButton.tonal(
-                      onPressed: () => setState(() => _reversed = !_reversed),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(38, 38),
-                        maximumSize: const Size(38, 38),
-                        fixedSize: const Size(38, 38),
-                        padding: EdgeInsets.zero,
-                        backgroundColor: cs.surfaceContainerHigh,
-                        foregroundColor: cs.onSurfaceVariant,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Tooltip(
-                        message: _reversed
-                            ? AppLocalizations.of(context)!.sortReverse
-                            : AppLocalizations.of(context)!.sortNormal,
-                        child: Icon(
-                          _reversed ? Icons.arrow_downward : Icons.arrow_upward,
-                          size: 20,
-                        ),
-                      ),
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: _buildSortButton(cs),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           _buildDownloadToolbar(cs, tt),
           // ── 章节网格 ──
           if (_loadingChapters &&
