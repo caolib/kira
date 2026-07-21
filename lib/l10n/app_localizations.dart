@@ -2075,7 +2075,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'当前最佳延迟 {ms} ms，状态良好'**
-  String networkStatusGoodHint(Object ms);
+  String networkStatusGoodHint(int ms);
 
   /// No description provided for @networkStatusGoodFallback.
   ///
@@ -2093,7 +2093,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'当前延迟约 {ms} ms，建议开启代理'**
-  String networkStatusWarnHint(Object ms);
+  String networkStatusWarnHint(int ms);
 
   /// No description provided for @networkStatusBad.
   ///
@@ -2817,7 +2817,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutRestoreDefaultButton.
   ///
   /// In zh, this message translates to:
-  /// **'恢复默认'**
+  /// **'重置'**
   String get aboutRestoreDefaultButton;
 
   /// No description provided for @aboutSaveButton.
@@ -4509,7 +4509,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'共 {localTotal} 项本地数据 · {size}'**
-  String cacheSummary(int localTotal, int imageCacheFiles, String size);
+  String cacheSummary(int localTotal, String size);
 
   /// No description provided for @cacheManagementSummaryDesc.
   ///

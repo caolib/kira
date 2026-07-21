@@ -1128,7 +1128,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkStatusGood => '网络通畅';
 
   @override
-  String networkStatusGoodHint(Object ms) {
+  String networkStatusGoodHint(int ms) {
     return '当前最佳延迟 $ms ms，状态良好';
   }
 
@@ -1139,7 +1139,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkStatusWarn => '延迟偏高';
 
   @override
-  String networkStatusWarnHint(Object ms) {
+  String networkStatusWarnHint(int ms) {
     return '当前延迟约 $ms ms，建议开启代理';
   }
 
@@ -1529,7 +1529,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutInvalidMirrorPrefix => '请输入有效的 http(s) 地址';
 
   @override
-  String get aboutRestoreDefaultButton => '恢复默认';
+  String get aboutRestoreDefaultButton => '重置';
 
   @override
   String get aboutSaveButton => '保存';
@@ -2499,7 +2499,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cacheMultiSelectTooltip => '多选卡片';
 
   @override
-  String cacheSummary(int localTotal, int imageCacheFiles, String size) {
+  String cacheSummary(int localTotal, String size) {
     return '共 $localTotal 项本地数据 · $size';
   }
 
@@ -4610,10 +4610,59 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String get networkStatusGood => '網路通暢';
+
+  @override
+  String networkStatusGoodHint(int ms) {
+    return '目前延遲 $ms ms，狀態良好';
+  }
+
+  @override
+  String get networkStatusGoodFallback => '節點網路狀態良好';
+
+  @override
+  String get networkStatusWarn => '延遲偏高';
+
+  @override
+  String networkStatusWarnHint(int ms) {
+    return '目前延遲約 $ms ms，建議開啟代理';
+  }
+
+  @override
+  String get networkStatusBad => '網路異常';
+
+  @override
+  String get networkStatusBusy => '正在檢測';
+
+  @override
+  String get networkStatusUnknown => '尚未檢測';
+
+  @override
+  String get networkStatusUnknownHint => '點擊線路按鈕測速，了解各節點延遲';
+
+  @override
+  String get networkTestLatencyShort => '測速';
+
+  @override
+  String get networkNodeGridRouteHint => '選擇一條線路後，測速後自動切換到該線路';
+
+  @override
+  String get networkNodeGridFixedHint => '點擊節點卡片，可固定使用該節點';
+
+  @override
+  String get networkModeFixedNodeShort => '節點';
+
+  @override
   String get networkSettings => '設定';
 
   @override
   String get networkSettingsTitle => '網路設定';
+
+  @override
+  String get networkHistorySettingsTitle => '節點歷史記錄';
+
+  @override
+  String get networkStatusAutoGoodHint => '根據實測結果自動選擇狀態良好的';
 
   @override
   String get aiConfigTitle => 'AI 設定';
@@ -4965,7 +5014,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutInvalidMirrorPrefix => '請輸入有效的 http(s) 地址';
 
   @override
-  String get aboutRestoreDefaultButton => '恢復預設';
+  String get aboutRestoreDefaultButton => '重置';
 
   @override
   String get aboutSaveButton => '儲存';
@@ -5935,7 +5984,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get cacheMultiSelectTooltip => '多選卡片';
 
   @override
-  String cacheSummary(int localTotal, int imageCacheFiles, String size) {
+  String cacheSummary(int localTotal, String size) {
     return '共 $localTotal 項本地資料 · $size';
   }
 

@@ -224,8 +224,9 @@ class _NetworkPageState extends State<NetworkPage>
   ) {
     final isFixed =
         _user.networkSelectionMode == NetworkSelectionMode.fixedNode;
-    final label =
-        isFixed ? l10n.networkModeFixedNodeShort : l10n.networkModeRoute;
+    final label = isFixed
+        ? l10n.networkModeFixedNodeShort
+        : l10n.networkModeRoute;
     final value = isFixed
         ? (l10n.networkNodeLabel(_fixedNodeNumber()))
         : l10n.networkRouteLabel(_user.apiRoute + 1);
@@ -338,9 +339,7 @@ class _NetworkPageState extends State<NetworkPage>
     final List<MapEntry<int, Map<String, int?>>> routeEntries;
     final extraEntries = _latencyResults[-1] ?? const <String, int?>{};
     if (isFixed) {
-      routeEntries = _latencyResults.entries
-          .where((e) => e.key >= 0)
-          .toList();
+      routeEntries = _latencyResults.entries.where((e) => e.key >= 0).toList();
     } else {
       final indexed = <MapEntry<int, Map<String, int?>>>[];
       for (var r = 0; r < routes.length; r++) {
@@ -444,9 +443,7 @@ class _NetworkPageState extends State<NetworkPage>
       // 以便整条线路都能点选/展示为「未测」。
       final orderedHosts = isFixed
           ? hosts.entries.toList()
-          : routeHosts
-              .map((h) => MapEntry(h, hosts[h]))
-              .toList();
+          : routeHosts.map((h) => MapEntry(h, hosts[h])).toList();
       final average = _averageLatency(hosts);
       final hasPending = orderedHosts.any(
         (e) => _isLatencyPending(routeIndex, e.key),
@@ -577,9 +574,7 @@ class _NetworkPageState extends State<NetworkPage>
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           decoration: BoxDecoration(
             // 选中态用更淡的填充+细描边,避免过于抢眼。
-            color: isSelected
-                ? cs.primary.withValues(alpha: 0.08)
-                : cs.surface,
+            color: isSelected ? cs.primary.withValues(alpha: 0.08) : cs.surface,
             borderRadius: AppRadius.lgR,
             border: Border.all(
               color: isSelected
@@ -598,10 +593,10 @@ class _NetworkPageState extends State<NetworkPage>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: tt.labelMedium?.copyWith(
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
-                        color: isSelected
-                            ? cs.primary
-                            : cs.onSurface,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w700,
+                        color: isSelected ? cs.primary : cs.onSurface,
                       ),
                     ),
                   ),
@@ -872,7 +867,6 @@ class _NetworkPageState extends State<NetworkPage>
     return NetworkProxy.systemProxy != null;
   }
 
-
   // ─────────────────────────────────────────────────────────────────────
   // 高级设置卡片（默认折叠，点击标题展开）
   // ─────────────────────────────────────────────────────────────────────
@@ -894,7 +888,8 @@ class _NetworkPageState extends State<NetworkPage>
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => setState(() => _advancedExpanded = !_advancedExpanded),
+              onTap: () =>
+                  setState(() => _advancedExpanded = !_advancedExpanded),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(20),
               ),

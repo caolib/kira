@@ -48,9 +48,9 @@ class _ErrorPanel extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: PlayerChrome.onSurfaceMuted),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: PlayerChrome.onSurfaceMuted,
+              ),
             ),
             const SizedBox(height: 10),
             if (requiresLogin)

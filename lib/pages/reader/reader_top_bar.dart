@@ -23,7 +23,10 @@ class _ReaderTopBar extends StatelessWidget {
       child: IgnorePointer(
         ignoring: !showToolbar,
         child: AnimatedSlide(
-          duration: adaptiveDuration(context, const Duration(milliseconds: 200)),
+          duration: adaptiveDuration(
+            context,
+            const Duration(milliseconds: 200),
+          ),
           offset: Offset(0, showToolbar ? 0 : -slideOffset),
           child: Container(
             color: ReaderChrome.surface,

@@ -871,10 +871,6 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       0,
       (sum, section) => sum + section.sizeBytes,
     );
-    final imageCacheFiles = _imageCacheSections.fold<int>(
-      0,
-      (sum, section) => sum + section.fileCount,
-    );
     final imageCacheBytes = _imageCacheSections.fold<int>(
       0,
       (sum, section) => sum + section.sizeBytes,
@@ -935,11 +931,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                   child: ListTile(
                     leading: const Icon(Icons.info_outline_rounded),
                     title: Text(
-                      l10n.cacheSummary(
-                        localTotal,
-                        imageCacheFiles,
-                        _formatBytes(totalBytes),
-                      ),
+                      l10n.cacheSummary(localTotal, _formatBytes(totalBytes)),
                     ),
                   ),
                 ),

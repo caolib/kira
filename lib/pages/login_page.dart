@@ -473,9 +473,7 @@ class _LoginPageState extends State<LoginPage> {
                   : (_useToken ? _loginWithToken : _login),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
               ),
               child: _loading
                   ? const SizedBox(
@@ -516,9 +514,7 @@ class _LoginPageState extends State<LoginPage> {
           labelText: AppLocalizations.of(context)!.profileTokenLabel,
           prefixIcon: const Icon(Icons.key),
           hintText: AppLocalizations.of(context)!.profileTokenHint,
-          border: OutlineInputBorder(
-            borderRadius: AppRadius.mdR,
-          ),
+          border: OutlineInputBorder(borderRadius: AppRadius.mdR),
         ),
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _loginWithToken(),
@@ -526,10 +522,7 @@ class _LoginPageState extends State<LoginPage> {
     ];
   }
 
-  List<Widget> _buildAccountPasswordForm(
-    BuildContext context,
-    ColorScheme cs,
-  ) {
+  List<Widget> _buildAccountPasswordForm(BuildContext context, ColorScheme cs) {
     final l10n = AppLocalizations.of(context)!;
     final tt = Theme.of(context).textTheme;
     return [
@@ -583,9 +576,7 @@ class _LoginPageState extends State<LoginPage> {
         decoration: InputDecoration(
           labelText: l10n.profileUsernameLabel,
           prefixIcon: const Icon(Icons.person_outline),
-          border: OutlineInputBorder(
-            borderRadius: AppRadius.mdR,
-          ),
+          border: OutlineInputBorder(borderRadius: AppRadius.mdR),
         ),
         textInputAction: TextInputAction.next,
       ),
@@ -600,9 +591,7 @@ class _LoginPageState extends State<LoginPage> {
             icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
             onPressed: () => setState(() => _obscure = !_obscure),
           ),
-          border: OutlineInputBorder(
-            borderRadius: AppRadius.mdR,
-          ),
+          border: OutlineInputBorder(borderRadius: AppRadius.mdR),
         ),
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _login(),

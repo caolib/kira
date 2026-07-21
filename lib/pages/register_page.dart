@@ -195,9 +195,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: InputDecoration(
                 labelText: AppLocalizations.of(context)!.profileUsernameLabel,
                 prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdR),
               ),
               textInputAction: TextInputAction.next,
             ),
@@ -214,9 +212,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdR),
               ),
               textInputAction: TextInputAction.next,
             ),
@@ -229,9 +225,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   context,
                 )!.profileConfirmPasswordLabel,
                 prefixIcon: const Icon(Icons.lock_reset_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdR),
               ),
               textInputAction: TextInputAction.next,
             ),
@@ -247,9 +241,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     context,
                   )!.profileSecurityQuestionLabel,
                   prefixIcon: const Icon(Icons.help_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 ),
                 items: _questions
                     .map(
@@ -269,9 +261,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     context,
                   )!.profileSecurityAnswerLabel,
                   prefixIcon: const Icon(Icons.shield_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _submitting ? null : _register(),
@@ -302,9 +292,7 @@ class _RegisterPageState extends State<RegisterPage> {
               onPressed: _submitting || _loadingQuestions ? null : _register,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
               ),
               child: _submitting
                   ? const SizedBox(

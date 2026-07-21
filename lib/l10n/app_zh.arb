@@ -824,9 +824,23 @@
   },
   "networkStatusGood": "网络通畅",
   "networkStatusGoodHint": "当前最佳延迟 {ms} ms，状态良好",
+  "@networkStatusGoodHint": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
   "networkStatusGoodFallback": "连接正常，状态良好",
   "networkStatusWarn": "延迟偏高",
   "networkStatusWarnHint": "当前延迟约 {ms} ms，建议开启代理",
+  "@networkStatusWarnHint": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
   "networkStatusBad": "连接异常",
   "networkStatusBusy": "正在检测",
   "networkStatusUnknown": "尚未检测",
@@ -1000,7 +1014,7 @@
   "aboutMirrorPrefixLabel": "镜像源地址",
   "aboutMirrorPrefixHelper": "留空将恢复默认镜像源",
   "aboutInvalidMirrorPrefix": "请输入有效的 http(s) 地址",
-  "aboutRestoreDefaultButton": "恢复默认",
+  "aboutRestoreDefaultButton": "重置",
   "aboutSaveButton": "保存",
   "aboutMirrorPrefixSavedToast": "镜像源已保存",
   "aboutStableChannelShort": "稳定版",
@@ -1750,9 +1764,6 @@
   "@cacheSummary": {
     "placeholders": {
       "localTotal": {
-        "type": "int"
-      },
-      "imageCacheFiles": {
         "type": "int"
       },
       "size": {

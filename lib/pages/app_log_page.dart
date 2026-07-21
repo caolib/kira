@@ -251,7 +251,8 @@ class _AppLogPageState extends State<AppLogPage> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, index) {
                       final entry = filtered[index];
                       return _LogEntryCard(entry: entry);
@@ -439,9 +440,7 @@ class _LogFilterPanel extends StatelessWidget {
                           onSearchChanged('');
                         },
                       ),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,

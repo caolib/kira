@@ -160,7 +160,9 @@ class NetworkSettings extends PrefsStore {
 
   static NetworkSelectionMode _normalizeSelectionMode(int? index) {
     // 索引 0=route, 1=fixedNode;旧的索引 2(automatic)已删除,统一回落 route。
-    if (index == null || index < 0 || index >= NetworkSelectionMode.values.length) {
+    if (index == null ||
+        index < 0 ||
+        index >= NetworkSelectionMode.values.length) {
       return NetworkSelectionMode.route;
     }
     return NetworkSelectionMode.values[index];

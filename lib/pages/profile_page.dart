@@ -1207,9 +1207,7 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   labelText: l10n.profileUsernameLabel,
                   prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 ),
                 textInputAction: TextInputAction.next,
               ),
@@ -1226,9 +1224,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _login(),
@@ -1240,9 +1236,7 @@ class _LoginPageState extends State<LoginPage> {
                   labelText: l10n.profileTokenLabel,
                   prefixIcon: const Icon(Icons.key),
                   hintText: l10n.profileTokenHint,
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _loginWithToken(),
@@ -1281,9 +1275,7 @@ class _LoginPageState extends State<LoginPage> {
                   : (_useToken ? _loginWithToken : _login),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
               ),
               child: _loading
                   ? const SizedBox(
@@ -1479,9 +1471,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: InputDecoration(
                 labelText: l10n.profileUsernameLabel,
                 prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdR),
               ),
               textInputAction: TextInputAction.next,
             ),
@@ -1498,9 +1488,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdR),
               ),
               textInputAction: TextInputAction.next,
             ),
@@ -1511,9 +1499,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: InputDecoration(
                 labelText: l10n.profileConfirmPasswordLabel,
                 prefixIcon: const Icon(Icons.lock_reset_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdR),
               ),
               textInputAction: TextInputAction.next,
             ),
@@ -1527,9 +1513,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 decoration: InputDecoration(
                   labelText: l10n.profileSecurityQuestionLabel,
                   prefixIcon: const Icon(Icons.help_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 ),
                 items: _questions
                     .map(
@@ -1547,9 +1531,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 decoration: InputDecoration(
                   labelText: l10n.profileSecurityAnswerLabel,
                   prefixIcon: const Icon(Icons.shield_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _submitting ? null : _register(),
@@ -1576,9 +1558,7 @@ class _RegisterPageState extends State<RegisterPage> {
               onPressed: _submitting || _loadingQuestions ? null : _register,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.mdR,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
               ),
               child: _submitting
                   ? const SizedBox(
@@ -1898,24 +1878,49 @@ class _AboutPageState extends State<AboutPage> {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(
-                  dialogContext,
-                  UserManager.defaultUpdateMirrorPrefix,
-                ),
-                child: Text(l10n.aboutRestoreDefaultButton),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(l10n.cancelButton),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (formKey.currentState?.validate() ?? false) {
-                    Navigator.pop(dialogContext, controller.text);
-                  }
-                },
-                child: Text(l10n.aboutSaveButton),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(
+                        dialogContext,
+                        UserManager.defaultUpdateMirrorPrefix,
+                      ),
+                      child: Text(
+                        l10n.aboutRestoreDefaultButton,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Flexible(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(
+                        l10n.cancelButton,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Flexible(
+                    child: FilledButton(
+                      onPressed: () {
+                        if (formKey.currentState?.validate() ?? false) {
+                          Navigator.pop(dialogContext, controller.text);
+                        }
+                      },
+                      child: Text(
+                        l10n.aboutSaveButton,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           );

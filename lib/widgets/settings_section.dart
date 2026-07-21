@@ -102,12 +102,11 @@ class SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return ListTile(
-      leading: icon == null
-          ? null
-          : Icon(icon, color: cs.onSurfaceVariant),
+      leading: icon == null ? null : Icon(icon, color: cs.onSurfaceVariant),
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: trailing ??
+      trailing:
+          trailing ??
           (onTap == null
               ? null
               : Icon(Icons.chevron_right, color: cs.onSurfaceVariant)),

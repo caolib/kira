@@ -1170,9 +1170,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 onSubmitted: (_) => _send(),
                 decoration: InputDecoration(
                   hintText: l10n.aiConfigInputHint,
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.xlR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.xlR),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
@@ -1253,10 +1251,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: AppRadius.lgR,
-            ),
+            decoration: BoxDecoration(color: bg, borderRadius: AppRadius.lgR),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

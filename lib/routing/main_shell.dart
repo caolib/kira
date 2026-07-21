@@ -396,9 +396,7 @@ class _MainShellState extends State<MainShell> {
     return GButton(
       icon: item.selectedIcon,
       text: label,
-      leading: _NoticeBadgeIcon(
-        child: Icon(item.selectedIcon, size: iconSize),
-      ),
+      leading: _NoticeBadgeIcon(child: Icon(item.selectedIcon, size: iconSize)),
     );
   }
 }

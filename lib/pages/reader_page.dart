@@ -2367,9 +2367,7 @@ class _ReaderPageState extends State<ReaderPage> {
                           backgroundColor: ReaderChrome.actionPrimaryFill,
                         ),
                         onPressed: () => _loadChapter(),
-                        child: Text(
-                          AppLocalizations.of(context)!.retryButton,
-                        ),
+                        child: Text(AppLocalizations.of(context)!.retryButton),
                       ),
                     ],
                   ),

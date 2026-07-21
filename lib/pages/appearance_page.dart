@@ -425,9 +425,7 @@ class _AppearancePageState extends State<AppearancePage> {
                         },
                         onChangeEnd: (value) {
                           setState(() => _previewCoverBrightness = null);
-                          unawaited(
-                            _user.setDarkModeCoverBrightness(value),
-                          );
+                          unawaited(_user.setDarkModeCoverBrightness(value));
                         },
                       ),
                     ),
@@ -1067,9 +1065,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                 decoration: InputDecoration(
                   hintText: l10n.appearanceSearchFont,
                   prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.mdR,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AppRadius.mdR),
                   isDense: true,
                 ),
                 onChanged: (v) => setState(() => _query = v.trim()),
@@ -1191,7 +1187,11 @@ class _LogoOptionTile extends StatelessWidget {
                   Positioned(
                     top: 0,
                     right: 0,
-                    child: Icon(Icons.check_circle, size: 14, color: cs.primary),
+                    child: Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: cs.primary,
+                    ),
                   ),
               ],
             ),

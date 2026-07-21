@@ -241,24 +241,49 @@ class _AboutPageState extends State<AboutPage> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(
-                dialogContext,
-                UserManager.defaultUpdateMirrorPrefix,
-              ),
-              child: Text(l10n.aboutRestoreDefaultButton),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.cancelButton),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(dialogContext, controller.text);
-                }
-              },
-              child: Text(l10n.aboutSaveButton),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(
+                      dialogContext,
+                      UserManager.defaultUpdateMirrorPrefix,
+                    ),
+                    child: Text(
+                      l10n.aboutRestoreDefaultButton,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(
+                      l10n.cancelButton,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: FilledButton(
+                    onPressed: () {
+                      if (formKey.currentState?.validate() ?? false) {
+                        Navigator.pop(dialogContext, controller.text);
+                      }
+                    },
+                    child: Text(
+                      l10n.aboutSaveButton,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         );

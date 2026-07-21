@@ -985,7 +985,7 @@
   "aboutMirrorPrefixLabel": "鏡像源地址",
   "aboutMirrorPrefixHelper": "留空將恢復預設鏡像源",
   "aboutInvalidMirrorPrefix": "請輸入有效的 http(s) 地址",
-  "aboutRestoreDefaultButton": "恢復預設",
+  "aboutRestoreDefaultButton": "重置",
   "aboutSaveButton": "儲存",
   "aboutMirrorPrefixSavedToast": "鏡像源已儲存",
   "aboutStableChannelShort": "穩定版",
@@ -1737,9 +1737,6 @@
       "localTotal": {
         "type": "int"
       },
-      "imageCacheFiles": {
-        "type": "int"
-      },
       "size": {
         "type": "String"
       }
@@ -2333,5 +2330,34 @@
   "mediaKitDownloadStageVerify": "校驗檔案…",
   "mediaKitDownloadStageExtract": "解壓元件…",
   "mediaKitDownloadStageLoad": "載入元件…",
-  "mediaKitDownloadStageDone": "完成"
+  "mediaKitDownloadStageDone": "完成",
+  "networkStatusGood": "網路通暢",
+  "networkStatusGoodHint": "目前延遲 {ms} ms，狀態良好",
+  "@networkStatusGoodHint": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "networkStatusGoodFallback": "節點網路狀態良好",
+  "networkStatusWarn": "延遲偏高",
+  "networkStatusWarnHint": "目前延遲約 {ms} ms，建議開啟代理",
+  "@networkStatusWarnHint": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "networkStatusBad": "網路異常",
+  "networkStatusBusy": "正在檢測",
+  "networkStatusUnknown": "尚未檢測",
+  "networkStatusUnknownHint": "點擊線路按鈕測速，了解各節點延遲",
+  "networkTestLatencyShort": "測速",
+  "networkNodeGridRouteHint": "選擇一條線路後，測速後自動切換到該線路",
+  "networkNodeGridFixedHint": "點擊節點卡片，可固定使用該節點",
+  "networkModeFixedNodeShort": "節點",
+  "networkHistorySettingsTitle": "節點歷史記錄",
+  "networkStatusAutoGoodHint": "根據實測結果自動選擇狀態良好的"
 }

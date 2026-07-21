@@ -295,9 +295,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
       icon: Icon(icon, color: ReaderChrome.onSurface),
       tooltip: tooltip,
       onPressed: onPressed,
-      style: IconButton.styleFrom(
-        backgroundColor: ReaderChrome.controlScrim,
-      ),
+      style: IconButton.styleFrom(backgroundColor: ReaderChrome.controlScrim),
     );
   }
 

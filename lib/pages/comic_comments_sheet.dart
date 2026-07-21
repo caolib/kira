@@ -355,9 +355,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                     maximumSize: const Size.fromHeight(52),
                     fixedSize: const Size.fromHeight(52),
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.smR,
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   );
 

@@ -864,11 +864,7 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
                     ),
                   ),
                 ),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: PlayerChrome.divider,
-                ),
+                Divider(height: 1, thickness: 1, color: PlayerChrome.divider),
                 Expanded(
                   child: GridView.builder(
                     controller: _scrollController,

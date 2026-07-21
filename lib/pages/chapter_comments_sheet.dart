@@ -1772,7 +1772,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               _commentListBottomPadding,
             ),
             itemCount: summaryOffset + rows.length + (_loadingMore ? 1 : 0),
-            separatorBuilder: (_, index) => const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, index) =>
+                const SizedBox(height: AppSpacing.sm),
             itemBuilder: (_, index) {
               if (hasSummary && index == 0) {
                 return _buildSummaryPanel(cs, tt);
