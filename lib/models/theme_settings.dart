@@ -75,6 +75,7 @@ class ThemeSettings extends PrefsStore {
   Color get customThemeColor => Color(_customThemeColorValue);
   double get darkModeCoverBrightness => _darkModeCoverBrightness;
   BottomNavLabelMode get bottomNavLabelMode => _bottomNavLabelMode;
+
   /// Compatibility: any mode that still shows label text somewhere.
   bool get bottomNavShowLabels =>
       _bottomNavLabelMode != BottomNavLabelMode.hidden;
@@ -201,10 +202,7 @@ class ThemeSettings extends PrefsStore {
     final p = await prefs;
     await p.setString(_keyBottomNavLabelMode, mode.name);
     // Keep legacy bool in sync for older builds / external readers.
-    await p.setBool(
-      _keyBottomNavShowLabels,
-      mode != BottomNavLabelMode.hidden,
-    );
+    await p.setBool(_keyBottomNavShowLabels, mode != BottomNavLabelMode.hidden);
     notifyListeners();
   }
 
@@ -309,8 +307,4 @@ class ThemeSettings extends PrefsStore {
 /// - [selectedOnly]: capsule bar; label only on the selected tab (default)
 /// - [hidden]: capsule bar; icons only
 /// - [always]: classic Material bar; labels always under icons
-enum BottomNavLabelMode {
-  selectedOnly,
-  hidden,
-  always,
-}
+enum BottomNavLabelMode { selectedOnly, hidden, always }

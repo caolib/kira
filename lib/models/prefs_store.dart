@@ -22,6 +22,15 @@ abstract class PrefsStore extends ChangeNotifier {
     _cachedPrefs = null;
   }
 
+  /// Cache the SharedPreferences instance that was used during [initFromPrefs]
+  /// so subsequent writes (setters using [prefs]) land on the same backend
+  /// as the reads. Sub-stores should call this at the top of their
+  /// `initFromPrefs` implementation.
+  @protected
+  void syncPrefs(SharedPreferences p) {
+    _cachedPrefs = p;
+  }
+
   // ── Typed helpers ──────────────────────────────────────────────────
 
   /// Read a `String?` preference.

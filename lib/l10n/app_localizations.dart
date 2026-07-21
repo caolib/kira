@@ -1753,48 +1753,6 @@ abstract class AppLocalizations {
   /// **'固定节点'**
   String get networkModeFixedNode;
 
-  /// No description provided for @networkModeAutomatic.
-  ///
-  /// In zh, this message translates to:
-  /// **'自动选择'**
-  String get networkModeAutomatic;
-
-  /// No description provided for @networkAutomaticStatsTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'自动选择状态'**
-  String get networkAutomaticStatsTitle;
-
-  /// No description provided for @networkAutomaticBestNode.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前最佳：{node}'**
-  String networkAutomaticBestNode(String node);
-
-  /// No description provided for @networkAutomaticLearning.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前最佳：学习中'**
-  String get networkAutomaticLearning;
-
-  /// No description provided for @networkAutomaticCircuitOpen.
-  ///
-  /// In zh, this message translates to:
-  /// **'已熔断'**
-  String get networkAutomaticCircuitOpen;
-
-  /// No description provided for @networkAutomaticWaiting.
-  ///
-  /// In zh, this message translates to:
-  /// **'等待数据'**
-  String get networkAutomaticWaiting;
-
-  /// No description provided for @networkAutomaticRequestCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'{count} 次请求'**
-  String networkAutomaticRequestCount(int count);
-
   /// No description provided for @networkTestOtherLatency.
   ///
   /// In zh, this message translates to:
@@ -2167,18 +2125,6 @@ abstract class AppLocalizations {
   /// **'测速'**
   String get networkTestLatencyShort;
 
-  /// No description provided for @networkAutomaticBestNodeShort.
-  ///
-  /// In zh, this message translates to:
-  /// **'最佳节点'**
-  String get networkAutomaticBestNodeShort;
-
-  /// No description provided for @networkAutomaticLearningShort.
-  ///
-  /// In zh, this message translates to:
-  /// **'学习中'**
-  String get networkAutomaticLearningShort;
-
   /// No description provided for @networkNodeGridRouteHint.
   ///
   /// In zh, this message translates to:
@@ -2197,53 +2143,23 @@ abstract class AppLocalizations {
   /// **'节点'**
   String get networkModeFixedNodeShort;
 
-  /// No description provided for @networkModeAutomaticShort.
+  /// No description provided for @networkSettings.
   ///
   /// In zh, this message translates to:
-  /// **'自动'**
-  String get networkModeAutomaticShort;
+  /// **'设置'**
+  String get networkSettings;
 
-  /// No description provided for @networkAutomaticMeasuredShort.
+  /// No description provided for @networkSettingsTitle.
   ///
   /// In zh, this message translates to:
-  /// **'实测'**
-  String get networkAutomaticMeasuredShort;
+  /// **'网络设置'**
+  String get networkSettingsTitle;
 
-  /// No description provided for @networkAutomaticUnmeasuredShort.
+  /// No description provided for @networkHistorySettingsTitle.
   ///
   /// In zh, this message translates to:
-  /// **'未测'**
-  String get networkAutomaticUnmeasuredShort;
-
-  /// No description provided for @networkAutomaticFluentLocked.
-  ///
-  /// In zh, this message translates to:
-  /// **'已锁定 · 通路中'**
-  String get networkAutomaticFluentLocked;
-
-  /// No description provided for @networkAutomaticFluentScanning.
-  ///
-  /// In zh, this message translates to:
-  /// **'重新选优中'**
-  String get networkAutomaticFluentScanning;
-
-  /// No description provided for @networkAutomaticClearHistory.
-  ///
-  /// In zh, this message translates to:
-  /// **'清除自动选择历史'**
-  String get networkAutomaticClearHistory;
-
-  /// No description provided for @networkAutomaticHistoryCleared.
-  ///
-  /// In zh, this message translates to:
-  /// **'已清除自动选择历史'**
-  String get networkAutomaticHistoryCleared;
-
-  /// No description provided for @networkAutomaticHistoryHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'保留最近 7 天使用记录，近期权重更高，据此自动选优'**
-  String get networkAutomaticHistoryHint;
+  /// **'节点历史记录'**
+  String get networkHistorySettingsTitle;
 
   /// No description provided for @networkStatusAutoGoodHint.
   ///

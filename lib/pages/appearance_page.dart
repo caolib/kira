@@ -242,10 +242,7 @@ class _AppearancePageState extends State<AppearancePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              l10n.appearanceNavOrder,
-                              style: tt.titleSmall,
-                            ),
+                            Text(l10n.appearanceNavOrder, style: tt.titleSmall),
                             const SizedBox(height: 2),
                             Text(
                               l10n.appearanceNavOrderDragHint,
@@ -260,8 +257,7 @@ class _AppearancePageState extends State<AppearancePage> {
                   ),
                 ),
                 SizedBox(
-                  height:
-                      _user.bottomNavLabelMode == BottomNavLabelMode.always
+                  height: _user.bottomNavLabelMode == BottomNavLabelMode.always
                       ? 80
                       : 56,
                   child: LayoutBuilder(
@@ -270,9 +266,7 @@ class _AppearancePageState extends State<AppearancePage> {
                       final widths = _navPreviewItemWidths(
                         availableWidth: constraints.maxWidth,
                         itemCount: itemCount,
-                        selectedIndex: _user.navOrder.indexOf(
-                          _user.lastNavKey,
-                        ),
+                        selectedIndex: _user.navOrder.indexOf(_user.lastNavKey),
                         labelMode: _user.bottomNavLabelMode,
                       );
 
@@ -596,11 +590,7 @@ class _NavOrderDestination extends StatelessWidget {
                         ? Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                selectedIcon,
-                                color: foreground,
-                                size: 18,
-                              ),
+                              Icon(selectedIcon, color: foreground, size: 18),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(

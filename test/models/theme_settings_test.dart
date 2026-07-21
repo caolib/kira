@@ -12,26 +12,25 @@ void main() {
     settings.resetPrefsCache();
   });
 
-  test('defaults to selectedOnly when no bottom-nav preference exists', () async {
-    SharedPreferences.setMockInitialValues({});
-    await settings.initFromPrefs(await SharedPreferences.getInstance());
-    expect(settings.bottomNavLabelMode, BottomNavLabelMode.selectedOnly);
-    expect(settings.bottomNavShowLabels, isTrue);
-  });
+  test(
+    'defaults to selectedOnly when no bottom-nav preference exists',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      await settings.initFromPrefs(await SharedPreferences.getInstance());
+      expect(settings.bottomNavLabelMode, BottomNavLabelMode.selectedOnly);
+      expect(settings.bottomNavShowLabels, isTrue);
+    },
+  );
 
   test('migrates legacy true bool to selectedOnly mode', () async {
-    SharedPreferences.setMockInitialValues({
-      'bottom_nav_show_labels': true,
-    });
+    SharedPreferences.setMockInitialValues({'bottom_nav_show_labels': true});
     await settings.initFromPrefs(await SharedPreferences.getInstance());
     expect(settings.bottomNavLabelMode, BottomNavLabelMode.selectedOnly);
     expect(settings.bottomNavShowLabels, isTrue);
   });
 
   test('migrates legacy false bool to hidden mode', () async {
-    SharedPreferences.setMockInitialValues({
-      'bottom_nav_show_labels': false,
-    });
+    SharedPreferences.setMockInitialValues({'bottom_nav_show_labels': false});
     await settings.initFromPrefs(await SharedPreferences.getInstance());
     expect(settings.bottomNavLabelMode, BottomNavLabelMode.hidden);
     expect(settings.bottomNavShowLabels, isFalse);

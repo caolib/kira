@@ -86,11 +86,27 @@ void main() {
 
     expect(user.networkSelectionMode, NetworkSelectionMode.fixedNode);
     expect(user.fixedNodeHost, 'mapi.hotmangasd.com');
-
-    await user.setNetworkSelectionMode(NetworkSelectionMode.automatic);
-    await user.init();
-    expect(user.networkSelectionMode, NetworkSelectionMode.automatic);
   });
+
+  test(
+    'a persisted legacy automatic(==2) selection mode falls back to route on init',
+    () async {
+      // 历史版本曾持久化索引 2(automatic),该模式已删除,init 后应回落 route。
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'network_selection_mode': 2,
+      });
+      UserManager().network.resetPrefsCache();
+      var user = UserManager();
+      await user.init();
+      expect(user.networkSelectionMode, NetworkSelectionMode.route);
+
+      // 模拟重启:回落后的 route 索引应被持久化,再次 init 仍是 route。
+      UserManager().network.resetPrefsCache();
+      user = UserManager();
+      await user.init();
+      expect(user.networkSelectionMode, NetworkSelectionMode.route);
+    },
+  );
 
   test('last nav key defaults to comic and persists', () async {
     final user = UserManager();

@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:math' as math;
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/api_transport.dart'
     show routes, defaultCopyApiHost, defaultCopyAppVersion;
-import '../api/automatic_node_selector.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../utils/network_proxy.dart';
@@ -32,8 +28,6 @@ class NetworkPage extends StatefulWidget {
 
 class _NetworkPageState extends State<NetworkPage>
     with TickerProviderStateMixin {
-  static const _googleConnectivityTimeout = Duration(seconds: 3);
-
   final _user = UserManager();
   final _networkApi = ApiClient().network;
   final _proxyAddressController = TextEditingController();
@@ -41,19 +35,14 @@ class _NetworkPageState extends State<NetworkPage>
   final _copyAppVersionController = TextEditingController();
 
   bool _testingLatency = false;
-  bool _testingGoogleConnectivity = false;
   bool _refreshingSystemProxy = false;
-  bool _advancedExpanded = false;
   bool _autoFillingCopySettings = false;
+  bool _advancedExpanded = false;
   NetworkProxyType _manualProxyType = NetworkProxyType.http;
 
   /// 节点延迟结果。key 为线路索引(>=0)或 -1(其他固定 host)。
   Map<int, Map<String, int?>> _latencyResults = {};
   Set<String> _pendingLatencyHosts = {};
-
-  bool? _googleConnectivityOk;
-  int? _googleConnectivityLatencyMs;
-  String? _googleConnectivityMessage;
 
   late final AnimationController _breathController = AnimationController(
     vsync: this,
@@ -68,14 +57,18 @@ class _NetworkPageState extends State<NetworkPage>
     _copyAppVersionController.text = _user.copyAppVersion;
     _manualProxyType = _user.networkProxyType;
     _user.addListener(_onChanged);
-    _networkApi.addAutomaticNodeListener(_onChanged);
+    // 进入页面即自动测速一次,让用户第一时间看到各线路/节点延迟。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_testingLatency && _latencyResults.isEmpty) {
+        _testLatency();
+      }
+    });
   }
 
   @override
   void dispose() {
     _breathController.dispose();
     _user.removeListener(_onChanged);
-    _networkApi.removeAutomaticNodeListener(_onChanged);
     _proxyAddressController.dispose();
     _copyApiHostController.dispose();
     _copyAppVersionController.dispose();
@@ -96,33 +89,9 @@ class _NetworkPageState extends State<NetworkPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  /// 健康度推导：综合 Google 连通性、节点延迟、自动熔断状态。
-  /// 返回 (_ok, _color, _primaryLabel, _secondaryLabel)。
+  /// 健康度推导：根据当前线路的节点延迟均值判断。
   _HealthLevel _deriveHealth() {
-    final isAutomatic =
-        _user.networkSelectionMode == NetworkSelectionMode.automatic;
-
-    // Google 已测：以它为最高优先级信号。
-    if (_googleConnectivityOk == true) return _HealthLevel.good;
-    if (_googleConnectivityOk == false) return _HealthLevel.bad;
-    if (_testingGoogleConnectivity) return _HealthLevel.busy;
-
-    if (isAutomatic) {
-      final statuses = _networkApi.automaticNodeStatuses;
-      final anyCircuitOpen = statuses.any((s) => s.circuitOpen);
-      if (anyCircuitOpen) return _HealthLevel.bad;
-      // 取有实测的最佳节点延迟，沿用测速阈值判断健康度。
-      final measured = statuses
-          .where((s) => s.averageLatencyMs != null)
-          .map((s) => s.averageLatencyMs!)
-          .toList();
-      if (measured.isEmpty) return _HealthLevel.unknown;
-      final best = measured.reduce((a, b) => a < b ? a : b);
-      if (best <= 800) return _HealthLevel.good;
-      if (best <= 2000) return _HealthLevel.warn;
-      return _HealthLevel.bad;
-    }
-
+    if (_testingLatency) return _HealthLevel.busy;
     final avg = _averageLatency(_latencyResults[_user.apiRoute]);
     if (avg == null) return _HealthLevel.unknown;
     if (avg <= 800) return _HealthLevel.good;
@@ -168,16 +137,11 @@ class _NetworkPageState extends State<NetworkPage>
           const SizedBox(height: 16),
           _buildModeSelector(l10n, tt, cs),
           const SizedBox(height: 16),
-          if (_user.networkSelectionMode == NetworkSelectionMode.automatic)
-            _buildAutomaticPanel(l10n, tt, cs)
-          else
-            _buildNodeGrid(l10n, tt, cs),
+          _buildNodeGrid(l10n, tt, cs),
           const SizedBox(height: 16),
           _buildProxyCard(l10n, tt, cs),
           const SizedBox(height: 16),
-          _buildGoogleConnectivityTile(l10n, tt, cs),
-          const SizedBox(height: 16),
-          _buildAdvancedTile(l10n, tt, cs),
+          _buildAdvancedCard(l10n, tt, cs),
         ],
       ),
     );
@@ -220,10 +184,7 @@ class _NetworkPageState extends State<NetworkPage>
       ),
       child: Row(
         children: [
-          _BreathingDot(
-            color: color,
-            controller: _breathController,
-          ),
+          _BreathingDot(color: color, controller: _breathController),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -242,9 +203,7 @@ class _NetworkPageState extends State<NetworkPage>
                   secondary,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: tt.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -255,32 +214,19 @@ class _NetworkPageState extends State<NetworkPage>
     );
   }
 
-  /// 状态条右侧的关键指标胶囊：三种模式下分别显示「线路/节点/最佳节点」+ 延迟。
+  /// 状态条右侧的关键指标胶囊：两种模式下分别显示「线路/节点」+ 延迟。
   Widget _buildStatusMetric(
     AppLocalizations l10n,
     TextTheme tt,
     ColorScheme cs,
   ) {
-    final isAutomatic =
-        _user.networkSelectionMode == NetworkSelectionMode.automatic;
-    String label;
-    String value;
-
-    if (isAutomatic) {
-      final statuses = _networkApi.automaticNodeStatuses;
-      final bestIndex = statuses.indexWhere((s) => s.isBest);
-      label = l10n.networkAutomaticBestNodeShort;
-      value = bestIndex < 0
-          ? l10n.networkAutomaticLearningShort
-          : l10n.networkNodeLabel(bestIndex + 1);
-    } else {
-      final isFixed =
-          _user.networkSelectionMode == NetworkSelectionMode.fixedNode;
-      label = isFixed ? l10n.networkModeFixedNodeShort : l10n.networkModeRoute;
-      value = isFixed
-          ? (l10n.networkNodeLabel(_fixedNodeNumber()))
-          : l10n.networkRouteLabel(_user.apiRoute + 1);
-    }
+    final isFixed =
+        _user.networkSelectionMode == NetworkSelectionMode.fixedNode;
+    final label =
+        isFixed ? l10n.networkModeFixedNodeShort : l10n.networkModeRoute;
+    final value = isFixed
+        ? (l10n.networkNodeLabel(_fixedNodeNumber()))
+        : l10n.networkRouteLabel(_user.apiRoute + 1);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -345,12 +291,6 @@ class _NetworkPageState extends State<NetworkPage>
         if (v != null && (best == null || v < best)) best = v;
       }
     }
-    if (best != null) return best;
-    final statuses = _networkApi.automaticNodeStatuses;
-    for (final s in statuses) {
-      final v = s.averageLatencyMs;
-      if (v != null && (best == null || v < best)) best = v;
-    }
     return best;
   }
 
@@ -358,273 +298,30 @@ class _NetworkPageState extends State<NetworkPage>
   // 模式选择
   // ─────────────────────────────────────────────────────────────────────
 
-  Widget _buildModeSelector(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            l10n.networkSelectionMode,
-            style: tt.labelLarge?.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<NetworkSelectionMode>(
-            segments: [
-              ButtonSegment(
-                value: NetworkSelectionMode.route,
-                icon: const Icon(Icons.alt_route_rounded, size: 18),
-                label: Text(l10n.networkModeRoute),
-              ),
-              ButtonSegment(
-                value: NetworkSelectionMode.automatic,
-                icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                label: Text(l10n.networkModeAutomaticShort),
-              ),
-              ButtonSegment(
-                value: NetworkSelectionMode.fixedNode,
-                icon: const Icon(Icons.push_pin_rounded, size: 18),
-                label: Text(l10n.networkModeFixedNodeShort),
-              ),
-            ],
-            selected: {_user.networkSelectionMode},
-            onSelectionChanged: (v) => _setSelectionMode(v.first),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // 自动选择面板
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _buildAutomaticPanel(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
-    final statuses = _networkApi.automaticNodeStatuses;
-    final bestIndex = statuses.indexWhere((s) => s.isBest);
-    final fluentLocked = _networkApi.automaticFluentLocked;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      bestIndex < 0
-                          ? l10n.networkAutomaticLearning
-                          : l10n.networkAutomaticBestNode(
-                              l10n.networkNodeLabel(bestIndex + 1),
-                            ),
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(
-                          fluentLocked
-                              ? Icons.lock_clock_rounded
-                              : Icons.travel_explore_rounded,
-                          size: 12,
-                          color: fluentLocked
-                              ? Colors.green
-                              : cs.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          fluentLocked
-                              ? l10n.networkAutomaticFluentLocked
-                              : l10n.networkAutomaticFluentScanning,
-                          style: tt.labelSmall?.copyWith(
-                            color: fluentLocked
-                                ? Colors.green
-                                : cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _clearAutomaticHistory,
-              icon: const Icon(Icons.cleaning_services_rounded, size: 16),
-              label: Text(
-                l10n.networkAutomaticClearHistory,
-                style: const TextStyle(fontSize: 12),
-              ),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 32),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            l10n.networkAutomaticHistoryHint,
-            style: tt.labelSmall?.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-            ),
-          ),
-        ),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            const spacing = 10.0;
-            final width = (constraints.maxWidth - spacing * 2) / 3;
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              children: List.generate(statuses.length, (index) {
-                return SizedBox(
-                  width: width,
-                  child: _buildAutomaticNodeCard(statuses[index], l10n, tt, cs),
-                );
-              }),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAutomaticNodeCard(
-    AutomaticNodeStatus status,
+  Widget _buildModeSelector(
     AppLocalizations l10n,
     TextTheme tt,
     ColorScheme cs,
   ) {
-    final latency = status.averageLatencyMs;
-    final hasMeasure = latency != null && status.samples > 0;
-    final isCircuit = status.circuitOpen;
-    final isFailing = !isCircuit && status.consecutiveFailures > 0;
-
-    // 自动模式与测速同阈值上色：≤800 绿 / ≤2000 橙 / >2000 红，熔断/连续失败=红，无数据=灰。
-    final Color color;
-    final String latencyText;
-    if (isCircuit) {
-      color = Colors.red;
-      latencyText = l10n.networkAutomaticCircuitOpen;
-    } else if (hasMeasure && latency > 2000) {
-      color = Colors.red;
-      latencyText = '$latency ms';
-    } else if (isFailing || (hasMeasure && latency > 800)) {
-      color = Colors.orange;
-      latencyText = '$latency ms';
-    } else if (hasMeasure) {
-      color = Colors.green;
-      latencyText = '$latency ms';
-    } else {
-      color = cs.onSurfaceVariant;
-      latencyText = l10n.networkAutomaticWaiting;
-    }
-
-    final isBest = status.isBest && hasMeasure;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 240),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: isBest
-            ? color.withValues(alpha: 0.10)
-            : cs.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isBest ? color : cs.outlineVariant,
-          width: isBest ? 1.6 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (isBest)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Icon(Icons.bolt_rounded, size: 14, color: color),
-                ),
-              Text(
-                l10n.networkNodeLabel(_automaticNodeNumber(status.host) + 1),
-                style: tt.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: isBest ? color : cs.onSurface,
-                ),
-              ),
-            ],
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<NetworkSelectionMode>(
+        segments: [
+          ButtonSegment(
+            value: NetworkSelectionMode.route,
+            icon: const Icon(Icons.alt_route_rounded, size: 18),
+            label: Text(l10n.networkModeRoute),
           ),
-          const SizedBox(height: 6),
-          Text(
-            latencyText,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: tt.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              if (hasMeasure)
-                Text(
-                  l10n.networkAutomaticMeasuredShort,
-                  style: tt.labelSmall?.copyWith(
-                    color: color.withValues(alpha: 0.85),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                  ),
-                )
-              else
-                Text(
-                  l10n.networkAutomaticUnmeasuredShort,
-                  style: tt.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                    fontSize: 10,
-                  ),
-                ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  l10n.networkAutomaticRequestCount(status.samples),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: tt.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
-            ],
+          ButtonSegment(
+            value: NetworkSelectionMode.fixedNode,
+            icon: const Icon(Icons.push_pin_rounded, size: 18),
+            label: Text(l10n.networkModeFixedNodeShort),
           ),
         ],
+        selected: {_user.networkSelectionMode},
+        onSelectionChanged: (v) => _setSelectionMode(v.first),
       ),
     );
-  }
-
-  int _automaticNodeNumber(String host) {
-    var n = 0;
-    for (final route in routes) {
-      final idx = route.indexOf(host);
-      if (idx >= 0) return n + idx;
-      n += route.length;
-    }
-    return 0;
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -632,11 +329,23 @@ class _NetworkPageState extends State<NetworkPage>
   // ─────────────────────────────────────────────────────────────────────
 
   Widget _buildNodeGrid(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
-    final isFixed = _user.networkSelectionMode == NetworkSelectionMode.fixedNode;
-    final entries = _latencyResults.entries.where(
-      (e) => e.key >= 0,
-    )..toList();
+    final isFixed =
+        _user.networkSelectionMode == NetworkSelectionMode.fixedNode;
+    // route 模式始终展示两条线路(哪怕尚未测速),让用户可直接点选线路;
+    // fixedNode 与「其他」分组按已有延迟结果展示。
+    final List<MapEntry<int, Map<String, int?>>> routeEntries;
     final extraEntries = _latencyResults[-1] ?? const <String, int?>{};
+    if (isFixed) {
+      routeEntries = _latencyResults.entries
+          .where((e) => e.key >= 0)
+          .toList();
+    } else {
+      final indexed = <MapEntry<int, Map<String, int?>>>[];
+      for (var r = 0; r < routes.length; r++) {
+        indexed.add(MapEntry(r, _latencyResults[r] ?? const {}));
+      }
+      routeEntries = indexed;
+    }
 
     final showHint = _latencyResults.isEmpty && !_testingLatency;
 
@@ -660,7 +369,7 @@ class _NetworkPageState extends State<NetworkPage>
         if (showHint)
           _buildEmptyHint(l10n, tt, cs)
         else
-          ..._buildRouteGroups(entries, isFixed, l10n, tt, cs),
+          ..._buildRouteGroups(routeEntries, isFixed, l10n, tt, cs),
         if (extraEntries.isNotEmpty) ...[
           const SizedBox(height: 8),
           _buildExtraGroup(extraEntries, l10n, tt, cs),
@@ -676,7 +385,10 @@ class _NetworkPageState extends State<NetworkPage>
           ? SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: cs.primary,
+              ),
             )
           : const Icon(Icons.bolt_rounded, size: 18),
       label: Text(l10n.networkTestLatencyShort),
@@ -694,13 +406,15 @@ class _NetworkPageState extends State<NetworkPage>
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.6),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Column(
         children: [
-          Icon(Icons.network_check_rounded, size: 30, color: cs.onSurfaceVariant),
+          Icon(
+            Icons.network_check_rounded,
+            size: 30,
+            color: cs.onSurfaceVariant,
+          ),
           const SizedBox(height: 8),
           Text(
             l10n.networkNotTested,
@@ -722,73 +436,85 @@ class _NetworkPageState extends State<NetworkPage>
     final widgets = <Widget>[];
     for (final entry in entries) {
       final routeIndex = entry.key;
+      final routeHosts = routes[routeIndex];
       final hosts = entry.value;
-      final hostEntries = hosts.entries.toList();
+      // route 模式下可能尚无延迟结果,需用 routes 的完整 host 列表补齐,
+      // 以便整条线路都能点选/展示为「未测」。
+      final orderedHosts = isFixed
+          ? hosts.entries.toList()
+          : routeHosts
+              .map((h) => MapEntry(h, hosts[h]))
+              .toList();
       final average = _averageLatency(hosts);
-      final hasPending =
-          hostEntries.any((e) => _isLatencyPending(routeIndex, e.key));
+      final hasPending = orderedHosts.any(
+        (e) => _isLatencyPending(routeIndex, e.key),
+      );
 
-      widgets.add(Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 8),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                l10n.networkRouteLabel(routeIndex + 1),
-                style: tt.labelSmall?.copyWith(
-                  color: cs.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  l10n.networkRouteLabel(routeIndex + 1),
+                  style: tt.labelSmall?.copyWith(
+                    color: cs.onPrimaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            if (average != null || hasPending)
-              Text(
-                average == null
-                    ? (hasPending
-                        ? l10n.networkAverageTesting
-                        : l10n.networkAverageTimeout)
-                    : l10n.networkAverageLatency(average.round()),
-                style: tt.labelSmall?.copyWith(
-                  color: average == null
-                      ? cs.onSurfaceVariant
-                      : _latencyTone(average, cs),
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 8),
+              if (average != null || hasPending)
+                Text(
+                  average == null
+                      ? (hasPending
+                            ? l10n.networkAverageTesting
+                            : l10n.networkAverageTimeout)
+                      : l10n.networkAverageLatency(average.round()),
+                  style: tt.labelSmall?.copyWith(
+                    color: average == null
+                        ? cs.onSurfaceVariant
+                        : _latencyTone(average, cs),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ));
-      widgets.add(LayoutBuilder(
-        builder: (context, constraints) {
-          const spacing = 10.0;
-          final width = (constraints.maxWidth - spacing * 2) / 3;
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: List.generate(hostEntries.length, (i) {
-              return SizedBox(
-                width: width,
-                child: _buildNodeCard(
-                  routeIndex: routeIndex,
-                  localIndex: i,
-                  host: hostEntries[i].key,
-                  latency: hostEntries[i].value,
-                  isFixedMode: isFixed,
-                  l10n: l10n,
-                  tt: tt,
-                  cs: cs,
-                ),
-              );
-            }),
-          );
-        },
-      ));
+      );
+      widgets.add(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const spacing = 10.0;
+            final width = (constraints.maxWidth - spacing * 2) / 3;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: List.generate(orderedHosts.length, (i) {
+                return SizedBox(
+                  width: width,
+                  child: _buildNodeCard(
+                    routeIndex: routeIndex,
+                    localIndex: i,
+                    host: orderedHosts[i].key,
+                    latency: orderedHosts[i].value,
+                    isFixedMode: isFixed,
+                    l10n: l10n,
+                    tt: tt,
+                    cs: cs,
+                  ),
+                );
+              }),
+            );
+          },
+        ),
+      );
       widgets.add(const SizedBox(height: 8));
     }
     return widgets;
@@ -805,15 +531,18 @@ class _NetworkPageState extends State<NetworkPage>
     required ColorScheme cs,
   }) {
     final isPending = _isLatencyPending(routeIndex, host);
-    final isSelected =
-        isFixedMode && _user.fixedNodeHost == host;
+    // route 模式下,选中状态对齐当前 apiRoute(整条线路高亮);
+    // fixedNode 模式下,仅当前固定节点高亮。
+    final isSelected = isFixedMode
+        ? _user.fixedNodeHost == host
+        : _user.apiRoute == routeIndex;
     final tone = isPending
         ? _Tone.pending
         : (latency == null
-            ? _Tone.timeout
-            : (latency <= 800
-                ? _Tone.good
-                : latency <= 2000
+              ? _Tone.timeout
+              : (latency <= 800
+                    ? _Tone.good
+                    : latency <= 2000
                     ? _Tone.warn
                     : _Tone.bad));
     final color = tone.color(cs);
@@ -823,22 +552,37 @@ class _NetworkPageState extends State<NetworkPage>
         ? l10n.networkTesting
         : (latency == null ? l10n.networkTimeout : '$latency ms');
 
-    final canTap = isFixedMode && !isPending;
+    // route 模式点击节点 → 切到该节点所在的线路;
+    // fixedNode 模式点击节点 → 固定到该节点。
+    final canTap = !isPending;
+    final onTap = canTap
+        ? () {
+            if (isFixedMode) {
+              _user.setFixedNodeHost(host);
+            } else {
+              _user.setApiRoute(routeIndex);
+            }
+          }
+        : null;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: canTap ? () => _user.setFixedNodeHost(host) : null,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           decoration: BoxDecoration(
-            color: isSelected ? cs.primaryContainer : cs.surface,
+            // 选中态用更淡的填充+细描边,避免过于抢眼。
+            color: isSelected
+                ? cs.primary.withValues(alpha: 0.08)
+                : cs.surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? cs.primary : color.withValues(alpha: 0.5),
-              width: isSelected ? 1.8 : 1,
+              color: isSelected
+                  ? cs.primary.withValues(alpha: 0.4)
+                  : color.withValues(alpha: 0.5),
             ),
           ),
           child: Column(
@@ -846,37 +590,22 @@ class _NetworkPageState extends State<NetworkPage>
             children: [
               Row(
                 children: [
-                  if (isSelected)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: Icon(Icons.check_circle, size: 14, color: cs.primary),
-                    ),
                   Expanded(
                     child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: tt.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isSelected ? cs.onPrimaryContainer : cs.onSurface,
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                        color: isSelected
+                            ? cs.primary
+                            : cs.onSurface,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              // 顶部状态条：颜色 + 高度随状态变化，作为卡片的视觉 signature
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: isPending ? null : (latency == null ? 1 : _latencyFill(latency)),
-                  minHeight: 4,
-                  backgroundColor:
-                      color.withValues(alpha: isPending ? 0.2 : 0.12),
-                  valueColor: AlwaysStoppedAnimation(color),
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -895,13 +624,6 @@ class _NetworkPageState extends State<NetworkPage>
         ),
       ),
     );
-  }
-
-  /// 把延迟映射成进度条填充比例：100ms→1.0，2000ms→0.05，越小越满。
-  double _latencyFill(int latency) {
-    if (latency <= 0) return 1;
-    final t = (math.log(latency + 1) / math.log(2001)).clamp(0.05, 1.0);
-    return 1 - t;
   }
 
   Widget _buildExtraGroup(
@@ -939,8 +661,8 @@ class _NetworkPageState extends State<NetworkPage>
           builder: (context, constraints) {
             const spacing = 10.0;
             const columns = 3;
-            final width = (constraints.maxWidth - spacing * (columns - 1)) /
-                columns;
+            final width =
+                (constraints.maxWidth - spacing * (columns - 1)) / columns;
             return Wrap(
               spacing: spacing,
               runSpacing: spacing,
@@ -974,10 +696,10 @@ class _NetworkPageState extends State<NetworkPage>
     final tone = isPending
         ? _Tone.pending
         : (latency == null
-            ? _Tone.timeout
-            : (latency <= 800
-                ? _Tone.good
-                : latency <= 2000
+              ? _Tone.timeout
+              : (latency <= 800
+                    ? _Tone.good
+                    : latency <= 2000
                     ? _Tone.warn
                     : _Tone.bad));
     final color = tone.color(cs);
@@ -1046,7 +768,9 @@ class _NetworkPageState extends State<NetworkPage>
                 Expanded(
                   child: Text(
                     l10n.networkProxySettings,
-                    style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 _ProxyPill(
@@ -1146,118 +870,16 @@ class _NetworkPageState extends State<NetworkPage>
     return NetworkProxy.systemProxy != null;
   }
 
+
   // ─────────────────────────────────────────────────────────────────────
-  // Google 连通性条目
+  // 高级设置卡片（默认折叠，点击标题展开）
   // ─────────────────────────────────────────────────────────────────────
 
-  Widget _buildGoogleConnectivityTile(
+  Widget _buildAdvancedCard(
     AppLocalizations l10n,
     TextTheme tt,
     ColorScheme cs,
   ) {
-    final hasResult = _googleConnectivityMessage != null;
-    final ok = _googleConnectivityOk == true;
-    final color = _testingGoogleConnectivity
-        ? cs.primary
-        : hasResult
-            ? (ok ? Colors.green : Colors.red)
-            : cs.onSurfaceVariant;
-    final subtitle = _testingGoogleConnectivity
-        ? l10n.networkTestingGoogle(NetworkProxy.activeProxyDescription(l10n))
-        : _googleConnectivityMessage;
-
-    return Material(
-      color: cs.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: _testingGoogleConnectivity ? null : _testGoogleConnectivity,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: cs.outlineVariant),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              _testingGoogleConnectivity
-                  ? SizedBox(
-                      width: 26,
-                      height: 26,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.6,
-                        color: cs.primary,
-                      ),
-                    )
-                  : Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        ok
-                            ? Icons.check_rounded
-                            : (hasResult ? Icons.close_rounded : Icons.public_rounded),
-                        color: color,
-                        size: 18,
-                      ),
-                    ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.networkGoogleConnectivity,
-                      style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.bodySmall?.copyWith(
-                          color: hasResult || _testingGoogleConnectivity
-                              ? color
-                              : cs.onSurfaceVariant,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (_googleConnectivityLatencyMs != null &&
-                  !_testingGoogleConnectivity)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${_googleConnectivityLatencyMs}ms',
-                    style: tt.labelLarge?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                )
-              else if (!_testingGoogleConnectivity)
-                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // 高级设置（折叠）
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _buildAdvancedTile(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
@@ -1265,6 +887,7 @@ class _NetworkPageState extends State<NetworkPage>
         border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Material(
             color: Colors.transparent,
@@ -1274,7 +897,7 @@ class _NetworkPageState extends State<NetworkPage>
                 top: Radius.circular(20),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
                 child: Row(
                   children: [
                     Icon(Icons.tune_rounded, color: cs.secondary, size: 22),
@@ -1282,7 +905,9 @@ class _NetworkPageState extends State<NetworkPage>
                     Expanded(
                       child: Text(
                         l10n.networkAdvancedSettings,
-                        style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        style: tt.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     Text(
@@ -1298,7 +923,7 @@ class _NetworkPageState extends State<NetworkPage>
                       turns: _advancedExpanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
-                        Icons.chevron_right_rounded,
+                        Icons.expand_more_rounded,
                         color: cs.onSurfaceVariant,
                       ),
                     ),
@@ -1312,79 +937,83 @@ class _NetworkPageState extends State<NetworkPage>
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child: _advancedExpanded
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Divider(height: 1, color: cs.outlineVariant),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    l10n.networkCopyAutoUpdate,
-                                    style: tt.bodyMedium,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _user.copySettingsUpdatedAt == null
-                                        ? l10n.networkCopyAutoUpdateNever
-                                        : l10n.networkCopyAutoUpdateLast(
-                                            TimeFormat.relative(
-                                              DateTime.fromMillisecondsSinceEpoch(
-                                                _user.copySettingsUpdatedAt!,
-                                              ),
-                                              l10n,
-                                            ),
-                                          ),
-                                    style: tt.bodySmall?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Switch(
-                              value: _user.copyAutoUpdate,
-                              onChanged: (v) => _user.setCopyAutoUpdate(v),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _copyApiHostController,
-                          decoration: const InputDecoration(
-                            labelText: 'COPY API URL',
-                            hintText: defaultCopyApiHost,
-                            prefixIcon: Icon(Icons.dns_rounded),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.url,
-                          textInputAction: TextInputAction.next,
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _copyAppVersionController,
-                          decoration: InputDecoration(
-                            labelText: l10n.networkCopyAppVersion,
-                            hintText: defaultCopyAppVersion,
-                            prefixIcon: const Icon(Icons.numbers_rounded),
-                            border: const OutlineInputBorder(),
-                          ),
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _saveCopyAdvancedSettings(),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildAdvancedActions(cs),
-                      ],
-                    ),
-                  )
+                ? _buildAdvancedContent(l10n, tt, cs)
                 : const SizedBox.shrink(),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 高级设置(COPY API 配置)的本体内容。
+  Widget _buildAdvancedContent(
+    AppLocalizations l10n,
+    TextTheme tt,
+    ColorScheme cs,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Divider(height: 1, color: cs.outlineVariant),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.networkCopyAutoUpdate, style: tt.bodyMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      _user.copySettingsUpdatedAt == null
+                          ? l10n.networkCopyAutoUpdateNever
+                          : l10n.networkCopyAutoUpdateLast(
+                              TimeFormat.relative(
+                                DateTime.fromMillisecondsSinceEpoch(
+                                  _user.copySettingsUpdatedAt!,
+                                ),
+                                l10n,
+                              ),
+                            ),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _user.copyAutoUpdate,
+                onChanged: (v) => _user.setCopyAutoUpdate(v),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _copyApiHostController,
+            decoration: const InputDecoration(
+              labelText: 'COPY API URL',
+              hintText: defaultCopyApiHost,
+              prefixIcon: Icon(Icons.dns_rounded),
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _copyAppVersionController,
+            decoration: InputDecoration(
+              labelText: l10n.networkCopyAppVersion,
+              hintText: defaultCopyAppVersion,
+              prefixIcon: const Icon(Icons.numbers_rounded),
+              border: const OutlineInputBorder(),
+            ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _saveCopyAdvancedSettings(),
+          ),
+          const SizedBox(height: 12),
+          _buildAdvancedActions(cs),
         ],
       ),
     );
@@ -1412,8 +1041,9 @@ class _NetworkPageState extends State<NetworkPage>
             label: l10n.networkFill,
           ),
           _ConnectedButtonGroupItem(
-            onPressed:
-                _autoFillingCopySettings ? null : _resetCopyAdvancedSettings,
+            onPressed: _autoFillingCopySettings
+                ? null
+                : _resetCopyAdvancedSettings,
             icon: Icons.restart_alt,
             label: l10n.commentSettingsResetButton,
           ),
@@ -1436,20 +1066,6 @@ class _NetworkPageState extends State<NetworkPage>
     final values = results?.values.whereType<int>().toList() ?? const <int>[];
     if (values.isEmpty) return null;
     return values.reduce((a, b) => a + b) / values.length;
-  }
-
-  int? _bestLatencyRoute(Map<int, Map<String, int?>> results) {
-    int? bestRoute;
-    double? bestAverage;
-    for (var i = 0; i < ApiClient.routeCount; i++) {
-      final average = _averageLatency(results[i]);
-      if (average == null) continue;
-      if (bestAverage == null || average < bestAverage) {
-        bestAverage = average;
-        bestRoute = i;
-      }
-    }
-    return bestRoute;
   }
 
   int _nodeNumber(int routeIndex, int localIndex) =>
@@ -1495,14 +1111,6 @@ class _NetworkPageState extends State<NetworkPage>
       await _user.setFixedNodeHost(ApiClient().network.getRouteHosts(0).first);
     }
     await _user.setNetworkSelectionMode(mode);
-  }
-
-  Future<void> _clearAutomaticHistory() async {
-    await _networkApi.clearAutomaticNodeHistory();
-    if (mounted) {
-      showToast(context, AppLocalizations.of(context)!.networkAutomaticHistoryCleared);
-      setState(() {});
-    }
   }
 
   Future<void> _testLatency() async {
@@ -1559,6 +1167,7 @@ class _NetworkPageState extends State<NetworkPage>
       }
       final results = await Future.wait(tests);
       final latencyResults = Map<int, Map<String, int?>>.fromEntries(results);
+      // 仅 fixedNode 模式测速后自动选最低延迟节点;route 模式留给用户手动点选线路。
       if (_user.networkSelectionMode == NetworkSelectionMode.fixedNode) {
         final bestHost = _bestLatencyHost(latencyResults);
         if (bestHost != null && bestHost != _user.fixedNodeHost) {
@@ -1568,11 +1177,6 @@ class _NetworkPageState extends State<NetworkPage>
               AppLocalizations.of(context)!.networkFixedNodeAutoSelected,
             );
           }
-        }
-      } else if (_user.networkSelectionMode == NetworkSelectionMode.route) {
-        final bestRoute = _bestLatencyRoute(latencyResults);
-        if (bestRoute != null && bestRoute != _user.apiRoute) {
-          await _user.setApiRoute(bestRoute);
         }
       }
       if (!mounted) return;
@@ -1606,7 +1210,7 @@ class _NetworkPageState extends State<NetworkPage>
   Future<void> _setProxyMode(NetworkProxyMode mode) async {
     await _user.setNetworkProxyMode(mode);
     if (!mounted) return;
-    setState(_clearGoogleConnectivityResult);
+    setState(() {});
   }
 
   Future<void> _saveCopyAdvancedSettings() async {
@@ -1691,12 +1295,6 @@ class _NetworkPageState extends State<NetworkPage>
     return error.toString();
   }
 
-  void _clearGoogleConnectivityResult() {
-    _googleConnectivityOk = null;
-    _googleConnectivityLatencyMs = null;
-    _googleConnectivityMessage = null;
-  }
-
   Future<void> _saveManualProxy() async {
     final proxy = NetworkProxy.parseManualProxy(
       host: _proxyAddressController.text,
@@ -1722,87 +1320,13 @@ class _NetworkPageState extends State<NetworkPage>
       type: proxy.type,
     );
     if (!mounted) return;
-    setState(_clearGoogleConnectivityResult);
+    setState(() {});
     _showToast(AppLocalizations.of(context)!.networkProxyEnabled(proxy.label));
   }
 
   void _showToast(String message, {bool isError = false}) {
     if (!mounted) return;
     showToast(context, message, isError: isError);
-  }
-
-  Future<void> _testGoogleConnectivity() async {
-    if (_testingGoogleConnectivity) return;
-
-    setState(() {
-      _testingGoogleConnectivity = true;
-      _clearGoogleConnectivityResult();
-    });
-
-    final uri = Uri.parse('https://www.google.com/generate_204');
-    final proxyRule = NetworkProxy.findProxy(uri);
-    final stopwatch = Stopwatch()..start();
-    final client = NetworkProxy.createHttpClient(
-      connectionTimeout: _googleConnectivityTimeout,
-    );
-
-    try {
-      final request =
-          await client.getUrl(uri).timeout(_googleConnectivityTimeout);
-      request.followRedirects = false;
-
-      final response =
-          await request.close().timeout(_googleConnectivityTimeout);
-      await response.drain<void>();
-      stopwatch.stop();
-
-      final statusCode = response.statusCode;
-      final ok = statusCode >= 200 && statusCode < 400;
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      setState(() {
-        _testingGoogleConnectivity = false;
-        _googleConnectivityOk = ok;
-        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = ok
-            ? l10n.networkConnectionSuccess(statusCode, proxyRule)
-            : l10n.networkConnectionFailed(statusCode, proxyRule);
-      });
-    } on TimeoutException {
-      stopwatch.stop();
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      setState(() {
-        _testingGoogleConnectivity = false;
-        _googleConnectivityOk = false;
-        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage = l10n.networkConnectionTimeout(proxyRule);
-      });
-    } on SocketException catch (e) {
-      stopwatch.stop();
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      setState(() {
-        _testingGoogleConnectivity = false;
-        _googleConnectivityOk = false;
-        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage =
-            l10n.networkProxyRuleError(proxyRule, e.message);
-      });
-    } catch (e) {
-      stopwatch.stop();
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      setState(() {
-        _testingGoogleConnectivity = false;
-        _googleConnectivityOk = false;
-        _googleConnectivityLatencyMs = stopwatch.elapsedMilliseconds;
-        _googleConnectivityMessage =
-            l10n.networkTestFailed(proxyRule, e.toString());
-      });
-    } finally {
-      client.close(force: true);
-    }
   }
 }
 

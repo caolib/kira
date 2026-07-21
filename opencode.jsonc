@@ -1,0 +1,14 @@
+{
+  "mcp": {
+    "code-review-graph": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "code-review-graph",
+        "serve",
+        "--repo",
+        "C:\\code\\Flutter\\kira"
+      ]
+    }
+  }
+}

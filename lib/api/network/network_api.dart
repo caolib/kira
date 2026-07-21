@@ -7,28 +7,11 @@ import '../../l10n/app_localizations.dart';
 import '../../utils/app_dio.dart';
 import '../../utils/network_error.dart';
 import '../api_transport.dart';
-import '../automatic_node_selector.dart';
 
 class NetworkApi {
   final ApiTransport _t;
 
   NetworkApi(this._t);
-
-  List<AutomaticNodeStatus> get automaticNodeStatuses =>
-      _t.automaticNodeStatuses;
-
-  void addAutomaticNodeListener(void Function() listener) =>
-      _t.addAutomaticNodeListener(listener);
-
-  void removeAutomaticNodeListener(void Function() listener) =>
-      _t.removeAutomaticNodeListener(listener);
-
-  /// 自动节点是否处于通畅锁定状态(本次请求 ≤1500ms 后锁定,直到下次失败)。
-  bool get automaticFluentLocked => _t.automaticFluentLocked;
-
-  /// 清空自动节点的长期使用记录。
-  Future<void> clearAutomaticNodeHistory() =>
-      _t.clearAutomaticNodeHistory();
 
   // ── 线路延迟测试 ──
 
@@ -69,11 +52,6 @@ class NetworkApi {
 
     for (final entry in results.entries) {
       _t.recordNodeProbe(entry.key, entry.value);
-      if (entry.value == null || entry.value! <= 0) {
-        _t.setHostWeight(entry.key, 0.0);
-      } else {
-        _t.setHostWeight(entry.key, 1000.0 / entry.value!);
-      }
     }
 
     return results;

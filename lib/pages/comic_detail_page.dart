@@ -893,7 +893,8 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
   }
 
-  Widget _buildSortButton(ColorScheme cs) {return FilledButton.tonal(
+  Widget _buildSortButton(ColorScheme cs) {
+    return FilledButton.tonal(
       onPressed: () => setState(() => _reversed = !_reversed),
       style: FilledButton.styleFrom(
         minimumSize: const Size(38, 38),
@@ -902,9 +903,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         padding: EdgeInsets.zero,
         backgroundColor: cs.surfaceContainerHigh,
         foregroundColor: cs.onSurfaceVariant,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Tooltip(
@@ -1437,9 +1436,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     // 无分页时把排序按钮放到分组按钮后面，节省空间
                     ? Row(
                         children: [
-                          Expanded(
-                            child: _buildGroupSegments(comic),
-                          ),
+                          Expanded(child: _buildGroupSegments(comic)),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 160),
                             child: _refreshingComic

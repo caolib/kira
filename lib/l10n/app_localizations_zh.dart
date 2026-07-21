@@ -938,31 +938,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkModeFixedNode => '固定节点';
 
   @override
-  String get networkModeAutomatic => '自动选择';
-
-  @override
-  String get networkAutomaticStatsTitle => '自动选择状态';
-
-  @override
-  String networkAutomaticBestNode(String node) {
-    return '当前最佳：$node';
-  }
-
-  @override
-  String get networkAutomaticLearning => '当前最佳：学习中';
-
-  @override
-  String get networkAutomaticCircuitOpen => '已熔断';
-
-  @override
-  String get networkAutomaticWaiting => '等待数据';
-
-  @override
-  String networkAutomaticRequestCount(int count) {
-    return '$count 次请求';
-  }
-
-  @override
   String get networkTestOtherLatency => '测试其他节点延迟';
 
   @override
@@ -1184,12 +1159,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkTestLatencyShort => '测速';
 
   @override
-  String get networkAutomaticBestNodeShort => '最佳节点';
-
-  @override
-  String get networkAutomaticLearningShort => '学习中';
-
-  @override
   String get networkNodeGridRouteHint => '选择一条线路，测速后自动切换到最快的';
 
   @override
@@ -1199,28 +1168,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkModeFixedNodeShort => '节点';
 
   @override
-  String get networkModeAutomaticShort => '自动';
+  String get networkSettings => '设置';
 
   @override
-  String get networkAutomaticMeasuredShort => '实测';
+  String get networkSettingsTitle => '网络设置';
 
   @override
-  String get networkAutomaticUnmeasuredShort => '未测';
-
-  @override
-  String get networkAutomaticFluentLocked => '已锁定 · 通路中';
-
-  @override
-  String get networkAutomaticFluentScanning => '重新选优中';
-
-  @override
-  String get networkAutomaticClearHistory => '清除自动选择历史';
-
-  @override
-  String get networkAutomaticHistoryCleared => '已清除自动选择历史';
-
-  @override
-  String get networkAutomaticHistoryHint => '保留最近 7 天使用记录，近期权重更高，据此自动选优';
+  String get networkHistorySettingsTitle => '节点历史记录';
 
   @override
   String get networkStatusAutoGoodHint => '基于真实请求自动选择，状态健康';
@@ -4469,31 +4423,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkModeFixedNode => '固定節點';
 
   @override
-  String get networkModeAutomatic => '自動選擇';
-
-  @override
-  String get networkAutomaticStatsTitle => '自動選擇狀態';
-
-  @override
-  String networkAutomaticBestNode(String node) {
-    return '目前最佳：$node';
-  }
-
-  @override
-  String get networkAutomaticLearning => '目前最佳：學習中';
-
-  @override
-  String get networkAutomaticCircuitOpen => '已熔斷';
-
-  @override
-  String get networkAutomaticWaiting => '等待資料';
-
-  @override
-  String networkAutomaticRequestCount(int count) {
-    return '$count 次請求';
-  }
-
-  @override
   String get networkTestOtherLatency => '測試其他節點延遲';
 
   @override
@@ -4679,6 +4608,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String networkTestFailed(String proxyRule, String error) {
     return '測試失敗，$proxyRule：$error';
   }
+
+  @override
+  String get networkSettings => '設定';
+
+  @override
+  String get networkSettingsTitle => '網路設定';
 
   @override
   String get aiConfigTitle => 'AI 設定';

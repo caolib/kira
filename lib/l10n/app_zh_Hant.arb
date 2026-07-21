@@ -650,27 +650,8 @@
   "networkSelectionMode": "選擇模式",
   "networkModeRoute": "線路",
   "networkModeFixedNode": "固定節點",
-  "networkModeAutomatic": "自動選擇",
-  "networkAutomaticStatsTitle": "自動選擇狀態",
-  "networkAutomaticBestNode": "目前最佳：{node}",
-  "@networkAutomaticBestNode": {
-    "placeholders": {
-      "node": {
-        "type": "String"
-      }
-    }
-  },
-  "networkAutomaticLearning": "目前最佳：學習中",
-  "networkAutomaticCircuitOpen": "已熔斷",
-  "networkAutomaticWaiting": "等待資料",
-  "networkAutomaticRequestCount": "{count} 次請求",
-  "@networkAutomaticRequestCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
+  "networkSettings": "設定",
+  "networkSettingsTitle": "網路設定",
   "networkTestOtherLatency": "測試其他節點延遲",
   "networkFixedNodeAutoSelected": "測速後已選擇延遲最低的節點",
   "networkRouteLabel": "線路 {index}",
