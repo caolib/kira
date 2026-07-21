@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/ai_api.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/network_error.dart';
 import '../utils/toast.dart';
 
@@ -325,7 +327,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     },
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
               ],
             ),
           );
@@ -554,7 +556,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   },
                 ),
                 if (providerPreset == customPreset) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextField(
                     controller: nameCtrl,
                     decoration: InputDecoration(
@@ -564,7 +566,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: baseUrlCtrl,
                   decoration: const InputDecoration(
@@ -573,7 +575,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<OpenAiApiFormat>(
                   initialValue: apiFormat,
                   decoration: InputDecoration(
@@ -592,7 +594,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     if (value != null) setLocal(() => apiFormat = value);
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
                   initialValue: models.contains(selectedModel)
                       ? selectedModel
@@ -612,7 +614,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     setLocal(() => selectedModel = value ?? '');
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Wrap(
@@ -662,7 +664,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: apiKeyCtrl,
                   obscureText: obscure,
@@ -678,7 +680,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   ),
                 ),
                 if (providerPreset == zhipuPreset) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
@@ -1068,7 +1070,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                     },
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
               ],
             ),
           ),
@@ -1092,7 +1094,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
             Text(l10n.aiConfigTitle),
             if (modelChoices.isNotEmpty)
               InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppRadius.lgR,
                 onTap: _openModelPicker,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1169,7 +1171,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 decoration: InputDecoration(
                   hintText: l10n.aiConfigInputHint,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: AppRadius.xlR,
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1207,7 +1209,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
               size: 48,
               color: cs.onSurfaceVariant,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               _settings.hasConfig
                   ? AppLocalizations.of(context)!.aiConfigReadyEmptyHint
@@ -1253,7 +1255,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: AppRadius.lgR,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1276,7 +1278,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                         : null,
                   ),
                 if (hasReasoning && msg.content.isNotEmpty)
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                 if (msg.content.isEmpty)
                   SizedBox(
                     width: 16,
@@ -1320,14 +1322,14 @@ class _AiConfigPageState extends State<AiConfigPage> {
       height: 1.35,
     );
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadius.mdR,
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: cs.surfaceContainerLow.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.mdR,
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
         ),
         child: Column(
@@ -1342,7 +1344,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   size: 14,
                   color: cs.onSurfaceVariant.withValues(alpha: 0.78),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 Text(
                   expanded
                       ? AppLocalizations.of(context)!.chapterCommentsReasoning
@@ -1352,7 +1354,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   style: textStyle?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (collapsed) ...[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   Icon(
                     expanded ? Icons.expand_less : Icons.expand_more,
                     size: 16,
@@ -1401,7 +1403,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
       ),
       codeblockDecoration: BoxDecoration(
         color: codeBg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.smR,
       ),
       codeblockPadding: const EdgeInsets.all(12),
       listBullet: base,

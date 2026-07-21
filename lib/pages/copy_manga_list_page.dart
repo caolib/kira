@@ -6,6 +6,7 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
+import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_card_skeleton.dart';
@@ -327,7 +328,7 @@ class _CopyRankControls extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SegmentedButton<String>(
@@ -370,12 +371,12 @@ class _CopyListError extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             AppLocalizations.of(context)!.loadingFailed,
             style: tt.titleMedium,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           FilledButton.tonal(
             onPressed: onRetry,
             child: Text(AppLocalizations.of(context)!.retryButton),
@@ -458,17 +459,17 @@ class _CopyListComicCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
-                    fontSize: 10,
+                    fontSize: 12,
                   ),
                 ),
               ),
               if (comic.datetimeUpdated != null) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 Text(
                   TimeFormat.relativeOf(comic.datetimeUpdated!, l10n),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
-                    fontSize: 10,
+                    fontSize: 12,
                   ),
                 ),
               ],

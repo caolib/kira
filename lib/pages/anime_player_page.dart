@@ -20,6 +20,7 @@ import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
+import '../theme/player_chrome.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/anime_playback_history.dart';
 import '../utils/app_dio.dart';
@@ -1337,7 +1338,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         context,
         MaterialPageRoute(
           builder: (_) => Scaffold(
-            backgroundColor: Colors.black,
+            backgroundColor: PlayerChrome.surface,
             body: SafeArea(
               child: Center(
                 // 全屏路由不随父 setState 重建：只刷新标题/选集，不重建 Video
@@ -1388,7 +1389,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         context: context,
         barrierDismissible: true,
         barrierLabel: 'danmaku-settings',
-        barrierColor: Colors.black54,
+        barrierColor: PlayerChrome.scrim,
         transitionDuration: const Duration(milliseconds: 220),
         pageBuilder: (context, animation, secondaryAnimation) {
           final size = MediaQuery.sizeOf(context);
@@ -1465,7 +1466,7 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
               ),
             ),
             ColoredBox(
-              color: Colors.black,
+              color: PlayerChrome.surface,
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Stack(
@@ -1498,15 +1499,15 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
                                 Text(
                                   l10n.animePlayerBuffering,
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: PlayerChrome.onSurface,
                                     fontSize: 12,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   l10n.animePlayerProxySuggestion,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.7),
+                                  style: const TextStyle(
+                                    color: PlayerChrome.onSurfaceMuted,
                                     fontSize: 10,
                                   ),
                                 ),

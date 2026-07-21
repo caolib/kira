@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
 import '../widgets/github_markdown.dart';
@@ -27,7 +29,7 @@ class SettingIcon extends StatelessWidget {
       height: 36,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.mdR,
       ),
       child: Icon(icon, color: color, size: 20),
     );
@@ -70,12 +72,12 @@ class _AboutPageState extends State<AboutPage> {
                   BlendMode.srcIn,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
                 l10n.aboutQqGroupTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
               InkWell(
                 onTap: () async {
                   await launchUrl(
@@ -83,19 +85,19 @@ class _AboutPageState extends State<AboutPage> {
                     mode: LaunchMode.externalApplication,
                   );
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mdR,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.open_in_new, size: 18, color: cs.primary),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         l10n.aboutJoinGroupButton,
                         style: tt.bodyLarge?.copyWith(
@@ -107,7 +109,7 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               InkWell(
                 onTap: () async {
                   await Clipboard.setData(
@@ -117,7 +119,7 @@ class _AboutPageState extends State<AboutPage> {
                     showToast(dialogContext, l10n.aboutGroupNumberCopiedToast);
                   }
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mdR,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -126,7 +128,7 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -138,7 +140,7 @@ class _AboutPageState extends State<AboutPage> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Icon(
                         Icons.copy_rounded,
                         size: 18,
@@ -211,7 +213,7 @@ class _AboutPageState extends State<AboutPage> {
                     l10n.aboutMirrorPrefixDesc,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: controller,
                     autofocus: true,
@@ -280,14 +282,14 @@ class _AboutPageState extends State<AboutPage> {
     final fg = isBeta ? Colors.amber.shade900 : cs.onSurfaceVariant;
     return InkWell(
       onTap: _showUpdateChannelDialog,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: AppRadius.xlR,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isBeta
               ? Colors.amber.withValues(alpha: 0.14)
               : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.xlR,
           border: Border.all(color: isBeta ? Colors.amber : cs.outlineVariant),
         ),
         child: Row(
@@ -298,7 +300,7 @@ class _AboutPageState extends State<AboutPage> {
               size: 14,
               color: fg,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               isBeta ? 'Beta' : l10n.aboutStableChannelShort,
               style: TextStyle(
@@ -410,7 +412,7 @@ class _AboutPageState extends State<AboutPage> {
               Row(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppRadius.lgR,
                     child: Image.asset(
                       _user.appLogoPath,
                       width: 52,
@@ -431,7 +433,7 @@ class _AboutPageState extends State<AboutPage> {
                             height: 1.15,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           version,
                           style: tt.bodySmall?.copyWith(
@@ -444,15 +446,15 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
               _UpdateCard(
                 onCheckUpdate: () => AppUpdateService.checkAndPrompt(context),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.20),
-                elevation: 8,
+                shadowColor: cs.shadow,
+                elevation: 4,
                 child: IntrinsicHeight(
                   child: Row(
                     children: [
@@ -517,11 +519,11 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.20),
-                elevation: 8,
+                shadowColor: cs.shadow,
+                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(
@@ -531,7 +533,7 @@ class _AboutPageState extends State<AboutPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildUpdateChannelChip(cs, l10n),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpacing.xs),
                           const Icon(Icons.chevron_right),
                         ],
                       ),
@@ -560,11 +562,11 @@ class _AboutPageState extends State<AboutPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.20),
-                elevation: 8,
+                shadowColor: cs.shadow,
+                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(
@@ -635,7 +637,7 @@ class _LinkAction extends StatelessWidget {
         child: Row(
           children: [
             icon,
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Text(label, style: tt.bodyLarge),
           ],
         ),
@@ -787,7 +789,7 @@ class _UpdateCardState extends State<_UpdateCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadius.xsR,
             child: LinearProgressIndicator(
               value: downloading && s.total > 0 ? s.received / s.total : null,
               minHeight: 6,
@@ -822,7 +824,7 @@ class _UpdateCardState extends State<_UpdateCard> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: FilledButton.tonalIcon(
             onPressed: disabled
@@ -876,7 +878,7 @@ class _UpdateCardState extends State<_UpdateCard> {
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.mdR,
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
@@ -920,7 +922,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                               style: tt.labelSmall?.copyWith(
                                 color: cs.onPrimary,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 10,
+                                fontSize: 12,
                                 height: 1.2,
                               ),
                             ),
@@ -944,7 +946,7 @@ class _UpdateCardState extends State<_UpdateCard> {
             const SizedBox(height: 10),
             _buildInstallButtons(asset, cs, tt),
           ] else ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -985,14 +987,14 @@ class _UpdateCardState extends State<_UpdateCard> {
       onTap: _isInstalling
           ? null
           : () => setState(() => _betaAssetsExpanded = !_betaAssetsExpanded),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadius.mdR,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.mdR,
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
         child: Row(
@@ -1003,7 +1005,7 @@ class _UpdateCardState extends State<_UpdateCard> {
               size: 18,
               color: cs.onSurfaceVariant,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               _betaAssetsExpanded
                   ? l10n.updateCollapseOtherVersions
@@ -1046,7 +1048,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                   color: cs.primary,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Text(l10n.updateCardChecking, style: tt.bodyMedium),
             ],
           ),
@@ -1060,13 +1062,13 @@ class _UpdateCardState extends State<_UpdateCard> {
         elevation: 4,
         child: InkWell(
           onTap: widget.onCheckUpdate,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.mdR,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Icon(Icons.error_outline, size: 20, color: cs.error),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(l10n.updateCardFailed, style: tt.bodyMedium),
                 ),
@@ -1090,8 +1092,8 @@ class _UpdateCardState extends State<_UpdateCard> {
 
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: Colors.black.withValues(alpha: 0.20),
-      elevation: 8,
+      shadowColor: cs.shadow,
+      elevation: 4,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1135,7 +1137,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                           : Icons.expand_more_rounded,
                       color: cs.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                   ],
                 ),
               ),
@@ -1155,7 +1157,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                       child: _buildReleaseNotes(notes, cs),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   if (assets.length <= 1) ...[
                     if (assets.isNotEmpty)
                       _buildInstallButtons(assets.first, cs, tt),
@@ -1167,7 +1169,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 260),
                       child: SingleChildScrollView(
@@ -1201,7 +1203,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
                       _buildMirrorCheckbox(cs, tt),
@@ -1254,7 +1256,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                 visualDensity: VisualDensity.compact,
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               l10n.updateUseMirror,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),

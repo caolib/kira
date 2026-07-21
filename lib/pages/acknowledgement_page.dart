@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 
 class AcknowledgementPage extends StatelessWidget {
   const AcknowledgementPage({super.key});
@@ -21,7 +23,7 @@ class AcknowledgementPage extends StatelessWidget {
             l10n.acknowledgementThanksTitle,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Card(
             color: cs.surfaceContainerLow,
             child: Padding(
@@ -64,7 +66,7 @@ class AcknowledgementPage extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.mdR,
       onTap: () =>
           launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
       child: Padding(
@@ -76,11 +78,11 @@ class AcknowledgementPage extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mdR,
               ),
               child: Icon(icon, color: cs.onPrimaryContainer, size: 22),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

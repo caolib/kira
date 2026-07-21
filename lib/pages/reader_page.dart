@@ -15,6 +15,10 @@ import '../l10n/app_localizations.dart';
 import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
+import '../theme/reader_chrome.dart';
+import '../utils/adaptive_motion.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/download_manager.dart';
 import '../utils/image_load_stats.dart';
@@ -98,6 +102,7 @@ class _ReaderPageState extends State<ReaderPage> {
   bool _loading = true;
   bool _refreshingChapter = false;
   bool _showToolbar = false;
+  String? _loadError;
 
   void _toggleToolbar() {
     _showToolbar = !_showToolbar;
@@ -531,6 +536,7 @@ class _ReaderPageState extends State<ReaderPage> {
         _refreshingChapter = true;
       } else {
         _loading = true;
+        _loadError = null;
       }
       _scrollTailIndex = -1;
     });
@@ -561,6 +567,7 @@ class _ReaderPageState extends State<ReaderPage> {
       setState(() {
         _detail = detail;
         _loading = false;
+        _loadError = null;
         _refreshingChapter = false;
         _currentPage = startPage;
         _imageReloadVersions.clear();
@@ -620,16 +627,22 @@ class _ReaderPageState extends State<ReaderPage> {
     } catch (e) {
       _autoAdvancingChapter = false;
       if (mounted) {
+        final message = NetworkError.message(
+          e,
+          l10n: AppLocalizations.of(context)!,
+        );
         setState(() {
-          if (!forceRefresh || _detail == null) _loading = false;
+          if (!forceRefresh || _detail == null) {
+            _loading = false;
+            _loadError = message;
+          }
           if (forceRefresh) _refreshingChapter = false;
         });
         if (forceRefresh) {
           showToast(
             context,
-            AppLocalizations.of(context)!.refreshFailedWithError(
-              NetworkError.message(e, l10n: AppLocalizations.of(context)!),
-            ),
+            AppLocalizations.of(context)!.refreshFailedWithError(message),
+            isError: true,
           );
         }
       }
@@ -1544,12 +1557,12 @@ class _ReaderPageState extends State<ReaderPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 48),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   AppLocalizations.of(context)!.readerLocalImageMissing,
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 FilledButton.tonalIcon(
                   onPressed: () => _copyImageUrl(chapter, localIndex),
                   icon: const Icon(Icons.copy_all_outlined, size: 18),
@@ -1596,6 +1609,9 @@ class _ReaderPageState extends State<ReaderPage> {
           if (canAutoRetry) {
             _scheduleImageRetry(key);
           }
+          final pageLabel = '${chapter.name} · ${localIndex + 1}';
+          final failedLabel =
+              '${AppLocalizations.of(context)!.loadingFailed}\n$pageLabel';
 
           return Container(
             height: estimatedPlaceholderH ?? 400,
@@ -1609,17 +1625,18 @@ class _ReaderPageState extends State<ReaderPage> {
                     color: cs.onSurfaceVariant,
                     size: 48,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     canAutoRetry
                         ? AppLocalizations.of(
                             context,
                           )!.readerImageRetrying(attempts + 1, retryLimit)
-                        : AppLocalizations.of(context)!.loadingFailed,
+                        : failedLabel,
+                    textAlign: TextAlign.center,
                     style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                   ),
                   if (!canAutoRetry) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     FilledButton.tonalIcon(
                       onPressed: () => _retryImage(chapter, localIndex, key),
                       icon: const Icon(Icons.refresh, size: 18),
@@ -1627,7 +1644,7 @@ class _ReaderPageState extends State<ReaderPage> {
                         AppLocalizations.of(context)!.readerReloadImage,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     FilledButton.tonalIcon(
                       onPressed: () => _copyImageUrl(chapter, localIndex),
                       icon: const Icon(Icons.copy_all_outlined, size: 18),
@@ -1651,7 +1668,7 @@ class _ReaderPageState extends State<ReaderPage> {
           Positioned.fill(
             child: IgnorePointer(
               child: ColoredBox(
-                color: Colors.black.withValues(alpha: _user.readerDimming),
+                color: ReaderChrome.dimOverlay(_user.readerDimming),
               ),
             ),
           ),
@@ -2285,8 +2302,8 @@ class _ReaderPageState extends State<ReaderPage> {
       return RefreshIndicator(
         onRefresh: _refreshChapter,
         notificationPredicate: (notification) => notification.depth == 0,
-        color: Colors.white,
-        backgroundColor: Colors.black,
+        color: ReaderChrome.onSurface,
+        backgroundColor: ReaderChrome.surface,
         child: child,
       );
     }
@@ -2304,29 +2321,59 @@ class _ReaderPageState extends State<ReaderPage> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: _showToolbar
-          ? const SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: Brightness.light,
-              statusBarBrightness: Brightness.dark,
-              systemNavigationBarColor: Colors.black,
-              systemNavigationBarIconBrightness: Brightness.light,
-            )
-          : const SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: Brightness.light,
-              statusBarBrightness: Brightness.dark,
-              systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarIconBrightness: Brightness.light,
-            ),
+          ? ReaderChrome.systemUiToolbar
+          : ReaderChrome.systemUiImmersive,
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: ReaderChrome.surface,
         body: Stack(
           children: [
             if (_loading)
-              const Center(child: ExpressiveLoadingIndicator())
+              const Center(
+                child: ExpressiveLoadingIndicator(
+                  color: ReaderChrome.onSurface,
+                ),
+              )
             else if (_detail != null)
               _buildRefreshableReader(
                 _isPageMode ? _buildPageMode() : _buildScrollMode(),
+              )
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.cloud_off,
+                        size: 64,
+                        color: ReaderChrome.onSurfaceMuted,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        _loadError ??
+                            AppLocalizations.of(context)!.loadingFailed,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: ReaderChrome.onSurface,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      FilledButton.tonal(
+                        style: FilledButton.styleFrom(
+                          foregroundColor: ReaderChrome.onSurface,
+                          backgroundColor: ReaderChrome.actionPrimaryFill,
+                        ),
+                        onPressed: () => _loadChapter(),
+                        child: Text(
+                          AppLocalizations.of(context)!.retryButton,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             _ReaderTopBar(
               showToolbar: _showToolbar,

@@ -12,6 +12,9 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_update.dart';
 import '../utils/remote_notice_service.dart';
 import '../utils/toast.dart';
@@ -28,18 +31,8 @@ List<String> _appDisclaimerItems(AppLocalizations l10n) => [
 
 const _noticeCenterColor = Color(0xFFEB6F92);
 
-List<BoxShadow> _profileCardShadow(ColorScheme cs) => [
-  BoxShadow(
-    color: Colors.black.withValues(alpha: 0.08),
-    blurRadius: 18,
-    offset: const Offset(0, 6),
-  ),
-  BoxShadow(
-    color: cs.shadow.withValues(alpha: 0.04),
-    blurRadius: 6,
-    offset: const Offset(0, 2),
-  ),
-];
+/// Profile cards share the app-wide medium shadow token.
+List<BoxShadow> _profileCardShadow(ColorScheme cs) => AppShadows.md(cs);
 
 enum _SwitchAccountSheetAction { addAccount }
 
@@ -167,7 +160,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         color: _isCopyCredential(cred)
                             ? cs.tertiaryContainer
                             : cs.secondaryContainer,
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: AppRadius.fullR,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -179,7 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ? cs.onTertiaryContainer
                                 : cs.onSecondaryContainer,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpacing.xs),
                           Text(
                             _credentialTypeLabel(l10n, cred),
                             style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
@@ -198,7 +191,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () => Navigator.pop(ctx, cred),
               );
             }),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: SizedBox(
@@ -349,8 +342,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: Colors.black.withValues(alpha: 0.20),
-                    elevation: 8,
+                    shadowColor: cs.shadow,
+                    elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -430,11 +423,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: Colors.black.withValues(alpha: 0.20),
-                    elevation: 8,
+                    shadowColor: cs.shadow,
+                    elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -464,11 +457,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: Colors.black.withValues(alpha: 0.20),
-                    elevation: 8,
+                    shadowColor: cs.shadow,
+                    elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: ValueListenableBuilder<bool>(
@@ -515,10 +508,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: Colors.black.withValues(alpha: 0.20),
-      elevation: 8,
+      shadowColor: cs.shadow,
+      elevation: 4,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgR,
         onTap: _goLogin,
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -533,13 +526,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   color: cs.onPrimaryContainer,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(l10n.notLoggedInTitle, style: tt.titleMedium),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       l10n.loginPromptSubtitle,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -560,10 +553,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: Colors.black.withValues(alpha: 0.20),
-      elevation: 8,
+      shadowColor: cs.shadow,
+      elevation: 4,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgR,
         onTap: () {
           setState(() {
             _userActionsExpanded = !_userActionsExpanded;
@@ -594,7 +587,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             color: cs.onPrimaryContainer,
                           ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.lg),
                   Expanded(
                     child: Text(
                       _user.nickname ?? _user.username ?? '',
@@ -616,7 +609,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: _userActionsExpanded
                     ? Column(
                         children: [
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
                           LayoutBuilder(
                             builder: (context, constraints) {
                               final buttonWidth =
@@ -824,13 +817,13 @@ class _LoginPageState extends State<LoginPage> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadius.fullR,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: foregroundColor),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
           Text(
             label,
             style: tt.labelSmall?.copyWith(
@@ -870,14 +863,14 @@ class _LoginPageState extends State<LoginPage> {
         color: isSelected
             ? cs.primaryContainer.withValues(alpha: 0.45)
             : cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadius.lgR,
         border: Border.all(color: isSelected ? cs.primary : cs.outlineVariant),
         boxShadow: _profileCardShadow(cs),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: AppRadius.lgR,
           onTap: () => _applySavedCredential(credential),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
@@ -896,7 +889,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -922,7 +915,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -1127,7 +1120,7 @@ class _LoginPageState extends State<LoginPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Image.asset(_user.appLogoPath, width: 64, height: 64),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Kira',
               textAlign: TextAlign.center,
@@ -1155,7 +1148,7 @@ class _LoginPageState extends State<LoginPage> {
                 _error = null;
               }),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             if (!_useToken) ...[
               SegmentedButton<bool>(
                 segments: [
@@ -1176,7 +1169,7 @@ class _LoginPageState extends State<LoginPage> {
                   _error = null;
                 }),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               if (_user.savedCredentials.isNotEmpty) ...[
                 Align(
                   alignment: Alignment.centerLeft,
@@ -1187,7 +1180,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   l10n.profileSavedAccountsHint,
                   style: Theme.of(
@@ -1207,7 +1200,7 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
               ],
               TextField(
                 controller: _usernameCtrl,
@@ -1215,12 +1208,12 @@ class _LoginPageState extends State<LoginPage> {
                   labelText: l10n.profileUsernameLabel,
                   prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                 ),
                 textInputAction: TextInputAction.next,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               TextField(
                 controller: _passwordCtrl,
                 obscureText: _obscure,
@@ -1234,7 +1227,7 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                 ),
                 textInputAction: TextInputAction.done,
@@ -1248,7 +1241,7 @@ class _LoginPageState extends State<LoginPage> {
                   prefixIcon: const Icon(Icons.key),
                   hintText: l10n.profileTokenHint,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                 ),
                 textInputAction: TextInputAction.done,
@@ -1256,7 +1249,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
             if (_error != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 _error!,
                 style: TextStyle(color: cs.error),
@@ -1264,7 +1257,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
             if (!_useToken) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               CheckboxListTile(
                 value: _rememberMe,
                 onChanged: (v) => setState(() => _rememberMe = v ?? false),
@@ -1281,7 +1274,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             FilledButton(
               onPressed: _loading
                   ? null
@@ -1289,7 +1282,7 @@ class _LoginPageState extends State<LoginPage> {
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               child: _loading
@@ -1487,12 +1480,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 labelText: l10n.profileUsernameLabel,
                 prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _passwordCtrl,
               obscureText: _obscure,
@@ -1506,12 +1499,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _confirmPasswordCtrl,
               obscureText: _obscure,
@@ -1519,12 +1512,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 labelText: l10n.profileConfirmPasswordLabel,
                 prefixIcon: const Icon(Icons.lock_reset_outlined),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             if (_loadingQuestions)
               const Center(child: ExpressiveLoadingIndicator())
             else ...[
@@ -1535,7 +1528,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelText: l10n.profileSecurityQuestionLabel,
                   prefixIcon: const Icon(Icons.help_outline),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                 ),
                 items: _questions
@@ -1548,14 +1541,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     .toList(),
                 onChanged: (value) => setState(() => _selectedQuestion = value),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               TextField(
                 controller: _answerCtrl,
                 decoration: InputDecoration(
                   labelText: l10n.profileSecurityAnswerLabel,
                   prefixIcon: const Icon(Icons.shield_outlined),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                 ),
                 textInputAction: TextInputAction.done,
@@ -1563,7 +1556,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ],
             if (_error != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 _error!,
                 style: TextStyle(color: cs.error),
@@ -1571,20 +1564,20 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ],
             if (!_loadingQuestions && _questions.isEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextButton.icon(
                 onPressed: _loadQuestions,
                 icon: const Icon(Icons.refresh),
                 label: Text(l10n.profileReloadSecurityQuestionsButton),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             FilledButton(
               onPressed: _submitting || _loadingQuestions ? null : _register,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               child: _submitting
@@ -1598,7 +1591,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       style: const TextStyle(fontSize: 16),
                     ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               l10n.profileOfficialRegisterPrompt,
               textAlign: TextAlign.center,
@@ -1606,7 +1599,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 context,
               ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
@@ -1648,11 +1641,11 @@ class DisclaimerPage extends StatelessWidget {
             l10n.appDisclaimerIntro,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Card(
             color: cs.surfaceContainerLow,
-            shadowColor: Colors.black.withValues(alpha: 0.08),
-            elevation: 4,
+            shadowColor: cs.shadow,
+            elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -1668,7 +1661,7 @@ class DisclaimerPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                   ],
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     l10n.appDisclaimerFooter,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -1696,7 +1689,7 @@ class _SettingIcon extends StatelessWidget {
       height: 36,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.mdR,
       ),
       child: Icon(icon, color: color, size: 20),
     );
@@ -1739,12 +1732,12 @@ class _AboutPageState extends State<AboutPage> {
                   BlendMode.srcIn,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
                 l10n.aboutQqGroupTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
               InkWell(
                 onTap: () async {
                   await launchUrl(
@@ -1752,19 +1745,19 @@ class _AboutPageState extends State<AboutPage> {
                     mode: LaunchMode.externalApplication,
                   );
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mdR,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.open_in_new, size: 18, color: cs.primary),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         l10n.aboutJoinGroupButton,
                         style: tt.bodyLarge?.copyWith(
@@ -1776,7 +1769,7 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               InkWell(
                 onTap: () async {
                   await Clipboard.setData(
@@ -1786,7 +1779,7 @@ class _AboutPageState extends State<AboutPage> {
                     showToast(dialogContext, l10n.aboutGroupNumberCopiedToast);
                   }
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mdR,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -1795,7 +1788,7 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1807,7 +1800,7 @@ class _AboutPageState extends State<AboutPage> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Icon(
                         Icons.copy_rounded,
                         size: 18,
@@ -1878,7 +1871,7 @@ class _AboutPageState extends State<AboutPage> {
                     l10n.aboutMirrorPrefixDesc,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: controller,
                     autofocus: true,
@@ -1944,14 +1937,14 @@ class _AboutPageState extends State<AboutPage> {
     final fg = isBeta ? Colors.amber.shade900 : cs.onSurfaceVariant;
     return InkWell(
       onTap: _showUpdateChannelDialog,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: AppRadius.xlR,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isBeta
               ? Colors.amber.withValues(alpha: 0.14)
               : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.xlR,
           border: Border.all(color: isBeta ? Colors.amber : cs.outlineVariant),
         ),
         child: Row(
@@ -1962,7 +1955,7 @@ class _AboutPageState extends State<AboutPage> {
               size: 14,
               color: fg,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               isBeta ? 'Beta' : l10n.aboutStableChannelShort,
               style: TextStyle(
@@ -2071,13 +2064,13 @@ class _AboutPageState extends State<AboutPage> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
             children: [
               Image.asset(_user.appLogoPath, width: 80, height: 80),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
                 'Kira',
                 textAlign: TextAlign.center,
                 style: tt.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 version,
                 textAlign: TextAlign.center,
@@ -2086,8 +2079,8 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: 32),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.20),
-                elevation: 8,
+                shadowColor: cs.shadow,
+                elevation: 4,
                 child: IntrinsicHeight(
                   child: Row(
                     children: [
@@ -2152,11 +2145,11 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.20),
-                elevation: 8,
+                shadowColor: cs.shadow,
+                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(
@@ -2166,7 +2159,7 @@ class _AboutPageState extends State<AboutPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildUpdateChannelChip(cs),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpacing.xs),
                           const Icon(Icons.chevron_right),
                         ],
                       ),
@@ -2195,11 +2188,11 @@ class _AboutPageState extends State<AboutPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: Colors.black.withValues(alpha: 0.20),
-                elevation: 8,
+                shadowColor: cs.shadow,
+                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(
@@ -2270,7 +2263,7 @@ class _LinkAction extends StatelessWidget {
         child: Row(
           children: [
             icon,
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Text(label, style: tt.bodyLarge),
           ],
         ),

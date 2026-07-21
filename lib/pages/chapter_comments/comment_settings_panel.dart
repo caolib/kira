@@ -96,7 +96,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 SizedBox(
                   height: 220,
                   child: TextField(
@@ -186,7 +186,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 SizedBox(
                   height: 220,
                   child: TextField(
@@ -297,7 +297,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
                 l10n.commentSettingsTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -327,7 +327,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                     },
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
               ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -378,7 +378,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                   },
                 ),
               ],
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
                   Text(l10n.commentSettingsFontSizeTitle, style: tt.bodyMedium),
@@ -499,7 +499,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                                         )!.commentSettingsMinCommentCount,
                                         style: tt.bodySmall,
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: AppSpacing.sm),
                                       SizedBox(
                                         width: 64,
                                         child: TextFormField(
@@ -526,7 +526,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: AppSpacing.md),
                                   Text(
                                     AppLocalizations.of(
                                       context,
@@ -570,7 +570,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                                     ),
                                   ),
                                   if (!_commentPreload) ...[
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: AppSpacing.xs),
                                     Text(
                                       AppLocalizations.of(
                                         context,
@@ -609,7 +609,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                               value: zhipu.spoilerWarn,
                               onChanged: (v) => zhipu.setSpoilerWarn(v),
                             ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Text(
                             AppLocalizations.of(
                               context,
@@ -618,7 +618,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                               color: cs.onSurfaceVariant,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           RadioGroup<String>(
                             groupValue: zhipu.activePresetId,
                             onChanged: (v) {
@@ -678,7 +678,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Align(
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
@@ -696,9 +696,9 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                     );
                   },
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               _buildBlockedUsersSection(cs, tt),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
             ],
           ),
         ),

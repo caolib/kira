@@ -29,7 +29,7 @@ class _ErrorPanel extends StatelessWidget {
           children: [
             Icon(
               requiresLogin ? Icons.lock_outline : Icons.cloud_off,
-              color: Colors.white70,
+              color: PlayerChrome.onSurfaceMuted,
               size: 40,
             ),
             const SizedBox(height: 8),
@@ -38,7 +38,7 @@ class _ErrorPanel extends StatelessWidget {
                   ? l10n.loginRequiredTitle
                   : l10n.playbackFailedTitle,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: Colors.white,
+                color: PlayerChrome.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -50,7 +50,7 @@ class _ErrorPanel extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+              ).textTheme.bodySmall?.copyWith(color: PlayerChrome.onSurfaceMuted),
             ),
             const SizedBox(height: 10),
             if (requiresLogin)
@@ -69,7 +69,7 @@ class _ErrorPanel extends StatelessWidget {
                       icon: const Icon(Icons.bug_report_outlined, size: 18),
                       label: Text(l10n.viewLogButton),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.white70,
+                        foregroundColor: PlayerChrome.onSurfaceMuted,
                       ),
                     ),
                     const SizedBox(width: 8),

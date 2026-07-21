@@ -6,6 +6,8 @@ import '../api/api_transport.dart'
     show routes, defaultCopyApiHost, defaultCopyAppVersion;
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/network_proxy.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
@@ -127,20 +129,20 @@ class _NetworkPageState extends State<NetworkPage>
                   )
                 : const Icon(Icons.refresh_rounded),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           _buildStatusBar(l10n, tt, cs),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _buildModeSelector(l10n, tt, cs),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _buildNodeGrid(l10n, tt, cs),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _buildProxyCard(l10n, tt, cs),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _buildAdvancedCard(l10n, tt, cs),
         ],
       ),
@@ -179,7 +181,7 @@ class _NetworkPageState extends State<NetworkPage>
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.xlR,
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
@@ -232,7 +234,7 @@ class _NetworkPageState extends State<NetworkPage>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.mdR,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -241,7 +243,7 @@ class _NetworkPageState extends State<NetworkPage>
             label,
             style: tt.labelSmall?.copyWith(
               color: cs.onSurfaceVariant,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),
@@ -365,13 +367,13 @@ class _NetworkPageState extends State<NetworkPage>
             _buildTestButton(l10n, tt, cs),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         if (showHint)
           _buildEmptyHint(l10n, tt, cs)
         else
           ..._buildRouteGroups(routeEntries, isFixed, l10n, tt, cs),
         if (extraEntries.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _buildExtraGroup(extraEntries, l10n, tt, cs),
         ],
       ],
@@ -405,7 +407,7 @@ class _NetworkPageState extends State<NetworkPage>
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.lgR,
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Column(
@@ -415,7 +417,7 @@ class _NetworkPageState extends State<NetworkPage>
             size: 30,
             color: cs.onSurfaceVariant,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             l10n.networkNotTested,
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -469,7 +471,7 @@ class _NetworkPageState extends State<NetworkPage>
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               if (average != null || hasPending)
                 Text(
                   average == null
@@ -515,7 +517,7 @@ class _NetworkPageState extends State<NetworkPage>
           },
         ),
       );
-      widgets.add(const SizedBox(height: 8));
+      widgets.add(const SizedBox(height: AppSpacing.sm));
     }
     return widgets;
   }
@@ -569,7 +571,7 @@ class _NetworkPageState extends State<NetworkPage>
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.lgR,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -578,7 +580,7 @@ class _NetworkPageState extends State<NetworkPage>
             color: isSelected
                 ? cs.primary.withValues(alpha: 0.08)
                 : cs.surface,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppRadius.lgR,
             border: Border.all(
               color: isSelected
                   ? cs.primary.withValues(alpha: 0.4)
@@ -712,7 +714,7 @@ class _NetworkPageState extends State<NetworkPage>
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.mdR,
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Column(
@@ -724,7 +726,7 @@ class _NetworkPageState extends State<NetworkPage>
             overflow: TextOverflow.ellipsis,
             style: tt.labelSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           if (_testingLatency && isPending)
             SizedBox(
               width: 12,
@@ -754,7 +756,7 @@ class _NetworkPageState extends State<NetworkPage>
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.xlR,
         border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
@@ -764,7 +766,7 @@ class _NetworkPageState extends State<NetworkPage>
             child: Row(
               children: [
                 Icon(Icons.shield_outlined, color: cs.tertiary, size: 22),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
                     l10n.networkProxySettings,
@@ -832,7 +834,7 @@ class _NetworkPageState extends State<NetworkPage>
                             },
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         TextField(
                           controller: _proxyAddressController,
                           decoration: InputDecoration(
@@ -844,7 +846,7 @@ class _NetworkPageState extends State<NetworkPage>
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _saveManualProxy(),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
@@ -883,7 +885,7 @@ class _NetworkPageState extends State<NetworkPage>
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.xlR,
         border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
@@ -901,7 +903,7 @@ class _NetworkPageState extends State<NetworkPage>
                 child: Row(
                   children: [
                     Icon(Icons.tune_rounded, color: cs.secondary, size: 22),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(
                         l10n.networkAdvancedSettings,
@@ -918,7 +920,7 @@ class _NetworkPageState extends State<NetworkPage>
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xs),
                     AnimatedRotation(
                       turns: _advancedExpanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
@@ -957,7 +959,7 @@ class _NetworkPageState extends State<NetworkPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Divider(height: 1, color: cs.outlineVariant),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
@@ -988,7 +990,7 @@ class _NetworkPageState extends State<NetworkPage>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: _copyApiHostController,
             decoration: const InputDecoration(
@@ -1000,7 +1002,7 @@ class _NetworkPageState extends State<NetworkPage>
             keyboardType: TextInputType.url,
             textInputAction: TextInputAction.next,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _copyAppVersionController,
             decoration: InputDecoration(
@@ -1012,7 +1014,7 @@ class _NetworkPageState extends State<NetworkPage>
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _saveCopyAdvancedSettings(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           _buildAdvancedActions(cs),
         ],
       ),
@@ -1449,7 +1451,7 @@ class _ProxyPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: active ? 0.14 : 0.06),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.xlR,
         border: Border.all(color: color.withValues(alpha: active ? 0.4 : 0.2)),
       ),
       child: Row(

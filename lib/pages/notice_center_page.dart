@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../models/remote_notice.dart';
 import '../models/user_manager.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/remote_notice_service.dart';
 import '../utils/time_format.dart';
@@ -328,13 +330,13 @@ class _NoticeFoldSection extends StatelessWidget {
       child: Column(
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.smR,
             onTap: onToggle,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.smR,
                 border: Border.all(
                   color: cs.outlineVariant.withValues(alpha: 0.7),
                 ),
@@ -347,7 +349,7 @@ class _NoticeFoldSection extends StatelessWidget {
                         : Icons.keyboard_arrow_right_rounded,
                     color: cs.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       title,
@@ -364,7 +366,7 @@ class _NoticeFoldSection extends StatelessWidget {
               ),
             ),
           ),
-          if (expanded) ...[const SizedBox(height: 12), ...children],
+          if (expanded) ...[const SizedBox(height: AppSpacing.md), ...children],
         ],
       ),
     );
@@ -396,13 +398,13 @@ class _NoticeEmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 48, color: cs.onSurfaceVariant),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               title,
               textAlign: TextAlign.center,
               style: tt.titleMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             FilledButton.icon(
               onPressed: onAction,
               icon: const Icon(Icons.refresh_rounded),
@@ -450,14 +452,14 @@ class _NoticeTimelineItem extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Card(
                 color: style.surface,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                   side: BorderSide(color: style.border, width: 2),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -571,7 +573,7 @@ class _NoticeContent extends StatelessWidget {
               margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(
                 color: style.iconSurface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.smR,
               ),
               child: Icon(style.icon, size: 17, color: style.accent),
             ),
@@ -584,7 +586,7 @@ class _NoticeContent extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Text(
               TimeFormat.relative(
                 notice.publishedAt,
@@ -595,7 +597,7 @@ class _NoticeContent extends StatelessWidget {
           ],
         ),
         if (hasBadges) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -604,10 +606,10 @@ class _NoticeContent extends StatelessWidget {
           ),
         ],
         if (expanded) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           _NoticePlainText(data: notice.content, linkColor: style.accent),
           if (notice.url != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
@@ -659,7 +661,7 @@ class _ExpiredChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadius.fullR,
       ),
       child: Text(
         AppLocalizations.of(context)!.noticeExpiredBadge,

@@ -1,19 +1,10 @@
 part of '../reader_page.dart';
 
 /// Shared button style for chapter divider action buttons.
-final _chapterActionButtonStyle = OutlinedButton.styleFrom(
-  foregroundColor: Colors.white,
-  side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
-  backgroundColor: Colors.white.withValues(alpha: 0.08),
-  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-);
+final _chapterActionButtonStyle = ReaderChrome.outlinedActionStyle;
 
 /// Shared primary button style for "next chapter" actions.
-final _chapterPrimaryButtonStyle = FilledButton.styleFrom(
-  foregroundColor: Colors.white,
-  backgroundColor: Colors.white.withValues(alpha: 0.18),
-  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-);
+final _chapterPrimaryButtonStyle = ReaderChrome.filledActionStyle;
 
 /// Action buttons shown in chapter dividers: catalog and comments.
 class _ChapterDividerActions extends StatelessWidget {
@@ -87,7 +78,7 @@ class _ChapterDivider extends StatelessWidget {
       ),
     );
     return ColoredBox(
-      color: Colors.black,
+      color: ReaderChrome.surface,
       child: SizedBox(
         width: isHorizontalScroll ? tailExtent : null,
         height: isHorizontalScroll ? null : _chapterBridgeStripHeight,
@@ -130,7 +121,7 @@ class _LoadMoreTail extends StatelessWidget {
               onCatalog: onCatalog,
               onComments: onComments,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             if (isLoading)
               const SizedBox(
                 width: 14,
@@ -143,14 +134,14 @@ class _LoadMoreTail extends StatelessWidget {
               isLoading
                   ? l10n.readerLoadingNextChapter
                   : l10n.readerContinueScrollLoadNext,
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
             ),
           ],
         ),
       ),
     );
     return ColoredBox(
-      color: Colors.black,
+      color: ReaderChrome.surface,
       child: SizedBox(
         width: isHorizontalScroll ? tailExtent : null,
         // 与 _ChapterDivider 同高，追加下一话时不产生高度差跳动。
@@ -177,7 +168,10 @@ class _FirstChapterHead extends StatelessWidget {
     final message = Center(
       child: Text(
         l10n.readerAlreadyFirstChapter,
-        style: const TextStyle(color: Colors.white54, fontSize: 14),
+        style: const TextStyle(
+          color: ReaderChrome.onSurfaceSubtle,
+          fontSize: 14,
+        ),
       ),
     );
 
@@ -262,7 +256,7 @@ class _PageModeEndActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return ColoredBox(
-      color: Colors.black,
+      color: ReaderChrome.surface,
       child: SafeArea(
         top: false,
         child: Padding(
@@ -284,7 +278,10 @@ class _PageModeEndActions extends StatelessWidget {
                     hasNext
                         ? l10n.readerContinuePageNextChapter
                         : l10n.readerAlreadyLastChapter,
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    style: const TextStyle(
+                      color: ReaderChrome.onSurfaceSubtle,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -330,13 +327,13 @@ class _NextChapterTail extends StatelessWidget {
                 : l10n.readerAlreadyLastChapter,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Colors.white70,
+              color: ReaderChrome.onSurfaceMuted,
               fontSize: 16,
               height: 1.6,
               letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _ChapterEndActionsRow(
             hasNext: hasNext,
             commentCount: commentCount,
@@ -349,7 +346,7 @@ class _NextChapterTail extends StatelessWidget {
     );
 
     return ColoredBox(
-      color: Colors.black,
+      color: ReaderChrome.surface,
       child: SizedBox(
         width: isHorizontalScroll ? tailExtent : null,
         height: isHorizontalScroll ? null : tailExtent,

@@ -77,7 +77,7 @@ BoxDecoration _buildMergedCountTagDecoration(
   if (!isHot) {
     return BoxDecoration(
       color: colorScheme.primary,
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: AppRadius.fullR,
     );
   }
 
@@ -87,7 +87,7 @@ BoxDecoration _buildMergedCountTagDecoration(
       _hotCommentAccentColor,
       0.08,
     ),
-    borderRadius: BorderRadius.circular(999),
+    borderRadius: AppRadius.fullR,
     border: Border.all(color: _hotCommentAccentColor.withValues(alpha: 0.58)),
   );
 }

@@ -13,6 +13,7 @@ import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../repositories/search_init_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
@@ -400,7 +401,7 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -418,7 +419,7 @@ class _SearchPageState extends State<SearchPage> {
                             )
                             .toList(),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpacing.xl),
                     ],
                   ),
                 ),
@@ -443,7 +444,7 @@ class _SearchPageState extends State<SearchPage> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.sm),
                           Text(
                             l10n.tagCount(_tags.length),
                             style: tt.bodySmall?.copyWith(
@@ -452,7 +453,7 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                       Wrap(
                         spacing: _tagSpacing,
                         runSpacing: _tagSpacing,
@@ -470,7 +471,7 @@ class _SearchPageState extends State<SearchPage> {
                               ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                     ],
                   ),
                 ),
@@ -501,7 +502,7 @@ class _SearchPageState extends State<SearchPage> {
                           _loadComics();
                         },
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                     ],
                   ),
                 ),

@@ -12,6 +12,8 @@ import '../models/comic.dart' as comic_model;
 import '../models/comic.dart' hide Theme;
 import '../repositories/comic_detail_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
@@ -776,9 +778,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                     size: 48,
                     color: cs.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Text(AppLocalizations.of(context)!.loadingFailed),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   FilledButton.tonal(
                     onPressed: _loadComic,
                     child: Text(AppLocalizations.of(context)!.retryButton),
@@ -903,7 +905,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         padding: EdgeInsets.zero,
         backgroundColor: cs.surfaceContainerHigh,
         foregroundColor: cs.onSurfaceVariant,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Tooltip(
@@ -1056,7 +1058,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       duration: const Duration(milliseconds: 160),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.mdR,
         border: Border.all(
           color: isSelected
               ? cs.primary
@@ -1080,9 +1082,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         children: [
           Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.mdR,
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.mdR,
               onTap: () {
                 if (_selectionMode) {
                   _toggleChapterSelection(chapter);
@@ -1120,7 +1122,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         textAlign: TextAlign.center,
                         style: tt.labelSmall?.copyWith(
                           color: subtitleColor,
-                          fontSize: 10,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -1251,7 +1253,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                   _hero(
                     ComicHeroTags.cover,
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.mdR,
                       child: CoverBrightnessFilter(
                         child: CachedNetworkImage(
                           imageUrl: comic.cover,
@@ -1278,7 +1280,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.lg),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1291,7 +1293,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                         if (authors.isNotEmpty) ...[
                           Wrap(
                             spacing: 6,
@@ -1318,7 +1320,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.sm),
                         ] else if (comic.status != null ||
                             comic.region != null) ...[
                           Wrap(
@@ -1341,7 +1343,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.sm),
                         ],
                         if (comic.themes.isNotEmpty)
                           Wrap(
@@ -1366,7 +1368,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                 size: 16,
                                 color: cs.primary,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Text(
                                 _formatPopular(context, comic.popular),
                                 style: tt.bodySmall?.copyWith(
@@ -1377,7 +1379,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           ),
                         ],
                         if (comic.datetimeUpdated != null) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Row(
                             children: [
                               Icon(
@@ -1385,7 +1387,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                 size: 16,
                                 color: cs.onSurfaceVariant,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Text(
                                 TimeFormat.relativeOf(
                                   comic.datetimeUpdated!,
@@ -1482,7 +1484,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           children: List.generate(_totalPages, (i) {
                             final isSelected = i == _chapterPage;
                             final pageButtonShape = RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: AppRadius.mdR,
                             );
                             return Padding(
                               padding: const EdgeInsets.symmetric(
@@ -1617,7 +1619,7 @@ class _InfoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgR,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1627,7 +1629,7 @@ class _InfoChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: textColor,
               fontWeight: FontWeight.w500,
             ),
@@ -1650,10 +1652,10 @@ class _AuthorChip extends StatelessWidget {
 
     return Material(
       color: cs.primaryContainer,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppRadius.lgR,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgR,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
@@ -1671,7 +1673,7 @@ class _AuthorChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: cs.onPrimaryContainer,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1702,10 +1704,10 @@ class _ThemeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: color,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppRadius.lgR,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgR,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
@@ -1719,7 +1721,7 @@ class _ThemeChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: textColor,
                     fontWeight: FontWeight.w500,
                   ),

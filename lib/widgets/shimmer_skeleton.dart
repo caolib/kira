@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_spacing.dart';
+
 /// A pulsing skeleton placeholder that animates between two alpha levels.
 ///
 /// Wraps any child with a shimmer-like fade animation. Use the provided
@@ -102,7 +104,7 @@ class ComicCoverSkeletonGrid extends StatelessWidget {
               ),
               SizedBox(height: 6),
               ShimmerBox(height: 12),
-              SizedBox(height: 4),
+              SizedBox(height: AppSpacing.xs),
               ShimmerBox(width: 60, height: 10),
             ],
           ),
@@ -145,7 +147,7 @@ class ComicRowSkeletonList extends StatelessWidget {
                     ),
                     SizedBox(height: 6),
                     ShimmerBox(height: 12),
-                    SizedBox(height: 4),
+                    SizedBox(height: AppSpacing.xs),
                     ShimmerBox(width: 50, height: 10),
                   ],
                 ),

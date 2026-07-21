@@ -150,7 +150,7 @@ class _InlineSearchPanel extends StatelessWidget {
       initiallyExpanded: !hasResults && !collapsedByBinding,
       collapseRevision: collapseRevision,
       trailing: loadedDanmakuCount > 0
-          ? const _CheckedTag(
+            ? const _CheckedTag(
               label: '',
               foreground: Colors.white,
               background: Colors.green,
@@ -264,7 +264,7 @@ class _InlineSearchPanel extends StatelessWidget {
                   Divider(
                     height: 1,
                     thickness: 1,
-                    color: Colors.black.withValues(alpha: 0.08),
+                    color: cs.outlineVariant,
                   ),
               ],
             ],

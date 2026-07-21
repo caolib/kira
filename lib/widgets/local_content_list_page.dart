@@ -6,6 +6,8 @@ import 'package:material3_expressive_loading_indicator/material3_expressive_load
 import 'package:path_provider/path_provider.dart';
 
 import '../l10n/app_localizations.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/anime_download_manager.dart' show LocalAnimeEntry;
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart' show LocalComicEntry;
@@ -238,7 +240,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
                   size: 56,
                   color: cs.onSurfaceVariant,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text(widget.emptyTitle, style: tt.titleMedium),
                 const SizedBox(height: 6),
                 Text(
@@ -387,12 +389,12 @@ class _LocalContentCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgR,
         onTap: onTap,
         onLongPress: onLongPress,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.lgR,
             border: Border.all(
               color: selected ? cs.primary : Colors.transparent,
               width: 1.5,
@@ -405,7 +407,7 @@ class _LocalContentCard extends StatelessWidget {
                 child: Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppRadius.lgR,
                       child: SizedBox.expand(
                         child: coverPath != null && File(coverPath).existsSync()
                             ? CoverBrightnessFilter(
@@ -465,7 +467,7 @@ class _LocalContentCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 11,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -473,7 +475,7 @@ class _LocalContentCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 entry.name,
                 maxLines: 1,

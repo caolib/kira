@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/toast.dart';
 
 class RegisterPrefill {
@@ -194,12 +196,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 labelText: AppLocalizations.of(context)!.profileUsernameLabel,
                 prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _passwordCtrl,
               obscureText: _obscure,
@@ -213,12 +215,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _confirmPasswordCtrl,
               obscureText: _obscure,
@@ -228,12 +230,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 )!.profileConfirmPasswordLabel,
                 prefixIcon: const Icon(Icons.lock_reset_outlined),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             if (_loadingQuestions)
               const Center(child: ExpressiveLoadingIndicator())
             else ...[
@@ -246,7 +248,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   )!.profileSecurityQuestionLabel,
                   prefixIcon: const Icon(Icons.help_outline),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                 ),
                 items: _questions
@@ -259,7 +261,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     .toList(),
                 onChanged: (value) => setState(() => _selectedQuestion = value),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               TextField(
                 controller: _answerCtrl,
                 decoration: InputDecoration(
@@ -268,7 +270,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   )!.profileSecurityAnswerLabel,
                   prefixIcon: const Icon(Icons.shield_outlined),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                 ),
                 textInputAction: TextInputAction.done,
@@ -276,7 +278,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ],
             if (_error != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 _error!,
                 style: TextStyle(color: cs.error),
@@ -284,7 +286,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ],
             if (!_loadingQuestions && _questions.isEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextButton.icon(
                 onPressed: _loadQuestions,
                 icon: const Icon(Icons.refresh),
@@ -295,13 +297,13 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             FilledButton(
               onPressed: _submitting || _loadingQuestions ? null : _register,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               child: _submitting
@@ -315,7 +317,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       style: const TextStyle(fontSize: 16),
                     ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               AppLocalizations.of(context)!.profileOfficialRegisterPrompt,
               textAlign: TextAlign.center,
@@ -323,7 +325,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 context,
               ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,

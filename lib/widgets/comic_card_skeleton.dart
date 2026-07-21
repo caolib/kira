@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
+
 /// 漫画卡片骨架占位（封面 + 标题 + 副信息条），带呼吸式透明度动画。
 /// 用于网格列表的初始加载与加载更多状态。
 class ComicCardSkeleton extends StatefulWidget {
@@ -37,7 +40,7 @@ class _ComicCardSkeletonState extends State<ComicCardSkeleton>
               child: Container(
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
             ),
@@ -47,16 +50,16 @@ class _ComicCardSkeletonState extends State<ComicCardSkeleton>
               height: 12,
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadius.xsR,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Container(
               width: 60,
               height: 10,
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadius.xsR,
               ),
             ),
           ],

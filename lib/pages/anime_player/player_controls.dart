@@ -26,8 +26,8 @@ class _PlayerControlButton extends StatelessWidget {
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
         iconSize: iconSize,
-        color: Colors.white,
-        disabledColor: Colors.white38,
+        color: PlayerChrome.onSurface,
+        disabledColor: PlayerChrome.onSurfaceFaint,
       ),
     );
   }
@@ -63,7 +63,10 @@ class _PlayerSvgControlButton extends StatelessWidget {
           asset,
           width: iconSize,
           height: iconSize,
-          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          colorFilter: const ColorFilter.mode(
+            PlayerChrome.onSurface,
+            BlendMode.srcIn,
+          ),
         ),
       ),
     );
@@ -231,7 +234,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
               );
 
         return ColoredBox(
-          color: Colors.black,
+          color: PlayerChrome.surface,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -361,12 +364,15 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(8),
+                      color: PlayerChrome.scrim,
+                      borderRadius: PlayerChrome.hintR,
                     ),
                     child: Text(
                       '${_formatDuration(_dragTargetPosition!)} / ${_formatDuration(player.state.duration)}',
-                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                      style: const TextStyle(
+                        color: PlayerChrome.onSurface,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                 ),
@@ -375,8 +381,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(8),
+                      color: PlayerChrome.scrim,
+                      borderRadius: PlayerChrome.hintR,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -387,13 +393,13 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                     ? Icons.volume_mute
                                     : Icons.volume_up)
                               : Icons.brightness_6,
-                          color: Colors.white,
+                          color: PlayerChrome.onSurface,
                         ),
                         const SizedBox(width: 8),
                         Text(
                           '${((_currentVolume ?? _currentBrightness!) * 100).toInt()}%',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: PlayerChrome.onSurface,
                             fontSize: 18,
                           ),
                         ),
@@ -408,8 +414,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                     icon: const Icon(Icons.play_arrow),
                     iconSize: widget.fullscreen ? 56 : 44,
                     style: IconButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Colors.black54,
+                      foregroundColor: PlayerChrome.onSurface,
+                      backgroundColor: PlayerChrome.scrim,
                     ),
                   ),
                 ),
@@ -455,7 +461,10 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                           gradient: LinearGradient(
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
-                            colors: [Colors.transparent, Colors.black87],
+                            colors: [
+                              Colors.transparent,
+                              PlayerChrome.gradientEnd,
+                            ],
                           ),
                         ),
                         child: Padding(
@@ -472,7 +481,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                   tooltip: l10n.animePlayerExitFullscreen,
                                   onPressed: widget.onFullscreen,
                                   icon: const Icon(Icons.arrow_back),
-                                  color: Colors.white,
+                                  color: PlayerChrome.onSurface,
                                 )
                               else
                                 const SizedBox(width: 8),
@@ -483,7 +492,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: PlayerChrome.onSurface,
                                     fontSize: widget.fullscreen ? 16 : 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -513,7 +522,10 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black87],
+                            colors: [
+                              Colors.transparent,
+                              PlayerChrome.gradientEnd,
+                            ],
                           ),
                         ),
                         child: Padding(
@@ -562,7 +574,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                   activeColor: Theme.of(
                                     context,
                                   ).colorScheme.primary,
-                                  inactiveColor: Colors.white38,
+                                  inactiveColor: PlayerChrome.trackInactive,
                                 ),
                               ),
                               Row(
@@ -629,7 +641,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
                                     maxLines: 1,
                                     overflow: TextOverflow.clip,
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: PlayerChrome.onSurface,
                                       fontSize: widget.fullscreen ? 14 : 12,
                                       fontFeatures: const [
                                         FontFeature.tabularFigures(),
@@ -800,19 +812,19 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
         height: maxHeight,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xE6121212),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            color: PlayerChrome.panelSurface,
+            borderRadius: PlayerChrome.panelR,
+            border: Border.all(color: PlayerChrome.borderStrong),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
+                color: PlayerChrome.panelShadow,
                 blurRadius: 24,
                 offset: const Offset(-4, 0),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: PlayerChrome.panelR,
             child: Column(
               children: [
                 SizedBox(
@@ -835,7 +847,7 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: PlayerChrome.onSurface,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
@@ -845,7 +857,7 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
                           tooltip: l10n.closeButton,
                           onPressed: widget.onClose,
                           icon: const Icon(Icons.close_rounded),
-                          color: Colors.white70,
+                          color: PlayerChrome.onSurfaceMuted,
                           iconSize: 20,
                         ),
                       ],
@@ -855,7 +867,7 @@ class _PlayerPlaylistOverlayState extends State<_PlayerPlaylistOverlay> {
                 Divider(
                   height: 1,
                   thickness: 1,
-                  color: Colors.white.withValues(alpha: 0.10),
+                  color: PlayerChrome.divider,
                 ),
                 Expanded(
                   child: GridView.builder(
@@ -910,16 +922,16 @@ class _PlayerPlaylistChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? primary : Colors.white.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(10),
+      color: selected ? primary : PlayerChrome.fillFaint,
+      borderRadius: PlayerChrome.chipR,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: PlayerChrome.chipR,
         onTap: onTap,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: PlayerChrome.chipR,
             border: Border.all(
-              color: selected ? primary : Colors.white.withValues(alpha: 0.14),
+              color: selected ? primary : PlayerChrome.borderFaint,
               width: selected ? 1.4 : 0.8,
             ),
           ),
@@ -932,7 +944,7 @@ class _PlayerPlaylistChip extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: selected ? onPrimary : Colors.white,
+                  color: selected ? onPrimary : PlayerChrome.onSurface,
                   fontSize: 14,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),

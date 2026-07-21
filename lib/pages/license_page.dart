@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../theme/app_spacing.dart';
 
 /// 显示本项目（kira）自身的开源许可证。
 class ProjectLicensePage extends StatelessWidget {
@@ -24,7 +25,7 @@ class ProjectLicensePage extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(Icons.copyright_outlined, color: cs.primary),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(l10n.licenseMitSummary, style: tt.titleMedium),
                   ),
@@ -32,7 +33,7 @@ class ProjectLicensePage extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           SelectableText(
             _licenseText,
             style: TextStyle(

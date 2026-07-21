@@ -6,6 +6,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
+import '../theme/app_spacing.dart';
+import '../utils/dialog_width.dart';
 import '../utils/media_kit_native_loader.dart';
 import '../utils/toast.dart';
 
@@ -84,7 +86,7 @@ Future<bool> _ensureInstalledWithProgress(
                 height: 28,
                 child: CircularProgressIndicator(strokeWidth: 2.5),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(child: Text(l10n.mediaKitDownloadStageLoad)),
             ],
           ),
@@ -132,7 +134,7 @@ class _MediaKitDownloadConfirmDialogState
     return AlertDialog(
       title: Text(l10n.mediaKitDownloadTitle),
       content: SizedBox(
-        width: 400,
+        width: dialogContentWidth(context, 400),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +145,7 @@ class _MediaKitDownloadConfirmDialogState
               ),
               style: tt.bodyMedium?.copyWith(height: 1.5),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               l10n.mediaKitDownloadSourceLabel,
               style: tt.labelLarge?.copyWith(
@@ -151,7 +153,7 @@ class _MediaKitDownloadConfirmDialogState
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             RadioGroup<MediaKitDownloadSource>(
               groupValue: _source,
               onChanged: (value) {
@@ -376,7 +378,7 @@ class _MediaKitDownloadProgressDialogState
             : l10n.mediaKitDownloadingTitle,
       ),
       content: SizedBox(
-        width: 360,
+        width: dialogContentWidth(context, 360),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,10 +409,10 @@ class _MediaKitDownloadProgressDialogState
                 '已用时 ${_formatElapsed(_elapsedSeconds)}',
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               LinearProgressIndicator(value: _fraction),
               if (_fraction != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   '${(_fraction! * 100).clamp(0, 100).toStringAsFixed(0)}%',
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),

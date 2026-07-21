@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../theme/app_spacing.dart';
 
 List<String> appDisclaimerItems(AppLocalizations l10n) => [
   l10n.appDisclaimerItem1,
@@ -29,11 +30,11 @@ class DisclaimerPage extends StatelessWidget {
             l10n.appDisclaimerIntro,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Card(
             color: cs.surfaceContainerLow,
-            shadowColor: Colors.black.withValues(alpha: 0.08),
-            elevation: 4,
+            shadowColor: cs.shadow,
+            elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -49,7 +50,7 @@ class DisclaimerPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                   ],
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     l10n.appDisclaimerFooter,
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),

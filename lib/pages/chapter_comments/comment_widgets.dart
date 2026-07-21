@@ -59,24 +59,24 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Container(
                   width: 100,
                   height: 14,
                   decoration: BoxDecoration(
                     color: cs.onSurfaceVariant.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppRadius.xsR,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Container(
               width: double.infinity,
               height: widget.compact ? 14 : 16,
               decoration: BoxDecoration(
                 color: cs.onSurfaceVariant.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadius.xsR,
               ),
             ),
             const SizedBox(height: 6),
@@ -85,10 +85,10 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
               height: widget.compact ? 14 : 16,
               decoration: BoxDecoration(
                 color: cs.onSurfaceVariant.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadius.xsR,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
           ],
         ),
       ),
@@ -166,7 +166,7 @@ class _CommentCardState extends State<_CommentCard> {
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       AppLocalizations.of(
                         context,
@@ -414,7 +414,7 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
                               visualDensity: VisualDensity.compact,
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpacing.xs),
                           Text(
                             AppLocalizations.of(
                               context,
@@ -443,7 +443,7 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
           }
         },
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadius.xsR,
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
@@ -526,7 +526,7 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
             ),
             const Spacer(),
             if (showCountTag) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               _MergedCommentCountTag(count: entry.count, compact: compact),
             ],
           ],
@@ -576,7 +576,7 @@ class _MergedCommentCountTag extends StatelessWidget {
                 size: iconSize,
                 color: colors.foreground,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
             ],
             Text(
               label,

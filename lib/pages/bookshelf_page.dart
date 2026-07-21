@@ -17,6 +17,7 @@ import '../providers/app_providers.dart';
 import '../providers/repository_providers.dart';
 import '../repositories/bookshelf_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
@@ -656,7 +657,7 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
                 onSelectionChanged: (v) => _setType(v.first),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
           Row(
             children: [
@@ -666,7 +667,7 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
                   selected: _showUpdateOnly,
                   onSelected: _setShowUpdateOnly,
                 ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Text(
                 _cacheTimeLabel,
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -720,7 +721,7 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
               selected: _ordering == ApiOrdering.datetimeBrowse,
               onTap: () => _setOrdering(context, ApiOrdering.datetimeBrowse),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),
@@ -736,17 +737,17 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.bookmark_border, size: 64, color: cs.onSurfaceVariant),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             l10n.bookshelfEmpty,
             style: tt.titleMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             l10n.goFindSomething(_typeLabel(l10n)),
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           FilledButton.tonalIcon(
             onPressed: _load,
             icon: const Icon(Icons.refresh),
@@ -769,7 +770,7 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
             size: 48,
             color: cs.onSurfaceVariant,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Text(
             AppLocalizations.of(context)!.noComicUpdates,
             style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
@@ -946,7 +947,7 @@ class _UpdateBadge extends StatelessWidget {
           AppLocalizations.of(context)!.updateBadge,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1019,11 +1020,11 @@ class _AnimeBookshelfCard extends StatelessWidget {
                 ),
                 style: tt.labelSmall?.copyWith(
                   color: cs.onSurfaceVariant,
-                  fontSize: 10,
+                  fontSize: 12,
                 ),
               ),
               if (meta.isNotEmpty) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     meta,
@@ -1031,7 +1032,7 @@ class _AnimeBookshelfCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: tt.labelSmall?.copyWith(
                       color: cs.onSurfaceVariant,
-                      fontSize: 10,
+                      fontSize: 12,
                     ),
                   ),
                 ),

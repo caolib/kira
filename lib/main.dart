@@ -14,6 +14,7 @@ import 'api/copy_settings_auto_updater.dart';
 import 'l10n/app_localizations.dart';
 import 'models/user_manager.dart';
 import 'routing/app_router.dart';
+import 'theme/app_radius.dart';
 import 'utils/app_logger.dart';
 import 'utils/display_mode_preference.dart';
 import 'utils/font_manager.dart';
@@ -125,7 +126,7 @@ class _KiraAppState extends ConsumerState<KiraApp> {
 
   static final _cardTheme = CardThemeData(
     clipBehavior: Clip.hardEdge,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    shape: RoundedRectangleBorder(borderRadius: AppRadius.lgR),
     elevation: 0,
   );
 

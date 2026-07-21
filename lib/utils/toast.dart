@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
+import 'adaptive_motion.dart';
+
 /// 顶部气泡式通知
 void showToast(BuildContext context, String message, {bool isError = false}) {
   final overlay = Overlay.of(context);
@@ -53,6 +58,9 @@ class _ToastWidgetState extends State<_ToastWidget>
   Timer? _timer;
   bool _removed = false;
 
+  Duration get _displayDuration =>
+      widget.isError ? const Duration(seconds: 4) : const Duration(seconds: 2);
+
   @override
   void initState() {
     super.initState();
@@ -66,8 +74,16 @@ class _ToastWidgetState extends State<_ToastWidget>
     ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
     _fade = CurvedAnimation(parent: _anim, curve: Curves.easeIn);
 
-    _anim.forward();
-    _timer = Timer(const Duration(seconds: 2), _dismiss);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final reduced = prefersReducedMotion(context);
+      if (reduced) {
+        _anim.value = 1;
+      } else {
+        _anim.forward();
+      }
+      _timer = Timer(_displayDuration, _dismiss);
+    });
     widget.controller.dismiss = _dismiss;
   }
 
@@ -75,6 +91,14 @@ class _ToastWidgetState extends State<_ToastWidget>
     if (_removed) return;
     _removed = true;
     _timer?.cancel();
+    if (!mounted) {
+      widget.onDismiss();
+      return;
+    }
+    if (prefersReducedMotion(context)) {
+      widget.onDismiss();
+      return;
+    }
     _anim.reverse().then((_) {
       if (mounted) widget.onDismiss();
     });
@@ -95,11 +119,13 @@ class _ToastWidgetState extends State<_ToastWidget>
     final icon = widget.isError
         ? Icons.error_outline
         : Icons.check_circle_outline;
+    final media = MediaQuery.of(context);
+    final textScale = media.textScaler.scale(14).clamp(14.0, 20.0);
 
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 16,
-      left: 0,
-      right: 0,
+      top: media.padding.top + 16,
+      left: media.padding.left,
+      right: media.padding.right,
       child: Center(
         child: SlideTransition(
           position: _slide,
@@ -107,41 +133,39 @@ class _ToastWidgetState extends State<_ToastWidget>
             opacity: _fade,
             child: GestureDetector(
               onTap: _dismiss,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width - 48,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: bg,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(icon, color: fg, size: 20),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          widget.message,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: fg, fontSize: 14),
+              child: Semantics(
+                liveRegion: true,
+                label: widget.message,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: media.size.width - 48,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: AppRadius.mdR,
+                      boxShadow: AppShadows.md(cs),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(icon, color: fg, size: 20),
+                        const SizedBox(width: AppSpacing.sm),
+                        Flexible(
+                          child: Text(
+                            widget.message,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: fg, fontSize: textScale),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

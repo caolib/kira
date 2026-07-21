@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../theme/app_spacing.dart';
 
 /// A centered error state with icon, message, and retry button.
 ///
@@ -33,9 +34,9 @@ class ErrorRetryView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 64, color: cs.onSurfaceVariant),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Text(resolvedMessage, style: tt.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           FilledButton.tonal(
             onPressed: onRetry,
             child: Text(resolvedRetryLabel),

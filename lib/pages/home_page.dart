@@ -14,6 +14,8 @@ import '../providers/app_providers.dart';
 import '../providers/repository_providers.dart';
 import '../repositories/manga_home_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_hero_tags.dart';
@@ -214,12 +216,12 @@ class _HomePageState extends ConsumerState<HomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
                 AppLocalizations.of(context)!.loadingFailed,
                 style: tt.titleMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               FilledButton.tonal(
                 onPressed: _load,
                 child: Text(AppLocalizations.of(context)!.retryButton),
@@ -485,7 +487,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   size: 64,
                   color: cs.onSurfaceVariant,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text(l10n.noContent, style: tt.titleMedium),
               ],
             ),
@@ -660,7 +662,7 @@ class _MangaBannerCarouselState extends State<_MangaBannerCarousel> {
                       color: i == _page % widget.items.length
                           ? cs.primary
                           : cs.onSurfaceVariant.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: AppRadius.fullR,
                     ),
                   ),
               ],
@@ -873,7 +875,7 @@ class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
           color: cs.surfaceContainerLow,
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.smR,
             side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.72)),
           ),
           child: Column(
@@ -886,7 +888,7 @@ class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
                   child: Row(
                     children: [
                       Icon(widget.icon, size: 20, color: cs.primary),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           widget.title,
@@ -1126,7 +1128,7 @@ class _CopyRankingTabsState extends State<_CopyRankingTabs>
         DecoratedBox(
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest.withValues(alpha: 0.44),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.smR,
           ),
           child: TabBar(
             controller: _controller,
@@ -1134,7 +1136,7 @@ class _CopyRankingTabsState extends State<_CopyRankingTabs>
             dividerColor: Colors.transparent,
             indicator: BoxDecoration(
               color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppRadius.smR,
             ),
             indicatorPadding: const EdgeInsets.all(4),
             indicatorSize: TabBarIndicatorSize.tab,
@@ -1142,7 +1144,7 @@ class _CopyRankingTabsState extends State<_CopyRankingTabs>
             unselectedLabelColor: cs.onSurfaceVariant,
             labelStyle: tt.labelMedium?.copyWith(fontWeight: FontWeight.bold),
             unselectedLabelStyle: tt.labelMedium,
-            splashBorderRadius: BorderRadius.circular(8),
+            splashBorderRadius: AppRadius.smR,
             tabs: [
               Tab(text: l10n.dayRank),
               Tab(text: l10n.weekRank),
@@ -1150,7 +1152,7 @@ class _CopyRankingTabsState extends State<_CopyRankingTabs>
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         _CopyTwoRowComicGrid(
           items: items,
           onTap: widget.onTap,
@@ -1302,11 +1304,11 @@ class _MangaCard extends StatelessWidget {
                   ComicCard.formatPopular(comic.popular, l10n),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
-                    fontSize: 10,
+                    fontSize: 12,
                   ),
                 ),
                 if (comic.authors.isNotEmpty) ...[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
                       comic.authors.map((a) => a.name).join(' / '),
@@ -1314,7 +1316,7 @@ class _MangaCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: tt.labelSmall?.copyWith(
                         color: cs.onSurfaceVariant,
-                        fontSize: 10,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -1492,17 +1494,17 @@ class ComicCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
-                    fontSize: 10,
+                    fontSize: 12,
                   ),
                 ),
               ),
               if (comic.datetimeUpdated != null) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 Text(
                   TimeFormat.relativeOf(comic.datetimeUpdated!, l10n),
                   style: tt.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
-                    fontSize: 10,
+                    fontSize: 12,
                   ),
                 ),
               ],

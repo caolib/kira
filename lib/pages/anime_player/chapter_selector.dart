@@ -72,7 +72,7 @@ class _AnimeChapterCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
+            color: cs.shadow.withValues(
               alpha: brightness == Brightness.dark ? 0.30 : 0.14,
             ),
             blurRadius: brightness == Brightness.dark ? 12 : 14,

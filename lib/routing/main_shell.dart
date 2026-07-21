@@ -7,7 +7,11 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
+import '../utils/adaptive_motion.dart';
 import '../utils/app_update.dart';
+import '../utils/dialog_width.dart';
 import '../utils/remote_notice_service.dart';
 
 // Navigation key → branch index mapping.
@@ -273,15 +277,26 @@ class _MainShellState extends State<MainShell> {
     required int selectedIndex,
     required AppLocalizations l10n,
   }) {
-    return NavigationBar(
-      selectedIndex: selectedIndex,
-      onDestinationSelected: (index) =>
-          _goToDestination(orderedKeys, index, resetIfSelected: true),
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: [
-        for (final key in orderedKeys)
-          _buildClassicDestination(key: key, label: _navLabel(l10n, key)),
-      ],
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surfaceContainer,
+      elevation: 3,
+      shadowColor: AppShadows.floatingTint(),
+      child: SafeArea(
+        top: false,
+        child: NavigationBar(
+          selectedIndex: selectedIndex,
+          onDestinationSelected: (index) =>
+              _goToDestination(orderedKeys, index, resetIfSelected: true),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            for (final key in orderedKeys)
+              _buildClassicDestination(key: key, label: _navLabel(l10n, key)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -312,38 +327,54 @@ class _MainShellState extends State<MainShell> {
     required bool showSelectedLabel,
   }) {
     final cs = Theme.of(context).colorScheme;
+    // icon scales with text size; padding caps at 1.2 so large-text users
+    // don't blow up capsule height past SafeArea.
+    final textScale = MediaQuery.textScalerOf(
+      context,
+    ).scale(1).clamp(1.0, 1.35);
+    final cappedScale = textScale > 1.2 ? 1.2 : textScale;
+    final iconSize = 24.0 * textScale;
+    final hPad = (showSelectedLabel ? 16.0 : 18.0) * cappedScale;
+    final vPad = 12.0 * cappedScale;
+    final gap = showSelectedLabel ? 8.0 * cappedScale : 0.0;
+    final reducedMotion = prefersReducedMotion(context);
     return Material(
       color: cs.surfaceContainer,
       elevation: 3,
-      shadowColor: Colors.black.withValues(alpha: 0.15),
+      shadowColor: AppShadows.floatingTint(),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: 12 * textScale,
+            vertical: 10 * textScale,
+          ),
           child: GNav(
             selectedIndex: selectedIndex,
             onTabChange: (index) =>
                 _goToDestination(orderedKeys, index, resetIfSelected: true),
-            gap: showSelectedLabel ? 8 : 0,
-            iconSize: 24,
+            gap: gap,
+            iconSize: iconSize,
             // Match Bettbox's capsule indicator timing/feel.
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
+            duration: adaptiveDuration(
+              context,
+              const Duration(milliseconds: 250),
+            ),
+            // Linear when reduced motion to avoid residual easing drift.
+            curve: reducedMotion ? Curves.linear : Curves.easeInOut,
             color: cs.onSurfaceVariant,
             activeColor: cs.onSecondaryContainer,
             tabBackgroundColor: cs.secondaryContainer,
             rippleColor: cs.onSurface.withValues(alpha: 0.12),
             hoverColor: cs.onSurface.withValues(alpha: 0.08),
-            padding: EdgeInsets.symmetric(
-              horizontal: showSelectedLabel ? 16 : 18,
-              vertical: 12,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             tabs: [
               for (final key in orderedKeys)
                 _buildGButton(
                   key: key,
                   label: showSelectedLabel ? _navLabel(l10n, key) : '',
+                  iconSize: iconSize,
                 ),
             ],
           ),
@@ -352,7 +383,11 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  GButton _buildGButton({required String key, required String label}) {
+  GButton _buildGButton({
+    required String key,
+    required String label,
+    required double iconSize,
+  }) {
     final item = _navItemData[key]!;
     if (key != 'profile') {
       return GButton(icon: item.selectedIcon, text: label);
@@ -361,7 +396,9 @@ class _MainShellState extends State<MainShell> {
     return GButton(
       icon: item.selectedIcon,
       text: label,
-      leading: _NoticeBadgeIcon(child: Icon(item.selectedIcon, size: 24)),
+      leading: _NoticeBadgeIcon(
+        child: Icon(item.selectedIcon, size: iconSize),
+      ),
     );
   }
 }
@@ -392,6 +429,7 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
 
   int? _outgoingIndex;
   double _direction = 1;
+  bool _reduceMotion = false;
 
   @override
   void initState() {
@@ -407,6 +445,13 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = prefersReducedMotion(context);
+    _controller.duration = _reduceMotion ? Duration.zero : _duration;
+  }
+
+  @override
   void didUpdateWidget(covariant _AnimatedBranchContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex == widget.currentIndex) return;
@@ -416,6 +461,11 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     final newPosition = _branchPosition(widget.currentIndex, orderedKeys);
     _outgoingIndex = oldWidget.currentIndex;
     _direction = newPosition >= oldPosition ? 1 : -1;
+    if (_reduceMotion) {
+      _controller.value = 1;
+      _outgoingIndex = null;
+      return;
+    }
     _controller.forward(from: 0);
   }
 
@@ -459,7 +509,9 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     // - incoming starts at +direction and settles at 0
     // - outgoing starts at 0 and exits to -direction
     final double dx;
-    if (isCurrent) {
+    if (_reduceMotion) {
+      dx = 0;
+    } else if (isCurrent) {
       dx = (1 - _animation.value) * _direction;
     } else if (isOutgoing) {
       dx = -_animation.value * _direction;
@@ -512,13 +564,15 @@ class _BadgeIcon extends StatelessWidget {
         Positioned(
           right: -2,
           top: -2,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: cs.primary,
-              shape: BoxShape.circle,
-              border: Border.all(color: cs.surface, width: 1.2),
+          child: ExcludeSemantics(
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: cs.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: cs.surface, width: 1.2),
+              ),
             ),
           ),
         ),
@@ -573,7 +627,7 @@ class _DisclaimerDialogState extends State<_DisclaimerDialog> {
       child: AlertDialog(
         title: Text(l10n.disclaimerTitle),
         content: SizedBox(
-          width: 420,
+          width: dialogContentWidth(context, 420),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,9 +646,9 @@ class _DisclaimerDialogState extends State<_DisclaimerDialog> {
                             Expanded(child: Text(item, style: tt.bodyMedium)),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                       ],
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         l10n.disclaimerAgreeNote,
                         style: tt.bodySmall?.copyWith(
@@ -605,7 +659,7 @@ class _DisclaimerDialogState extends State<_DisclaimerDialog> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               CheckboxListTile(
                 value: _accepted,
                 contentPadding: EdgeInsets.zero,

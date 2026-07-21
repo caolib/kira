@@ -6,7 +6,9 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
+import '../utils/dialog_width.dart';
 import '../utils/settings_backup.dart';
 import '../utils/toast.dart';
 
@@ -318,7 +320,7 @@ class _GeneralPageState extends State<GeneralPage> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Card(
             color: cs.errorContainer.withValues(alpha: 0.7),
             child: Padding(
@@ -410,7 +412,7 @@ class _ExportSettingsDialogState extends State<_ExportSettingsDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(l10n.exportSettingsContent(exportedCount)),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.includeSensitiveSettingsTitle),
@@ -475,7 +477,7 @@ class _ImportSettingsDialogState extends State<_ImportSettingsDialog> {
     return AlertDialog(
       title: Text(l10n.importSettingsTitle),
       content: SizedBox(
-        width: 420,
+        width: dialogContentWidth(context, 420),
         child: TextField(
           controller: _controller,
           autofocus: true,
@@ -539,15 +541,15 @@ class _ResetAppDialogState extends State<_ResetAppDialog> {
     return AlertDialog(
       title: Text(l10n.confirmResetAppTitle),
       content: SizedBox(
-        width: 420,
+        width: dialogContentWidth(context, 420),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l10n.resetAppWarning),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(l10n.resetAppInstruction(requiredText)),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _controller,
               autofocus: true,

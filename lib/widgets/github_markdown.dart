@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
+
 class GitHubMarkdown extends StatelessWidget {
   const GitHubMarkdown({
     super.key,
@@ -27,7 +30,7 @@ class GitHubMarkdown extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < blocks.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
+          if (i > 0) const SizedBox(height: AppSpacing.sm),
           switch (blocks[i]) {
             _MarkdownTextBlock(:final text) => MarkdownBody(
               data: text,
@@ -79,7 +82,7 @@ MarkdownStyleSheet githubMarkdownStyleSheet(
     ),
     codeblockDecoration: BoxDecoration(
       color: cs.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.smR,
     ),
     codeblockPadding: const EdgeInsets.all(12),
   );
@@ -203,7 +206,7 @@ class _GitHubAlertBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(meta.icon, size: 18, color: meta.color),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +220,7 @@ class _GitHubAlertBox extends StatelessWidget {
                   ),
                 ),
                 if (content.trim().isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   MarkdownBody(
                     data: content,
                     onTapLink: onTapLink ?? _openMarkdownLink,

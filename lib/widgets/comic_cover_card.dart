@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/comic.dart' hide Theme;
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_hero_tags.dart';
@@ -32,77 +34,91 @@ class ComicCoverCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final metaStyle = tt.labelSmall?.copyWith(
+      color: cs.onSurfaceVariant,
+      fontSize: 12,
+    );
 
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildHero(
-                ComicHeroTags.cover,
-                Card(
-                  clipBehavior: Clip.antiAlias,
-                  margin: EdgeInsets.zero,
-                  child: CoverBrightnessFilter(
-                    child: CachedNetworkImage(
-                      imageUrl: comic.cover,
-                      fit: BoxFit.cover,
-                      width: width ?? double.infinity,
-                      height: double.infinity,
-                      fadeInDuration: Duration.zero,
-                      fadeOutDuration: Duration.zero,
-                      placeholder: (_, _) => _imagePlaceholder(cs),
-                      errorWidget: (_, _, _) => _imageError(cs),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              comic.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: tt.bodySmall,
-            ),
-            const SizedBox(height: 2),
-            if (showPopular || showUpdateTime)
-              Row(
-                children: [
-                  if (showPopular) ...[
-                    Icon(
-                      Icons.local_fire_department,
-                      size: 12,
-                      color: cs.primary,
-                    ),
-                    const SizedBox(width: 2),
-                    Flexible(
-                      child: Text(
-                        formatPopular(comic.popular, l10n),
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 10,
+    final semanticsParts = <String>[comic.name];
+    if (showPopular) {
+      semanticsParts.add(formatPopular(comic.popular, l10n));
+    }
+    if (showUpdateTime && comic.datetimeUpdated != null) {
+      semanticsParts.add(TimeFormat.relativeOf(comic.datetimeUpdated!, l10n));
+    }
+
+    return Semantics(
+      button: true,
+      label: semanticsParts.join(', '),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.lgR,
+          child: SizedBox(
+            width: width,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _buildHero(
+                    ComicHeroTags.cover,
+                    Card(
+                      clipBehavior: Clip.antiAlias,
+                      margin: EdgeInsets.zero,
+                      child: CoverBrightnessFilter(
+                        child: CachedNetworkImage(
+                          imageUrl: comic.cover,
+                          fit: BoxFit.cover,
+                          width: width ?? double.infinity,
+                          height: double.infinity,
+                          fadeInDuration: Duration.zero,
+                          fadeOutDuration: Duration.zero,
+                          placeholder: (_, _) => _imagePlaceholder(cs),
+                          errorWidget: (_, _, _) => _imageError(cs),
                         ),
                       ),
                     ),
-                  ],
-                  if (showUpdateTime && comic.datetimeUpdated != null) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      TimeFormat.relativeOf(comic.datetimeUpdated!, l10n),
-                      style: tt.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-          ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  comic.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tt.bodySmall,
+                ),
+                const SizedBox(height: 2),
+                if (showPopular || showUpdateTime)
+                  Row(
+                    children: [
+                      if (showPopular) ...[
+                        Icon(
+                          Icons.local_fire_department,
+                          size: 12,
+                          color: cs.primary,
+                        ),
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(
+                            formatPopular(comic.popular, l10n),
+                            overflow: TextOverflow.ellipsis,
+                            style: metaStyle,
+                          ),
+                        ),
+                      ],
+                      if (showUpdateTime && comic.datetimeUpdated != null) ...[
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          TimeFormat.relativeOf(comic.datetimeUpdated!, l10n),
+                          style: metaStyle,
+                        ),
+                      ],
+                    ],
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

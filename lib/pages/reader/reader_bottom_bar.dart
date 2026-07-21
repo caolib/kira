@@ -58,10 +58,10 @@ class _ReaderBottomBar extends StatelessWidget {
       child: IgnorePointer(
         ignoring: !showToolbar,
         child: AnimatedSlide(
-          duration: const Duration(milliseconds: 200),
+          duration: adaptiveDuration(context, const Duration(milliseconds: 200)),
           offset: Offset(0, showToolbar ? 0 : slideOffset),
           child: Container(
-            color: Colors.black,
+            color: ReaderChrome.surface,
             child: SafeArea(
               top: false,
               child: Padding(
@@ -75,7 +75,7 @@ class _ReaderBottomBar extends StatelessWidget {
                         Text(
                           '$currentPage',
                           style: const TextStyle(
-                            color: Colors.white70,
+                            color: ReaderChrome.onSurfaceMuted,
                             fontSize: 12,
                           ),
                         ),
@@ -90,9 +90,9 @@ class _ReaderBottomBar extends StatelessWidget {
                                 tickMarkRadius: 2.5,
                               ),
                               activeTrackColor: colorScheme.primary,
-                              inactiveTrackColor: Colors.white24,
+                              inactiveTrackColor: ReaderChrome.trackInactive,
                               activeTickMarkColor: colorScheme.primary,
-                              inactiveTickMarkColor: Colors.white24,
+                              inactiveTickMarkColor: ReaderChrome.trackInactive,
                               thumbColor: colorScheme.primary,
                               overlayColor: colorScheme.primary.withValues(
                                 alpha: 0.2,
@@ -112,7 +112,7 @@ class _ReaderBottomBar extends StatelessWidget {
                         Text(
                           '$totalPage',
                           style: const TextStyle(
-                            color: Colors.white70,
+                            color: ReaderChrome.onSurfaceMuted,
                             fontSize: 12,
                           ),
                         ),
@@ -125,13 +125,18 @@ class _ReaderBottomBar extends StatelessWidget {
                         IconButton(
                           icon: Icon(
                             Icons.skip_previous,
-                            color: hasPrev ? Colors.white : Colors.white38,
+                            color: hasPrev
+                                ? ReaderChrome.onSurface
+                                : ReaderChrome.onSurfaceFaint,
                           ),
                           onPressed: onPrevChapter,
                           tooltip: l10n.readerPreviousChapter,
                         ),
                         IconButton(
-                          icon: const Icon(Icons.list, color: Colors.white),
+                          icon: const Icon(
+                            Icons.list,
+                            color: ReaderChrome.onSurface,
+                          ),
                           onPressed: onCatalog,
                           tooltip: l10n.chapterCommentsCatalog,
                         ),
@@ -152,36 +157,41 @@ class _ReaderBottomBar extends StatelessWidget {
                                         : colorScheme.primary.withValues(
                                             alpha: 0.4,
                                           ))
-                                  : Colors.white,
+                                  : ReaderChrome.onSurface,
                             ),
                             onPressed: onToggleAutoScroll,
                           ),
                         IconButton(
                           icon: Badge(
                             isLabelVisible: commentCount > 0,
-                            backgroundColor: Colors.white,
-                            textColor: Colors.black,
+                            backgroundColor: ReaderChrome.onSurface,
+                            textColor: ReaderChrome.surface,
                             label: Text(
                               '$commentCount',
-                              style: const TextStyle(fontSize: 10),
+                              style: const TextStyle(fontSize: 12),
                             ),
                             child: const Icon(
                               Icons.forum_outlined,
-                              color: Colors.white,
+                              color: ReaderChrome.onSurface,
                             ),
                           ),
                           onPressed: onComments,
                           tooltip: l10n.chapterCommentsTitle,
                         ),
                         IconButton(
-                          icon: const Icon(Icons.settings, color: Colors.white),
+                          icon: const Icon(
+                            Icons.settings,
+                            color: ReaderChrome.onSurface,
+                          ),
                           onPressed: onSettings,
                           tooltip: l10n.readerSettingsTitle,
                         ),
                         IconButton(
                           icon: Icon(
                             Icons.skip_next,
-                            color: hasNext ? Colors.white : Colors.white38,
+                            color: hasNext
+                                ? ReaderChrome.onSurface
+                                : ReaderChrome.onSurfaceFaint,
                           ),
                           onPressed: onNextChapter,
                           tooltip: l10n.chapterCommentsNext,

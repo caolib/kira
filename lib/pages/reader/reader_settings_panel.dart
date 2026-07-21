@@ -94,12 +94,12 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   l10n.readerSettingsTitle,
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 // 阅读模式
                 SizedBox(
                   width: double.infinity,
@@ -124,7 +124,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     },
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<int>(
@@ -153,7 +153,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     },
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 // 滚动设置
                 if (!isPageMode) ...[
                   _buildSectionHeader(l10n.readerScrollSection, cs, tt),
@@ -205,7 +205,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     Row(
                       children: [
                         const Icon(Icons.unfold_more, size: 18),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Text(
                           l10n.readerAutoScrollDistance,
                           style: tt.bodyMedium,
@@ -233,7 +233,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     Row(
                       children: [
                         const Icon(Icons.pause_circle_outline, size: 18),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Text(l10n.readerAutoScrollPause, style: tt.bodyMedium),
                         const Spacer(),
                         Text(
@@ -273,7 +273,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       Row(
                         children: [
                           const Icon(Icons.timer_outlined, size: 18),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.sm),
                           Text(
                             l10n.readerAutoResumeDelay,
                             style: tt.bodyMedium,
@@ -341,7 +341,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   Row(
                     children: [
                       const Icon(Icons.brightness_low, size: 18),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(l10n.readerDimming, style: tt.bodyMedium),
                       const Spacer(),
                       Text(
@@ -372,7 +372,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 Row(
                   children: [
                     const Icon(Icons.timer_outlined, size: 18),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(l10n.readerTimeout, style: tt.bodyMedium),
                     const Spacer(),
                     Text(
@@ -427,11 +427,11 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     );
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [
                     const Icon(Icons.refresh, size: 18),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(l10n.readerRetryCount, style: tt.bodyMedium),
                     const Spacer(),
                     Text(

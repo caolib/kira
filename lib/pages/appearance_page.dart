@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flex_color_picker/flex_color_picker.dart';
@@ -9,9 +10,12 @@ import '../l10n/app_localizations.dart';
 import '../main.dart' show isDesktop;
 import '../models/app_theme_option.dart';
 import '../models/user_manager.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/display_mode_preference.dart';
 import '../utils/font_manager.dart';
 import '../utils/toast.dart';
+import '../widgets/settings_section.dart';
 
 class AppearancePage extends StatefulWidget {
   const AppearancePage({super.key});
@@ -22,6 +26,7 @@ class AppearancePage extends StatefulWidget {
 
 class _AppearancePageState extends State<AppearancePage> {
   final _user = UserManager();
+  double? _previewCoverBrightness;
 
   static const _navMeta = {
     'comic': (Icons.menu_book_outlined, Icons.menu_book),
@@ -96,7 +101,7 @@ class _AppearancePageState extends State<AppearancePage> {
                     title: Text(_bottomNavLabelModeLabel(mode, l10n)),
                     subtitle: Text(_bottomNavLabelModeDesc(mode, l10n)),
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
               ],
             ),
           ),
@@ -126,7 +131,8 @@ class _AppearancePageState extends State<AppearancePage> {
   };
 
   /// Give the selected capsule a bit more room so icon+label doesn't overflow
-  /// the equally-split preview slots.
+  /// the equally-split preview slots. On narrow screens, fall back to a
+  /// scrollable min-width so labels can ellipsize instead of overflowing.
   List<double> _navPreviewItemWidths({
     required double availableWidth,
     required int itemCount,
@@ -134,7 +140,15 @@ class _AppearancePageState extends State<AppearancePage> {
     required BottomNavLabelMode labelMode,
   }) {
     if (itemCount <= 0) return const [];
+    final minWidth = switch (labelMode) {
+      BottomNavLabelMode.always => 56.0,
+      BottomNavLabelMode.selectedOnly => 48.0,
+      BottomNavLabelMode.hidden => 44.0,
+    };
     final equal = availableWidth / itemCount;
+    if (equal < minWidth) {
+      return List<double>.filled(itemCount, minWidth);
+    }
     if (labelMode != BottomNavLabelMode.selectedOnly ||
         selectedIndex < 0 ||
         selectedIndex >= itemCount ||
@@ -144,10 +158,10 @@ class _AppearancePageState extends State<AppearancePage> {
 
     final selectedWidth = (equal + 28).clamp(equal, availableWidth * 0.34);
     final remaining = availableWidth - selectedWidth;
-    final otherWidth = remaining / (itemCount - 1);
+    final otherWidth = (remaining / (itemCount - 1)).clamp(minWidth, equal);
     return [
       for (var i = 0; i < itemCount; i++)
-        i == selectedIndex ? selectedWidth.toDouble() : otherWidth,
+        i == selectedIndex ? selectedWidth.toDouble() : otherWidth.toDouble(),
     ];
   }
 
@@ -199,8 +213,9 @@ class _AppearancePageState extends State<AppearancePage> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final selectedVariant = _user.themeVariantOption;
-    final coverBrightnessPercent = (_user.darkModeCoverBrightness * 100)
-        .round();
+    final coverBrightness =
+        _previewCoverBrightness ?? _user.darkModeCoverBrightness;
+    final coverBrightnessPercent = (coverBrightness * 100).round();
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.appearanceTitle)),
@@ -237,7 +252,7 @@ class _AppearancePageState extends State<AppearancePage> {
                           size: 20,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppSpacing.lg),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,235 +318,191 @@ class _AppearancePageState extends State<AppearancePage> {
                     },
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
               ],
             ),
           ),
           if (isDesktop) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             _DesktopFontCard(user: _user),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _AppFontCard(user: _user),
-          const SizedBox(height: 8),
-          Card(
-            color: cs.surfaceContainerLow,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.switch_account_outlined,
-                        color: cs.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 16),
-                      Text(l10n.appearanceAppIcon),
-                    ],
+          const SizedBox(height: AppSpacing.sm),
+          SettingsSection(
+            icon: Icons.switch_account_outlined,
+            title: l10n.appearanceAppIcon,
+            description: l10n.appearanceAppIconRestartHint,
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                for (var i = 0; i < UserManager.appLogoPaths.length; i++)
+                  _LogoOptionTile(
+                    assetPath: UserManager.appLogoPaths[i],
+                    selected: _user.logoIndex == i,
+                    onTap: () => _switchLogo(i),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.appearanceAppIconRestartHint,
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 12,
-                    children: [
-                      for (var i = 0; i < UserManager.appLogoPaths.length; i++)
-                        _LogoOptionTile(
-                          assetPath: UserManager.appLogoPaths[i],
-                          selected: _user.logoIndex == i,
-                          onTap: () => _switchLogo(i),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
           if (DisplayModePreference.isSupportedPlatform) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Card(
               color: cs.surfaceContainerLow,
-              child: ListTile(
-                leading: Icon(
-                  Icons.monitor_heart_outlined,
-                  color: cs.onSurfaceVariant,
-                ),
-                title: Text(l10n.appearanceRefreshRateTitle),
-                trailing: Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+              child: SettingsTile(
+                icon: Icons.monitor_heart_outlined,
+                title: l10n.appearanceRefreshRateTitle,
                 onTap: _showDisplayModeSheet,
               ),
             ),
           ],
-          const SizedBox(height: 8),
-          Card(
-            color: cs.surfaceContainerLow,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.brightness_6, color: cs.onSurfaceVariant),
-                      const SizedBox(width: 16),
-                      Text(l10n.appearanceThemeMode),
+          const SizedBox(height: AppSpacing.sm),
+          SettingsSection(
+            icon: Icons.brightness_6,
+            title: l10n.appearanceThemeMode,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    segments: [
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        icon: const Icon(Icons.settings_brightness),
+                        label: Text(l10n.appearanceSystemMode),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        icon: const Icon(Icons.light_mode),
+                        label: Text(l10n.appearanceLightMode),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        icon: const Icon(Icons.dark_mode),
+                        label: Text(l10n.appearanceDarkMode),
+                      ),
                     ],
+                    selected: {_user.themeMode},
+                    onSelectionChanged: (v) => _user.setThemeMode(v.first),
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<ThemeMode>(
-                      segments: [
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          icon: const Icon(Icons.settings_brightness),
-                          label: Text(l10n.appearanceSystemMode),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          icon: const Icon(Icons.light_mode),
-                          label: Text(l10n.appearanceLightMode),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          icon: const Icon(Icons.dark_mode),
-                          label: Text(l10n.appearanceDarkMode),
-                        ),
-                      ],
-                      selected: {_user.themeMode},
-                      onSelectionChanged: (v) => _user.setThemeMode(v.first),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const Divider(height: 1),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.brightness_low_outlined,
+                      color: cs.onSurfaceVariant,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.brightness_low_outlined,
-                        color: cs.onSurfaceVariant,
+                    const SizedBox(width: AppSpacing.lg),
+                    Text(l10n.appearanceDarkCoverBrightness),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  l10n.appearanceDarkCoverBrightnessDesc,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: coverBrightness,
+                        min: UserManager.minDarkModeCoverBrightness,
+                        divisions:
+                            ((UserManager.maxDarkModeCoverBrightness -
+                                        UserManager
+                                            .minDarkModeCoverBrightness) /
+                                    0.05)
+                                .round(),
+                        label: '$coverBrightnessPercent%',
+                        onChanged: (value) {
+                          setState(() => _previewCoverBrightness = value);
+                        },
+                        onChangeEnd: (value) {
+                          setState(() => _previewCoverBrightness = null);
+                          unawaited(
+                            _user.setDarkModeCoverBrightness(value),
+                          );
+                        },
                       ),
-                      const SizedBox(width: 16),
-                      Text(l10n.appearanceDarkCoverBrightness),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.appearanceDarkCoverBrightnessDesc,
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Slider(
-                          value: _user.darkModeCoverBrightness,
-                          min: UserManager.minDarkModeCoverBrightness,
-                          divisions:
-                              ((UserManager.maxDarkModeCoverBrightness -
-                                          UserManager
-                                              .minDarkModeCoverBrightness) /
-                                      0.05)
-                                  .round(),
-                          label: '$coverBrightnessPercent%',
-                          onChanged: (value) {
-                            _user.setDarkModeCoverBrightness(value);
-                          },
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        '$coverBrightnessPercent%',
+                        textAlign: TextAlign.end,
+                        style: tt.labelLarge?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          '$coverBrightnessPercent%',
-                          textAlign: TextAlign.end,
-                          style: tt.labelLarge?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Card(
-            color: cs.surfaceContainerLow,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.palette_outlined, color: cs.onSurfaceVariant),
-                      const SizedBox(width: 16),
-                      Text(l10n.appearanceThemeStyle),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.appearanceCurrentStyle(
-                      selectedVariant.localizedLabel(l10n),
-                      selectedVariant.localizedDescription(l10n),
-                    ),
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      for (final option in appThemeVariantOptions)
-                        Tooltip(
-                          message: option.localizedDescription(l10n),
-                          child: ChoiceChip(
-                            label: Text(option.localizedLabel(l10n)),
-                            selected: _user.themeVariant == option.variant,
-                            onSelected: (_) =>
-                                _user.setThemeVariant(option.variant),
-                          ),
+          const SizedBox(height: AppSpacing.sm),
+          SettingsSection(
+            icon: Icons.palette_outlined,
+            title: l10n.appearanceThemeStyle,
+            description: l10n.appearanceCurrentStyle(
+              selectedVariant.localizedLabel(l10n),
+              selectedVariant.localizedDescription(l10n),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final option in appThemeVariantOptions)
+                      Tooltip(
+                        message: option.localizedDescription(l10n),
+                        child: ChoiceChip(
+                          label: Text(option.localizedLabel(l10n)),
+                          selected: _user.themeVariant == option.variant,
+                          onSelected: (_) =>
+                              _user.setThemeVariant(option.variant),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.appearanceThemeColor,
-                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.appearanceThemeColorDesc,
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      for (final option in appThemeOptions)
-                        _ThemeColorTile(
-                          color: option.seedColor,
-                          selected: _user.themeColor == option.id,
-                          onTap: () => _user.setThemeColor(option.id),
-                        ),
-                      _ThemeColorTile(
-                        color: _user.customThemeColor,
-                        selected: _user.themeColor == customThemeOptionId,
-                        onTap: _pickCustomThemeColor,
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  l10n.appearanceThemeColor,
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  l10n.appearanceThemeColorDesc,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final option in appThemeOptions)
+                      _ThemeColorTile(
+                        color: option.seedColor,
+                        selected: _user.themeColor == option.id,
+                        onTap: () => _user.setThemeColor(option.id),
+                      ),
+                    _ThemeColorTile(
+                      color: _user.customThemeColor,
+                      selected: _user.themeColor == customThemeOptionId,
+                      onTap: _pickCustomThemeColor,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -579,7 +550,7 @@ class _NavOrderDestination extends StatelessWidget {
                     color: selected
                         ? cs.secondaryContainer
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppRadius.lgR,
                   ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -591,7 +562,7 @@ class _NavOrderDestination extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(selectedIcon, color: foreground, size: 18),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Flexible(
                                 child: Text(
                                   label,
@@ -617,7 +588,7 @@ class _NavOrderDestination extends StatelessWidget {
               ),
             ),
             if (showUnderLabel) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 label,
                 maxLines: 1,
@@ -709,7 +680,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     l10n.appearanceRefreshRateLoadFailed(
                       (snapshot.error ?? l10n.appearanceUnknownError)
@@ -738,7 +709,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                   l10n.appearanceRefreshRateTitle,
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 ConstrainedBox(
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.sizeOf(context).height * 0.5,
@@ -774,7 +745,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                   ),
                 ),
                 if (isApplying) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
                       const SizedBox(
@@ -794,7 +765,7 @@ class _DisplayModeSheetState extends State<_DisplayModeSheet> {
                     ],
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   l10n.appearanceRefreshRateDesc,
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -822,47 +793,53 @@ class _ThemeColorTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final hex = _colorToHex(color);
 
-    return Material(
-      color: selected ? color.withValues(alpha: 0.14) : cs.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: selected ? color.withValues(alpha: 0.65) : cs.outlineVariant,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: hex,
+      child: Material(
+        color: selected ? color.withValues(alpha: 0.14) : cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.lgR,
+          side: BorderSide(
+            color: selected ? color.withValues(alpha: 0.65) : cs.outlineVariant,
+          ),
         ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: SizedBox(
-          width: 48,
-          height: 48,
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: AppRadius.lgR,
+          onTap: onTap,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: AppRadius.smR,
+                      ),
                     ),
                   ),
-                ),
-                if (selected)
-                  Positioned(
-                    top: 1,
-                    right: 1,
-                    child: Icon(
-                      Icons.check_circle,
-                      size: 16,
-                      color: cs.onPrimary,
-                      shadows: const [
-                        Shadow(blurRadius: 6, color: Colors.black26),
-                      ],
+                  if (selected)
+                    Positioned(
+                      top: 1,
+                      right: 1,
+                      child: Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: cs.onPrimary,
+                        shadows: const [
+                          Shadow(blurRadius: 6, color: Colors.black26),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -969,16 +946,16 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
             Row(
               children: [
                 Icon(Icons.font_download_outlined, color: cs.onSurfaceVariant),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.lg),
                 Text(l10n.appearanceAppFont),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Material(
               color: cs.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.mdR,
               child: InkWell(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mdR,
                 onTap: _applying ? null : _pickFont,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -986,7 +963,7 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                     border: Border.all(color: cs.outlineVariant),
                   ),
                   child: Row(
@@ -1084,20 +1061,20 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: l10n.appearanceSearchFont,
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                   ),
                   isDense: true,
                 ),
                 onChanged: (v) => setState(() => _query = v.trim()),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Flexible(
                 child: FutureBuilder<List<String>>(
                   future: widget.fontsFuture,
@@ -1187,31 +1164,37 @@ class _LogoOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final fileName = assetPath.split('/').last;
 
-    return Material(
-      color: selected ? cs.primary.withValues(alpha: 0.12) : cs.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: selected ? cs.primary : cs.outlineVariant,
-          width: selected ? 2 : 1,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: fileName,
+      child: Material(
+        color: selected ? cs.primary.withValues(alpha: 0.12) : cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.lgR,
+          side: BorderSide(
+            color: selected ? cs.primary : cs.outlineVariant,
+            width: selected ? 2 : 1,
+          ),
         ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Stack(
-            children: [
-              Image.asset(assetPath, width: 48, height: 48),
-              if (selected)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Icon(Icons.check_circle, size: 14, color: cs.primary),
-                ),
-            ],
+        child: InkWell(
+          borderRadius: AppRadius.lgR,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Stack(
+              children: [
+                Image.asset(assetPath, width: 48, height: 48),
+                if (selected)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Icon(Icons.check_circle, size: 14, color: cs.primary),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1406,7 +1389,7 @@ class _AppFontCardState extends State<_AppFontCard> {
                 textInputAction: TextInputAction.next,
                 autofocus: true,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: urlController,
                 decoration: InputDecoration(
@@ -1505,7 +1488,7 @@ class _AppFontCardState extends State<_AppFontCard> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               if (_loading)
                 const SizedBox(
                   width: 40,
@@ -1534,7 +1517,7 @@ class _AppFontCardState extends State<_AppFontCard> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               SizedBox(
                 width: 40,
                 height: 40,

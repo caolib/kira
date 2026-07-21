@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
@@ -186,7 +188,7 @@ class _ComicDownloadQueueView extends StatelessWidget {
               size: 56,
               color: cs.onSurfaceVariant,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(l10n.downloadQueueEmpty, style: tt.titleMedium),
             const SizedBox(height: 6),
             Text(
@@ -234,7 +236,7 @@ class _CombinedDownloadQueueView extends StatelessWidget {
               size: 56,
               color: cs.onSurfaceVariant,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(l10n.downloadQueueEmpty, style: tt.titleMedium),
             const SizedBox(height: 6),
             Text(
@@ -281,7 +283,7 @@ class _AnimeQueueTaskCard extends StatelessWidget {
             Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.smR,
                   child: SizedBox(
                     width: 48,
                     height: 64,
@@ -296,7 +298,7 @@ class _AnimeQueueTaskCard extends StatelessWidget {
                         : _placeholder(cs),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +311,7 @@ class _AnimeQueueTaskCard extends StatelessWidget {
                           color: cs.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         task.chapterName,
                         maxLines: 1,
@@ -330,10 +332,10 @@ class _AnimeQueueTaskCard extends StatelessWidget {
                 task.progress != null) ...[
               const SizedBox(height: 10),
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadius.xsR,
                 child: LinearProgressIndicator(value: task.progress!.ratio),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 _buildProgressText(context, task.progress!),
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
@@ -526,7 +528,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
             Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.smR,
                   child: SizedBox(
                     width: 48,
                     height: 64,
@@ -541,7 +543,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
                         : _placeholder(cs),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,7 +556,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
                           color: cs.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         task.chapterName,
                         maxLines: 1,
@@ -579,10 +581,10 @@ class _ComicQueueTaskCard extends StatelessWidget {
                 task.progress != null) ...[
               const SizedBox(height: 10),
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadius.xsR,
                 child: LinearProgressIndicator(value: task.progress!.ratio),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 _buildProgressText(context, task.progress!),
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),

@@ -217,7 +217,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
         cacheManager: widget.cacheManager,
         fit: BoxFit.contain,
         placeholder: (_, _) => const Center(
-          child: ExpressiveLoadingIndicator(color: Colors.white),
+          child: ExpressiveLoadingIndicator(color: ReaderChrome.onSurface),
         ),
         errorWidget: (_, _, _) => const _ReaderImageViewerError(),
       );
@@ -231,7 +231,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
           Positioned.fill(
             child: IgnorePointer(
               child: ColoredBox(
-                color: Colors.black.withValues(alpha: _user.readerDimming),
+                color: ReaderChrome.dimOverlay(_user.readerDimming),
               ),
             ),
           ),
@@ -292,11 +292,11 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
     required VoidCallback onPressed,
   }) {
     return IconButton(
-      icon: Icon(icon, color: Colors.white),
+      icon: Icon(icon, color: ReaderChrome.onSurface),
       tooltip: tooltip,
       onPressed: onPressed,
       style: IconButton.styleFrom(
-        backgroundColor: Colors.black.withValues(alpha: 0.42),
+        backgroundColor: ReaderChrome.controlScrim,
       ),
     );
   }
@@ -305,7 +305,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
   Widget build(BuildContext context) {
     return PopScope(
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: ReaderChrome.surface,
         body: Stack(
           children: [
             Positioned.fill(child: _buildViewport()),
@@ -318,8 +318,8 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
                     alignment: Alignment.topRight,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.42),
-                        borderRadius: BorderRadius.circular(18),
+                        color: ReaderChrome.controlScrim,
+                        borderRadius: AppRadius.lgR,
                       ),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -329,7 +329,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
                         child: Text(
                           '${widget.pageNumber}/${widget.pageCount}',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: ReaderChrome.onSurface,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -404,7 +404,11 @@ class _ReaderImageViewerError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Icon(Icons.broken_image, color: Colors.white54, size: 56),
+      child: Icon(
+        Icons.broken_image,
+        color: ReaderChrome.onSurfaceSubtle,
+        size: 56,
+      ),
     );
   }
 }
@@ -451,12 +455,12 @@ class _ReaderImageViewerSettingsPanelState
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
                 AppLocalizations.of(context)!.readerImageViewerSettingsTitle,
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(
@@ -480,12 +484,12 @@ class _ReaderImageViewerSettingsPanelState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       Text(
                         AppLocalizations.of(context)!.readerRotationDirection,
                         style: tt.bodyMedium,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       SizedBox(
                         width: double.infinity,
                         child: SegmentedButton<int>(

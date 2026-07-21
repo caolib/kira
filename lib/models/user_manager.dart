@@ -871,13 +871,18 @@ class UserManager extends ChangeNotifier {
     if (shouldNotify) notifyListeners();
   }
 
-  Future<void> setDarkModeCoverBrightness(double value) async {
+  Future<void> setDarkModeCoverBrightness(
+    double value, {
+    bool persist = true,
+  }) async {
     final nextValue = _normalizeDarkModeCoverBrightness(value);
     if (_darkModeCoverBrightness == nextValue) return;
 
     _darkModeCoverBrightness = nextValue;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_keyDarkModeCoverBrightness, nextValue);
+    if (persist) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_keyDarkModeCoverBrightness, nextValue);
+    }
     notifyListeners();
   }
 

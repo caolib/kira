@@ -9,6 +9,9 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/comic_comment.dart';
 import '../models/user_manager.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
@@ -284,7 +287,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                       height: 4,
                       decoration: BoxDecoration(
                         color: cs.onSurfaceVariant.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: AppRadius.fullR,
                       ),
                     ),
                     Padding(
@@ -301,7 +304,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: AppSpacing.xs),
                                 Text(
                                   widget.comicName,
                                   maxLines: 1,
@@ -347,13 +350,13 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                     backgroundColor: cs.primaryContainer,
                     foregroundColor: cs.onPrimaryContainer,
                     elevation: 6,
-                    shadowColor: Colors.black.withValues(alpha: 0.22),
+                    shadowColor: AppShadows.floatingTint(0.22),
                     minimumSize: const Size(0, 52),
                     maximumSize: const Size.fromHeight(52),
                     fixedSize: const Size.fromHeight(52),
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadius.smR,
                     ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   );
@@ -379,7 +382,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                               icon: const Icon(Icons.comment_outlined),
                               label: Text(l10n.chapterCommentsComment),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             SizedBox.square(
                               dimension: 52,
                               child: FilledButton(
@@ -436,7 +439,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 l10n.comicCommentLoadFailed,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -449,7 +452,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 textAlign: TextAlign.center,
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               FilledButton.tonal(
                 onPressed: _loadComments,
                 child: Text(l10n.retryButton),
@@ -466,7 +469,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               l10n.chapterCommentsEmptyTitle,
               style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -531,7 +534,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         decoration: BoxDecoration(
           color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadius.lgR,
           border: Border.all(
             color: cs.outlineVariant.withValues(
               alpha: brightness == Brightness.dark ? 0.22 : 0.45,
@@ -540,7 +543,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
+              color: cs.shadow.withValues(
                 alpha: brightness == Brightness.dark ? 0.30 : 0.14,
               ),
               blurRadius: brightness == Brightness.dark ? 12 : 14,
@@ -556,7 +559,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               children: [
                 if (showAvatar) ...[
                   _ComicCommentAvatar(imageUrl: comment.userAvatar, size: 28),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                 ],
                 Expanded(
                   child: Text(
@@ -571,7 +574,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                   ),
                 ),
                 if (showCommentTime) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(
                     TimeFormat.relativeOf(
                       comment.createAt,
@@ -582,7 +585,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                 ],
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             _buildCommentText(
               comment,
               bodyStyle: bodyStyle,
@@ -613,7 +616,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     );
 
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: AppRadius.fullR,
       onTap: () => _toggleReplies(comment),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
@@ -665,7 +668,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Column(
                 children: List.generate(skeletonCount * 2 - 1, (index) {
-                  if (index.isOdd) return const SizedBox(height: 12);
+                  if (index.isOdd) return const SizedBox(height: AppSpacing.md);
                   return const _ComicReplySkeleton();
                 }),
               ),
@@ -811,7 +814,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         children: [
           if (showAvatar) ...[
             _ComicCommentAvatar(imageUrl: reply.userAvatar, size: 22),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
           ],
           Expanded(
             child: Column(
@@ -835,7 +838,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                             ),
                           ),
                           if (showReplyTarget) ...[
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpacing.xs),
                             Icon(
                               Icons.arrow_right_alt_rounded,
                               size: 14,
@@ -843,7 +846,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                                 alpha: 0.78,
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpacing.xs),
                             Flexible(
                               child: Text(
                                 parentUserName,
@@ -857,7 +860,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                       ),
                     ),
                     if (showCommentTime) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         TimeFormat.relativeOf(
                           reply.createAt,
@@ -868,7 +871,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 _buildCommentText(
                   reply,
                   bodyStyle: bodyStyle,
@@ -941,7 +944,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                     border: Border.all(color: cs.outlineVariant),
                   ),
                   child: Text(
@@ -1018,7 +1021,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                     ? l10n.chapterCommentsBlockUnnamedConfirm
                     : l10n.comicCommentBlockNamedConfirm(name),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               GestureDetector(
                 onTap: () => setLocal(() => noRemind = !noRemind),
                 child: Row(
@@ -1033,7 +1036,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       l10n.chapterCommentsNoRemindAgain,
                       style: Theme.of(ctx).textTheme.bodySmall,
@@ -1293,7 +1296,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                             color: Theme.of(
                               context,
                             ).colorScheme.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: AppRadius.mdR,
                           ),
                           child: Text(
                             replyTo.comment,
@@ -1302,7 +1305,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                       ],
                       TextField(
                         controller: controller,
@@ -1531,7 +1534,7 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadius.mdR,
             onTap: _toggleExpanded,
             child: AnimatedSize(
               duration: const Duration(milliseconds: 180),
@@ -1574,7 +1577,7 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
                     ],
                   ),
                   if (!_expanded) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     IgnorePointer(
                       child: Center(
                         child: Container(
@@ -1584,7 +1587,7 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
                           ),
                           decoration: BoxDecoration(
                             color: widget.backgroundColor,
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: AppRadius.fullR,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1606,7 +1609,7 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
                     ),
                   ],
                   if (_expanded) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     IgnorePointer(
                       child: Center(
                         child: Row(
@@ -1648,7 +1651,7 @@ class _ComicCommentSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1663,34 +1666,34 @@ class _ComicCommentSkeleton extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Container(
                   height: 14,
                   decoration: BoxDecoration(
                     color: cs.onSurfaceVariant.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppRadius.xsR,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Container(
                 width: 48,
                 height: 12,
                 decoration: BoxDecoration(
                   color: cs.onSurfaceVariant.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadius.xsR,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Container(
             width: double.infinity,
             height: 14,
             decoration: BoxDecoration(
               color: cs.onSurfaceVariant.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadius.xsR,
             ),
           ),
           const SizedBox(height: 6),
@@ -1699,7 +1702,7 @@ class _ComicCommentSkeleton extends StatelessWidget {
             height: 14,
             decoration: BoxDecoration(
               color: cs.onSurfaceVariant.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadius.xsR,
             ),
           ),
         ],
@@ -1727,7 +1730,7 @@ class _ComicReplySkeleton extends StatelessWidget {
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1739,7 +1742,7 @@ class _ComicReplySkeleton extends StatelessWidget {
                     height: 12,
                     decoration: BoxDecoration(
                       color: placeholderColor,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadius.xsR,
                     ),
                   ),
                   const Spacer(),
@@ -1748,18 +1751,18 @@ class _ComicReplySkeleton extends StatelessWidget {
                     height: 10,
                     decoration: BoxDecoration(
                       color: placeholderColor,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadius.xsR,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Container(
                 width: double.infinity,
                 height: 12,
                 decoration: BoxDecoration(
                   color: placeholderColor,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadius.xsR,
                 ),
               ),
               const SizedBox(height: 6),
@@ -1768,7 +1771,7 @@ class _ComicReplySkeleton extends StatelessWidget {
                 height: 12,
                 decoration: BoxDecoration(
                   color: placeholderColor,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadius.xsR,
                 ),
               ),
             ],

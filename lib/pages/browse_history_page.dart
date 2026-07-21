@@ -11,6 +11,8 @@ import '../models/anime.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
@@ -327,14 +329,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                       size: 64,
                       color: cs.onSurfaceVariant,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     Text(
                       l10n.browseHistoryLoginToView,
                       style: tt.titleMedium?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       _animeFeatureEnabled
                           ? l10n.browseHistoryLoginHintWithAnime
@@ -342,7 +344,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                       textAlign: TextAlign.center,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     FilledButton.icon(
                       onPressed: _goLogin,
                       icon: const Icon(Icons.login),
@@ -443,14 +445,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                                   size: 64,
                                   color: cs.onSurfaceVariant,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.lg),
                                 Text(
                                   l10n.browseHistoryEmptyTitle(modeLabel),
                                   style: tt.titleMedium?.copyWith(
                                     color: cs.onSurfaceVariant,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: AppSpacing.sm),
                                 Text(
                                   l10n.browseHistoryEmptySubtitle(modeLabel),
                                   textAlign: TextAlign.center,
@@ -458,7 +460,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                                     color: cs.onSurfaceVariant,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.lg),
                                 FilledButton.tonalIcon(
                                   onPressed: _user.isLoggedIn ? _load : null,
                                   icon: const Icon(Icons.refresh),
@@ -683,7 +685,7 @@ class _HistoryCardShell extends StatelessWidget {
                 width: 84,
                 child: AspectRatio(aspectRatio: 0.72, child: cover),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -741,7 +743,7 @@ class _HistoryCardShell extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
             ],
           ),
@@ -762,7 +764,7 @@ class _HistoryCover extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.mdR,
       child: CoverBrightnessFilter(
         child: CachedNetworkImage(
           imageUrl: imageUrl,
@@ -805,13 +807,13 @@ class _HistoryMetaChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadius.fullR,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: cs.primary),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
           Text(
             label,
             style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
@@ -865,12 +867,12 @@ class _HistoryCardSkeletonState extends State<_HistoryCardSkeleton>
                     child: Container(
                       decoration: BoxDecoration(
                         color: color,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.mdR,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -880,25 +882,25 @@ class _HistoryCardSkeletonState extends State<_HistoryCardSkeleton>
                         height: 16,
                         decoration: BoxDecoration(
                           color: color,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppRadius.xsR,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       Container(
                         width: 120,
                         height: 12,
                         decoration: BoxDecoration(
                           color: color,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppRadius.xsR,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                       Container(
                         width: 160,
                         height: 14,
                         decoration: BoxDecoration(
                           color: color,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppRadius.xsR,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -909,16 +911,16 @@ class _HistoryCardSkeletonState extends State<_HistoryCardSkeleton>
                             height: 24,
                             decoration: BoxDecoration(
                               color: color,
-                              borderRadius: BorderRadius.circular(999),
+                              borderRadius: AppRadius.fullR,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.sm),
                           Container(
                             width: 60,
                             height: 24,
                             decoration: BoxDecoration(
                               color: color,
-                              borderRadius: BorderRadius.circular(999),
+                              borderRadius: AppRadius.fullR,
                             ),
                           ),
                         ],
@@ -926,7 +928,7 @@ class _HistoryCardSkeletonState extends State<_HistoryCardSkeleton>
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
               ],
             ),
           ),

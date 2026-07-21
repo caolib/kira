@@ -182,12 +182,19 @@ class ThemeSettings extends PrefsStore {
     if (shouldNotify) notifyListeners();
   }
 
-  Future<void> setDarkModeCoverBrightness(double value) async {
+  Future<void> setDarkModeCoverBrightness(
+    double value, {
+    bool persist = true,
+  }) async {
     final nextValue = _normalizeDarkModeCoverBrightness(value);
     if (_darkModeCoverBrightness == nextValue) return;
 
     _darkModeCoverBrightness = nextValue;
-    await setDouble(_keyDarkModeCoverBrightness, nextValue);
+    if (persist) {
+      await setDouble(_keyDarkModeCoverBrightness, nextValue);
+    } else {
+      notifyListeners();
+    }
   }
 
   Future<void> setBottomNavShowLabels(bool enabled) async {

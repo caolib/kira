@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_storage.dart';
 import '../utils/font_manager.dart';
 import '../utils/media_kit_native_loader.dart';
@@ -942,7 +943,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 if (_imageCacheSections.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
@@ -967,7 +968,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                 ],
                 if (mediaKitSection != null) ...[
                   Padding(
@@ -993,7 +994,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                       onClear: () => _deleteMediaKitSection(mediaKitSection),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                 ],
                 if (fontSection != null) ...[
                   Padding(
@@ -1017,7 +1018,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                       onClear: () => _deleteFontSection(fontSection),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                 ],
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
@@ -1220,7 +1221,7 @@ class _CacheEntryTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text('$sizeLabel · ${entry.typeLabel}', style: tt.bodySmall),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: maxContentHeight),
                   child: SingleChildScrollView(
@@ -1380,9 +1381,9 @@ class _ErrorView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.error_outline_rounded, size: 40),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(error, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             FilledButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),

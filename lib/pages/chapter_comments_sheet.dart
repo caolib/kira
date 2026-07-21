@@ -15,6 +15,9 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/network_error.dart';
@@ -867,7 +870,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cs.errorContainer.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.mdR,
         border: Border.all(color: cs.error.withValues(alpha: 0.35)),
       ),
       child: Column(
@@ -895,7 +898,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             message,
             style: tt.bodySmall?.copyWith(
@@ -903,7 +906,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 140),
             child: SingleChildScrollView(
@@ -1014,7 +1017,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                         }),
                       ),
                       if (errorText != null && errorLog != null) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         _buildPostCommentErrorPanel(
                           dialogContext,
                           message: errorText!,
@@ -1107,7 +1110,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdR,
                     border: Border.all(color: cs.outlineVariant),
                   ),
                   child: Text(
@@ -1186,7 +1189,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                     ? l10n.chapterCommentsBlockUnnamedConfirm
                     : l10n.chapterCommentsBlockNamedConfirm(name),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               GestureDetector(
                 onTap: () => setLocal(() => noRemind = !noRemind),
                 child: Row(
@@ -1201,7 +1204,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       l10n.chapterCommentsNoRemindAgain,
                       style: Theme.of(ctx).textTheme.bodySmall,
@@ -1400,7 +1403,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                           height: 4,
                           decoration: BoxDecoration(
                             color: cs.onSurfaceVariant.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: AppRadius.fullR,
                           ),
                         ),
                         Padding(
@@ -1417,7 +1420,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: AppSpacing.xs),
                                     Text(
                                       widget.chapterName,
                                       maxLines: 1,
@@ -1541,9 +1544,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                   backgroundColor: buttonBackgroundColor,
                                   foregroundColor: buttonForegroundColor,
                                   elevation: 6,
-                                  shadowColor: Colors.black.withValues(
-                                    alpha: 0.22,
-                                  ),
+                                  shadowColor: AppShadows.floatingTint(0.22),
                                   minimumSize: const Size(0, 52),
                                   maximumSize: const Size.fromHeight(52),
                                   fixedSize: const Size.fromHeight(52),
@@ -1551,7 +1552,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                     horizontal: 14,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: AppRadius.smR,
                                   ),
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
@@ -1566,7 +1567,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                       icon: const Icon(Icons.comment_outlined),
                                       label: Text(l10n.chapterCommentsComment),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: AppSpacing.sm),
                                     FilledButton.icon(
                                       style: buttonStyle,
                                       onPressed: () {
@@ -1579,7 +1580,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                       label: Text(l10n.chapterCommentsCatalog),
                                     ),
                                     if (widget.hasNextChapter) ...[
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: AppSpacing.sm),
                                       FilledButton.icon(
                                         style: buttonStyle,
                                         onPressed: widget.onNextChapter,
@@ -1589,7 +1590,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                                         label: Text(l10n.chapterCommentsNext),
                                       ),
                                     ],
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: AppSpacing.sm),
                                     SizedBox.square(
                                       dimension: 52,
                                       child: FilledButton(
@@ -1659,7 +1660,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 l10n.chapterCommentsLoadFailed,
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -1672,7 +1673,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                 textAlign: TextAlign.center,
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               FilledButton.tonal(
                 onPressed: () => _loadComments(),
                 child: Text(l10n.retryButton),
@@ -1689,7 +1690,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.forum_outlined, size: 40, color: cs.onSurfaceVariant),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               l10n.chapterCommentsEmptyTitle,
               style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -1771,7 +1772,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               _commentListBottomPadding,
             ),
             itemCount: summaryOffset + rows.length + (_loadingMore ? 1 : 0),
-            separatorBuilder: (_, index) => const SizedBox(height: 8),
+            separatorBuilder: (_, index) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (_, index) {
               if (hasSummary && index == 0) {
                 return _buildSummaryPanel(cs, tt);
@@ -1839,7 +1840,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
           ? l10n.chapterCommentsSwitchModel
           : l10n.chapterCommentsCannotSwitchModelGenerating,
       child: InkWell(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadius.fullR,
         onTap: canSwitch ? _showModelPickerSheet : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1945,7 +1946,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                   l10n.chapterCommentsActiveModel(active.name, active.model),
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Flexible(
                   child: ListView.builder(
                     shrinkWrap: true,
@@ -1979,7 +1980,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                             dense: true,
                             selected: selected,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppRadius.mdR,
                             ),
                             title: Text(
                               choice.model,
@@ -2365,7 +2366,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
       height: 1.35,
     );
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadius.mdR,
       onTap: toggleable ? _toggleSummaryReasoningExpanded : null,
       child: Container(
         width: double.infinity,
@@ -2373,7 +2374,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: cs.surfaceContainerLowest.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.mdR,
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
         ),
         child: Column(
@@ -2388,7 +2389,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                   size: 14,
                   color: cs.onSurfaceVariant.withValues(alpha: 0.78),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 Text(
                   expanded
                       ? l10n.chapterCommentsReasoning
@@ -2396,7 +2397,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                   style: textStyle?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (toggleable) ...[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   Icon(
                     expanded ? Icons.expand_less : Icons.expand_more,
                     size: 16,
@@ -2433,7 +2434,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLowest.withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.mdR,
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
       ),
       child: Column(
@@ -2448,7 +2449,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                 size: 14,
                 color: cs.onSurfaceVariant.withValues(alpha: 0.78),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               Text(
                 l10n.chapterCommentsReasoning,
                 style: tt.bodySmall?.copyWith(
@@ -2483,7 +2484,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
       padding: const EdgeInsets.fromLTRB(0, 0, 4, 0),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLowest.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.mdR,
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Scrollbar(
@@ -2548,7 +2549,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
         return Container(
           decoration: BoxDecoration(
             color: cs.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadius.mdR,
             border: Border.all(
               color: statusColor.withValues(alpha: 0.72),
               width: 1.2,
@@ -2560,7 +2561,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
             mainAxisSize: MainAxisSize.min,
             children: [
               InkWell(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.smR,
                 onTap: _toggleSummaryExpanded,
                 child: Row(
                   children: [
@@ -2601,7 +2602,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                           toggleable: true,
                         )
                       : _buildStreamingReasoningPlaceholder(context, cs, tt),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                 ],
                 if (_summaryError != null)
                   Padding(
@@ -2648,7 +2649,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [

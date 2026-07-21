@@ -7,6 +7,8 @@ import 'package:material3_expressive_loading_indicator/material3_expressive_load
 
 import '../l10n/app_localizations.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
 import '../utils/reading_history.dart';
@@ -309,7 +311,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.mdR,
                         child: SizedBox(
                           width: 110,
                           height: 150,
@@ -331,7 +333,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                                 ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppSpacing.lg),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,7 +347,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                                 overflow: TextOverflow.ellipsis,
                                 style: tt.bodyMedium,
                               ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.sm),
                             Wrap(
                               spacing: 6,
                               runSpacing: 6,
@@ -600,9 +602,9 @@ class _LocalChapterCard extends StatelessWidget {
 
     return Material(
       color: background,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.mdR,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.mdR,
         onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
@@ -635,7 +637,7 @@ class _LocalChapterCard extends StatelessWidget {
                     )
                   else
                     InkWell(
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: AppRadius.fullR,
                       onTap: onCommentsTap,
                       child: Padding(
                         padding: const EdgeInsets.all(4),

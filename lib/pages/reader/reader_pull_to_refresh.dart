@@ -79,22 +79,25 @@ class _ReaderPullToRefreshState extends State<_ReaderPullToRefresh> {
           right: 0,
           child: IgnorePointer(
             child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 180),
+              duration: adaptiveDuration(
+                context,
+                const Duration(milliseconds: 180),
+              ),
               opacity: _indicatorVisible ? 1 : 0,
               child: Center(
                 child: Container(
                   width: 44,
                   height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.72),
+                  decoration: const BoxDecoration(
+                    color: ReaderChrome.indicatorScrim,
                     shape: BoxShape.circle,
                   ),
                   padding: const EdgeInsets.all(10),
                   child: CircularProgressIndicator(
                     value: _refreshing ? null : progress,
                     strokeWidth: 2.4,
-                    color: Colors.white,
-                    backgroundColor: Colors.white24,
+                    color: ReaderChrome.onSurface,
+                    backgroundColor: ReaderChrome.trackInactive,
                   ),
                 ),
               ),

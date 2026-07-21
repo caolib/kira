@@ -23,10 +23,10 @@ class _ReaderTopBar extends StatelessWidget {
       child: IgnorePointer(
         ignoring: !showToolbar,
         child: AnimatedSlide(
-          duration: const Duration(milliseconds: 200),
+          duration: adaptiveDuration(context, const Duration(milliseconds: 200)),
           offset: Offset(0, showToolbar ? 0 : -slideOffset),
           child: Container(
-            color: Colors.black,
+            color: ReaderChrome.surface,
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -34,14 +34,20 @@ class _ReaderTopBar extends StatelessWidget {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: ReaderChrome.onSurface,
+                      ),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).backButtonTooltip,
                       onPressed: onBack,
                     ),
                     Expanded(
                       child: Text(
                         chapterName,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: ReaderChrome.onSurface,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),

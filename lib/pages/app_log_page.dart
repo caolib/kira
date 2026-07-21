@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/toast.dart';
 
@@ -226,7 +228,7 @@ class _AppLogPageState extends State<AppLogPage> {
                           size: 48,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         Center(
                           child: Text(
                             l10n.appLogEmpty,
@@ -249,7 +251,7 @@ class _AppLogPageState extends State<AppLogPage> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, index) {
                       final entry = filtered[index];
                       return _LogEntryCard(entry: entry);
@@ -313,7 +315,7 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Center(
             child: Container(
               width: 32,
@@ -326,7 +328,7 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Align(
@@ -370,7 +372,7 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
         ],
       ),
     );
@@ -438,7 +440,7 @@ class _LogFilterPanel extends StatelessWidget {
                         },
                       ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -520,7 +522,7 @@ class _FilterItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: color, size: 18),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Text(label, style: TextStyle(color: color)),
       ],
     );
@@ -613,20 +615,20 @@ class _LogEntryCardState extends State<_LogEntryCard> {
               alignment: Alignment.centerLeft,
               child: Text(l10n.appLogContextTitle, style: tt.labelLarge),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             for (final item in entry.context.entries)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: _LogTextBlock(text: '${item.key}: ${item.value}'),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
           if (stackTrace != null && stackTrace.isNotEmpty) ...[
             Align(
               alignment: Alignment.centerLeft,
               child: Text(l10n.appLogStackTitle, style: tt.labelLarge),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             _LogTextBlock(text: stackTrace),
           ],
         ],
@@ -649,7 +651,7 @@ class _LogTextBlock extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.smR,
       ),
       child: SelectableText(
         text,

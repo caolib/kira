@@ -6,21 +6,13 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
 import '../utils/toast.dart';
 import 'register_page.dart' show RegisterPrefill;
 
-List<BoxShadow> _profileCardShadow(ColorScheme cs) => [
-  BoxShadow(
-    color: Colors.black.withValues(alpha: 0.08),
-    blurRadius: 18,
-    offset: const Offset(0, 6),
-  ),
-  BoxShadow(
-    color: cs.shadow.withValues(alpha: 0.04),
-    blurRadius: 6,
-    offset: const Offset(0, 2),
-  ),
-];
+List<BoxShadow> _profileCardShadow(ColorScheme cs) => AppShadows.md(cs);
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -118,13 +110,13 @@ class _LoginPageState extends State<LoginPage> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadius.fullR,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: foregroundColor),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
           Text(
             label,
             style: tt.labelSmall?.copyWith(
@@ -163,14 +155,14 @@ class _LoginPageState extends State<LoginPage> {
         color: isSelected
             ? cs.primaryContainer.withValues(alpha: 0.45)
             : cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadius.lgR,
         border: Border.all(color: isSelected ? cs.primary : cs.outlineVariant),
         boxShadow: _profileCardShadow(cs),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: AppRadius.lgR,
           onTap: () => _applySavedCredential(credential),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
@@ -189,7 +181,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +207,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -425,7 +417,7 @@ class _LoginPageState extends State<LoginPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Image.asset(_user.appLogoPath, width: 64, height: 64),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Kira',
               textAlign: TextAlign.center,
@@ -434,6 +426,7 @@ class _LoginPageState extends State<LoginPage> {
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 32),
+            // Step 1: choose login method
             SegmentedButton<bool>(
               segments: [
                 ButtonSegment(
@@ -459,143 +452,21 @@ class _LoginPageState extends State<LoginPage> {
                 _error = null;
               }),
             ),
-            const SizedBox(height: 24),
-            if (!_useToken) ...[
-              SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(
-                    value: false,
-                    label: Text(
-                      AppLocalizations.of(context)!.profileHotCredentialLabel,
-                    ),
-                    icon: const Icon(Icons.phone_android, size: 18),
-                  ),
-                  ButtonSegment(
-                    value: true,
-                    label: Text(
-                      AppLocalizations.of(context)!.profileCopyCredentialLabel,
-                    ),
-                    icon: const Icon(Icons.language, size: 18),
-                  ),
-                ],
-                selected: {_useCopyLogin},
-                onSelectionChanged: (v) => setState(() {
-                  _useCopyLogin = v.first;
-                  _error = null;
-                }),
-              ),
-              const SizedBox(height: 16),
-              if (_user.savedCredentials.isNotEmpty) ...[
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    AppLocalizations.of(context)!.profileSavedAccountsTitle,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  AppLocalizations.of(context)!.profileSavedAccountsHint,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-                const SizedBox(height: 10),
-                Column(
-                  children: [
-                    for (var i = 0; i < _user.savedCredentials.length; i++) ...[
-                      _buildSavedCredentialCard(
-                        context,
-                        _user.savedCredentials[i],
-                      ),
-                      if (i != _user.savedCredentials.length - 1)
-                        const SizedBox(height: 10),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
-              TextField(
-                controller: _usernameCtrl,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context)!.profileUsernameLabel,
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordCtrl,
-                obscureText: _obscure,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context)!.profilePasswordLabel,
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscure ? Icons.visibility_off : Icons.visibility,
-                    ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _login(),
-              ),
-            ] else ...[
-              TextField(
-                controller: _tokenCtrl,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context)!.profileTokenLabel,
-                  prefixIcon: const Icon(Icons.key),
-                  hintText: AppLocalizations.of(context)!.profileTokenHint,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _loginWithToken(),
-              ),
-            ],
+            const SizedBox(height: AppSpacing.xxl),
+            // Step 2: method-specific form only
+            if (_useToken)
+              ..._buildTokenForm(context)
+            else
+              ..._buildAccountPasswordForm(context, cs),
             if (_error != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 _error!,
                 style: TextStyle(color: cs.error),
                 textAlign: TextAlign.center,
               ),
             ],
-            if (!_useToken) ...[
-              const SizedBox(height: 8),
-              CheckboxListTile(
-                value: _rememberMe,
-                onChanged: (v) => setState(() => _rememberMe = v ?? false),
-                title: Text(
-                  AppLocalizations.of(context)!.profileRememberAccountLabel,
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: _loading ? null : _goRegister,
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.profileRegisterHotMangaAccountButton,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.lg),
             FilledButton(
               onPressed: _loading
                   ? null
@@ -603,7 +474,7 @@ class _LoginPageState extends State<LoginPage> {
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.mdR,
                 ),
               ),
               child: _loading
@@ -617,9 +488,133 @@ class _LoginPageState extends State<LoginPage> {
                       style: const TextStyle(fontSize: 16),
                     ),
             ),
+            // Hotmanga register only for account-password + hot source.
+            if (!_useToken && !_useCopyLogin) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Center(
+                child: TextButton(
+                  onPressed: _loading ? null : _goRegister,
+                  child: Text(
+                    AppLocalizations.of(
+                      context,
+                    )!.profileRegisterHotMangaAccountButton,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildTokenForm(BuildContext context) {
+    return [
+      TextField(
+        controller: _tokenCtrl,
+        decoration: InputDecoration(
+          labelText: AppLocalizations.of(context)!.profileTokenLabel,
+          prefixIcon: const Icon(Icons.key),
+          hintText: AppLocalizations.of(context)!.profileTokenHint,
+          border: OutlineInputBorder(
+            borderRadius: AppRadius.mdR,
+          ),
+        ),
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _loginWithToken(),
+      ),
+    ];
+  }
+
+  List<Widget> _buildAccountPasswordForm(
+    BuildContext context,
+    ColorScheme cs,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final tt = Theme.of(context).textTheme;
+    return [
+      SegmentedButton<bool>(
+        segments: [
+          ButtonSegment(
+            value: false,
+            label: Text(l10n.profileHotCredentialLabel),
+            icon: const Icon(Icons.phone_android, size: 18),
+          ),
+          ButtonSegment(
+            value: true,
+            label: Text(l10n.profileCopyCredentialLabel),
+            icon: const Icon(Icons.language, size: 18),
+          ),
+        ],
+        selected: {_useCopyLogin},
+        onSelectionChanged: (v) => setState(() {
+          _useCopyLogin = v.first;
+          _error = null;
+        }),
+      ),
+      const SizedBox(height: AppSpacing.lg),
+      if (_user.savedCredentials.isNotEmpty) ...[
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            l10n.profileSavedAccountsTitle,
+            style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          l10n.profileSavedAccountsHint,
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        Column(
+          children: [
+            for (var i = 0; i < _user.savedCredentials.length; i++) ...[
+              _buildSavedCredentialCard(context, _user.savedCredentials[i]),
+              if (i != _user.savedCredentials.length - 1)
+                const SizedBox(height: 10),
+            ],
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+      TextField(
+        controller: _usernameCtrl,
+        decoration: InputDecoration(
+          labelText: l10n.profileUsernameLabel,
+          prefixIcon: const Icon(Icons.person_outline),
+          border: OutlineInputBorder(
+            borderRadius: AppRadius.mdR,
+          ),
+        ),
+        textInputAction: TextInputAction.next,
+      ),
+      const SizedBox(height: AppSpacing.lg),
+      TextField(
+        controller: _passwordCtrl,
+        obscureText: _obscure,
+        decoration: InputDecoration(
+          labelText: l10n.profilePasswordLabel,
+          prefixIcon: const Icon(Icons.lock_outline),
+          suffixIcon: IconButton(
+            icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+            onPressed: () => setState(() => _obscure = !_obscure),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: AppRadius.mdR,
+          ),
+        ),
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _login(),
+      ),
+      const SizedBox(height: AppSpacing.sm),
+      CheckboxListTile(
+        value: _rememberMe,
+        onChanged: (v) => setState(() => _rememberMe = v ?? false),
+        title: Text(l10n.profileRememberAccountLabel),
+        controlAffinity: ListTileControlAffinity.leading,
+        contentPadding: EdgeInsets.zero,
+      ),
+    ];
   }
 }
