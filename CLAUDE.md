@@ -4,6 +4,10 @@
 
 Platform folders (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) hold only platform-specific integration code. Static assets live in `assets/` and must be declared in `pubspec.yaml`. Release notes belong in `docs/CHANGELOG.md`. Use `ref/` for reference material, not production code.
 
+## Maintenance Scope
+
+Anime functionality is no longer maintained. Ignore anime-related code when making changes unless the user explicitly requests anime work.
+
 ## Architecture Patterns
 
 ### State Management: Riverpod (incremental)

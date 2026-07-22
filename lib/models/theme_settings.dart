@@ -33,6 +33,12 @@ class ThemeSettings extends PrefsStore {
   static const double minDarkModeCoverBrightness = 0.10;
   static const double maxDarkModeCoverBrightness = 1.0;
   static const double defaultDarkModeCoverBrightness = 0.85;
+  static const double minDefaultFontSize = 12.0;
+  static const double maxDefaultFontSize = 20.0;
+  static const double defaultAppFontSize = 14.0;
+  static const double minComicCardShadowStrength = 0.0;
+  static const double maxComicCardShadowStrength = 1.0;
+  static const double defaultComicCardShadowStrength = 0.75;
 
   // ── Preference keys ────────────────────────────────────────────────
 
@@ -41,6 +47,8 @@ class ThemeSettings extends PrefsStore {
   static const _keyThemeVariant = 'theme_variant';
   static const _keyCustomThemeColor = 'custom_theme_color';
   static const _keyDarkModeCoverBrightness = 'dark_mode_cover_brightness';
+  static const _keyDefaultFontSize = 'default_font_size';
+  static const _keyComicCardShadowStrength = 'comic_card_shadow_strength';
   static const _keyBottomNavShowLabels = 'bottom_nav_show_labels';
   static const _keyBottomNavLabelMode = 'bottom_nav_label_mode';
   static const _keyNavOrder = 'nav_order';
@@ -58,6 +66,8 @@ class ThemeSettings extends PrefsStore {
   DynamicSchemeVariant _themeVariant = appThemeVariantOptions.first.variant;
   int _customThemeColorValue = defaultCustomThemeColor.toARGB32();
   double _darkModeCoverBrightness = defaultDarkModeCoverBrightness;
+  double _defaultFontSize = defaultAppFontSize;
+  double _comicCardShadowStrength = defaultComicCardShadowStrength;
   BottomNavLabelMode _bottomNavLabelMode = BottomNavLabelMode.selectedOnly;
   List<String> _navOrder = defaultNavOrder;
   String _lastNavKey = defaultNavKey;
@@ -74,6 +84,8 @@ class ThemeSettings extends PrefsStore {
   DynamicSchemeVariant get themeVariant => _themeVariant;
   Color get customThemeColor => Color(_customThemeColorValue);
   double get darkModeCoverBrightness => _darkModeCoverBrightness;
+  double get defaultFontSize => _defaultFontSize;
+  double get comicCardShadowStrength => _comicCardShadowStrength;
   BottomNavLabelMode get bottomNavLabelMode => _bottomNavLabelMode;
 
   /// Compatibility: any mode that still shows label text somewhere.
@@ -118,6 +130,13 @@ class ThemeSettings extends PrefsStore {
     _darkModeCoverBrightness = _normalizeDarkModeCoverBrightness(
       prefs.getDouble(_keyDarkModeCoverBrightness) ??
           defaultDarkModeCoverBrightness,
+    );
+    _defaultFontSize = _normalizeDefaultFontSize(
+      prefs.getDouble(_keyDefaultFontSize) ?? defaultAppFontSize,
+    );
+    _comicCardShadowStrength = _normalizeComicCardShadowStrength(
+      prefs.getDouble(_keyComicCardShadowStrength) ??
+          defaultComicCardShadowStrength,
     );
     _bottomNavLabelMode = _loadBottomNavLabelMode(prefs);
     final savedNavOrder = prefs.getStringList(_keyNavOrder);
@@ -197,6 +216,22 @@ class ThemeSettings extends PrefsStore {
     }
   }
 
+  Future<void> setDefaultFontSize(double value) async {
+    final nextValue = _normalizeDefaultFontSize(value);
+    if (_defaultFontSize == nextValue) return;
+
+    _defaultFontSize = nextValue;
+    await setDouble(_keyDefaultFontSize, nextValue);
+  }
+
+  Future<void> setComicCardShadowStrength(double value) async {
+    final nextValue = _normalizeComicCardShadowStrength(value);
+    if (_comicCardShadowStrength == nextValue) return;
+
+    _comicCardShadowStrength = nextValue;
+    await setDouble(_keyComicCardShadowStrength, nextValue);
+  }
+
   Future<void> setBottomNavShowLabels(bool enabled) async {
     await setBottomNavLabelMode(
       enabled ? BottomNavLabelMode.selectedOnly : BottomNavLabelMode.hidden,
@@ -264,6 +299,16 @@ class ThemeSettings extends PrefsStore {
   static double _normalizeDarkModeCoverBrightness(double value) {
     return value
         .clamp(minDarkModeCoverBrightness, maxDarkModeCoverBrightness)
+        .toDouble();
+  }
+
+  static double _normalizeDefaultFontSize(double value) {
+    return value.clamp(minDefaultFontSize, maxDefaultFontSize).toDouble();
+  }
+
+  static double _normalizeComicCardShadowStrength(double value) {
+    return value
+        .clamp(minComicCardShadowStrength, maxComicCardShadowStrength)
         .toDouble();
   }
 

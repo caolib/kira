@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/utils/app_storage.dart';
 import 'package:kira/utils/font_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,25 @@ void main() {
 
   tearDown(() {
     FontManager().resetForTest();
+  });
+
+  group('FontManager remote catalog cache', () {
+    test('keeps the remote font list for three days', () {
+      expect(FontManager.fontListCacheTtl, const Duration(days: 3));
+    });
+
+    test('loads a valid persistent catalog without a remote request', () async {
+      await AppStorage.cache.put('font_list_v1', {
+        'fonts': [
+          {'name': 'CachedFont', 'url': 'https://example.com/cached-font.ttf'},
+        ],
+      }, ttl: FontManager.fontListCacheTtl);
+
+      final fonts = await FontManager().fetchAvailableFonts();
+
+      expect(fonts, hasLength(1));
+      expect(fonts.single.name, 'CachedFont');
+    });
   });
 
   group('FontManager custom fonts', () {

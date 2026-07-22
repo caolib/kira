@@ -10,6 +10,7 @@ import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_card_skeleton.dart';
+import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
 
 enum CopyMangaListKind { recommendations, ranking, newest, finished }
@@ -415,9 +416,7 @@ class _CopyListComicCard extends StatelessWidget {
               createRectTween: ComicHeroTags.createRectTween,
               placeholderBuilder: (_, heroSize, _) =>
                   SizedBox(width: heroSize.width, height: heroSize.height),
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                margin: EdgeInsets.zero,
+              child: ComicCardSurface(
                 child: CoverBrightnessFilter(
                   child: CachedNetworkImage(
                     imageUrl: comic.cover,

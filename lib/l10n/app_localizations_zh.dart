@@ -760,6 +760,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearanceDarkCoverBrightnessDesc => '暗色模式下降低各个界面的卡片封面亮度';
 
   @override
+  String get appearanceShadowTitle => '阴影';
+
+  @override
+  String get appearanceDefaultFontSize => '默认字体大小';
+
+  @override
+  String get appearanceDefaultFontSizeDesc => '当前默认正文为 14；标题与辅助文字会按比例调整';
+
+  @override
+  String get appearanceComicCardShadow => '漫画卡片阴影';
+
+  @override
+  String get appearanceComicCardShadowDesc => '调整漫画封面卡片的阴影强度';
+
+  @override
   String get appearanceThemeStyle => '主题风格';
 
   @override
@@ -4243,6 +4258,21 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get appearanceDarkCoverBrightnessDesc => '暗色模式下降低各個介面的卡片封面亮度';
+
+  @override
+  String get appearanceShadowTitle => '陰影';
+
+  @override
+  String get appearanceDefaultFontSize => '預設字型大小';
+
+  @override
+  String get appearanceDefaultFontSizeDesc => '目前預設正文為 14；標題與輔助文字會按比例調整';
+
+  @override
+  String get appearanceComicCardShadow => '漫畫卡片陰影';
+
+  @override
+  String get appearanceComicCardShadowDesc => '調整漫畫封面卡片的陰影強度';
 
   @override
   String get appearanceThemeStyle => '主題風格';

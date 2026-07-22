@@ -60,4 +60,36 @@ void main() {
     expect(prefs.getString('bottom_nav_label_mode'), 'always');
     expect(prefs.getBool('bottom_nav_show_labels'), isTrue);
   });
+
+  test('uses default font size and comic card shadow preferences', () async {
+    SharedPreferences.setMockInitialValues({});
+    await settings.initFromPrefs(await SharedPreferences.getInstance());
+
+    expect(settings.defaultFontSize, ThemeSettings.defaultAppFontSize);
+    expect(
+      settings.comicCardShadowStrength,
+      ThemeSettings.defaultComicCardShadowStrength,
+    );
+  });
+
+  test('persists and clamps appearance sizing preferences', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await settings.initFromPrefs(prefs);
+
+    await settings.setDefaultFontSize(16);
+    await settings.setComicCardShadowStrength(0.6);
+
+    expect(prefs.getDouble('default_font_size'), 16);
+    expect(prefs.getDouble('comic_card_shadow_strength'), 0.6);
+
+    await settings.setDefaultFontSize(100);
+    await settings.setComicCardShadowStrength(-1);
+
+    expect(settings.defaultFontSize, ThemeSettings.maxDefaultFontSize);
+    expect(
+      settings.comicCardShadowStrength,
+      ThemeSettings.minComicCardShadowStrength,
+    );
+  });
 }

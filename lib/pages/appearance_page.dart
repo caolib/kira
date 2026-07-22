@@ -9,6 +9,7 @@ import 'package:system_fonts/system_fonts.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart' show isDesktop;
 import '../models/app_theme_option.dart';
+import '../models/theme_settings.dart';
 import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
@@ -27,6 +28,7 @@ class AppearancePage extends StatefulWidget {
 class _AppearancePageState extends State<AppearancePage> {
   final _user = UserManager();
   double? _previewCoverBrightness;
+  double? _previewComicCardShadowStrength;
 
   static const _navMeta = {
     'comic': (Icons.menu_book_outlined, Icons.menu_book),
@@ -216,6 +218,9 @@ class _AppearancePageState extends State<AppearancePage> {
     final coverBrightness =
         _previewCoverBrightness ?? _user.darkModeCoverBrightness;
     final coverBrightnessPercent = (coverBrightness * 100).round();
+    final comicCardShadowStrength =
+        _previewComicCardShadowStrength ?? _user.theme.comicCardShadowStrength;
+    final comicCardShadowPercent = (comicCardShadowStrength * 100).round();
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.appearanceTitle)),
@@ -328,6 +333,28 @@ class _AppearancePageState extends State<AppearancePage> {
           ],
           const SizedBox(height: AppSpacing.sm),
           _AppFontCard(user: _user),
+          const SizedBox(height: AppSpacing.sm),
+          SettingsSection(
+            icon: Icons.layers_outlined,
+            title: l10n.appearanceShadowTitle,
+            child: _AppearanceSliderControl(
+              icon: Icons.layers_outlined,
+              title: l10n.appearanceComicCardShadow,
+              description: l10n.appearanceComicCardShadowDesc,
+              valueText: '$comicCardShadowPercent%',
+              value: comicCardShadowStrength,
+              min: ThemeSettings.minComicCardShadowStrength,
+              max: ThemeSettings.maxComicCardShadowStrength,
+              divisions: 20,
+              onChanged: (value) {
+                setState(() => _previewComicCardShadowStrength = value);
+              },
+              onChangeEnd: (value) {
+                setState(() => _previewComicCardShadowStrength = null);
+                unawaited(_user.theme.setComicCardShadowStrength(value));
+              },
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           SettingsSection(
             icon: Icons.switch_account_outlined,
@@ -502,6 +529,90 @@ class _AppearancePageState extends State<AppearancePage> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppearanceSliderControl extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final String valueText;
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
+
+  const _AppearanceSliderControl({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.valueText,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.onChanged,
+    required this.onChangeEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: colorScheme.onSurfaceVariant, size: 20),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              SizedBox(
+                width: 52,
+                child: Text(
+                  valueText,
+                  textAlign: TextAlign.end,
+                  style: textTheme.labelLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: valueText,
+            onChanged: onChanged,
+            onChangeEnd: onChangeEnd,
           ),
         ],
       ),
@@ -1216,6 +1327,8 @@ class _AppFontCardState extends State<_AppFontCard> {
   List<RemoteFontInfo> _fonts = const [];
   Map<String, bool> _downloadedCache = {};
   final _downloadStates = <String, bool>{};
+  double? _previewDefaultFontSize;
+  bool _fontCatalogLoaded = false;
   bool _loading = false;
 
   @override
@@ -1235,12 +1348,14 @@ class _AppFontCardState extends State<_AppFontCard> {
 
   Future<void> _loadFonts({bool force = false}) async {
     if (_loading) return;
+    if (!force && _fontCatalogLoaded) return;
     setState(() => _loading = true);
     final fonts = await _fontManager.fetchAvailableFonts(force: force);
     await _refreshDownloadStates();
     if (mounted) {
       setState(() {
         _fonts = fonts;
+        _fontCatalogLoaded = true;
         _loading = false;
       });
     }
@@ -1454,6 +1569,8 @@ class _AppFontCardState extends State<_AppFontCard> {
     final currentLabel = currentFont.isEmpty
         ? l10n.appearanceSystemDefault
         : currentFont;
+    final defaultFontSize =
+        _previewDefaultFontSize ?? widget.user.theme.defaultFontSize;
 
     return Card(
       color: cs.surfaceContainerLow,
@@ -1533,11 +1650,35 @@ class _AppFontCardState extends State<_AppFontCard> {
           ),
         ),
         onExpansionChanged: (expanded) {
-          if (expanded && _fonts.isEmpty && !_loading) {
+          if (expanded && !_fontCatalogLoaded && !_loading) {
             _loadFonts();
           }
         },
         children: [
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: _AppearanceSliderControl(
+              icon: Icons.format_size_rounded,
+              title: l10n.appearanceDefaultFontSize,
+              description: l10n.appearanceDefaultFontSizeDesc,
+              valueText: defaultFontSize.toStringAsFixed(0),
+              value: defaultFontSize,
+              min: ThemeSettings.minDefaultFontSize,
+              max: ThemeSettings.maxDefaultFontSize,
+              divisions:
+                  (ThemeSettings.maxDefaultFontSize -
+                          ThemeSettings.minDefaultFontSize)
+                      .round(),
+              onChanged: (value) {
+                setState(() => _previewDefaultFontSize = value);
+              },
+              onChangeEnd: (value) {
+                setState(() => _previewDefaultFontSize = null);
+                unawaited(widget.user.theme.setDefaultFontSize(value));
+              },
+            ),
+          ),
           const Divider(height: 1),
           if (_loading && _fonts.isEmpty)
             const Padding(

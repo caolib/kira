@@ -12,9 +12,11 @@ import 'package:system_fonts/system_fonts.dart';
 
 import 'api/copy_settings_auto_updater.dart';
 import 'l10n/app_localizations.dart';
+import 'models/theme_settings.dart';
 import 'models/user_manager.dart';
 import 'routing/app_router.dart';
 import 'theme/app_radius.dart';
+import 'theme/app_typography.dart';
 import 'utils/app_logger.dart';
 import 'utils/display_mode_preference.dart';
 import 'utils/font_manager.dart';
@@ -200,6 +202,22 @@ class _KiraAppState extends ConsumerState<KiraApp> {
     );
   }
 
+  Widget _buildAppContent(BuildContext context, Widget? child) {
+    final mediaQuery = MediaQuery.of(context);
+    final fontSizeFactor =
+        _user.theme.defaultFontSize / ThemeSettings.defaultAppFontSize;
+
+    return MediaQuery(
+      data: mediaQuery.copyWith(
+        textScaler: AppTypography.composeTextScaler(
+          mediaQuery.textScaler,
+          fontSizeFactor,
+        ),
+      ),
+      child: child ?? const SizedBox.shrink(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
@@ -208,6 +226,7 @@ class _KiraAppState extends ConsumerState<KiraApp> {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       scrollBehavior: _AppScrollBehavior(),
+      builder: _buildAppContent,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _user.themeMode,

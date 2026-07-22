@@ -55,14 +55,15 @@ class FontManager {
   factory FontManager() => _instance;
 
   static const fontListUrl = 'https://cdn.caolib.qzz.io/fonts/list.json';
+  static const fontListCacheTtl = Duration(days: 3);
   static const _cacheKey = 'font_list_v1';
-  static const _cacheTtl = Duration(hours: 6);
   static const _customFontsPrefsKey = 'custom_fonts_v1';
 
   /// The font family name to use when no custom font is selected.
   static const defaultFontId = 'system';
 
   List<RemoteFontInfo> _remoteList = const [];
+  bool _remoteListLoaded = false;
   List<RemoteFontInfo> _customList = const [];
   bool _customFontsLoaded = false;
 
@@ -132,15 +133,16 @@ class FontManager {
     );
   }
 
-  /// Loads the font list with a 6-hour persistent cache strategy:
-  /// - Always returns cached data immediately if available (even if stale).
-  /// - If cached data is missing or expired, fetches from remote and updates cache.
-  /// - [force] bypasses cache entirely for a fresh fetch.
+  /// Loads the font list with a 3-day persistent cache strategy:
+  /// - Returns the in-memory catalog after the first attempt in this process.
+  /// - Uses valid persistent data without requesting the remote catalog.
+  /// - If cached data is missing or expired, fetches and updates the cache.
+  /// - [force] always requests fresh data, with valid cache as a fallback.
   /// User-added custom fonts are always merged into the result.
   Future<List<RemoteFontInfo>> fetchAvailableFonts({bool force = false}) async {
     await _ensureCustomFontsLoaded();
 
-    if (!force && _remoteList.isNotEmpty) {
+    if (!force && _remoteListLoaded) {
       return cachedList;
     }
 
@@ -150,6 +152,7 @@ class FontManager {
       final fonts = _parseFontList(cached);
       if (fonts.isNotEmpty) {
         _remoteList = fonts;
+        _remoteListLoaded = true;
         return cachedList;
       }
     }
@@ -159,13 +162,15 @@ class FontManager {
       _remoteList = fresh;
       await AppStorage.cache.put(_cacheKey, {
         'fonts': fresh.map((font) => font.toJson()).toList(),
-      }, ttl: _cacheTtl);
+      }, ttl: fontListCacheTtl);
     } else if (cached != null) {
       final fonts = _parseFontList(cached);
       _remoteList = fonts;
+      _remoteListLoaded = true;
       return cachedList;
     }
 
+    _remoteListLoaded = true;
     return cachedList;
   }
 
@@ -411,6 +416,7 @@ class FontManager {
   /// Test-only: clear in-memory state so prefs can be re-read.
   void resetForTest() {
     _remoteList = const [];
+    _remoteListLoaded = false;
     _customList = const [];
     _customFontsLoaded = false;
     _fontDir = null;

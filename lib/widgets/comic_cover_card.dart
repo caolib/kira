@@ -7,6 +7,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
+import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
 
 /// Reusable comic card with cover image, title, popular count, and optional
@@ -63,9 +64,7 @@ class ComicCoverCard extends StatelessWidget {
                 Expanded(
                   child: _buildHero(
                     ComicHeroTags.cover,
-                    Card(
-                      clipBehavior: Clip.antiAlias,
-                      margin: EdgeInsets.zero,
+                    ComicCardSurface(
                       child: CoverBrightnessFilter(
                         child: CachedNetworkImage(
                           imageUrl: comic.cover,

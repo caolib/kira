@@ -1453,6 +1453,36 @@ abstract class AppLocalizations {
   /// **'暗色模式下降低各个界面的卡片封面亮度'**
   String get appearanceDarkCoverBrightnessDesc;
 
+  /// No description provided for @appearanceShadowTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'阴影'**
+  String get appearanceShadowTitle;
+
+  /// No description provided for @appearanceDefaultFontSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认字体大小'**
+  String get appearanceDefaultFontSize;
+
+  /// No description provided for @appearanceDefaultFontSizeDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前默认正文为 14；标题与辅助文字会按比例调整'**
+  String get appearanceDefaultFontSizeDesc;
+
+  /// No description provided for @appearanceComicCardShadow.
+  ///
+  /// In zh, this message translates to:
+  /// **'漫画卡片阴影'**
+  String get appearanceComicCardShadow;
+
+  /// No description provided for @appearanceComicCardShadowDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整漫画封面卡片的阴影强度'**
+  String get appearanceComicCardShadowDesc;
+
   /// No description provided for @appearanceThemeStyle.
   ///
   /// In zh, this message translates to:

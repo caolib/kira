@@ -18,6 +18,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
+import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -686,9 +687,7 @@ class _MangaBannerCard extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        margin: EdgeInsets.zero,
+      child: ComicCardSurface(
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -1252,9 +1251,7 @@ class _MangaCard extends StatelessWidget {
             Expanded(
               child: _hero(
                 ComicHeroTags.cover,
-                Card(
-                  clipBehavior: Clip.antiAlias,
-                  margin: EdgeInsets.zero,
+                ComicCardSurface(
                   child: CoverBrightnessFilter(
                     child: CachedNetworkImage(
                       imageUrl: comic.cover,
@@ -1445,9 +1442,7 @@ class ComicCard extends StatelessWidget {
           Expanded(
             child: _hero(
               ComicHeroTags.cover,
-              Card(
-                clipBehavior: Clip.antiAlias,
-                margin: EdgeInsets.zero,
+              ComicCardSurface(
                 child: CoverBrightnessFilter(
                   child: CachedNetworkImage(
                     imageUrl: comic.cover,
