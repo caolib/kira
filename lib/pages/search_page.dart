@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -311,10 +312,6 @@ class _SearchPageState extends State<SearchPage> {
             SliverToBoxAdapter(
               child: SizedBox(height: MediaQuery.of(context).padding.top),
             ),
-            if (_refreshing)
-              const SliverToBoxAdapter(
-                child: LinearProgressIndicator(minHeight: 2),
-              ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
@@ -358,6 +355,16 @@ class _SearchPageState extends State<SearchPage> {
                     onSelectionChanged: (v) => _setMode(v.first),
                   ),
                 ),
+              ),
+            if (_refreshing &&
+                _searchQuery == null &&
+                _selectedTag == null &&
+                !_searching &&
+                _keywords.isEmpty &&
+                _tags.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: ExpressiveLoadingIndicator()),
               ),
             if (_searching && _selectedTag == null)
               SliverPadding(

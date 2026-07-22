@@ -1866,49 +1866,24 @@ class _AboutPageState extends State<AboutPage> {
               ),
             ),
             actions: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(
-                        dialogContext,
-                        UserManager.defaultUpdateMirrorPrefix,
-                      ),
-                      child: Text(
-                        l10n.aboutRestoreDefaultButton,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Flexible(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      child: Text(
-                        l10n.cancelButton,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Flexible(
-                    child: FilledButton(
-                      onPressed: () {
-                        if (formKey.currentState?.validate() ?? false) {
-                          Navigator.pop(dialogContext, controller.text);
-                        }
-                      },
-                      child: Text(
-                        l10n.aboutSaveButton,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ],
+              TextButton(
+                onPressed: () => Navigator.pop(
+                  dialogContext,
+                  UserManager.defaultUpdateMirrorPrefix,
+                ),
+                child: Text(l10n.aboutRestoreDefaultButton),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(l10n.cancelButton),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.pop(dialogContext, controller.text);
+                  }
+                },
+                child: Text(l10n.aboutSaveButton),
               ),
             ],
           );
@@ -2246,12 +2221,23 @@ class _LinkAction extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 16,
+        ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             icon,
-            const SizedBox(width: AppSpacing.md),
-            Text(label, style: tt.bodyLarge),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Text(
+                label,
+                style: tt.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),

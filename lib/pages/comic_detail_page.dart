@@ -870,6 +870,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   Widget _buildGroupSegments(Comic comic) {
     return SegmentedButton<String>(
+      showSelectedIcon: false,
       segments: comic.groups!.entries
           .map(
             (e) => ButtonSegment(
@@ -1294,7 +1295,10 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        if (authors.isNotEmpty) ...[
+                        if (authors.isNotEmpty ||
+                            comic.status != null ||
+                            comic.region != null ||
+                            comic.themes.isNotEmpty)
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
@@ -1318,38 +1322,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                   color: cs.secondaryContainer,
                                   textColor: cs.onSecondaryContainer,
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                        ] else if (comic.status != null ||
-                            comic.region != null) ...[
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              if (comic.status != null)
-                                _InfoChip(
-                                  icon: Icons.timelapse,
-                                  label: comic.status!['display'] ?? '',
-                                  color: cs.primaryContainer,
-                                  textColor: cs.onPrimaryContainer,
-                                ),
-                              if (comic.region != null)
-                                _InfoChip(
-                                  icon: Icons.public,
-                                  label: comic.region!['display'] ?? '',
-                                  color: cs.secondaryContainer,
-                                  textColor: cs.onSecondaryContainer,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                        ],
-                        if (comic.themes.isNotEmpty)
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
                               for (final theme in comic.themes)
                                 _ThemeChip(
                                   theme: theme,
@@ -1365,13 +1337,13 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                             children: [
                               Icon(
                                 Icons.local_fire_department,
-                                size: 16,
+                                size: 14,
                                 color: cs.primary,
                               ),
                               const SizedBox(width: AppSpacing.xs),
                               Text(
                                 _formatPopular(context, comic.popular),
-                                style: tt.bodySmall?.copyWith(
+                                style: tt.labelSmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                 ),
                               ),
@@ -1384,7 +1356,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                             children: [
                               Icon(
                                 Icons.update,
-                                size: 16,
+                                size: 14,
                                 color: cs.onSurfaceVariant,
                               ),
                               const SizedBox(width: AppSpacing.xs),
@@ -1393,7 +1365,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                   comic.datetimeUpdated!,
                                   AppLocalizations.of(context)!,
                                 ),
-                                style: tt.bodySmall?.copyWith(
+                                style: tt.labelSmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                 ),
                               ),

@@ -56,7 +56,7 @@ ref/
 .env
 
 .claude
-
+.pi
 .agents
 
 .vscode/settings.json

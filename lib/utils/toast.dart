@@ -59,7 +59,7 @@ class _ToastWidgetState extends State<_ToastWidget>
   bool _removed = false;
 
   Duration get _displayDuration =>
-      widget.isError ? const Duration(seconds: 4) : const Duration(seconds: 2);
+      widget.isError ? const Duration(seconds: 4) : const Duration(seconds: 1);
 
   @override
   void initState() {

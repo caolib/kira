@@ -259,8 +259,6 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
     final isInitial = _currentItemsEmpty;
     if (isInitial) {
       setState(() => _loading = true);
-    } else {
-      setState(() {}); // 触发 UI 显示刷新指示器
     }
     _offset = 0;
     try {
@@ -556,6 +554,7 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
           : null,
       body: RefreshIndicator(
         onRefresh: () => _load(force: true),
+        edgeOffset: MediaQuery.of(context).padding.top,
         child: NotificationListener<ScrollNotification>(
           onNotification: (n) {
             if (n.metrics.axis == Axis.vertical) {
@@ -574,16 +573,23 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: MediaQuery.of(context).padding.top + 12,
+              SliverAppBar(
+                pinned: false,
+                floating: true,
+                snap: true,
+                primary: true,
+                automaticallyImplyLeading: false,
+                scrolledUnderElevation: 0,
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                surfaceTintColor: Colors.transparent,
+                toolbarHeight: 0,
+                bottom: PreferredSize(
+                  preferredSize: Size.fromHeight(
+                    _toolbarContentHeight(context),
+                  ),
+                  child: _buildToolbar(context, hp),
                 ),
               ),
-              if (_refreshing)
-                const SliverToBoxAdapter(
-                  child: LinearProgressIndicator(minHeight: 2),
-                ),
-              SliverToBoxAdapter(child: _buildToolbar(context, hp)),
               if (_loading)
                 SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: hp),
@@ -617,6 +623,14 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
         ),
       ),
     );
+  }
+
+  double _toolbarContentHeight(BuildContext context) {
+    // top/bottom padding + chip 行；若开启动画功能再加类型切换行。
+    // FilterChip/ActionChip 在 M3 下实际约 40–48，预留一点防溢出。
+    const filterRow = 4.0 + 48.0 + 8.0;
+    if (!_animeFeatureEnabled) return filterRow;
+    return filterRow + 48.0 + AppSpacing.sm;
   }
 
   Widget _buildToolbar(BuildContext context, double hp) {
