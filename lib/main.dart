@@ -126,10 +126,11 @@ class KiraApp extends ConsumerStatefulWidget {
 class _KiraAppState extends ConsumerState<KiraApp> {
   final _user = UserManager();
 
-  static final _cardTheme = CardThemeData(
+  CardThemeData get _cardTheme => CardThemeData(
     clipBehavior: Clip.hardEdge,
     shape: RoundedRectangleBorder(borderRadius: AppRadius.lgR),
-    elevation: 0,
+    elevation: _user.theme.cardShadowElevation,
+    surfaceTintColor: Colors.transparent,
   );
 
   // Router 必须只创建一次：若在 build() 里调用 createAppRouter()，

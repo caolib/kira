@@ -36,9 +36,9 @@ class ThemeSettings extends PrefsStore {
   static const double minDefaultFontSize = 12.0;
   static const double maxDefaultFontSize = 20.0;
   static const double defaultAppFontSize = 14.0;
-  static const double minComicCardShadowStrength = 0.0;
-  static const double maxComicCardShadowStrength = 1.0;
-  static const double defaultComicCardShadowStrength = 0.75;
+  static const double minCardShadowElevation = 0.0;
+  static const double maxCardShadowElevation = 4.0;
+  static const double defaultCardShadowElevation = 2.0;
 
   // ── Preference keys ────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ class ThemeSettings extends PrefsStore {
   static const _keyCustomThemeColor = 'custom_theme_color';
   static const _keyDarkModeCoverBrightness = 'dark_mode_cover_brightness';
   static const _keyDefaultFontSize = 'default_font_size';
-  static const _keyComicCardShadowStrength = 'comic_card_shadow_strength';
+  static const _keyCardShadowElevation = 'card_shadow_elevation';
   static const _keyBottomNavShowLabels = 'bottom_nav_show_labels';
   static const _keyBottomNavLabelMode = 'bottom_nav_label_mode';
   static const _keyNavOrder = 'nav_order';
@@ -67,7 +67,7 @@ class ThemeSettings extends PrefsStore {
   int _customThemeColorValue = defaultCustomThemeColor.toARGB32();
   double _darkModeCoverBrightness = defaultDarkModeCoverBrightness;
   double _defaultFontSize = defaultAppFontSize;
-  double _comicCardShadowStrength = defaultComicCardShadowStrength;
+  double _cardShadowElevation = defaultCardShadowElevation;
   BottomNavLabelMode _bottomNavLabelMode = BottomNavLabelMode.selectedOnly;
   List<String> _navOrder = defaultNavOrder;
   String _lastNavKey = defaultNavKey;
@@ -85,7 +85,7 @@ class ThemeSettings extends PrefsStore {
   Color get customThemeColor => Color(_customThemeColorValue);
   double get darkModeCoverBrightness => _darkModeCoverBrightness;
   double get defaultFontSize => _defaultFontSize;
-  double get comicCardShadowStrength => _comicCardShadowStrength;
+  double get cardShadowElevation => _cardShadowElevation;
   BottomNavLabelMode get bottomNavLabelMode => _bottomNavLabelMode;
 
   /// Compatibility: any mode that still shows label text somewhere.
@@ -134,9 +134,8 @@ class ThemeSettings extends PrefsStore {
     _defaultFontSize = _normalizeDefaultFontSize(
       prefs.getDouble(_keyDefaultFontSize) ?? defaultAppFontSize,
     );
-    _comicCardShadowStrength = _normalizeComicCardShadowStrength(
-      prefs.getDouble(_keyComicCardShadowStrength) ??
-          defaultComicCardShadowStrength,
+    _cardShadowElevation = _normalizeCardShadowElevation(
+      prefs.getDouble(_keyCardShadowElevation) ?? defaultCardShadowElevation,
     );
     _bottomNavLabelMode = _loadBottomNavLabelMode(prefs);
     final savedNavOrder = prefs.getStringList(_keyNavOrder);
@@ -224,12 +223,12 @@ class ThemeSettings extends PrefsStore {
     await setDouble(_keyDefaultFontSize, nextValue);
   }
 
-  Future<void> setComicCardShadowStrength(double value) async {
-    final nextValue = _normalizeComicCardShadowStrength(value);
-    if (_comicCardShadowStrength == nextValue) return;
+  Future<void> setCardShadowElevation(double value) async {
+    final nextValue = _normalizeCardShadowElevation(value);
+    if (_cardShadowElevation == nextValue) return;
 
-    _comicCardShadowStrength = nextValue;
-    await setDouble(_keyComicCardShadowStrength, nextValue);
+    _cardShadowElevation = nextValue;
+    await setDouble(_keyCardShadowElevation, nextValue);
   }
 
   Future<void> setBottomNavShowLabels(bool enabled) async {
@@ -306,9 +305,9 @@ class ThemeSettings extends PrefsStore {
     return value.clamp(minDefaultFontSize, maxDefaultFontSize).toDouble();
   }
 
-  static double _normalizeComicCardShadowStrength(double value) {
+  static double _normalizeCardShadowElevation(double value) {
     return value
-        .clamp(minComicCardShadowStrength, maxComicCardShadowStrength)
+        .clamp(minCardShadowElevation, maxCardShadowElevation)
         .toDouble();
   }
 

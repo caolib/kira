@@ -494,10 +494,10 @@
   "appearanceDarkCoverBrightness": "暗色模式封面亮度",
   "appearanceDarkCoverBrightnessDesc": "暗色模式下降低各个界面的卡片封面亮度",
   "appearanceShadowTitle": "阴影",
+  "appearanceCardShadowSize": "统一阴影大小",
+  "appearanceCardShadowSizeDesc": "统一调整应用内普通卡片的阴影大小",
   "appearanceDefaultFontSize": "默认字体大小",
   "appearanceDefaultFontSizeDesc": "当前默认正文为 14；标题与辅助文字会按比例调整",
-  "appearanceComicCardShadow": "漫画卡片阴影",
-  "appearanceComicCardShadowDesc": "调整漫画封面卡片的阴影强度",
   "appearanceThemeStyle": "主题风格",
   "appearanceCurrentStyle": "当前风格：{label} · {description}",
   "@appearanceCurrentStyle": {

@@ -2,11 +2,20 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/profile_page.dart';
 import 'package:kira/utils/remote_notice_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+Widget _buildTestApp(Widget child) {
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: child,
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +51,7 @@ void main() {
     });
     await UserManager().init();
 
-    await tester.pumpWidget(const MaterialApp(home: ProfilePage()));
+    await tester.pumpWidget(_buildTestApp(const ProfilePage()));
     await tester.pumpAndSettle();
   }
 
@@ -107,7 +116,7 @@ void main() {
     );
     await UserManager().init();
 
-    await tester.pumpWidget(const MaterialApp(home: AboutPage()));
+    await tester.pumpWidget(_buildTestApp(const AboutPage()));
     await tester.pumpAndSettle();
 
     expect(find.text('日志'), findsOneWidget);

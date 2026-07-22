@@ -177,42 +177,57 @@ class _NetworkPageState extends State<NetworkPage>
         secondary = l10n.networkStatusUnknownHint;
     }
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: AppRadius.xlR,
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          _BreathingDot(color: color, controller: _breathController),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  primary,
-                  style: tt.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: color,
+    return _buildElevatedCard(
+      color: Color.alphaBlend(color.withValues(alpha: 0.12), cs.surface),
+      borderRadius: AppRadius.xlR,
+      side: BorderSide(color: color.withValues(alpha: 0.4)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          children: [
+            _BreathingDot(color: color, controller: _breathController),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    primary,
+                    style: tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  secondary,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    secondary,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
-          ),
-          _buildStatusMetric(l10n, tt, cs),
-        ],
+            _buildStatusMetric(l10n, tt, cs),
+          ],
+        ),
       ),
+    );
+  }
+
+  /// 使用全局 CardTheme 的 elevation，让外观页的统一阴影设置在本页生效。
+  Widget _buildElevatedCard({
+    required Widget child,
+    required Color color,
+    required BorderRadius borderRadius,
+    BorderSide side = BorderSide.none,
+  }) {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: color,
+      shape: RoundedRectangleBorder(borderRadius: borderRadius, side: side),
+      child: child,
     );
   }
 
@@ -401,28 +416,33 @@ class _NetworkPageState extends State<NetworkPage>
   }
 
   Widget _buildEmptyHint(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: AppRadius.lgR,
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+    return _buildElevatedCard(
+      color: Color.alphaBlend(
+        cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        cs.surface,
       ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.network_check_rounded,
-            size: 30,
-            color: cs.onSurfaceVariant,
+      borderRadius: AppRadius.lgR,
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+          child: Column(
+            children: [
+              Icon(
+                Icons.network_check_rounded,
+                size: 30,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                l10n.networkNotTested,
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            l10n.networkNotTested,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -564,8 +584,9 @@ class _NetworkPageState extends State<NetworkPage>
           }
         : null;
 
-    return Material(
-      color: Colors.transparent,
+    return _buildElevatedCard(
+      color: cs.surface,
+      borderRadius: AppRadius.lgR,
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadius.lgR,
@@ -574,7 +595,12 @@ class _NetworkPageState extends State<NetworkPage>
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           decoration: BoxDecoration(
             // 选中态用更淡的填充+细描边,避免过于抢眼。
-            color: isSelected ? cs.primary.withValues(alpha: 0.08) : cs.surface,
+            color: isSelected
+                ? Color.alphaBlend(
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                  )
+                : cs.surface,
             borderRadius: AppRadius.lgR,
             border: Border.all(
               color: isSelected
@@ -705,38 +731,41 @@ class _NetworkPageState extends State<NetworkPage>
         ? l10n.networkTesting
         : (latency == null ? l10n.networkTimeout : '$latency ms');
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: AppRadius.mdR,
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+    return _buildElevatedCard(
+      color: Color.alphaBlend(
+        cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        cs.surface,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: tt.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          if (_testingLatency && isPending)
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 2, color: color),
-            )
-          else
+      borderRadius: AppRadius.mdR,
+      side: BorderSide(color: color.withValues(alpha: 0.35)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              valueText,
-              style: tt.labelLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: tt.labelSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
-        ],
+            const SizedBox(height: AppSpacing.xs),
+            if (_testingLatency && isPending)
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            else
+              Text(
+                valueText,
+                style: tt.labelLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -748,12 +777,10 @@ class _NetworkPageState extends State<NetworkPage>
   Widget _buildProxyCard(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
     final isManual = _user.networkProxyMode == NetworkProxyMode.manual;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: AppRadius.xlR,
-        border: Border.all(color: cs.outlineVariant),
-      ),
+    return _buildElevatedCard(
+      color: cs.surfaceContainerLow,
+      borderRadius: AppRadius.xlR,
+      side: BorderSide(color: cs.outlineVariant),
       child: Column(
         children: [
           Padding(
@@ -876,12 +903,10 @@ class _NetworkPageState extends State<NetworkPage>
     TextTheme tt,
     ColorScheme cs,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: AppRadius.xlR,
-        border: Border.all(color: cs.outlineVariant),
-      ),
+    return _buildElevatedCard(
+      color: cs.surfaceContainerLow,
+      borderRadius: AppRadius.xlR,
+      side: BorderSide(color: cs.outlineVariant),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -28,7 +28,7 @@ class AppearancePage extends StatefulWidget {
 class _AppearancePageState extends State<AppearancePage> {
   final _user = UserManager();
   double? _previewCoverBrightness;
-  double? _previewComicCardShadowStrength;
+  double? _previewCardShadowElevation;
 
   static const _navMeta = {
     'comic': (Icons.menu_book_outlined, Icons.menu_book),
@@ -218,9 +218,8 @@ class _AppearancePageState extends State<AppearancePage> {
     final coverBrightness =
         _previewCoverBrightness ?? _user.darkModeCoverBrightness;
     final coverBrightnessPercent = (coverBrightness * 100).round();
-    final comicCardShadowStrength =
-        _previewComicCardShadowStrength ?? _user.theme.comicCardShadowStrength;
-    final comicCardShadowPercent = (comicCardShadowStrength * 100).round();
+    final cardShadowElevation =
+        _previewCardShadowElevation ?? _user.theme.cardShadowElevation;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.appearanceTitle)),
@@ -337,22 +336,26 @@ class _AppearancePageState extends State<AppearancePage> {
           SettingsSection(
             icon: Icons.layers_outlined,
             title: l10n.appearanceShadowTitle,
-            child: _AppearanceSliderControl(
-              icon: Icons.layers_outlined,
-              title: l10n.appearanceComicCardShadow,
-              description: l10n.appearanceComicCardShadowDesc,
-              valueText: '$comicCardShadowPercent%',
-              value: comicCardShadowStrength,
-              min: ThemeSettings.minComicCardShadowStrength,
-              max: ThemeSettings.maxComicCardShadowStrength,
-              divisions: 20,
-              onChanged: (value) {
-                setState(() => _previewComicCardShadowStrength = value);
-              },
-              onChangeEnd: (value) {
-                setState(() => _previewComicCardShadowStrength = null);
-                unawaited(_user.theme.setComicCardShadowStrength(value));
-              },
+            child: Column(
+              children: [
+                _AppearanceSliderControl(
+                  icon: Icons.view_agenda_outlined,
+                  title: l10n.appearanceCardShadowSize,
+                  description: l10n.appearanceCardShadowSizeDesc,
+                  valueText: cardShadowElevation.toStringAsFixed(1),
+                  value: cardShadowElevation,
+                  min: ThemeSettings.minCardShadowElevation,
+                  max: ThemeSettings.maxCardShadowElevation,
+                  divisions: 8,
+                  onChanged: (value) {
+                    setState(() => _previewCardShadowElevation = value);
+                  },
+                  onChangeEnd: (value) {
+                    setState(() => _previewCardShadowElevation = null);
+                    unawaited(_user.theme.setCardShadowElevation(value));
+                  },
+                ),
+              ],
             ),
           ),
           const SizedBox(height: AppSpacing.sm),

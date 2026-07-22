@@ -1459,6 +1459,18 @@ abstract class AppLocalizations {
   /// **'阴影'**
   String get appearanceShadowTitle;
 
+  /// No description provided for @appearanceCardShadowSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'统一阴影大小'**
+  String get appearanceCardShadowSize;
+
+  /// No description provided for @appearanceCardShadowSizeDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'统一调整应用内普通卡片的阴影大小'**
+  String get appearanceCardShadowSizeDesc;
+
   /// No description provided for @appearanceDefaultFontSize.
   ///
   /// In zh, this message translates to:
@@ -1470,18 +1482,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'当前默认正文为 14；标题与辅助文字会按比例调整'**
   String get appearanceDefaultFontSizeDesc;
-
-  /// No description provided for @appearanceComicCardShadow.
-  ///
-  /// In zh, this message translates to:
-  /// **'漫画卡片阴影'**
-  String get appearanceComicCardShadow;
-
-  /// No description provided for @appearanceComicCardShadowDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'调整漫画封面卡片的阴影强度'**
-  String get appearanceComicCardShadowDesc;
 
   /// No description provided for @appearanceThemeStyle.
   ///

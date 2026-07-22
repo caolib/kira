@@ -478,8 +478,6 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: cs.shadow,
-                elevation: 4,
                 child: IntrinsicHeight(
                   child: Row(
                     children: [
@@ -547,8 +545,6 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: cs.shadow,
-                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(
@@ -590,8 +586,6 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: cs.shadow,
-                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(
@@ -1060,7 +1054,6 @@ class _UpdateCardState extends State<_UpdateCard> {
     if (state.status == AppUpdateStatus.checking) {
       return Card(
         color: cs.surfaceContainerLow,
-        elevation: 4,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -1084,7 +1077,6 @@ class _UpdateCardState extends State<_UpdateCard> {
     if (state.status == AppUpdateStatus.failed) {
       return Card(
         color: cs.surfaceContainerLow,
-        elevation: 4,
         child: InkWell(
           onTap: widget.onCheckUpdate,
           borderRadius: AppRadius.mdR,
@@ -1117,8 +1109,6 @@ class _UpdateCardState extends State<_UpdateCard> {
 
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: cs.shadow,
-      elevation: 4,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

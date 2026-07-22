@@ -34,22 +34,6 @@ class AppShadows {
     ),
   ];
 
-  static List<BoxShadow> comicCard(ColorScheme cs, {required double strength}) {
-    final normalized = strength.clamp(0.0, 1.0).toDouble();
-    return [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.12 * normalized),
-        blurRadius: 18 * normalized,
-        offset: Offset(0, 6 * normalized),
-      ),
-      BoxShadow(
-        color: cs.shadow.withValues(alpha: 0.06 * normalized),
-        blurRadius: 6 * normalized,
-        offset: Offset(0, 2 * normalized),
-      ),
-    ];
-  }
-
   static List<BoxShadow> lg(ColorScheme cs) => [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.12),

@@ -9,6 +9,10 @@ Widget _buildTestApp(Widget child) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
+    theme: ThemeData(
+      useMaterial3: true,
+      cardTheme: const CardThemeData(elevation: 3),
+    ),
     home: child,
   );
 }
@@ -195,7 +199,20 @@ void main() {
     expect(borderColors, hasLength(5));
     for (final card in cards) {
       expect(card.color, isNot(_cardBorderSide(card).color));
+      expect(card.color!.a, 1.0);
+      expect(card.elevation, isNull);
     }
+
+    final colorScheme = Theme.of(
+      tester.element(find.byType(NoticeCenterPage)),
+    ).colorScheme;
+    expect(
+      cards.first.color,
+      Color.alphaBlend(
+        colorScheme.primary.withValues(alpha: 0.045),
+        colorScheme.surface,
+      ),
+    );
   });
 
   testWidgets('uses timeline marker shape instead of pinned tag', (

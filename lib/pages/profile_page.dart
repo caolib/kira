@@ -342,8 +342,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: cs.shadow,
-                    elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -426,8 +424,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: AppSpacing.md),
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: cs.shadow,
-                    elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -460,8 +456,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: AppSpacing.md),
                   Card(
                     color: cs.surfaceContainerLow,
-                    shadowColor: cs.shadow,
-                    elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: ValueListenableBuilder<bool>(
@@ -508,8 +502,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: cs.shadow,
-      elevation: 4,
       child: InkWell(
         borderRadius: AppRadius.lgR,
         onTap: _goLogin,
@@ -553,8 +545,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Card(
       color: cs.surfaceContainerLow,
-      shadowColor: cs.shadow,
-      elevation: 4,
       child: InkWell(
         borderRadius: AppRadius.lgR,
         onTap: () {
@@ -1624,8 +1614,6 @@ class DisclaimerPage extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           Card(
             color: cs.surfaceContainerLow,
-            shadowColor: cs.shadow,
-            elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -2084,8 +2072,6 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: 32),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: cs.shadow,
-                elevation: 4,
                 child: IntrinsicHeight(
                   child: Row(
                     children: [
@@ -2153,8 +2139,6 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: cs.shadow,
-                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(
@@ -2196,8 +2180,6 @@ class _AboutPageState extends State<AboutPage> {
               const SizedBox(height: AppSpacing.lg),
               Card(
                 color: cs.surfaceContainerLow,
-                shadowColor: cs.shadow,
-                elevation: 4,
                 child: Column(
                   children: [
                     ListTile(

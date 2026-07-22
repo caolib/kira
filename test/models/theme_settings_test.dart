@@ -61,15 +61,19 @@ void main() {
     expect(prefs.getBool('bottom_nav_show_labels'), isTrue);
   });
 
-  test('uses default font size and comic card shadow preferences', () async {
+  test('uses default appearance sizing preferences', () async {
     SharedPreferences.setMockInitialValues({});
     await settings.initFromPrefs(await SharedPreferences.getInstance());
 
     expect(settings.defaultFontSize, ThemeSettings.defaultAppFontSize);
-    expect(
-      settings.comicCardShadowStrength,
-      ThemeSettings.defaultComicCardShadowStrength,
-    );
+    expect(settings.cardShadowElevation, 2.0);
+  });
+
+  test('keeps a saved zero card shadow elevation', () async {
+    SharedPreferences.setMockInitialValues({'card_shadow_elevation': 0.0});
+    await settings.initFromPrefs(await SharedPreferences.getInstance());
+
+    expect(settings.cardShadowElevation, 0.0);
   });
 
   test('persists and clamps appearance sizing preferences', () async {
@@ -78,18 +82,40 @@ void main() {
     await settings.initFromPrefs(prefs);
 
     await settings.setDefaultFontSize(16);
-    await settings.setComicCardShadowStrength(0.6);
+    await settings.setCardShadowElevation(2.5);
 
     expect(prefs.getDouble('default_font_size'), 16);
-    expect(prefs.getDouble('comic_card_shadow_strength'), 0.6);
+    expect(prefs.getDouble('card_shadow_elevation'), 2.5);
 
     await settings.setDefaultFontSize(100);
-    await settings.setComicCardShadowStrength(-1);
+    await settings.setCardShadowElevation(100);
 
     expect(settings.defaultFontSize, ThemeSettings.maxDefaultFontSize);
-    expect(
-      settings.comicCardShadowStrength,
-      ThemeSettings.minComicCardShadowStrength,
-    );
+    expect(settings.cardShadowElevation, ThemeSettings.maxCardShadowElevation);
+    await settings.setCardShadowElevation(-1);
+    expect(settings.cardShadowElevation, ThemeSettings.minCardShadowElevation);
   });
+
+  test(
+    'loads a clamped card shadow elevation and notifies on change',
+    () async {
+      SharedPreferences.setMockInitialValues({'card_shadow_elevation': 99.0});
+      await settings.initFromPrefs(await SharedPreferences.getInstance());
+
+      expect(
+        settings.cardShadowElevation,
+        ThemeSettings.maxCardShadowElevation,
+      );
+
+      var notifications = 0;
+      void listener() => notifications++;
+      settings.addListener(listener);
+
+      await settings.setCardShadowElevation(1.5);
+
+      expect(settings.cardShadowElevation, 1.5);
+      expect(notifications, 1);
+      settings.removeListener(listener);
+    },
+  );
 }

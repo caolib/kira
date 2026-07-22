@@ -842,7 +842,12 @@ _NoticeVisualStyle _noticeVisualStyle(ColorScheme cs, RemoteNotice notice) {
   return _NoticeVisualStyle(
     accent: accent,
     border: accent,
-    surface: accent.withValues(alpha: surfaceAlpha),
+    // Preserve the translucent-tint appearance without letting an elevation
+    // shadow show through the card's interior.
+    surface: Color.alphaBlend(
+      accent.withValues(alpha: surfaceAlpha),
+      cs.surface,
+    ),
     iconSurface: accent.withValues(alpha: iconSurfaceAlpha),
     titleColor: cs.onSurface,
     icon: icon,
