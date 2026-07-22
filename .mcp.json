@@ -7,7 +7,8 @@
         "serve"
       ],
       "cwd": "C:\\code\\Flutter\\kira",
-      "type": "stdio"
+      "type": "stdio",
+      "directTools": true
     }
   }
 }

@@ -82,12 +82,22 @@
 - API 层和模型层 ~70 处不安全转换已替换
 - 简单模型已迁移到 `json_serializable`（P2-10）
 
-### 9. 密码明文存储在 SharedPreferences — ✅ 已修复
+### 9. 密码明文存储在 SharedPreferences — ⚠️ 部分完成（FIXME）
 
+基础设施已建好，但**未接线**，凭据仍是 SharedPreferences 明文。详见 `docs/persistence-and-cache.md` §4。
+
+已完成：
 - 引入 `flutter_secure_storage`，创建 `SecureCredentialStore`
 - `InMemorySecureCredentialStore` 用于测试注入
-- `migrateFromSharedPreferences()` 一次性迁移
-- 创建 `test/test_helpers.dart` 统一测试 setUp/tearDown
+- `migrateFromSharedPreferences()` 迁移函数
+- `test/test_helpers.dart` 统一 setUp/tearDown + `secure_credential_store_test.dart`
+
+FIXME（启用前必须处理）：
+- `main.dart` 从未调用 `migrateFromSharedPreferences`，生产代码 0 调用 `SecureCredentialStore`。
+- `UserManager.saveCredentials`（`user_manager.dart:726`）仍 `prefs.setString(_keySavedPassword, ...)` 明文写；login_page/profile_page 4 处仍走 `UserManager().saveCredentials`。
+- 接线需三处联动：① 改 `UserManager` 读写走 secure storage；② `main.dart`/`init` 跑迁移；③ 迁移改为「先复制后删除」。
+- FIXME 迁移坑：`migrateFromSharedPreferences` 把 `_keyMigrated` 标记写在 secure storage（`secure_credential_store.dart:133`），一旦 secure storage 被清空，标记丢失→迁移重跑→但 prefs 旧明文已删→重跑读到空→**凭据永久丢失且无报错**。启用前必须把标记改存 SharedPreferences。
+- FIXME 半成品一致性：`SecureCredentialStore` 与 `UserManager` 用相同键名（`saved_username`/`saved_password`/`saved_credentials`），若只启用迁移不改 `saveCredentials`，新登录账号仍写回 prefs 明文，迁移白做。
 
 ---
 

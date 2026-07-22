@@ -2,7 +2,22 @@
 
 ## Project Structure & Module Organization
 
-Platform folders (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) hold only platform-specific integration code. Static assets live in `assets/` and must be declared in `pubspec.yaml`. Release notes belong in `docs/CHANGELOG.md`. Use `ref/` for reference material, not production code.
+Platform folders (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) hold only platform-specific integration code. Static assets live in `assets/` and must be declared in `pubspec.yaml`. Release notes belong in `docs/CHANGELOG.md`. `ref/` holds reference material only (dandanplay API docs, sample JSON, category scratch dirs) — never import from it in production code.
+
+### `lib/` 一级目录速览
+
+| 目录 | 职责 |
+| ------ | ---------- |
+| `api/` | `ApiTransport` + 领域 API（`manga/` `anime/` `network/` `user/` 子目录）、`dandanplay_api.dart`、`ai_api.dart`，`api_client.dart` 为 facade |
+| `models/` | 数据模型 `fromJson`/`toJson`（基类 `cached_repository.dart` 与 `secure_credential_store.dart` 也在此） |
+| `repositories/` | 各领域 `CachedRepository` 子类（manga/anime home、comic detail、bookshelf、search init）—— 实现 `models/cached_repository.dart` 基类 |
+| `providers/` | Riverpod providers：`app_providers`（单例）、`settings_providers`（子 store）、`repository_providers`（数据仓库） |
+| `pages/` | 页面与路由目标（最大目录，~59 文件） |
+| `routing/` | `app_router.dart`（GoRouter 声明 + `AppRoutes`）、`MainShell`（底部导航） |
+| `theme/` | 设计令牌：spacing/radius/shadows/typography + `player_chrome`/`reader_chrome` |
+| `widgets/` | 复用组件（骨架、错误态、登录过期、列表页等）—— 见下方「Reusable Widget Patterns」 |
+| `utils/` | JSON 安全助手、`AppLogger`、应用更新、中文转换等工具 |
+| `l10n/` | ARB 模板与生成的 `app_localizations*.dart` |
 
 ## Maintenance Scope
 
@@ -38,7 +53,7 @@ Anime functionality is no longer maintained. Ignore anime-related code when maki
 - **Complex models** (Comic, Anime, MangaHome, Chapter, etc.): hand-written `fromJson`/`toJson` — too many custom coercions for generated code.
 
 ### Internationalization
-- `l10n.yaml` at project root configures `gen-l10n`. Template ARB is `app_zh.arb` (Chinese only currently).
+- `l10n.yaml` at project root configures `gen-l10n`. Template ARB is `app_zh.arb`; `app_zh_Hant.arb` holds the Traditional Chinese mirror (简繁双语).
 - Access strings via `AppLocalizations.of(context)!.keyName`.
 - Parameterized strings become methods: `l10n.deleteLocalComicsContent(count)` returns `String`.
 
@@ -59,10 +74,10 @@ Run these from the repository root:
 - `dart format lib test` — format source files before review
 - `dart run build_runner build` — regenerate `.g.dart` files after model changes
 - `flutter gen-l10n` — regenerate localization files after ARB changes
-- `run-kira` - use this skill(if there is) when you need to start or hot-reload or hot-restart this application.
+- `run-kira` — skill to start / stop / hot-restart / hot-reload the running kira app. Hot-reload is auto-triggered by a PostToolUse(Edit|Write) hook after code edits; reach for the skill explicitly for cold starts, hot-restarts, or stops.
 
 ### Windows Build Note
-If building on Windows and `flutter_secure_storage` fails to find ATL, ensure `windows/CMakeLists.txt` includes the ATL auto-discovery block that scans all MSVC tool versions for `atlmfc`.
+`flutter_secure_storage` (^10.3.1) is a dependency. If a Windows build fails to find ATL/MFC under a particular MSVC toolchain, add an ATL auto-discovery block to `windows/CMakeLists.txt` that scans installed MSVC versions for `atlmfc` — the current file does not need one for the default setup.
 
 ## Coding Style & Naming Conventions
 
@@ -95,50 +110,26 @@ Emoji-prefixed Conventional Commit types with concise Chinese summaries:
 - `✨ feat: 添加检查更新功能`
 - `🐛 fix: 登录过期后提醒用户登录`
 
-PRs should include a short behavior summary, linked issues, test/analyze results, and screenshots for UI changes. Update `docs/CHANGELOG.md` if the change affects a release.
+Update `docs/CHANGELOG.md` if the change affects a release.
 
 ## Security
 
 - Do not commit signing material (`android/key.properties`, keystores).
 - Use `flutter_secure_storage` for credentials (token, password) — never SharedPreferences for secrets.
 - `SecureCredentialStore` wraps flutter_secure_storage; `InMemorySecureCredentialStore` for tests.
-- GitHub release workflow expects Android signing secrets and publishes tag-based releases named `v*`.
 
-<!-- code-review-graph MCP tools -->
+## Persistence & Cache (on-demand)
+
+涉及持久化存储/缓存改动时（新增用户偏好、业务缓存、敏感凭据、阅读历史等），先读 `docs/persistence-and-cache.md`。该文档说明三层存储后端、键名前缀约定、`CachedRepository` 用法与决策流程。常用事实：业务缓存与用户偏好共用 SharedPreferences、仅靠 `cache_` 前缀隔离；`SecureCredentialStore` 已实现但尚未启用。
+
 ## MCP Tools: code-review-graph
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+This project ships a knowledge graph. **Use graph tools BEFORE Grep/Glob/Read** for exploring code — faster, cheaper, and gives callers/dependents/test-coverage context file scanning cannot.
 
-### When to use graph tools FIRST
+- **Explore / find symbols**: `semantic_search_nodes_tool` or `query_graph_tool` (patterns: callers_of, callees_of, imports_of, tests_for)
+- **Impact / blast radius**: `get_impact_radius_tool`, `get_affected_flows_tool`
+- **Code review**: `detect_changes_tool` (risk-scored) + `get_review_context_tool` (source snippets)
+- **Architecture**: `get_architecture_overview_tool` + `list_communities_tool`
+- **Refactor / dead code**: `refactor_tool`
 
-- **Exploring code**: `semantic_search_nodes_tool` or `query_graph_tool` instead of Grep
-- **Understanding impact**: `get_impact_radius_tool` instead of manually tracing imports
-- **Code review**: `detect_changes_tool` + `get_review_context_tool` instead of reading entire files
-- **Finding relationships**: `query_graph_tool` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview_tool` + `list_communities_tool`
-
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
-
-### Key Tools
-
-| Tool | Use when |
-| ------ | ---------- |
-| `detect_changes_tool` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context_tool` | Need source snippets for review — token-efficient |
-| `get_impact_radius_tool` | Understanding blast radius of a change |
-| `get_affected_flows_tool` | Finding which execution paths are impacted |
-| `query_graph_tool` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes_tool` | Finding functions/classes by name or keyword |
-| `get_architecture_overview_tool` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes_tool` for code review.
-3. Use `get_affected_flows_tool` to understand impact.
-4. Use `query_graph_tool` pattern="tests_for" to check coverage.
+The graph auto-updates on file changes via hooks. Fall back to Grep/Glob/Read only when the graph doesn't cover what you need.
