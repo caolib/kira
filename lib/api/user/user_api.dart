@@ -42,24 +42,26 @@ class UserApi {
       source: 'copy_login',
       options: BaseOptions(
         validateStatus: (_) => true,
+        // 头顺序对齐官方浏览器请求（ref/用户/拷贝登录-最新.txt）
         headers: {
+          'sec-ch-ua-platform': '"Windows"',
+          'user-agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
           'accept': 'application/json, text/plain, */*',
-          'accept-language':
-              'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,en-GB;q=0.6,ru;q=0.5,ja;q=0.4,zh-TW;q=0.3',
+          'sec-ch-ua':
+              '"Not;A=Brand";v="8", "Chromium";v="150", "Microsoft Edge";v="150"',
           'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'sec-ch-ua-mobile': '?0',
           'platform': '2',
           'origin': 'https://$hostCopy',
-          'referer': 'https://$hostCopy/web/login/loginByAccount',
-          'priority': 'u=1, i',
-          'sec-ch-ua':
-              '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
-          'sec-ch-ua-mobile': '?0',
-          'sec-ch-ua-platform': '"Windows"',
-          'sec-fetch-dest': 'empty',
-          'sec-fetch-mode': 'cors',
           'sec-fetch-site': 'same-origin',
-          'user-agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-dest': 'empty',
+          'referer':
+              'https://$hostCopy/web/login/loginByAccount?url=person%2Fhome',
+          'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+          'cookie': 'webp=1',
+          'priority': 'u=1, i',
         },
       ),
     );

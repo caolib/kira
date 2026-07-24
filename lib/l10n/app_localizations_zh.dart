@@ -650,10 +650,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get switchLineTooltip => '切换线路';
 
   @override
-  String get profileCopyCredentialLabel => '拷贝';
+  String get profileCopyCredentialLabel => '拷贝漫画';
 
   @override
-  String get profileHotCredentialLabel => '热辣';
+  String get profileHotCredentialLabel => '热辣漫画';
 
   @override
   String get accountSwitchedToast => '账号已切换';
@@ -1517,6 +1517,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileTokenLoginMode => '令牌';
 
   @override
+  String get profileTokenLoginEntry => '令牌登录';
+
+  @override
+  String get profileAccountLoginEntry => '账号密码登录';
+
+  @override
+  String get profileWebLoginButton => '官网登录';
+
+  @override
+  String get profileWebLoginPageTitle => '官网登录';
+
+  @override
+  String get profileWebLoginHint => '在官网中登录拷贝漫画账号，登录成功后将自动完成';
+
+  @override
+  String get profileWebLoginCompleting => '已获取登录信息，正在验证…';
+
+  @override
+  String get profileWebLoginManualButton => '我已完成登录';
+
+  @override
+  String get profileWebLoginNotDetected => '未检测到登录信息，请先在官网中完成登录';
+
+  @override
+  String get profileWebLoginResetTooltip => '清除官网登录状态';
+
+  @override
+  String get profileWebLoginFailed => '官网登录失败';
+
+  @override
   String get profileSavedAccountsTitle => '已保存账号';
 
   @override
@@ -1541,7 +1571,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileRegisterHotMangaAccountButton => '注册热辣漫画账号';
 
   @override
-  String get profileLoginButton => '登录';
+  String get profileLoginButton => '账号登录';
 
   @override
   String get profileRegisterInfoRequired => '请填写完整注册信息';
@@ -4213,10 +4243,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get switchLineTooltip => '切換線路';
 
   @override
-  String get profileCopyCredentialLabel => '拷貝';
+  String get profileCopyCredentialLabel => '拷貝漫畫';
 
   @override
-  String get profileHotCredentialLabel => '熱辣';
+  String get profileHotCredentialLabel => '熱辣漫畫';
 
   @override
   String get accountSwitchedToast => '帳號已切換';
@@ -5080,6 +5110,36 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get profileTokenLoginMode => '權杖';
 
   @override
+  String get profileTokenLoginEntry => '權杖登入';
+
+  @override
+  String get profileAccountLoginEntry => '帳號密碼登入';
+
+  @override
+  String get profileWebLoginButton => '官網登入';
+
+  @override
+  String get profileWebLoginPageTitle => '官網登入';
+
+  @override
+  String get profileWebLoginHint => '在官網中登入拷貝漫畫帳號，登入成功後將自動完成';
+
+  @override
+  String get profileWebLoginCompleting => '已獲取登入資訊，正在驗證…';
+
+  @override
+  String get profileWebLoginManualButton => '我已完成登入';
+
+  @override
+  String get profileWebLoginNotDetected => '未偵測到登入資訊，請先在官網中完成登入';
+
+  @override
+  String get profileWebLoginResetTooltip => '清除官網登入狀態';
+
+  @override
+  String get profileWebLoginFailed => '官網登入失敗';
+
+  @override
   String get profileSavedAccountsTitle => '已儲存帳號';
 
   @override
@@ -5104,7 +5164,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get profileRegisterHotMangaAccountButton => '註冊熱辣漫畫帳號';
 
   @override
-  String get profileLoginButton => '登入';
+  String get profileLoginButton => '帳號登入';
 
   @override
   String get profileRegisterInfoRequired => '請填寫完整註冊資訊';
