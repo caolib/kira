@@ -284,6 +284,13 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Future<void> _goWebLogin() async {
+    final result = await context.pushNamed<bool>(AppRoutes.webviewLogin);
+    if (result == true && mounted) {
+      Navigator.pop(context, true);
+    }
+  }
+
   Future<void> _goRegister() async {
     final result = await context.pushNamed<RegisterPrefill>(AppRoutes.register);
     if (result == null || !mounted) return;
@@ -399,48 +406,10 @@ class _LoginPageState extends State<LoginPage> {
         title: Text(AppLocalizations.of(context)!.profileLoginTitle),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(hp + 24, 48, hp + 24, 24),
+        padding: EdgeInsets.fromLTRB(hp + 24, 24, hp + 24, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Image.asset(_user.appLogoPath, width: 64, height: 64),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Kira',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 32),
-            // Step 1: choose login method
-            SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(
-                  value: false,
-                  label: Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.profileAccountPasswordLoginMode,
-                  ),
-                  icon: const Icon(Icons.person_outline),
-                ),
-                ButtonSegment(
-                  value: true,
-                  label: Text(
-                    AppLocalizations.of(context)!.profileTokenLoginMode,
-                  ),
-                  icon: const Icon(Icons.key),
-                ),
-              ],
-              selected: {_useToken},
-              onSelectionChanged: (v) => setState(() {
-                _useToken = v.first;
-                _error = null;
-              }),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            // Step 2: method-specific form only
             if (_useToken)
               ..._buildTokenForm(context)
             else
@@ -487,6 +456,30 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ],
+            const SizedBox(height: AppSpacing.sm),
+            // 令牌登录用得少，降级为底部低调入口
+            Center(
+              child: TextButton.icon(
+                onPressed: _loading
+                    ? null
+                    : () => setState(() {
+                        _useToken = !_useToken;
+                        _error = null;
+                      }),
+                icon: Icon(
+                  _useToken ? Icons.person_outline : Icons.key,
+                  size: 16,
+                ),
+                label: Text(
+                  _useToken
+                      ? AppLocalizations.of(context)!.profileAccountLoginEntry
+                      : AppLocalizations.of(context)!.profileTokenLoginEntry,
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -511,7 +504,6 @@ class _LoginPageState extends State<LoginPage> {
 
   List<Widget> _buildAccountPasswordForm(BuildContext context, ColorScheme cs) {
     final l10n = AppLocalizations.of(context)!;
-    final tt = Theme.of(context).textTheme;
     return [
       SegmentedButton<bool>(
         segments: [
@@ -534,19 +526,6 @@ class _LoginPageState extends State<LoginPage> {
       ),
       const SizedBox(height: AppSpacing.lg),
       if (_user.savedCredentials.isNotEmpty) ...[
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            l10n.profileSavedAccountsTitle,
-            style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          l10n.profileSavedAccountsHint,
-          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-        ),
-        const SizedBox(height: 10),
         Column(
           children: [
             for (var i = 0; i < _user.savedCredentials.length; i++) ...[
@@ -591,6 +570,18 @@ class _LoginPageState extends State<LoginPage> {
         controlAffinity: ListTileControlAffinity.leading,
         contentPadding: EdgeInsets.zero,
       ),
+      if (_useCopyLogin) ...[
+        const SizedBox(height: AppSpacing.md),
+        OutlinedButton.icon(
+          onPressed: _loading ? null : _goWebLogin,
+          icon: const Icon(Icons.language),
+          label: Text(l10n.profileWebLoginButton),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
+          ),
+        ),
+      ],
     ];
   }
 }

@@ -1240,13 +1240,13 @@ abstract class AppLocalizations {
   /// No description provided for @profileCopyCredentialLabel.
   ///
   /// In zh, this message translates to:
-  /// **'拷贝'**
+  /// **'拷贝漫画'**
   String get profileCopyCredentialLabel;
 
   /// No description provided for @profileHotCredentialLabel.
   ///
   /// In zh, this message translates to:
-  /// **'热辣'**
+  /// **'热辣漫画'**
   String get profileHotCredentialLabel;
 
   /// No description provided for @accountSwitchedToast.
@@ -2778,6 +2778,66 @@ abstract class AppLocalizations {
   /// **'令牌'**
   String get profileTokenLoginMode;
 
+  /// No description provided for @profileTokenLoginEntry.
+  ///
+  /// In zh, this message translates to:
+  /// **'令牌登录'**
+  String get profileTokenLoginEntry;
+
+  /// No description provided for @profileAccountLoginEntry.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号密码登录'**
+  String get profileAccountLoginEntry;
+
+  /// No description provided for @profileWebLoginButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'官网登录'**
+  String get profileWebLoginButton;
+
+  /// No description provided for @profileWebLoginPageTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'官网登录'**
+  String get profileWebLoginPageTitle;
+
+  /// No description provided for @profileWebLoginHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'在官网中登录拷贝漫画账号，登录成功后将自动完成'**
+  String get profileWebLoginHint;
+
+  /// No description provided for @profileWebLoginCompleting.
+  ///
+  /// In zh, this message translates to:
+  /// **'已获取登录信息，正在验证…'**
+  String get profileWebLoginCompleting;
+
+  /// No description provided for @profileWebLoginManualButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'我已完成登录'**
+  String get profileWebLoginManualButton;
+
+  /// No description provided for @profileWebLoginNotDetected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到登录信息，请先在官网中完成登录'**
+  String get profileWebLoginNotDetected;
+
+  /// No description provided for @profileWebLoginResetTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除官网登录状态'**
+  String get profileWebLoginResetTooltip;
+
+  /// No description provided for @profileWebLoginFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'官网登录失败'**
+  String get profileWebLoginFailed;
+
   /// No description provided for @profileSavedAccountsTitle.
   ///
   /// In zh, this message translates to:
@@ -2829,7 +2889,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileLoginButton.
   ///
   /// In zh, this message translates to:
-  /// **'登录'**
+  /// **'账号登录'**
   String get profileLoginButton;
 
   /// No description provided for @profileRegisterInfoRequired.
