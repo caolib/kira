@@ -12,6 +12,7 @@ import '../pages/anime_list_page.dart';
 import '../pages/anime_player_page.dart';
 import '../pages/app_log_page.dart';
 import '../pages/appearance_page.dart';
+import '../pages/bookmarks_page.dart';
 import '../pages/bookshelf_page.dart';
 import '../pages/browse_history_page.dart';
 import '../pages/cache_management_page.dart';
@@ -69,6 +70,7 @@ final class AppRoutes {
   static const aiConfig = 'ai_config';
   static const downloadCenter = 'download_center';
   static const browseHistory = 'browse_history';
+  static const bookmarks = 'bookmarks';
   static const noticeCenter = 'notice_center';
   static const about = 'about';
   static const disclaimer = 'disclaimer';
@@ -393,6 +395,11 @@ GoRouter createAppRouter() {
         name: AppRoutes.browseHistory,
         builder: (_, _) =>
             BrowseHistoryPage(loginPageBuilder: (_) => const LoginPage()),
+      ),
+      GoRoute(
+        path: '/bookmarks',
+        name: AppRoutes.bookmarks,
+        builder: (_, _) => const BookmarksPage(),
       ),
       GoRoute(
         path: '/notices',

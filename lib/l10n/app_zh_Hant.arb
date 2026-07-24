@@ -928,6 +928,43 @@
   "noticeCenterTitle": "通知中心",
   "downloadCenterTitle": "下載中心",
   "browseHistoryTitle": "瀏覽記錄",
+  "bookmarksTitle": "書籤",
+  "bookmarkAdd": "新增書籤",
+  "bookmarkRemove": "取消書籤",
+  "bookmarkAdded": "已新增書籤",
+  "bookmarkRemoved": "已取消書籤",
+  "bookmarkPage": "第 {page} 頁",
+  "@bookmarkPage": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "bookmarkDeleted": "已刪除書籤",
+  "bookmarkUndo": "復原",
+  "bookmarksCount": "{count} 條書籤",
+  "@bookmarksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookmarksEmptyTitle": "還沒有書籤",
+  "bookmarksEmptySubtitle": "閱讀漫畫時，點擊右上角的書籤按鈕即可標記當前位置",
+  "bookmarksClearTitle": "清空書籤",
+  "bookmarksClearContent": "確定要清空所有書籤嗎？",
+  "bookmarksClearGroupTitle": "刪除該漫畫的書籤",
+  "bookmarksGroupDeleted": "已刪除 {count} 條書籤",
+  "@bookmarksGroupDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookmarksSwipeHint": "向左滑動書籤可以刪除",
   "aboutTitle": "關於",
   "notLoggedInTitle": "未登入",
   "loginPromptSubtitle": "點擊登入以使用書架等功能",

@@ -6,12 +6,16 @@ class _ReaderTopBar extends StatelessWidget {
   final String chapterName;
   final double slideOffset;
   final VoidCallback onBack;
+  final bool isBookmarked;
+  final VoidCallback? onToggleBookmark;
 
   const _ReaderTopBar({
     required this.showToolbar,
     required this.chapterName,
     required this.slideOffset,
     required this.onBack,
+    this.isBookmarked = false,
+    this.onToggleBookmark,
   });
 
   @override
@@ -57,6 +61,19 @@ class _ReaderTopBar extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (onToggleBookmark != null)
+                      IconButton(
+                        icon: Icon(
+                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                          color: isBookmarked
+                              ? Colors.amberAccent
+                              : ReaderChrome.onSurface,
+                        ),
+                        tooltip: isBookmarked
+                            ? AppLocalizations.of(context)!.bookmarkRemove
+                            : AppLocalizations.of(context)!.bookmarkAdd,
+                        onPressed: onToggleBookmark,
+                      ),
                   ],
                 ),
               ),

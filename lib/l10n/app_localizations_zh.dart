@@ -1370,6 +1370,60 @@ class AppLocalizationsZh extends AppLocalizations {
   String get browseHistoryTitle => '浏览记录';
 
   @override
+  String get bookmarksTitle => '书签';
+
+  @override
+  String get bookmarkAdd => '添加书签';
+
+  @override
+  String get bookmarkRemove => '取消书签';
+
+  @override
+  String get bookmarkAdded => '已添加书签';
+
+  @override
+  String get bookmarkRemoved => '已取消书签';
+
+  @override
+  String bookmarkPage(int page) {
+    return '第 $page 页';
+  }
+
+  @override
+  String get bookmarkDeleted => '已删除书签';
+
+  @override
+  String get bookmarkUndo => '撤销';
+
+  @override
+  String bookmarksCount(int count) {
+    return '$count 条书签';
+  }
+
+  @override
+  String get bookmarksEmptyTitle => '还没有书签';
+
+  @override
+  String get bookmarksEmptySubtitle => '阅读漫画时，点击右上角的书签按钮即可标记当前位置';
+
+  @override
+  String get bookmarksClearTitle => '清空书签';
+
+  @override
+  String get bookmarksClearContent => '确定要清空所有书签吗？';
+
+  @override
+  String get bookmarksClearGroupTitle => '删除该漫画的书签';
+
+  @override
+  String bookmarksGroupDeleted(int count) {
+    return '已删除 $count 条书签';
+  }
+
+  @override
+  String get bookmarksSwipeHint => '向左滑动书签可以删除';
+
+  @override
   String get aboutTitle => '关于';
 
   @override
@@ -4868,6 +4922,60 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get browseHistoryTitle => '瀏覽記錄';
+
+  @override
+  String get bookmarksTitle => '書籤';
+
+  @override
+  String get bookmarkAdd => '新增書籤';
+
+  @override
+  String get bookmarkRemove => '取消書籤';
+
+  @override
+  String get bookmarkAdded => '已新增書籤';
+
+  @override
+  String get bookmarkRemoved => '已取消書籤';
+
+  @override
+  String bookmarkPage(int page) {
+    return '第 $page 頁';
+  }
+
+  @override
+  String get bookmarkDeleted => '已刪除書籤';
+
+  @override
+  String get bookmarkUndo => '復原';
+
+  @override
+  String bookmarksCount(int count) {
+    return '$count 條書籤';
+  }
+
+  @override
+  String get bookmarksEmptyTitle => '還沒有書籤';
+
+  @override
+  String get bookmarksEmptySubtitle => '閱讀漫畫時，點擊右上角的書籤按鈕即可標記當前位置';
+
+  @override
+  String get bookmarksClearTitle => '清空書籤';
+
+  @override
+  String get bookmarksClearContent => '確定要清空所有書籤嗎？';
+
+  @override
+  String get bookmarksClearGroupTitle => '刪除該漫畫的書籤';
+
+  @override
+  String bookmarksGroupDeleted(int count) {
+    return '已刪除 $count 條書籤';
+  }
+
+  @override
+  String get bookmarksSwipeHint => '向左滑動書籤可以刪除';
 
   @override
   String get aboutTitle => '關於';

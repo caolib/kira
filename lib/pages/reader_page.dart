@@ -15,10 +15,13 @@ import '../l10n/app_localizations.dart';
 import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
+import '../repositories/comic_detail_repository.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/reader_chrome.dart';
 import '../utils/adaptive_motion.dart';
+import '../utils/app_logger.dart';
+import '../utils/bookmark_store.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/download_manager.dart';
 import '../utils/image_load_stats.dart';
@@ -87,6 +90,7 @@ class _ReaderPageState extends State<ReaderPage> {
   final _aiApi = AiApi();
   final _downloads = DownloadManager();
   final _user = UserManager();
+  final _bookmarks = BookmarkStore();
   final _itemScrollController = ItemScrollController();
   final _itemPositionsListener = ItemPositionsListener.create();
   final _scrollOffsetController = ScrollOffsetController();
@@ -479,6 +483,8 @@ class _ReaderPageState extends State<ReaderPage> {
   void initState() {
     super.initState();
     _currentUuid = widget.chapterUuid;
+    _bookmarks.addListener(_onBookmarksChanged);
+    unawaited(_bookmarks.ensureLoaded());
     _itemPositionsListener.itemPositions.addListener(_onItemPositionsChanged);
     _loadChapter();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -492,6 +498,7 @@ class _ReaderPageState extends State<ReaderPage> {
     _setVolumeIntercept(false);
     _volumeChannel.invokeMethod('disableImmersive').catchError((_) {});
     _volumeChannel.setMethodCallHandler(null);
+    _bookmarks.removeListener(_onBookmarksChanged);
     _itemPositionsListener.itemPositions.removeListener(
       _onItemPositionsChanged,
     );
@@ -692,6 +699,54 @@ class _ReaderPageState extends State<ReaderPage> {
         .catchError((Object _) {
           // Background refresh failures do not affect reading.
         });
+  }
+
+  void _onBookmarksChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleBookmark() async {
+    final detail = _detail;
+    if (detail == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    // 快照点击时的阅读位置，避免等待期间翻页导致书签记错位置。
+    final chapterUuid = _currentUuid;
+    final chapterName = detail.name.isNotEmpty
+        ? detail.name
+        : widget.chapterName;
+    final page = _currentPage;
+    final meta = await _comicMetaFromCache();
+    if (!mounted) return;
+    final added = await _bookmarks.toggle(
+      pathWord: widget.pathWord,
+      comicName: widget.comicName?.isNotEmpty == true
+          ? widget.comicName!
+          : meta.comicName,
+      cover: meta.cover,
+      chapterUuid: chapterUuid,
+      chapterName: chapterName,
+      page: page,
+    );
+    if (!mounted) return;
+    showToast(context, added ? l10n.bookmarkAdded : l10n.bookmarkRemoved);
+  }
+
+  /// 从漫画详情本地缓存读取漫画名与封面（纯缓存读取，无网络请求）。
+  Future<({String comicName, String cover})> _comicMetaFromCache() async {
+    try {
+      final data = await ComicDetailRepository(widget.pathWord).loadFromCache();
+      final comic = data?.comic;
+      return (comicName: comic?.name ?? '', cover: comic?.cover ?? '');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'reader.comic_meta_from_cache',
+        ),
+      );
+      return (comicName: '', cover: '');
+    }
   }
 
   void _saveReadingHistory() {
@@ -2378,6 +2433,8 @@ class _ReaderPageState extends State<ReaderPage> {
               chapterName: _detail?.name ?? widget.chapterName,
               slideOffset: _hiddenToolbarSlideOffset,
               onBack: () => Navigator.pop(context),
+              isBookmarked: _bookmarks.isBookmarked(_currentUuid, _currentPage),
+              onToggleBookmark: _detail == null ? null : _toggleBookmark,
             ),
             if (_detail != null)
               _ReaderBottomBar(

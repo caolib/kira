@@ -957,6 +957,43 @@
   "noticeCenterTitle": "通知中心",
   "downloadCenterTitle": "下载中心",
   "browseHistoryTitle": "浏览记录",
+  "bookmarksTitle": "书签",
+  "bookmarkAdd": "添加书签",
+  "bookmarkRemove": "取消书签",
+  "bookmarkAdded": "已添加书签",
+  "bookmarkRemoved": "已取消书签",
+  "bookmarkPage": "第 {page} 页",
+  "@bookmarkPage": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "bookmarkDeleted": "已删除书签",
+  "bookmarkUndo": "撤销",
+  "bookmarksCount": "{count} 条书签",
+  "@bookmarksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookmarksEmptyTitle": "还没有书签",
+  "bookmarksEmptySubtitle": "阅读漫画时，点击右上角的书签按钮即可标记当前位置",
+  "bookmarksClearTitle": "清空书签",
+  "bookmarksClearContent": "确定要清空所有书签吗？",
+  "bookmarksClearGroupTitle": "删除该漫画的书签",
+  "bookmarksGroupDeleted": "已删除 {count} 条书签",
+  "@bookmarksGroupDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookmarksSwipeHint": "向左滑动书签可以删除",
   "aboutTitle": "关于",
   "notLoggedInTitle": "未登录",
   "loginPromptSubtitle": "点击登录以使用书架等功能",

@@ -449,6 +449,16 @@ class _ProfilePageState extends State<ProfilePage> {
                             onTap: () =>
                                 context.pushNamed(AppRoutes.browseHistory),
                           ),
+                          const Divider(height: 1, indent: 16, endIndent: 16),
+                          ListTile(
+                            leading: const _SettingIcon(
+                              icon: Icons.bookmark_outline_rounded,
+                              color: Color(0xFF4CAF7D),
+                            ),
+                            title: Text(l10n.bookmarksTitle),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.pushNamed(AppRoutes.bookmarks),
+                          ),
                         ],
                       ),
                     ),

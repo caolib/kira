@@ -8,6 +8,7 @@ import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
+import '../utils/bookmark_store.dart';
 import '../utils/dialog_width.dart';
 import '../utils/settings_backup.dart';
 import '../utils/toast.dart';
@@ -153,6 +154,7 @@ class _GeneralPageState extends State<GeneralPage> {
       await _settingsBackup.importPlainText(text);
       ApiClient().user.clearAuthState();
       await _user.init();
+      await BookmarkStore().reload();
       if (mounted) {
         showToast(context, AppLocalizations.of(context)!.settingsImportedToast);
       }
@@ -185,6 +187,7 @@ class _GeneralPageState extends State<GeneralPage> {
       await AppLogger.instance.clear();
       ApiClient().user.clearAuthState();
       await _user.init();
+      await BookmarkStore().reload();
       if (mounted) {
         showToast(
           context,

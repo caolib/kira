@@ -2514,6 +2514,102 @@ abstract class AppLocalizations {
   /// **'浏览记录'**
   String get browseHistoryTitle;
 
+  /// No description provided for @bookmarksTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'书签'**
+  String get bookmarksTitle;
+
+  /// No description provided for @bookmarkAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加书签'**
+  String get bookmarkAdd;
+
+  /// No description provided for @bookmarkRemove.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消书签'**
+  String get bookmarkRemove;
+
+  /// No description provided for @bookmarkAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加书签'**
+  String get bookmarkAdded;
+
+  /// No description provided for @bookmarkRemoved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消书签'**
+  String get bookmarkRemoved;
+
+  /// No description provided for @bookmarkPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {page} 页'**
+  String bookmarkPage(int page);
+
+  /// No description provided for @bookmarkDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除书签'**
+  String get bookmarkDeleted;
+
+  /// No description provided for @bookmarkUndo.
+  ///
+  /// In zh, this message translates to:
+  /// **'撤销'**
+  String get bookmarkUndo;
+
+  /// No description provided for @bookmarksCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条书签'**
+  String bookmarksCount(int count);
+
+  /// No description provided for @bookmarksEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有书签'**
+  String get bookmarksEmptyTitle;
+
+  /// No description provided for @bookmarksEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读漫画时，点击右上角的书签按钮即可标记当前位置'**
+  String get bookmarksEmptySubtitle;
+
+  /// No description provided for @bookmarksClearTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空书签'**
+  String get bookmarksClearTitle;
+
+  /// No description provided for @bookmarksClearContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要清空所有书签吗？'**
+  String get bookmarksClearContent;
+
+  /// No description provided for @bookmarksClearGroupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除该漫画的书签'**
+  String get bookmarksClearGroupTitle;
+
+  /// No description provided for @bookmarksGroupDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 {count} 条书签'**
+  String bookmarksGroupDeleted(int count);
+
+  /// No description provided for @bookmarksSwipeHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'向左滑动书签可以删除'**
+  String get bookmarksSwipeHint;
+
   /// No description provided for @aboutTitle.
   ///
   /// In zh, this message translates to:
