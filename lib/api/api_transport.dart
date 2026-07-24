@@ -10,20 +10,27 @@ import '../utils/data_cache.dart';
 const defaultCopyApiHost = 'api.copy202601.com';
 const defaultCopyAppVersion = '3.0.9';
 
+/// 默认拷贝登录域名（高级设置中可切换）。
+const defaultCopyLoginHost = 'copy3000.com';
+
+/// 可选的拷贝登录域名列表，用于高级设置中的切换。
+const copyLoginHostOptions = [defaultCopyLoginHost, 'www.mangacopy.com'];
+
 const _hostComment = defaultCopyApiHost;
-const _hostCopy = 'www.mangacopy.com';
 const _hostWeb = 'www.manga2026.xyz';
 
 /// 默认 COPY App 版本号，用于 copy 接口请求头（User-Agent / version）。
 const copyAppVersion = defaultCopyAppVersion;
 
-const extraApiHosts = [_hostCopy, _hostWeb];
+/// 线路以外的固定 host。拷贝登录域名不在此列——
+/// 测速展示以当前设置的登录域名（UserManager.copyLoginHost）为准。
+const extraApiHosts = [_hostWeb];
 
 enum ExtraApiHostKind { copyApi, copyLogin, hotLogin, fixed }
 
 const extraApiHostKinds = {
   _hostComment: ExtraApiHostKind.copyApi,
-  _hostCopy: ExtraApiHostKind.copyLogin,
+  defaultCopyLoginHost: ExtraApiHostKind.copyLogin,
   _hostWeb: ExtraApiHostKind.hotLogin,
 };
 
@@ -231,7 +238,8 @@ class ApiTransport {
       contentType: contentType,
       headers: {
         'Host': host,
-        'referer': 'https://www.mangacopy.com/',
+        'origin': 'https://${user.copyLoginHost}',
+        'referer': 'https://${user.copyLoginHost}/',
         'sec-fetch-site': secFetchSite,
         ...?headers,
       },

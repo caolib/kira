@@ -1044,6 +1044,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkAdvancedSettings => '高级设置';
 
   @override
+  String get networkCopyLoginDomain => '拷贝登录域名';
+
+  @override
+  String get networkCopyLoginDomainHint => '拷贝账号登录接口使用的域名，登录失败时可切换重试';
+
+  @override
   String get networkCopyAppVersion => 'COPY 请求版本号';
 
   @override
@@ -1491,6 +1497,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileLoginFailed => '登录失败';
+
+  @override
+  String get profileLoginFailedProxyHint => '登录失败，建议开启代理后重试';
 
   @override
   String get profileTokenRequired => '请输入令牌';
@@ -4598,6 +4607,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkAdvancedSettings => '進階設定';
 
   @override
+  String get networkCopyLoginDomain => '拷貝登入域名';
+
+  @override
+  String get networkCopyLoginDomainHint => '拷貝帳號登入介面使用的域名，登入失敗時可切換重試';
+
+  @override
   String get networkCopyAppVersion => 'COPY 請求版本號';
 
   @override
@@ -5045,6 +5060,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get profileLoginFailed => '登入失敗';
+
+  @override
+  String get profileLoginFailedProxyHint => '登入失敗，建議開啟代理後重試';
 
   @override
   String get profileTokenRequired => '請輸入權杖';

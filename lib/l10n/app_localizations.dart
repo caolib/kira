@@ -1951,6 +1951,18 @@ abstract class AppLocalizations {
   /// **'高级设置'**
   String get networkAdvancedSettings;
 
+  /// No description provided for @networkCopyLoginDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'拷贝登录域名'**
+  String get networkCopyLoginDomain;
+
+  /// No description provided for @networkCopyLoginDomainHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'拷贝账号登录接口使用的域名，登录失败时可切换重试'**
+  String get networkCopyLoginDomainHint;
+
   /// No description provided for @networkCopyAppVersion.
   ///
   /// In zh, this message translates to:
@@ -2729,6 +2741,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'登录失败'**
   String get profileLoginFailed;
+
+  /// No description provided for @profileLoginFailedProxyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录失败，建议开启代理后重试'**
+  String get profileLoginFailedProxyHint;
 
   /// No description provided for @profileTokenRequired.
   ///

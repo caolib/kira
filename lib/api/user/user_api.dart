@@ -30,12 +30,12 @@ class UserApi {
     return resp.data['results'];
   }
 
-  /// 拷贝登录
+  /// 拷贝登录（域名可在高级设置中切换）
   Future<Map<String, dynamic>> copyLogin(
     String username,
     String password,
   ) async {
-    const hostCopy = 'www.mangacopy.com';
+    final hostCopy = _t.user.copyLoginHost;
     final salt = Random().nextInt(900000) + 100000;
     final encoded = base64Encode(utf8.encode('$password-$salt'));
     final dio = AppDio.create(
@@ -83,9 +83,16 @@ class UserApi {
       return Map<String, dynamic>.from(data['results']);
     }
 
-    final message = data is Map
-        ? (data['message']?.toString() ?? 'Login failed')
-        : 'Login failed';
+    String? serverMessage;
+    if (data is Map) {
+      final raw = (data['message'] ?? data['detail'])?.toString().trim();
+      if (raw != null && raw.isNotEmpty) serverMessage = raw;
+    }
+    final message =
+        serverMessage ??
+        (data is Map
+            ? 'Login failed (code: ${data['code'] ?? resp.statusCode ?? 'unknown'})'
+            : 'Login failed (HTTP ${resp.statusCode ?? 'unknown'})');
     NetworkError.throwBadResponse(
       response: resp,
       message: message,

@@ -3,7 +3,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/api_transport.dart'
-    show routes, defaultCopyApiHost, defaultCopyAppVersion;
+    show
+        routes,
+        defaultCopyApiHost,
+        defaultCopyAppVersion,
+        copyLoginHostOptions;
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
@@ -1011,6 +1015,23 @@ class _NetworkPageState extends State<NetworkPage>
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+          DropdownButtonFormField<String>(
+            initialValue: _user.copyLoginHost,
+            decoration: InputDecoration(
+              labelText: l10n.networkCopyLoginDomain,
+              helperText: l10n.networkCopyLoginDomainHint,
+              prefixIcon: const Icon(Icons.login_rounded),
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              for (final host in copyLoginHostOptions)
+                DropdownMenuItem<String>(value: host, child: Text(host)),
+            ],
+            onChanged: (value) {
+              if (value != null) _setCopyLoginHost(value);
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _copyApiHostController,
             decoration: const InputDecoration(
@@ -1233,6 +1254,17 @@ class _NetworkPageState extends State<NetworkPage>
     await _user.setNetworkProxyMode(mode);
     if (!mounted) return;
     setState(() {});
+  }
+
+  Future<void> _setCopyLoginHost(String host) async {
+    if (host == _user.copyLoginHost) return;
+    await _user.setCopyLoginHost(host);
+    if (!mounted) return;
+    // 延迟结果按 host 记录，切换后清空以反映新的测试目标。
+    setState(() {
+      _latencyResults = {};
+      _pendingLatencyHosts = {};
+    });
   }
 
   Future<void> _saveCopyAdvancedSettings() async {

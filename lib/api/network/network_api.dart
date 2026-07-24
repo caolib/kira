@@ -21,7 +21,11 @@ class NetworkApi {
   /// 获取线路以外的固定 API / Web host，去重后用于延迟测试展示。
   List<String> getExtraApiHosts() {
     final hosts = <String>[];
-    for (final host in <String>[_t.user.copyApiHost, ...extraApiHosts]) {
+    for (final host in <String>[
+      _t.user.copyApiHost,
+      _t.user.copyLoginHost,
+      ...extraApiHosts,
+    ]) {
       if (!hosts.contains(host)) hosts.add(host);
     }
     return hosts;
@@ -31,6 +35,9 @@ class NetworkApi {
   String getExtraApiHostLabel(String host, AppLocalizations l10n) {
     if (host == _t.user.copyApiHost || host == defaultCopyApiHost) {
       return 'COPY API';
+    }
+    if (host == _t.user.copyLoginHost) {
+      return l10n.networkCopyLoginHost;
     }
     return switch (extraApiHostKinds[host] ?? ExtraApiHostKind.fixed) {
       ExtraApiHostKind.copyApi => 'COPY API',

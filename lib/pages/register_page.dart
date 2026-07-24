@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
+import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/toast.dart';
@@ -27,8 +28,8 @@ class _RegisterPageState extends State<RegisterPage> {
   static final _hotMangaRegisterUri = Uri.parse(
     'https://m.manga2026.xyz/v2h5/register',
   );
-  static final _copyMangaRegisterUri = Uri.parse(
-    'https://www.mangacopy.com/web/login/loginByAccount',
+  static Uri get _copyMangaRegisterUri => Uri.parse(
+    'https://${UserManager().copyLoginHost}/web/login/loginByAccount',
   );
   List<String> _fallbackQuestions(AppLocalizations l10n) => [
     l10n.profileFallbackQuestionWife,

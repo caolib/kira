@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -338,16 +337,8 @@ class _LoginPageState extends State<LoginPage> {
       await UserManager().refreshUserInfo();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      String msg = l10n.profileLoginFailed;
-      if (e is DioException) {
-        if (e.response?.data is Map) {
-          msg = e.response?.data['message'] ?? msg;
-        } else if (e.message != null && e.message!.isNotEmpty) {
-          msg = e.message!;
-        }
-      }
       setState(() {
-        _error = msg;
+        _error = '${l10n.profileLoginFailedProxyHint}\n$e';
         _loading = false;
       });
     }
@@ -389,12 +380,8 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       // Invalid token; clear it.
       await UserManager().logout();
-      String msg = l10n.profileTokenInvalidOrExpired;
-      if (e is DioException && e.response?.data is Map) {
-        msg = e.response?.data['message'] ?? msg;
-      }
       setState(() {
-        _error = msg;
+        _error = '${l10n.profileTokenInvalidOrExpired}\n$e';
         _loading = false;
       });
     }

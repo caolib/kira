@@ -1042,16 +1042,8 @@ class _LoginPageState extends State<LoginPage> {
       await UserManager().refreshUserInfo();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      String msg = l10n.profileLoginFailed;
-      if (e is DioException) {
-        if (e.response?.data is Map) {
-          msg = e.response?.data['message'] ?? msg;
-        } else if (e.message != null && e.message!.isNotEmpty) {
-          msg = e.message!;
-        }
-      }
       setState(() {
-        _error = msg;
+        _error = '${l10n.profileLoginFailedProxyHint}\n$e';
         _loading = false;
       });
     }
@@ -1093,12 +1085,8 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       // 令牌无效，清除
       await UserManager().logout();
-      String msg = l10n.profileTokenInvalidOrExpired;
-      if (e is DioException && e.response?.data is Map) {
-        msg = e.response?.data['message'] ?? msg;
-      }
       setState(() {
-        _error = msg;
+        _error = '${l10n.profileTokenInvalidOrExpired}\n$e';
         _loading = false;
       });
     }
@@ -1306,8 +1294,8 @@ class _RegisterPageState extends State<RegisterPage> {
   static final _hotMangaRegisterUri = Uri.parse(
     'https://m.manga2026.xyz/v2h5/register',
   );
-  static final _copyMangaRegisterUri = Uri.parse(
-    'https://www.mangacopy.com/web/login/loginByAccount',
+  static Uri get _copyMangaRegisterUri => Uri.parse(
+    'https://${UserManager().copyLoginHost}/web/login/loginByAccount',
   );
   List<String> _fallbackQuestions(AppLocalizations l10n) => [
     l10n.profileFallbackQuestionWife,

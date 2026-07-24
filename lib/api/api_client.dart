@@ -38,7 +38,6 @@ class ApiClient {
           'accept-language':
               'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,en-GB;q=0.6,ru;q=0.5,ja;q=0.4,zh-TW;q=0.3',
           'cache-control': 'no-cache',
-          'origin': 'https://www.mangacopy.com',
           'pragma': 'no-cache',
           'priority': 'u=1, i',
           'sec-ch-ua':

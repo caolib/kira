@@ -181,6 +181,7 @@ class UserManager extends ChangeNotifier {
   static const _keyBannerVisible = 'banner_visible';
   static const _keyMangaHomeSource = 'manga_home_source';
   static const _keyCopyApiHost = 'copy_api_host';
+  static const _keyCopyLoginHost = 'copy_login_host';
   static const _keyCopyAppVersion = 'copy_app_version';
   static const _keyCopyAutoUpdate = 'copy_auto_update';
   static const _keyCopySettingsUpdatedAt = 'copy_settings_updated_at';
@@ -266,6 +267,7 @@ class UserManager extends ChangeNotifier {
   bool _bannerVisible = true;
   String _mangaHomeSource = 'hot';
   String _copyApiHost = defaultCopyApiHost;
+  String _copyLoginHost = defaultCopyLoginHost;
   String _copyAppVersion = defaultCopyAppVersion;
   bool _copyAutoUpdate = true;
   int? _copySettingsUpdatedAt;
@@ -378,6 +380,7 @@ class UserManager extends ChangeNotifier {
   bool get bannerVisible => _bannerVisible;
   String get mangaHomeSource => _mangaHomeSource;
   String get copyApiHost => _copyApiHost;
+  String get copyLoginHost => _copyLoginHost;
   String get copyAppVersion => _copyAppVersion;
   bool get copyAutoUpdate => _copyAutoUpdate;
   int? get copySettingsUpdatedAt => _copySettingsUpdatedAt;
@@ -418,16 +421,22 @@ class UserManager extends ChangeNotifier {
     return trimmed.endsWith('/') ? trimmed : '$trimmed/';
   }
 
-  static String normalizeCopyApiHost(String? value) {
+  static String normalizeCopyApiHost(String? value) =>
+      _normalizeHost(value, defaultCopyApiHost);
+
+  static String normalizeCopyLoginHost(String? value) =>
+      _normalizeHost(value, defaultCopyLoginHost);
+
+  static String _normalizeHost(String? value, String fallback) {
     final trimmed = value?.trim() ?? '';
-    if (trimmed.isEmpty) return defaultCopyApiHost;
+    if (trimmed.isEmpty) return fallback;
 
     final rawUri = trimmed.contains('://') ? trimmed : 'https://$trimmed';
     final uri = Uri.tryParse(rawUri);
-    if (uri == null || uri.host.isEmpty) return defaultCopyApiHost;
+    if (uri == null || uri.host.isEmpty) return fallback;
 
     final host = uri.host.trim().toLowerCase();
-    if (host.isEmpty || host.contains(' ')) return defaultCopyApiHost;
+    if (host.isEmpty || host.contains(' ')) return fallback;
 
     final authorityHost = host.contains(':') && !host.startsWith('[')
         ? '[$host]'
@@ -594,6 +603,7 @@ class UserManager extends ChangeNotifier {
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;
     _mangaHomeSource = prefs.getString(_keyMangaHomeSource) ?? 'hot';
     _copyApiHost = normalizeCopyApiHost(prefs.getString(_keyCopyApiHost));
+    _copyLoginHost = normalizeCopyLoginHost(prefs.getString(_keyCopyLoginHost));
     _copyAppVersion = normalizeCopyAppVersion(
       prefs.getString(_keyCopyAppVersion),
     );
@@ -1313,6 +1323,16 @@ class UserManager extends ChangeNotifier {
     _copyApiHost = normalized;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyCopyApiHost, normalized);
+    notifyListeners();
+  }
+
+  Future<void> setCopyLoginHost(String value) async {
+    final normalized = normalizeCopyLoginHost(value);
+    if (_copyLoginHost == normalized) return;
+
+    _copyLoginHost = normalized;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCopyLoginHost, normalized);
     notifyListeners();
   }
 
