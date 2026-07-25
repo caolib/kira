@@ -7,11 +7,10 @@ void main() {
       final credentials = parseCopyWebCookies({
         'webp': '1',
         '_ga': 'GA1.1.000000000.0000000000',
-        'name': '%E5%87%89%E6%A1%91%E8%BF%98%E9%92%B1',
+        'name': '%E6%B5%8B%E8%AF%95%E7%94%A8%E6%88%B7',
         'token': 'test_token_0123456789abcdef0123456789ab',
         'user_id': '00000000-0000-0000-0000-000000000001',
-        'avatar':
-            '"user/cover/00000000000000000000000000000001/1704125272.jpg"',
+        'avatar': '"user/cover/00000000000000000000000000000001/0000000000.jpg"',
         'email': '""',
         'csrftoken': 'test_csrf_token_0000000000000000',
         'sessionid': 'test_session_id_000000000000000000',
@@ -20,10 +19,10 @@ void main() {
       expect(credentials, isNotNull);
       expect(credentials!.token, 'test_token_0123456789abcdef0123456789ab');
       expect(credentials.userId, '00000000-0000-0000-0000-000000000001');
-      expect(credentials.nickname, '凉桑还钱');
+      expect(credentials.nickname, '测试用户');
       expect(
         credentials.avatar,
-        'user/cover/00000000000000000000000000000001/1704125272.jpg',
+        'user/cover/00000000000000000000000000000001/0000000000.jpg',
       );
     });
 
