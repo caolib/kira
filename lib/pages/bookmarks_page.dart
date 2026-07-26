@@ -63,6 +63,11 @@ class _BookmarksPageState extends State<BookmarksPage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _refresh() async {
+    _details.clear();
+    await _store.reload();
+  }
+
   /// 仅从漫画详情本地缓存补充封面，绝不发网络请求：
   /// 缓存缺失或损坏时保持占位图标。
   Future<void> _loadCachedDetail(String pathWord) {
@@ -158,8 +163,8 @@ class _BookmarksPageState extends State<BookmarksPage> {
     _showUndoSnackBar(l10n.bookmarksGroupDeleted(removed.length), removed);
   }
 
-  void _openBookmark(ComicBookmark bookmark) {
-    context.pushNamed(
+  Future<void> _openBookmark(ComicBookmark bookmark) async {
+    await context.pushNamed(
       AppRoutes.reader,
       pathParameters: {
         'pathWord': bookmark.pathWord,
@@ -171,6 +176,11 @@ class _BookmarksPageState extends State<BookmarksPage> {
         initialPage: bookmark.page,
       ),
     );
+    if (!mounted) return;
+
+    // Store 的通知可能发生在阅读器覆盖本页期间；路由返回时再重建一次，
+    // 确保刚添加或取消的书签立即反映到列表中。
+    setState(() {});
   }
 
   @override
@@ -197,76 +207,94 @@ class _BookmarksPageState extends State<BookmarksPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : groups.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.bookmark_border,
-                      size: 64,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      l10n.bookmarksEmptyTitle,
-                      style: tt.titleMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
+          : RefreshIndicator(
+              onRefresh: _refresh,
+              child: groups.isEmpty
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: constraints.maxHeight,
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.bookmark_border,
+                                      size: 64,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(height: AppSpacing.lg),
+                                    Text(
+                                      l10n.bookmarksEmptyTitle,
+                                      style: tt.titleMedium?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.sm),
+                                    Text(
+                                      l10n.bookmarksEmptySubtitle,
+                                      textAlign: TextAlign.center,
+                                      style: tt.bodySmall?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(hp, 8, hp, 24),
+                      itemCount: groups.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == groups.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: Text(
+                                l10n.bookmarksSwipeHint,
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        final group = groups[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          // 只有一条书签的漫画用单条卡片，多条才合并为组卡片。
+                          child: group.value.length == 1
+                              ? _SingleBookmarkCard(
+                                  bookmark: group.value.single,
+                                  coverUrl: _coverOf(group.value.single),
+                                  onFetchCover: () =>
+                                      _loadCachedDetail(group.key),
+                                  onTap: () =>
+                                      _openBookmark(group.value.single),
+                                  onRemove: _remove,
+                                )
+                              : _BookmarkGroupCard(
+                                  pathWord: group.key,
+                                  bookmarks: group.value,
+                                  coverUrl: _groupCoverOf(group.value),
+                                  onFetchCover: () =>
+                                      _loadCachedDetail(group.key),
+                                  onOpen: _openBookmark,
+                                  onRemove: _remove,
+                                  onClearGroup: _clearGroup,
+                                ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      l10n.bookmarksEmptySubtitle,
-                      textAlign: TextAlign.center,
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(hp, 8, hp, 24),
-              itemCount: groups.length + 1,
-              itemBuilder: (context, index) {
-                if (index == groups.length) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Center(
-                      child: Text(
-                        l10n.bookmarksSwipeHint,
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                final group = groups[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  // 只有一条书签的漫画用单条卡片，多条才合并为组卡片。
-                  child: group.value.length == 1
-                      ? _SingleBookmarkCard(
-                          bookmark: group.value.single,
-                          coverUrl: _coverOf(group.value.single),
-                          onFetchCover: () => _loadCachedDetail(group.key),
-                          onTap: () => _openBookmark(group.value.single),
-                          onRemove: _remove,
-                        )
-                      : _BookmarkGroupCard(
-                          pathWord: group.key,
-                          bookmarks: group.value,
-                          coverUrl: _groupCoverOf(group.value),
-                          onFetchCover: () => _loadCachedDetail(group.key),
-                          onOpen: _openBookmark,
-                          onRemove: _remove,
-                          onClearGroup: _clearGroup,
-                        ),
-                );
-              },
             ),
     );
   }
