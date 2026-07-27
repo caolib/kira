@@ -1018,7 +1018,7 @@
   "profileTokenHint": "貼上你的登入權杖",
   "profileRememberAccountLabel": "記住帳號",
   "profileRegisterHotMangaAccountButton": "註冊熱辣漫畫帳號",
-  "profileLoginButton": "帳號登入",
+  "profileLoginButton": "登入",
   "profileRegisterInfoRequired": "請填寫完整註冊資訊",
   "profilePasswordMismatch": "兩次輸入的密碼不一致",
   "profileSecurityQuestionRequired": "請選擇安全問題",

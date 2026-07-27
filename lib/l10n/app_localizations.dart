@@ -2889,7 +2889,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileLoginButton.
   ///
   /// In zh, this message translates to:
-  /// **'账号登录'**
+  /// **'登录'**
   String get profileLoginButton;
 
   /// No description provided for @profileRegisterInfoRequired.

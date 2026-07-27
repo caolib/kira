@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -21,15 +22,20 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static final _hotMangaRegisterUri = Uri.parse(
+    'https://m.manga2026.xyz/v2h5/register',
+  );
+  static Uri get _copyMangaRegisterUri => Uri.parse(
+    'https://${UserManager().copyLoginHost}/web/login/loginByAccount',
+  );
+
   final _api = ApiClient();
   final _user = UserManager();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _tokenCtrl = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
   bool _rememberMe = false;
-  bool _useToken = false;
   bool _useCopyLogin = false;
   String? _error;
 
@@ -54,7 +60,6 @@ class _LoginPageState extends State<LoginPage> {
     _usernameCtrl.removeListener(_onCredentialDraftChanged);
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
-    _tokenCtrl.dispose();
     super.dispose();
   }
 
@@ -92,9 +97,28 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   bool _isCredentialSelected(SavedCredential credential) {
-    return !_useToken &&
-        _usernameCtrl.text.trim() == credential.username &&
+    return _usernameCtrl.text.trim() == credential.username &&
         _useCopyLogin == _isCopyCredential(credential);
+  }
+
+  List<SavedCredential> _savedCredentialsForSource(bool useCopyLogin) => _user
+      .savedCredentials
+      .where((credential) => _isCopyCredential(credential) == useCopyLogin)
+      .toList();
+
+  List<SavedCredential> get _visibleSavedCredentials =>
+      _savedCredentialsForSource(_useCopyLogin);
+
+  void _selectLoginSource(bool useCopyLogin) {
+    final credentials = _savedCredentialsForSource(useCopyLogin);
+    final next = credentials.isNotEmpty ? credentials.first : null;
+    setState(() {
+      _useCopyLogin = useCopyLogin;
+      _rememberMe = next != null;
+      _error = null;
+      _usernameCtrl.text = next?.username ?? '';
+      _passwordCtrl.text = next?.password ?? '';
+    });
   }
 
   Widget _buildCredentialBadge({
@@ -251,7 +275,6 @@ class _LoginPageState extends State<LoginPage> {
 
   void _applySavedCredential(SavedCredential credential) {
     setState(() {
-      _useToken = false;
       _useCopyLogin = _isCopyCredential(credential);
       _rememberMe = true;
       _error = null;
@@ -265,14 +288,10 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
     if (_usernameCtrl.text.trim() == credential.username) {
       setState(() {
-        final next = _user.savedCredentials.isNotEmpty
-            ? _user.savedCredentials.first
-            : null;
+        final remaining = _savedCredentialsForSource(_useCopyLogin);
+        final next = remaining.isNotEmpty ? remaining.first : null;
         _usernameCtrl.text = next?.username ?? '';
         _passwordCtrl.text = next?.password ?? '';
-        if (next != null) {
-          _useCopyLogin = _isCopyCredential(next);
-        }
         _rememberMe = next != null;
       });
     }
@@ -298,7 +317,6 @@ class _LoginPageState extends State<LoginPage> {
     await UserManager().saveCredentials(result.username, result.password);
     if (!mounted) return;
     setState(() {
-      _useToken = false;
       _rememberMe = true;
       _error = null;
       _usernameCtrl.text = result.username;
@@ -308,6 +326,18 @@ class _LoginPageState extends State<LoginPage> {
       context,
       AppLocalizations.of(context)!.profileRegisterSuccessLoginToast,
     );
+  }
+
+  Future<void> _openOfficialRegister() async {
+    final uri = _useCopyLogin ? _copyMangaRegisterUri : _hotMangaRegisterUri;
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      showToast(
+        context,
+        AppLocalizations.of(context)!.profileOpenOfficialRegisterFailed,
+        isError: true,
+      );
+    }
   }
 
   Future<void> _login() async {
@@ -351,51 +381,132 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _loginWithToken() async {
+  Future<void> _showTokenLoginDialog() async {
     final l10n = AppLocalizations.of(context)!;
-    final token = _tokenCtrl.text.trim();
-    if (token.isEmpty) {
-      setState(() => _error = l10n.profileTokenRequired);
-      return;
-    }
+    var tokenDraft = '';
+    var dialogLoading = false;
+    String? dialogError;
 
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    final loggedIn = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> submit() async {
+            if (dialogLoading) return;
+            final token = tokenDraft.trim();
+            if (token.isEmpty) {
+              setDialogState(() => dialogError = l10n.profileTokenRequired);
+              return;
+            }
 
-    try {
-      // Temporarily save token so API requests include Authorization.
-      await UserManager().saveLogin(
-        token: token,
-        userId: '',
-        username: '',
-        nickname: '',
-        avatar: '',
-      );
-      // Fetch user info with token to validate it.
-      final info = await _api.user.getUserInfo();
-      await UserManager().saveLogin(
-        token: token,
-        userId: info['user_id']?.toString() ?? '',
-        username: info['username']?.toString() ?? '',
-        nickname:
-            info['nickname']?.toString() ?? info['username']?.toString() ?? '',
-        avatar: info['avatar']?.toString() ?? '',
-      );
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      // Invalid token; clear it.
-      await UserManager().logout();
-      setState(() {
-        _error = '${l10n.profileTokenInvalidOrExpired}\n$e';
-        _loading = false;
-      });
+            setDialogState(() {
+              dialogLoading = true;
+              dialogError = null;
+            });
+
+            try {
+              // Temporarily save token so API requests include Authorization.
+              await _user.saveLogin(
+                token: token,
+                userId: '',
+                username: '',
+                nickname: '',
+                avatar: '',
+              );
+              // Fetch user info with token to validate it.
+              final info = await _api.user.getUserInfo();
+              await _user.saveLogin(
+                token: token,
+                userId: info['user_id']?.toString() ?? '',
+                username: info['username']?.toString() ?? '',
+                nickname:
+                    info['nickname']?.toString() ??
+                    info['username']?.toString() ??
+                    '',
+                avatar: info['avatar']?.toString() ?? '',
+              );
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop(true);
+              }
+            } catch (e) {
+              // Invalid token; clear it.
+              await _user.logout();
+              if (!dialogContext.mounted) return;
+              setDialogState(() {
+                dialogError = '${l10n.profileTokenInvalidOrExpired}\n$e';
+                dialogLoading = false;
+              });
+            }
+          }
+
+          return PopScope(
+            canPop: !dialogLoading,
+            child: AlertDialog(
+              title: Text(l10n.profileTokenLoginEntry),
+              content: SizedBox(
+                width: 360,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      enabled: !dialogLoading,
+                      onChanged: (value) => tokenDraft = value,
+                      decoration: InputDecoration(
+                        labelText: l10n.profileTokenLabel,
+                        prefixIcon: const Icon(Icons.key),
+                        hintText: l10n.profileTokenHint,
+                        border: OutlineInputBorder(borderRadius: AppRadius.mdR),
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => submit(),
+                    ),
+                    if (dialogError != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        dialogError!,
+                        style: TextStyle(
+                          color: Theme.of(dialogContext).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: dialogLoading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(false),
+                  child: Text(l10n.cancelButton),
+                ),
+                FilledButton(
+                  onPressed: dialogLoading ? null : submit,
+                  child: dialogLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(l10n.profileLoginButton),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    if (loggedIn == true && mounted) {
+      Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth.clamp(0.0, 400.0);
@@ -403,17 +514,21 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.profileLoginTitle),
+        title: Text(l10n.profileLoginTitle),
+        actions: [
+          IconButton(
+            tooltip: l10n.profileTokenLoginEntry,
+            onPressed: _loading ? null : _showTokenLoginDialog,
+            icon: const Icon(Icons.key),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(hp + 24, 24, hp + 24, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_useToken)
-              ..._buildTokenForm(context)
-            else
-              ..._buildAccountPasswordForm(context, cs),
+            ..._buildAccountPasswordForm(context, cs),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -424,9 +539,7 @@ class _LoginPageState extends State<LoginPage> {
             ],
             const SizedBox(height: AppSpacing.lg),
             FilledButton(
-              onPressed: _loading
-                  ? null
-                  : (_useToken ? _loginWithToken : _login),
+              onPressed: _loading ? null : _login,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
@@ -443,40 +556,29 @@ class _LoginPageState extends State<LoginPage> {
                     ),
             ),
             // Hotmanga register only for account-password + hot source.
-            if (!_useToken && !_useCopyLogin) ...[
+            if (!_useCopyLogin) ...[
               const SizedBox(height: AppSpacing.sm),
               Center(
                 child: TextButton(
                   onPressed: _loading ? null : _goRegister,
-                  child: Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.profileRegisterHotMangaAccountButton,
-                  ),
+                  child: Text(l10n.profileRegisterButton),
                 ),
               ),
             ],
             const SizedBox(height: AppSpacing.sm),
-            // 令牌登录用得少，降级为底部低调入口
             Center(
               child: TextButton.icon(
-                onPressed: _loading
-                    ? null
-                    : () => setState(() {
-                        _useToken = !_useToken;
-                        _error = null;
-                      }),
-                icon: Icon(
-                  _useToken ? Icons.person_outline : Icons.key,
-                  size: 16,
+                key: ValueKey(
+                  _useCopyLogin
+                      ? 'official-register-copy'
+                      : 'official-register-hotmanga',
                 ),
+                onPressed: _loading ? null : _openOfficialRegister,
+                icon: const Icon(Icons.open_in_new, size: 16),
                 label: Text(
-                  _useToken
-                      ? AppLocalizations.of(context)!.profileAccountLoginEntry
-                      : AppLocalizations.of(context)!.profileTokenLoginEntry,
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.onSurfaceVariant,
+                  _useCopyLogin
+                      ? l10n.profileCopyMangaLabel
+                      : l10n.profileHotMangaLabel,
                 ),
               ),
             ),
@@ -486,24 +588,9 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  List<Widget> _buildTokenForm(BuildContext context) {
-    return [
-      TextField(
-        controller: _tokenCtrl,
-        decoration: InputDecoration(
-          labelText: AppLocalizations.of(context)!.profileTokenLabel,
-          prefixIcon: const Icon(Icons.key),
-          hintText: AppLocalizations.of(context)!.profileTokenHint,
-          border: OutlineInputBorder(borderRadius: AppRadius.mdR),
-        ),
-        textInputAction: TextInputAction.done,
-        onSubmitted: (_) => _loginWithToken(),
-      ),
-    ];
-  }
-
   List<Widget> _buildAccountPasswordForm(BuildContext context, ColorScheme cs) {
     final l10n = AppLocalizations.of(context)!;
+    final visibleSavedCredentials = _visibleSavedCredentials;
     return [
       SegmentedButton<bool>(
         segments: [
@@ -519,18 +606,15 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
         selected: {_useCopyLogin},
-        onSelectionChanged: (v) => setState(() {
-          _useCopyLogin = v.first;
-          _error = null;
-        }),
+        onSelectionChanged: (v) => _selectLoginSource(v.first),
       ),
       const SizedBox(height: AppSpacing.lg),
-      if (_user.savedCredentials.isNotEmpty) ...[
+      if (visibleSavedCredentials.isNotEmpty) ...[
         Column(
           children: [
-            for (var i = 0; i < _user.savedCredentials.length; i++) ...[
-              _buildSavedCredentialCard(context, _user.savedCredentials[i]),
-              if (i != _user.savedCredentials.length - 1)
+            for (var i = 0; i < visibleSavedCredentials.length; i++) ...[
+              _buildSavedCredentialCard(context, visibleSavedCredentials[i]),
+              if (i != visibleSavedCredentials.length - 1)
                 const SizedBox(height: 10),
             ],
           ],

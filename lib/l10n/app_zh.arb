@@ -1047,7 +1047,7 @@
   "profileTokenHint": "粘贴你的登录令牌",
   "profileRememberAccountLabel": "记住账号",
   "profileRegisterHotMangaAccountButton": "注册热辣漫画账号",
-  "profileLoginButton": "账号登录",
+  "profileLoginButton": "登录",
   "profileRegisterInfoRequired": "请填写完整注册信息",
   "profilePasswordMismatch": "两次输入的密码不一致",
   "profileSecurityQuestionRequired": "请选择安全问题",

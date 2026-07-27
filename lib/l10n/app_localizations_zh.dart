@@ -1571,7 +1571,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileRegisterHotMangaAccountButton => '注册热辣漫画账号';
 
   @override
-  String get profileLoginButton => '账号登录';
+  String get profileLoginButton => '登录';
 
   @override
   String get profileRegisterInfoRequired => '请填写完整注册信息';
@@ -5179,7 +5179,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get profileRegisterHotMangaAccountButton => '註冊熱辣漫畫帳號';
 
   @override
-  String get profileLoginButton => '帳號登入';
+  String get profileLoginButton => '登入';
 
   @override
   String get profileRegisterInfoRequired => '請填寫完整註冊資訊';

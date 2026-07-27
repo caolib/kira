@@ -1,14 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
-import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
-import '../utils/toast.dart';
 
 class RegisterPrefill {
   final String username;
@@ -25,12 +22,6 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  static final _hotMangaRegisterUri = Uri.parse(
-    'https://m.manga2026.xyz/v2h5/register',
-  );
-  static Uri get _copyMangaRegisterUri => Uri.parse(
-    'https://${UserManager().copyLoginHost}/web/login/loginByAccount',
-  );
   List<String> _fallbackQuestions(AppLocalizations l10n) => [
     l10n.profileFallbackQuestionWife,
     l10n.profileFallbackQuestionFriend,
@@ -159,17 +150,6 @@ class _RegisterPageState extends State<RegisterPage> {
         _error = msg;
         _submitting = false;
       });
-    }
-  }
-
-  Future<void> _openOfficialRegister(Uri uri) async {
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && mounted) {
-      showToast(
-        context,
-        AppLocalizations.of(context)!.profileOpenOfficialRegisterFailed,
-        isError: true,
-      );
     }
   }
 
@@ -305,35 +285,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       AppLocalizations.of(context)!.profileRegisterButton,
                       style: const TextStyle(fontSize: 16),
                     ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              AppLocalizations.of(context)!.profileOfficialRegisterPrompt,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              children: [
-                TextButton.icon(
-                  onPressed: () => _openOfficialRegister(_hotMangaRegisterUri),
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: Text(
-                    AppLocalizations.of(context)!.profileHotMangaLabel,
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => _openOfficialRegister(_copyMangaRegisterUri),
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: Text(
-                    AppLocalizations.of(context)!.profileCopyMangaLabel,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
