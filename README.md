@@ -65,39 +65,15 @@ git clone https://github.com/caolib/kira.git
 cd kira
 ```
 
-国内环境可以设置flutter镜像，设置环境变量`PUB_HOSTED_URL=https://pub.flutter-io.cn`，然后拉取依赖
-
-```sh
-flutter pub get
-```
-
 ### 运行项目
 
 如果你需要弹幕功能，需要先创建弹弹play账号，获取`appId`和`appSecret`，然后在项目根目录下创建一个`.env`文件，内容参考`.env.example`
 
-查看可用设备
-
 ```sh
-flutter devices
-```
-
-如果你本地有Android Studio的虚拟机，可以使用下面命令列出并启动它
-
-```sh
-flutter emulators
-
-flutter emulators --launch 设备ID
-```
-
-启动项目，选择安卓设备（包括模拟器）或windows都可以，不要选择浏览器
-
-```sh
-flutter run -d 设备ID --dart-define-from-file=.env
+flutter run -d <设备ID> --dart-define-from-file=.env
 ```
 
 ### 构建安装包
-
-在本地构建apk安装包，需要在项目根目录下创建一个`.env`文件（内容参考`.env.example`，如果不需要弹幕功能可以不创建这个文件）
 
 ```sh
 flutter build apk --release --target-platform android-arm64 --dart-define-from-file=.env
@@ -105,27 +81,8 @@ flutter build apk --release --target-platform android-arm64 --dart-define-from-f
 
 ## 致谢
 
-感谢以下服务支持：
-
 - [弹弹play](https://www.dandanplay.com/) — 提供弹幕服务
 - [繁化姬](https://zhconvert.org/) — 提供简体化服务
-
-本项目基于以下优秀的开源库构建：
-
-- [dio](https://github.com/cfug/dio) - 网络请求
-- [cached_network_image](https://github.com/Baseflow/flutter_cached_network_image) - 图片缓存加载
-- [media_kit](https://github.com/media-kit/media-kit) - 视频播放
-- [canvas_danmaku](https://github.com/Predidit/canvas_danmaku) - 弹幕渲染
-- [flutter_svg](https://github.com/dnfield/flutter_svg) - SVG 图标支持
-- [flex_color_picker](https://github.com/rydmike/flex_color_picker) - 颜色选择器
-- [scrollable_positioned_list](https://github.com/google/flutter.widgets) - 漫画翻页定位
-- [shared_preferences](https://github.com/flutter/packages) - 本地偏好设置
-- [url_launcher](https://github.com/flutter/packages) - 外部链接跳转
-- [screen_brightness](https://github.com/aaassseee/screen_brightness) - 屏幕亮度控制
-- [wakelock_plus](https://github.com/solid-software/wakelock_plus) - 防息屏
-- [crypto](https://github.com/dart-lang/core) - 加密工具
-
-以上库均遵循各自的开源许可证。
 
 ## 免责声明
 
