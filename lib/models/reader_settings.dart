@@ -32,6 +32,7 @@ class ReaderSettings extends PrefsStore {
   static const _keyViewerLandscapeRotation = 'image_viewer_landscape_rotation';
   static const _keyImageLoadTimeout = 'image_load_timeout';
   static const _keyImageRetryCount = 'image_retry_count';
+  static const _keyStatusOverlay = 'reader_status_overlay';
 
   // ── Fields ─────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ class ReaderSettings extends PrefsStore {
   int _viewerLandscapeRotation = 1;
   int _imageLoadTimeout = 15;
   int _imageRetryCount = 1;
+  bool _statusOverlay = false;
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -74,6 +76,7 @@ class ReaderSettings extends PrefsStore {
   int get viewerLandscapeRotation => _viewerLandscapeRotation;
   int get imageLoadTimeout => _imageLoadTimeout;
   int get imageRetryCount => _imageRetryCount;
+  bool get statusOverlay => _statusOverlay;
 
   // ── Init (called from UserManager.init) ────────────────────────────
 
@@ -103,6 +106,7 @@ class ReaderSettings extends PrefsStore {
     _viewerLandscapeRotation = savedRotation < 0 ? -1 : 1;
     _imageLoadTimeout = prefs.getInt(_keyImageLoadTimeout) ?? 15;
     _imageRetryCount = prefs.getInt(_keyImageRetryCount) ?? 1;
+    _statusOverlay = prefs.getBool(_keyStatusOverlay) ?? false;
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -198,5 +202,10 @@ class ReaderSettings extends PrefsStore {
   Future<void> setImageRetryCount(int value) async {
     _imageRetryCount = value;
     await setInt(_keyImageRetryCount, value);
+  }
+
+  Future<void> setStatusOverlay(bool value) async {
+    _statusOverlay = value;
+    await setBool(_keyStatusOverlay, value);
   }
 }

@@ -1524,6 +1524,8 @@
   "readerVolumeKeyPageTurnDesc": "音量+上一頁，音量-下一頁",
   "readerInstantPageTurn": "無動畫翻頁",
   "readerDisplaySection": "顯示",
+  "readerStatusOverlay": "狀態顯示",
+  "readerStatusOverlayDesc": "閱讀介面右上角顯示時間、電量與網路",
   "readerDimming": "降低亮度",
   "readerImageLoadingSection": "圖片載入",
   "readerTimeout": "逾時時間",

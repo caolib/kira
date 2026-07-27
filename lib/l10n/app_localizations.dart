@@ -4265,6 +4265,18 @@ abstract class AppLocalizations {
   /// **'显示'**
   String get readerDisplaySection;
 
+  /// No description provided for @readerStatusOverlay.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态显示'**
+  String get readerStatusOverlay;
+
+  /// No description provided for @readerStatusOverlayDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读界面右上角显示时间、电量与网络'**
+  String get readerStatusOverlayDesc;
+
   /// No description provided for @readerDimming.
   ///
   /// In zh, this message translates to:

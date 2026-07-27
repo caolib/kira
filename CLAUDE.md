@@ -88,6 +88,7 @@ Run these from the repository root:
 - **Never** use `@ts-ignore`-equivalent suppression; fix the type error instead.
 - Prefer `const` constructors where possible.
 - Import `comic.dart` with `hide Theme` to avoid Flutter `Theme` conflict.
+- **Prefer design tokens over hard-coded values**: use `AppSpacing` (4/8/12/16/20/24), `AppRadius` (xs~xl/full + `*R` getters), and `ReaderChrome`/`PlayerChrome` color tokens. Only fall back to literals for genuinely ad-hoc values that carry component-specific meaning (e.g. a one-off 10px padding).
 
 ## Reusable Widget Patterns
 

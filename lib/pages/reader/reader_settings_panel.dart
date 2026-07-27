@@ -336,8 +336,19 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   ),
                 ],
                 // 显示
+                _buildSectionHeader(l10n.readerDisplaySection, cs, tt),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.readerStatusOverlay),
+                  subtitle: Text(l10n.readerStatusOverlayDesc),
+                  value: _user.reader.statusOverlay,
+                  onChanged: (v) {
+                    _user.reader.setStatusOverlay(v);
+                    setState(() {});
+                    widget.onChanged();
+                  },
+                ),
                 if (isDark) ...[
-                  _buildSectionHeader(l10n.readerDisplaySection, cs, tt),
                   Row(
                     children: [
                       const Icon(Icons.brightness_low, size: 18),

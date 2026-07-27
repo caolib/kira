@@ -1553,6 +1553,8 @@
   "readerVolumeKeyPageTurnDesc": "音量+上一页，音量-下一页",
   "readerInstantPageTurn": "无动画翻页",
   "readerDisplaySection": "显示",
+  "readerStatusOverlay": "状态显示",
+  "readerStatusOverlayDesc": "阅读界面右上角显示时间、电量与网络",
   "readerDimming": "降低亮度",
   "readerImageLoadingSection": "图片加载",
   "readerTimeout": "超时时间",

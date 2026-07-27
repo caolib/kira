@@ -28,6 +28,7 @@ import '../utils/image_load_stats.dart';
 import '../utils/network_error.dart';
 import '../utils/reading_history.dart';
 import '../utils/toast.dart';
+import '../widgets/reader_status_overlay.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
 
@@ -2468,6 +2469,13 @@ class _ReaderPageState extends State<ReaderPage> {
                     ],
                   ),
                 ),
+              ),
+            // 状态显示（时间/电量/网络）：默认关闭，开启后右上角低调展示
+            if (_user.reader.statusOverlay)
+              const Positioned(
+                top: 0,
+                right: 0,
+                child: ReaderStatusOverlay(),
               ),
             _ReaderTopBar(
               showToolbar: _showToolbar,
