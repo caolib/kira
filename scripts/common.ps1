@@ -1,6 +1,7 @@
 function Get-CurrentTag {
-    $tags = git tag --sort=-v:refname 2>$null
-    if ($tags) { return $tags[0] }
+    # 必须 @() 包裹：单个 tag 时原样返回字符串，[0] 会取到首字符而非整行
+    $tags = @(git tag --sort=-v:refname 2>$null)
+    if ($tags.Count -gt 0) { return $tags[0] }
     return 'v0.0.0'
 }
 
