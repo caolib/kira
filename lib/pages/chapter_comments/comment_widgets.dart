@@ -106,6 +106,8 @@ class _CommentCard extends StatefulWidget {
   final double fontScale;
   final Set<int> spoilerIds;
   final void Function(ChapterCommentDisplayEntry entry)? onLongPress;
+  /// 点击合并评论时触发（单条评论不响应点击）。
+  final void Function(ChapterCommentDisplayEntry entry)? onTapMerged;
 
   const _CommentCard({
     required this.entry,
@@ -117,6 +119,7 @@ class _CommentCard extends StatefulWidget {
     this.fontScale = 1.0,
     this.spoilerIds = const {},
     this.onLongPress,
+    this.onTapMerged,
   });
 
   @override
@@ -266,9 +269,14 @@ class _CommentCardState extends State<_CommentCard> {
     final showMetaRow = showAvatar || showUserName || showCommentTime;
     final isHotMergedComment =
         entry.isMerged && _isHotMergedComment(entry.count);
+    // 仅合并评论响应点击：弹出所有发表该评论的用户列表。
+    final tapMerged = entry.isMerged && widget.onTapMerged != null
+        ? () => widget.onTapMerged!(entry)
+        : null;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onTap: tapMerged,
       onLongPress: widget.onLongPress == null
           ? null
           : () => widget.onLongPress!(entry),

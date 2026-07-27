@@ -1067,6 +1067,117 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
   }
 
+  /// 点击合并评论：弹窗展示所有发表该评论的用户，按时间从新到旧排列。
+  Future<void> _showMergedCommentUsersDialog(
+    ChapterCommentDisplayEntry entry,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final comments = [...entry.comments]..sort((a, b) {
+        final ta = _parseCommentTime(a.createAt);
+        final tb = _parseCommentTime(b.createAt);
+        if (ta == null && tb == null) return 0;
+        if (ta == null) return 1; // 无法解析的排到最后
+        if (tb == null) return -1;
+        return tb.compareTo(ta); // 从新到旧
+      });
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * _sheetMaxHeightFactor,
+      ),
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        final tt = Theme.of(sheetContext).textTheme;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  shrinkWrap: true,
+                  itemCount: comments.length,
+                  separatorBuilder: (_, _) =>
+                      Divider(height: 1, color: cs.outlineVariant),
+                  itemBuilder: (_, index) {
+                    final c = comments[index];
+                    final name = c.userName.trim();
+                    // 用 Stack 把时间绝对钉在行右缘，避免依赖 Spacer/Expanded
+                    // 撑宽——父容器宽度异常时也能稳定右对齐。
+                    return Stack(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_showUserAvatar) ...[
+                                _CommentAvatar(
+                                  imageUrl: c.userAvatar,
+                                  size: 36,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                              ],
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 64),
+                                      child: Text(
+                                        name.isEmpty
+                                            ? l10n.commentSettingsAnonymousUser
+                                            : name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: tt.labelLarge?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(c.comment, style: tt.bodyMedium),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          right: 16,
+                          top: 10,
+                          child: Text(
+                            TimeFormat.relativeOf(c.createAt, l10n),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 解析评论时间字符串，失败返回 null（与 TimeFormat.relativeOf 一致地处理空格分隔）。
+  static DateTime? _parseCommentTime(String dateStr) {
+    if (dateStr.isEmpty) return null;
+    return DateTime.tryParse(dateStr.replaceFirst(' ', 'T'));
+  }
+
   Future<void> _showCommentActionMenu(ChapterCommentDisplayEntry entry) async {
     final l10n = AppLocalizations.of(context)!;
     final content = entry.content.trim();
@@ -1747,6 +1858,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
               fontScale: _commentFontScale,
               spoilerIds: _aiSettings.spoilerAnalysis ? _spoilerIds : const {},
               onLongPress: (entry) => _showCommentActionMenu(entry),
+              onTapMerged: (entry) => _showMergedCommentUsersDialog(entry),
             );
           },
         ),
@@ -1809,6 +1921,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                               ? _spoilerIds
                               : const {},
                           onLongPress: (entry) => _showCommentActionMenu(entry),
+                          onTapMerged: (entry) => _showMergedCommentUsersDialog(entry),
                         ),
                       ),
                       if (i != row.items.length - 1)
