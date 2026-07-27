@@ -50,7 +50,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
 
   @override
   void dispose() {
-    _messenger?.hideCurrentSnackBar();
+    _messenger?.clearSnackBars();
     _store.removeListener(_onStoreChanged);
     super.dispose();
   }
