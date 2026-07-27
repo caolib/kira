@@ -2334,7 +2334,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerStatusOverlay => '状态显示';
 
   @override
-  String get readerStatusOverlayDesc => '阅读界面右上角显示时间、电量与网络';
+  String get readerStatusTime => '时间';
+
+  @override
+  String get readerStatusNetwork => '网络';
+
+  @override
+  String get readerStatusBattery => '电量';
+
+  @override
+  String get readerStatusPage => '页码';
 
   @override
   String get readerDimming => '降低亮度';
@@ -5933,7 +5942,16 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get readerStatusOverlay => '狀態顯示';
 
   @override
-  String get readerStatusOverlayDesc => '閱讀介面右上角顯示時間、電量與網路';
+  String get readerStatusTime => '時間';
+
+  @override
+  String get readerStatusNetwork => '網路';
+
+  @override
+  String get readerStatusBattery => '電量';
+
+  @override
+  String get readerStatusPage => '頁碼';
 
   @override
   String get readerDimming => '降低亮度';

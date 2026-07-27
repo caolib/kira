@@ -33,6 +33,10 @@ class ReaderSettings extends PrefsStore {
   static const _keyImageLoadTimeout = 'image_load_timeout';
   static const _keyImageRetryCount = 'image_retry_count';
   static const _keyStatusOverlay = 'reader_status_overlay';
+  static const _keyStatusOverlayTime = 'reader_status_overlay_time';
+  static const _keyStatusOverlayBattery = 'reader_status_overlay_battery';
+  static const _keyStatusOverlayNetwork = 'reader_status_overlay_network';
+  static const _keyStatusOverlayPage = 'reader_status_overlay_page';
 
   // ── Fields ─────────────────────────────────────────────────────────
 
@@ -55,6 +59,10 @@ class ReaderSettings extends PrefsStore {
   int _imageLoadTimeout = 15;
   int _imageRetryCount = 1;
   bool _statusOverlay = false;
+  bool _statusOverlayTime = true;
+  bool _statusOverlayBattery = true;
+  bool _statusOverlayNetwork = true;
+  bool _statusOverlayPage = false;
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -77,6 +85,10 @@ class ReaderSettings extends PrefsStore {
   int get imageLoadTimeout => _imageLoadTimeout;
   int get imageRetryCount => _imageRetryCount;
   bool get statusOverlay => _statusOverlay;
+  bool get statusOverlayTime => _statusOverlayTime;
+  bool get statusOverlayBattery => _statusOverlayBattery;
+  bool get statusOverlayNetwork => _statusOverlayNetwork;
+  bool get statusOverlayPage => _statusOverlayPage;
 
   // ── Init (called from UserManager.init) ────────────────────────────
 
@@ -107,6 +119,10 @@ class ReaderSettings extends PrefsStore {
     _imageLoadTimeout = prefs.getInt(_keyImageLoadTimeout) ?? 15;
     _imageRetryCount = prefs.getInt(_keyImageRetryCount) ?? 1;
     _statusOverlay = prefs.getBool(_keyStatusOverlay) ?? false;
+    _statusOverlayTime = prefs.getBool(_keyStatusOverlayTime) ?? true;
+    _statusOverlayBattery = prefs.getBool(_keyStatusOverlayBattery) ?? true;
+    _statusOverlayNetwork = prefs.getBool(_keyStatusOverlayNetwork) ?? true;
+    _statusOverlayPage = prefs.getBool(_keyStatusOverlayPage) ?? false;
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -207,5 +223,25 @@ class ReaderSettings extends PrefsStore {
   Future<void> setStatusOverlay(bool value) async {
     _statusOverlay = value;
     await setBool(_keyStatusOverlay, value);
+  }
+
+  Future<void> setStatusOverlayTime(bool value) async {
+    _statusOverlayTime = value;
+    await setBool(_keyStatusOverlayTime, value);
+  }
+
+  Future<void> setStatusOverlayBattery(bool value) async {
+    _statusOverlayBattery = value;
+    await setBool(_keyStatusOverlayBattery, value);
+  }
+
+  Future<void> setStatusOverlayNetwork(bool value) async {
+    _statusOverlayNetwork = value;
+    await setBool(_keyStatusOverlayNetwork, value);
+  }
+
+  Future<void> setStatusOverlayPage(bool value) async {
+    _statusOverlayPage = value;
+    await setBool(_keyStatusOverlayPage, value);
   }
 }

@@ -4271,11 +4271,29 @@ abstract class AppLocalizations {
   /// **'状态显示'**
   String get readerStatusOverlay;
 
-  /// No description provided for @readerStatusOverlayDesc.
+  /// No description provided for @readerStatusTime.
   ///
   /// In zh, this message translates to:
-  /// **'阅读界面右上角显示时间、电量与网络'**
-  String get readerStatusOverlayDesc;
+  /// **'时间'**
+  String get readerStatusTime;
+
+  /// No description provided for @readerStatusNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络'**
+  String get readerStatusNetwork;
+
+  /// No description provided for @readerStatusBattery.
+  ///
+  /// In zh, this message translates to:
+  /// **'电量'**
+  String get readerStatusBattery;
+
+  /// No description provided for @readerStatusPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'页码'**
+  String get readerStatusPage;
 
   /// No description provided for @readerDimming.
   ///

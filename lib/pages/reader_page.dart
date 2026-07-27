@@ -2470,12 +2470,15 @@ class _ReaderPageState extends State<ReaderPage> {
                   ),
                 ),
               ),
-            // 状态显示（时间/电量/网络）：默认关闭，开启后右上角低调展示
+            // 状态显示（时间/电量/网络/页码）：默认关闭，开启后右上角低调展示
             if (_user.reader.statusOverlay)
-              const Positioned(
+              Positioned(
                 top: 0,
                 right: 0,
-                child: ReaderStatusOverlay(),
+                child: ReaderStatusOverlay(
+                  currentPage: _currentPage,
+                  totalPages: _detail?.contents.length ?? 0,
+                ),
               ),
             _ReaderTopBar(
               showToolbar: _showToolbar,

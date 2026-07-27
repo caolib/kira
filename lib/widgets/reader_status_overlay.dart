@@ -4,17 +4,25 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
+import '../models/reader_settings.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/reader_chrome.dart';
 import '../utils/app_logger.dart';
 
-/// 阅读器沉浸式状态显示：时间 / 电量 / 网络类型。
+/// 阅读器沉浸式状态显示：时间 / 电量 / 网络 / 页码。
 ///
-/// 设计上刻意保持低调：小字号、半透明、无背景、不可点击，
-/// 仅提供系统状态的一眼速览，不打扰阅读。
+/// 设计上刻意保持低调：小字号、黑色半透明圆角底、不可点击，
+/// 仅提供系统状态与阅读进度的一眼速览，不打扰阅读。
 class ReaderStatusOverlay extends StatefulWidget {
-  const ReaderStatusOverlay({super.key});
+  final int currentPage;
+  final int totalPages;
+
+  const ReaderStatusOverlay({
+    super.key,
+    this.currentPage = 0,
+    this.totalPages = 0,
+  });
 
   @override
   State<ReaderStatusOverlay> createState() => _ReaderStatusOverlayState();
@@ -31,7 +39,7 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
   bool _charging = false;
 
   /// 桌面设备（Windows/Linux 无电池）可能返回 -1，此类设备直接隐藏电量段
-  bool get _showBattery => _batteryLevel != null && _batteryLevel! >= 0;
+  bool get _hasBattery => _batteryLevel != null && _batteryLevel! >= 0;
   List<ConnectivityResult> _connectivity = const [];
 
   @override
@@ -132,11 +140,42 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
       fontFeatures: [FontFeature.tabularFigures()],
     );
 
+    final settings = ReaderSettings();
+    final segments = <Widget>[];
+    void add(Widget w) {
+      if (segments.isNotEmpty) {
+        segments.add(const SizedBox(width: AppSpacing.sm));
+      }
+      segments.add(w);
+    }
+
+    if (settings.statusOverlayTime) add(Text(_timeLabel, style: textStyle));
+    if (settings.statusOverlayNetwork) {
+      add(Icon(_networkIcon, color: color, size: iconSize));
+    }
+    if (settings.statusOverlayBattery && _hasBattery) {
+      add(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_charging)
+              const Icon(Icons.bolt, color: color, size: iconSize),
+            Text('$_batteryLevel%', style: textStyle),
+          ],
+        ),
+      );
+    }
+    if (settings.statusOverlayPage && widget.totalPages > 0) {
+      add(Text('${widget.currentPage}/${widget.totalPages}', style: textStyle));
+    }
+
+    // 真机上打孔/刘海状态栏高度可达 48+，组件用固定内边距保持轻薄，
+    // 不随系统状态栏高度膨胀。
     return IgnorePointer(
       child: Container(
-        padding: EdgeInsets.only(
-          top: MediaQuery.viewPaddingOf(context).top + AppSpacing.xs,
-          right: 10,
+        padding: const EdgeInsets.only(
+          top: 2,
+          right: AppSpacing.lg,
           bottom: AppSpacing.xs,
           left: 10,
         ),
@@ -146,20 +185,7 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
             bottomLeft: Radius.circular(AppRadius.md),
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_timeLabel, style: textStyle),
-            const SizedBox(width: AppSpacing.sm),
-            Icon(_networkIcon, color: color, size: iconSize),
-            if (_showBattery) ...[
-              const SizedBox(width: AppSpacing.sm),
-              if (_charging)
-                const Icon(Icons.bolt, color: color, size: iconSize),
-              Text('$_batteryLevel%', style: textStyle),
-            ],
-          ],
-        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: segments),
       ),
     );
   }

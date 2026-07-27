@@ -340,7 +340,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(l10n.readerStatusOverlay),
-                  subtitle: Text(l10n.readerStatusOverlayDesc),
                   value: _user.reader.statusOverlay,
                   onChanged: (v) {
                     _user.reader.setStatusOverlay(v);
@@ -348,6 +347,59 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     widget.onChanged();
                   },
                 ),
+                if (_user.reader.statusOverlay) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.lg),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          title: Text(l10n.readerStatusTime),
+                          value: _user.reader.statusOverlayTime,
+                          onChanged: (v) {
+                            _user.reader.setStatusOverlayTime(v);
+                            setState(() {});
+                            widget.onChanged();
+                          },
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          title: Text(l10n.readerStatusNetwork),
+                          value: _user.reader.statusOverlayNetwork,
+                          onChanged: (v) {
+                            _user.reader.setStatusOverlayNetwork(v);
+                            setState(() {});
+                            widget.onChanged();
+                          },
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          title: Text(l10n.readerStatusBattery),
+                          value: _user.reader.statusOverlayBattery,
+                          onChanged: (v) {
+                            _user.reader.setStatusOverlayBattery(v);
+                            setState(() {});
+                            widget.onChanged();
+                          },
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          title: Text(l10n.readerStatusPage),
+                          value: _user.reader.statusOverlayPage,
+                          onChanged: (v) {
+                            _user.reader.setStatusOverlayPage(v);
+                            setState(() {});
+                            widget.onChanged();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (isDark) ...[
                   Row(
                     children: [
