@@ -28,7 +28,8 @@ class _BookmarksPageState extends State<BookmarksPage> {
 
   /// 根 ScaffoldMessenger：删除书签的撤销 SnackBar 显示在根上，
   /// 页面退出时需手动隐藏，否则会残留在上一个页面直到时长结束。
-  late final ScaffoldMessengerState _messenger;
+  /// 不用 late final：didChangeDependencies 会多次执行，重复赋值 late final 会抛异常。
+  ScaffoldMessengerState? _messenger;
 
   /// 漫画详情本地缓存（仅用于补充旧书签缺失的封面），key 为 pathWord。
   final Map<String, ComicDetailData> _details = {};
@@ -49,7 +50,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
 
   @override
   void dispose() {
-    _messenger.hideCurrentSnackBar();
+    _messenger?.hideCurrentSnackBar();
     _store.removeListener(_onStoreChanged);
     super.dispose();
   }
@@ -111,7 +112,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
   void _showUndoSnackBar(String message, List<ComicBookmark> removed) {
     final l10n = AppLocalizations.of(context)!;
     _messenger
-      ..hideCurrentSnackBar()
+      ?..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
@@ -172,6 +173,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
       },
       extra: ReaderExtra(
         comicName: bookmark.comicName,
+        group: bookmark.group.isNotEmpty ? bookmark.group : null,
         chapterName: bookmark.chapterName,
         initialPage: bookmark.page,
       ),
@@ -327,8 +329,10 @@ class _BookmarkGroupCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context)!;
 
+    // build 期间不得同步触发 setState（会命中 dirty-element 断言），
+    // 延迟到帧结束后再拉取缓存封面。
     if (coverUrl.isEmpty) {
-      onFetchCover();
+      WidgetsBinding.instance.addPostFrameCallback((_) => onFetchCover());
     }
 
     final comicName = bookmarks
@@ -428,8 +432,9 @@ class _SingleBookmarkCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context)!;
 
+    // 同上：封面拉取延迟到帧结束，避免 build 期间触发 setState。
     if (coverUrl.isEmpty) {
-      onFetchCover();
+      WidgetsBinding.instance.addPostFrameCallback((_) => onFetchCover());
     }
 
     return Dismissible(

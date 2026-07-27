@@ -485,6 +485,10 @@ class _ReaderPageState extends State<ReaderPage> {
     _currentUuid = widget.chapterUuid;
     _bookmarks.addListener(_onBookmarksChanged);
     unawaited(_bookmarks.ensureLoaded());
+    // 书签入口不传 group：提前读取详情缓存的分组供历史记录回退。
+    if (widget.group == null || widget.group!.trim().isEmpty) {
+      unawaited(_loadCachedSelectedGroup());
+    }
     _itemPositionsListener.itemPositions.addListener(_onItemPositionsChanged);
     _loadChapter();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -723,6 +727,7 @@ class _ReaderPageState extends State<ReaderPage> {
           ? widget.comicName!
           : meta.comicName,
       cover: meta.cover,
+      group: meta.group,
       chapterUuid: chapterUuid,
       chapterName: chapterName,
       page: page,
@@ -731,12 +736,21 @@ class _ReaderPageState extends State<ReaderPage> {
     showToast(context, added ? l10n.bookmarkAdded : l10n.bookmarkRemoved);
   }
 
-  /// 从漫画详情本地缓存读取漫画名与封面（纯缓存读取，无网络请求）。
-  Future<({String comicName, String cover})> _comicMetaFromCache() async {
+  /// 从漫画详情本地缓存读取漫画名、封面与分组（纯缓存读取，无网络请求）。
+  /// 分组缺失时回退到 widget.group（详情页入口会传入当前选中分组）。
+  Future<({String comicName, String cover, String group})>
+  _comicMetaFromCache() async {
+    final fallbackGroup = widget.group?.trim() ?? '';
     try {
       final data = await ComicDetailRepository(widget.pathWord).loadFromCache();
       final comic = data?.comic;
-      return (comicName: comic?.name ?? '', cover: comic?.cover ?? '');
+      final cachedGroup = data?.selectedGroup.trim() ?? '';
+      if (cachedGroup.isNotEmpty) _cachedSelectedGroup = cachedGroup;
+      return (
+        comicName: comic?.name ?? '',
+        cover: comic?.cover ?? '',
+        group: cachedGroup.isNotEmpty ? cachedGroup : fallbackGroup,
+      );
     } catch (e, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
@@ -745,20 +759,47 @@ class _ReaderPageState extends State<ReaderPage> {
           source: 'reader.comic_meta_from_cache',
         ),
       );
-      return (comicName: '', cover: '');
+      return (comicName: '', cover: '', group: fallbackGroup);
     }
   }
 
   void _saveReadingHistory() {
+    // 书签等入口不传 group：回退到详情缓存中的选中分组，
+    // 否则历史会写入默认键，详情页按分组读取时看不到更新。
+    var group = widget.group;
+    if (group == null || group.trim().isEmpty) {
+      group = _cachedSelectedGroup ?? ReadingHistory.defaultGroup;
+    }
     ReadingHistory.save(
       pathWord: widget.pathWord,
-      group: widget.group,
+      group: group,
       chapterUuid: _currentUuid,
       chapterName: _detail?.name ?? widget.chapterName,
       chapterListPage: widget.chapterListPage,
       page: _currentPage,
       totalPage: _detail?.contents.length ?? 0,
     );
+  }
+
+  /// 详情本地缓存中的选中分组（_comicMetaFromCache 顺带填充），
+  /// 供 widget.group 为空时（书签入口）回退使用。
+  String? _cachedSelectedGroup;
+
+  Future<void> _loadCachedSelectedGroup() async {
+    if (_cachedSelectedGroup != null) return;
+    try {
+      final data = await ComicDetailRepository(widget.pathWord).loadFromCache();
+      final group = data?.selectedGroup.trim() ?? '';
+      if (group.isNotEmpty) _cachedSelectedGroup = group;
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'reader.load_cached_selected_group',
+        ),
+      );
+    }
   }
 
   Future<void> _preloadComments({ChapterDetail? chapter}) async {

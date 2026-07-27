@@ -15,6 +15,10 @@ class ComicBookmark {
   /// 封面 URL，打书签时从漫画详情本地缓存读取（无网络请求）。
   /// 旧版本书签可能为空，列表页退化为占位图。
   final String cover;
+
+  /// 打书签时所在的章节分组，从详情缓存读取。
+  /// 旧版本书签可能为空，进入阅读器时回退到默认分组键。
+  final String group;
   final String chapterUuid;
   final String chapterName;
   final int page;
@@ -24,6 +28,7 @@ class ComicBookmark {
     required this.pathWord,
     required this.comicName,
     this.cover = '',
+    this.group = '',
     required this.chapterUuid,
     required this.chapterName,
     required this.page,
@@ -38,6 +43,7 @@ class ComicBookmark {
       pathWord: json['pathWord']?.toString() ?? '',
       comicName: json['comicName']?.toString() ?? '',
       cover: json['cover']?.toString() ?? '',
+      group: json['group']?.toString() ?? '',
       chapterUuid: json['chapterUuid']?.toString() ?? '',
       chapterName: json['chapterName']?.toString() ?? '',
       page: _readInt(json['page']) ?? 1,
@@ -49,6 +55,7 @@ class ComicBookmark {
     'pathWord': pathWord,
     'comicName': comicName,
     if (cover.isNotEmpty) 'cover': cover,
+    if (group.isNotEmpty) 'group': group,
     'chapterUuid': chapterUuid,
     'chapterName': chapterName,
     'page': page,
@@ -112,6 +119,7 @@ class BookmarkStore extends ChangeNotifier {
     required String pathWord,
     required String comicName,
     String cover = '',
+    String group = '',
     required String chapterUuid,
     required String chapterName,
     required int page,
@@ -131,6 +139,7 @@ class BookmarkStore extends ChangeNotifier {
         pathWord: pathWord,
         comicName: comicName,
         cover: cover,
+        group: group,
         chapterUuid: chapterUuid,
         chapterName: chapterName,
         page: page,
