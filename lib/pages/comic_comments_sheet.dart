@@ -12,9 +12,12 @@ import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
+import '../utils/comment_text.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import 'chapter_comments/comment_paging.dart';
+import 'chapter_comments/comment_scroll_behavior.dart';
 import 'chapter_comments_sheet.dart'
     show CommentSettingsPanel, buildCommentBodyStyle;
 
@@ -32,16 +35,13 @@ class ComicCommentsSheet extends StatefulWidget {
   State<ComicCommentsSheet> createState() => _ComicCommentsSheetState();
 }
 
-class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
+class _ComicCommentsSheetState extends State<ComicCommentsSheet>
+    with CommentScrollBehavior<ComicCommentsSheet> {
   static const _replyPageSize = 3;
-  static const _loadMoreThreshold = 240.0;
   static const _listBottomPadding = 80.0;
 
   final _api = ApiClient();
-  final _scrollController = ScrollController();
   final _user = UserManager();
-  final ValueNotifier<bool> _showFloatingButtons = ValueNotifier(true);
-  double _lastScrollOffset = 0;
 
   List<ComicComment> _comments = [];
   bool _loading = true;
@@ -53,25 +53,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScrollDirection);
     _loadComments();
-  }
-
-  void _handleScrollDirection() {
-    final offset = _scrollController.offset;
-    if (offset > _lastScrollOffset + 2 && _showFloatingButtons.value) {
-      _showFloatingButtons.value = false;
-    } else if (offset < _lastScrollOffset - 2 && !_showFloatingButtons.value) {
-      _showFloatingButtons.value = true;
-    }
-    _lastScrollOffset = offset;
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    _showFloatingButtons.dispose();
-    super.dispose();
   }
 
   Future<void> _loadComments({bool loadMore = false}) async {
@@ -94,14 +76,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
 
       final mergedComments =
           (loadMore
-                  ? [
-                      ..._comments,
-                      ...data.list.where(
-                        (item) => !_comments.any(
-                          (existing) => existing.id == item.id,
-                        ),
-                      ),
-                    ]
+                  ? appendDedupedById(_comments, data.list, (c) => c.id)
                   : data.list)
               .where(
                 (item) => !_user.isCommentUserBlocked(
@@ -120,7 +95,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _tryLoadMoreWhenNearBottom();
+        tryLoadMoreWhenNearBottom();
       });
     } catch (e) {
       if (!mounted) return;
@@ -132,21 +107,12 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     }
   }
 
-  bool _handleScrollNotification(ScrollNotification notification) {
-    _tryLoadMoreWhenNearBottom(metrics: notification.metrics);
-    return false;
-  }
+  @override
+  bool get canLoadMore =>
+      !_loading && !_loadingMore && _comments.length < _total;
 
-  void _tryLoadMoreWhenNearBottom({ScrollMetrics? metrics}) {
-    if (_loading || _loadingMore || _comments.length >= _total) return;
-    final currentMetrics =
-        metrics ??
-        (_scrollController.hasClients ? _scrollController.position : null);
-    if (currentMetrics == null) return;
-    if (currentMetrics.extentAfter <= _loadMoreThreshold) {
-      _loadComments(loadMore: true);
-    }
-  }
+  @override
+  void loadMoreComments() => _loadComments(loadMore: true);
 
   _ComicReplyState _replyStateOf(int commentId) =>
       _replyStates[commentId] ?? const _ComicReplyState();
@@ -344,7 +310,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
               right: 16,
               bottom: 16,
               child: ValueListenableBuilder<bool>(
-                valueListenable: _showFloatingButtons,
+                valueListenable: showFloatingButtons,
                 builder: (context, showFloatingButtons, child) {
                   final buttonStyle = FilledButton.styleFrom(
                     backgroundColor: cs.primaryContainer,
@@ -483,9 +449,9 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     }
 
     return NotificationListener<ScrollNotification>(
-      onNotification: _handleScrollNotification,
+      onNotification: handleScrollNotification,
       child: ListView.separated(
-        controller: _scrollController,
+        controller: scrollController,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, _listBottomPadding),
         itemCount: _comments.length + (_loadingMore ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -897,8 +863,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
     return false;
   }
 
-  int _commentTextLength(String text) => text.trim().runes.length;
-
   Future<void> _showCommentActionMenu(ComicComment comment) async {
     final l10n = AppLocalizations.of(context)!;
     final content = comment.comment.trim();
@@ -1155,8 +1119,8 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       return;
     }
 
-    final length = _commentTextLength(content);
-    if (length < 3 || length > 200) {
+    final length = CommentText.lengthOf(content);
+    if (length < CommentText.minLength || length > CommentText.maxLength) {
       showToast(
         context,
         l10n.chapterCommentsPlusOneLengthInvalid,
@@ -1204,8 +1168,8 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
       StateSetter setLocal,
     ) async {
       final content = controller.text.trim();
-      final length = _commentTextLength(content);
-      if (length < 3 || length > 200) {
+      final length = CommentText.lengthOf(content);
+      if (length < CommentText.minLength || length > CommentText.maxLength) {
         setLocal(() => errorText = l10n.chapterCommentsLengthRange);
         return;
       }
@@ -1278,8 +1242,11 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
         builder: (dialogContext) {
           return StatefulBuilder(
             builder: (dialogContext, setLocal) {
-              final length = _commentTextLength(controller.text);
-              final canSubmit = !submitting && length >= 3 && length <= 200;
+              final length = CommentText.lengthOf(controller.text);
+              final canSubmit =
+                  !submitting &&
+                  length >= CommentText.minLength &&
+                  length <= CommentText.maxLength;
               return AlertDialog(
                 title: Text(title),
                 content: SingleChildScrollView(
@@ -1311,7 +1278,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet> {
                         enabled: !submitting,
                         minLines: 3,
                         maxLines: 6,
-                        maxLength: 200,
+                        maxLength: CommentText.maxLength,
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(200),
                         ],

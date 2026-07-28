@@ -9,6 +9,7 @@ import '../../models/chapter_comment.dart';
 import '../../models/comic.dart';
 import '../../models/comic_comment.dart';
 import '../../utils/app_dio.dart';
+import '../../utils/comment_text.dart';
 import '../../utils/json_helpers.dart';
 import '../../utils/network_error.dart';
 import '../api_transport.dart';
@@ -478,9 +479,11 @@ class MangaApi {
   // 9.2 Post chapter comment
   Future<void> postChapterComment(String chapterId, String content) async {
     final trimmed = content.trim();
-    final length = trimmed.runes.length;
-    if (length < 3 || length > 200) {
-      throw ArgumentError('comment length must be 3-200 characters');
+    if (!CommentText.isValid(trimmed)) {
+      throw ArgumentError(
+        'comment length must be '
+        '${CommentText.minLength}-${CommentText.maxLength} characters',
+      );
     }
 
     final token = _t.user.token;
@@ -520,9 +523,11 @@ class MangaApi {
     int? replyId,
   }) async {
     final trimmed = content.trim();
-    final length = trimmed.runes.length;
-    if (length < 3 || length > 200) {
-      throw ArgumentError('comment length must be 3-200 characters');
+    if (!CommentText.isValid(trimmed)) {
+      throw ArgumentError(
+        'comment length must be '
+        '${CommentText.minLength}-${CommentText.maxLength} characters',
+      );
     }
 
     final token = _t.user.token;

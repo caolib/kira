@@ -20,10 +20,13 @@ import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/chapter_summary_cache.dart';
+import '../utils/comment_text.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import 'chapter_comment_display.dart';
+import 'chapter_comments/comment_paging.dart';
+import 'chapter_comments/comment_scroll_behavior.dart';
 
 part 'chapter_comments/comment_models.dart';
 part 'chapter_comments/comment_settings_panel.dart';
@@ -59,10 +62,10 @@ class ChapterCommentsSheet extends StatefulWidget {
   State<ChapterCommentsSheet> createState() => _ChapterCommentsSheetState();
 }
 
-class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
+class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
+    with CommentScrollBehavior<ChapterCommentsSheet> {
   static const _pageSize = 100;
   static const _commentRowSpacing = 8.0;
-  static const _loadMoreThreshold = 240.0;
   static const _commentListBottomPadding = 124.0;
   static const _sheetMaxHeightFactor = 0.85;
 
@@ -70,7 +73,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   final _user = UserManager();
   final _aiSettings = AiSettings();
   final _aiApi = AiApi();
-  final _scrollController = ScrollController();
   final _reasoningScrollController = ScrollController();
 
   List<ChapterComment> _comments = [];
@@ -84,8 +86,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
   bool _showUserName = true;
   bool _showCommentTime = true;
   double _commentFontScale = 1.0;
-  final ValueNotifier<bool> _showFloatingButtons = ValueNotifier(true);
-  double _lastScrollOffset = 0;
 
   // Stream AI content through ValueNotifiers so chunks only rebuild the summary
   // panel, keeping the comment list still while generation is running.
@@ -200,7 +200,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _showUserName = _user.commentShowUserName;
     _showCommentTime = _user.commentShowTime;
     _commentFontScale = _user.commentFontScale;
-    _scrollController.addListener(_handleScrollDirection);
     _aiSettings.addListener(_onAiChanged);
     // Listen to stream ValueNotifiers only for structural panel presence changes.
     // Incremental stream writes keep _hasSummaryPanel unchanged and avoid setState.
@@ -244,9 +243,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     _aiSummaryReasoningVN.removeListener(_onSummaryPresenceVnChanged);
     _summarizingVN.removeListener(_onSummaryPresenceVnChanged);
     _summaryErrorVN.removeListener(_onSummaryPresenceVnChanged);
-    _scrollController.dispose();
     _reasoningScrollController.dispose();
-    _showFloatingButtons.dispose();
     _aiSummaryVN.dispose();
     _aiSummaryReasoningVN.dispose();
     _summarizingVN.dispose();
@@ -355,19 +352,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     setState(() => _spoilerIds = _parseSpoilerIds(cached));
   }
 
-  void _handleScrollDirection() {
-    final position = _scrollController.position;
-    final offset = position.pixels;
-    if (offset >= position.maxScrollExtent && !_showFloatingButtons.value) {
-      _showFloatingButtons.value = true;
-    } else if (offset > _lastScrollOffset + 2 && _showFloatingButtons.value) {
-      _showFloatingButtons.value = false;
-    } else if (offset < _lastScrollOffset - 2 && !_showFloatingButtons.value) {
-      _showFloatingButtons.value = true;
-    }
-    _lastScrollOffset = offset;
-  }
-
   void _notifyCommentsUpdated() {
     final callback = widget.onCommentsUpdated;
     if (callback == null) return;
@@ -406,12 +390,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       if (!mounted) return;
 
       final mergedComments = loadMore
-          ? [
-              ..._comments,
-              ...data.list.where(
-                (item) => !_comments.any((existing) => existing.id == item.id),
-              ),
-            ]
+          ? appendDedupedById(_comments, data.list, (c) => c.id)
           : data.list;
 
       setState(() {
@@ -428,7 +407,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _tryLoadMoreWhenNearBottom();
+        tryLoadMoreWhenNearBottom();
       });
     } catch (e) {
       if (!mounted) return;
@@ -473,21 +452,18 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         final insertOverflow = !allIds.contains(overflowComment.id);
 
         // Remove comments duplicated by the new page 1.
-        final dedupedBeyond = existingBeyondPage1
-            .where((c) => !firstPageComments.any((f) => f.id == c.id))
-            .toList();
-
-        merged = [
-          ...firstPageComments,
-          if (insertOverflow) overflowComment,
-          ...dedupedBeyond,
-        ];
+        merged = appendDedupedById(
+          [...firstPageComments, if (insertOverflow) overflowComment],
+          existingBeyondPage1,
+          (c) => c.id,
+        );
       } else {
         // If page 1 is not full or page 2+ is absent, append deduped tail.
-        final dedupedBeyond = existingBeyondPage1
-            .where((c) => !firstPageComments.any((f) => f.id == c.id))
-            .toList();
-        merged = [...firstPageComments, ...dedupedBeyond];
+        merged = appendDedupedById(
+          firstPageComments,
+          existingBeyondPage1,
+          (c) => c.id,
+        );
       }
 
       setState(() {
@@ -500,7 +476,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       _maybeAutoSummary();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _tryLoadMoreWhenNearBottom();
+        tryLoadMoreWhenNearBottom();
       });
     } catch (e) {
       if (!mounted) return;
@@ -514,21 +490,12 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     }
   }
 
-  bool _handleScrollNotification(ScrollNotification notification) {
-    _tryLoadMoreWhenNearBottom(metrics: notification.metrics);
-    return false;
-  }
+  @override
+  bool get canLoadMore =>
+      !_loading && !_loadingMore && _comments.length < _total;
 
-  void _tryLoadMoreWhenNearBottom({ScrollMetrics? metrics}) {
-    if (_loading || _loadingMore || _comments.length >= _total) return;
-    final currentMetrics =
-        metrics ??
-        (_scrollController.hasClients ? _scrollController.position : null);
-    if (currentMetrics == null) return;
-    if (currentMetrics.extentAfter <= _loadMoreThreshold) {
-      _loadComments(loadMore: true);
-    }
-  }
+  @override
+  void loadMoreComments() => _loadComments(loadMore: true);
 
   Future<void> _loadAllComments() async {
     if (_loadingAll) return;
@@ -795,8 +762,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     });
   }
 
-  int _commentTextLength(String text) => text.trim().runes.length;
-
   String _extractCommentPostErrorMessage(Object error) {
     if (error is DioException) {
       final inner = error.error;
@@ -946,8 +911,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       StateSetter setLocal,
     ) async {
       final content = controller.text.trim();
-      final length = _commentTextLength(content);
-      if (length < 3 || length > 200) {
+      final length = CommentText.lengthOf(content);
+      if (length < CommentText.minLength || length > CommentText.maxLength) {
         setLocal(() {
           errorText = l10n.chapterCommentsLengthRange;
           errorLog = 'ValidationError: ${l10n.chapterCommentsLengthRange}';
@@ -985,8 +950,11 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         builder: (dialogContext) {
           return StatefulBuilder(
             builder: (dialogContext, setLocal) {
-              final length = _commentTextLength(controller.text);
-              final canSubmit = !submitting && length >= 3 && length <= 200;
+              final length = CommentText.lengthOf(controller.text);
+              final canSubmit =
+                  !submitting &&
+                  length >= CommentText.minLength &&
+                  length <= CommentText.maxLength;
               return AlertDialog(
                 title: Text(l10n.chapterCommentsPostTitle),
                 content: SingleChildScrollView(
@@ -1000,7 +968,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                         enabled: !submitting,
                         minLines: 3,
                         maxLines: 6,
-                        maxLength: 200,
+                        maxLength: CommentText.maxLength,
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(200),
                         ],
@@ -1072,7 +1040,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
     ChapterCommentDisplayEntry entry,
   ) async {
     final l10n = AppLocalizations.of(context)!;
-    final comments = [...entry.comments]..sort((a, b) {
+    final comments = [...entry.comments]
+      ..sort((a, b) {
         final ta = _parseCommentTime(a.createAt);
         final tb = _parseCommentTime(b.createAt);
         if (ta == null && tb == null) return 0;
@@ -1357,8 +1326,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
       return;
     }
 
-    final length = _commentTextLength(content);
-    if (length < 3 || length > 200) {
+    final length = CommentText.lengthOf(content);
+    if (length < CommentText.minLength || length > CommentText.maxLength) {
       showToast(
         context,
         l10n.chapterCommentsPlusOneLengthInvalid,
@@ -1631,7 +1600,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                   right: 16,
                   bottom: 16,
                   child: ValueListenableBuilder<bool>(
-                    valueListenable: _showFloatingButtons,
+                    valueListenable: showFloatingButtons,
                     builder: (context, showFloatingButtons, child) {
                       return AnimatedSlide(
                         offset: showFloatingButtons
@@ -1822,9 +1791,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
 
     if (!_useCompactLayout) {
       return NotificationListener<ScrollNotification>(
-        onNotification: _handleScrollNotification,
+        onNotification: handleScrollNotification,
         child: ListView.separated(
-          controller: _scrollController,
+          controller: scrollController,
           padding: const EdgeInsets.fromLTRB(
             16,
             12,
@@ -1874,9 +1843,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
         );
 
         return NotificationListener<ScrollNotification>(
-          onNotification: _handleScrollNotification,
+          onNotification: handleScrollNotification,
           child: ListView.separated(
-            controller: _scrollController,
+            controller: scrollController,
             padding: const EdgeInsets.fromLTRB(
               16,
               12,
@@ -1921,7 +1890,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet> {
                               ? _spoilerIds
                               : const {},
                           onLongPress: (entry) => _showCommentActionMenu(entry),
-                          onTapMerged: (entry) => _showMergedCommentUsersDialog(entry),
+                          onTapMerged: (entry) =>
+                              _showMergedCommentUsersDialog(entry),
                         ),
                       ),
                       if (i != row.items.length - 1)
