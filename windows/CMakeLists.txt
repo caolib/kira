@@ -32,6 +32,16 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# Treat all sources as UTF-8.
+#
+# On non-UTF-8 system locales (e.g. Chinese code page 936) MSVC reads source
+# files using the system code page. Third-party plugin sources are UTF-8, so any
+# non-ASCII byte there raises C4819, which /WX below promotes to a hard error —
+# connectivity_plus fails to compile this way. Declaring the charset explicitly
+# fixes it at the root for every target, including plugins.
+add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
+add_compile_options("$<$<COMPILE_LANGUAGE:C>:/utf-8>")
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by

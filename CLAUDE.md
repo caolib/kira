@@ -79,6 +79,17 @@ Run these from the repository root:
 ### Windows Build Note
 `flutter_secure_storage` (^10.3.1) is a dependency. If a Windows build fails to find ATL/MFC under a particular MSVC toolchain, add an ATL auto-discovery block to `windows/CMakeLists.txt` that scans installed MSVC versions for `atlmfc` — the current file does not need one for the default setup.
 
+`windows/CMakeLists.txt` passes `/utf-8` to MSVC. Do not remove it: on non-UTF-8 system locales (Chinese code page 936) MSVC reads sources using the system code page, so UTF-8 bytes in third-party plugin sources raise C4819 — which `APPLY_STANDARD_SETTINGS`' `/WX` promotes to a hard error. `connectivity_plus` fails to compile without it.
+
+If `ephemeral/cpp_client_wrapper/*.cc` are reported missing (C1083), the Windows engine artifacts extracted incompletely: run `flutter clean` then `flutter precache --windows`.
+
+### Android Build Note
+After `flutter clean`, `flutter run -d <android>` fails with `package identifier or launch activity not found`. **Run `flutter build apk --debug` once first**, then `flutter run` works again.
+
+Why: the launcher entry lives in `<activity-alias>` (`LauncherDefault` / `LauncherAlt1`, required by the switchable-logo feature) and `MainActivity` itself carries no LAUNCHER intent-filter. When a built APK exists Flutter reads it via `aapt dump badging`, which resolves aliases correctly; with no APK it falls back to parsing the source manifest, and `flutter_tools/lib/src/android/application_package.dart` only iterates `<activity>` — it does not recognise `<activity-alias>`.
+
+Do **not** "fix" this by giving `MainActivity` a LAUNCHER intent-filter: that adds a second launcher icon and breaks logo switching. Disabling `MainActivity` is also wrong — an alias whose `targetActivity` is disabled stops working.
+
 ## Coding Style & Naming Conventions
 
 - 2-space indentation, trailing commas where they improve widget diffs, small focused widgets.

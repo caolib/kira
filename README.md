@@ -69,6 +69,12 @@ cd kira
 
 如果你需要弹幕功能，需要先创建弹弹play账号，获取`appId`和`appSecret`，然后在项目根目录下创建一个`.env`文件，内容参考`.env.example`
 
+如果是安卓设备，第一次使用需要先 build 一次，后续如果 clean 了需要重新 build
+```sh
+flutter build apk --debug
+```
+
+然后启动
 ```sh
 flutter run -d <设备ID> --dart-define-from-file=.env
 ```
