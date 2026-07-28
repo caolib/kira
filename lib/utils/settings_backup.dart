@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n/app_localizations.dart';
+import 'reading_history.dart';
 
 enum SettingsBackupErrorCode {
   emptyClipboard,
@@ -84,6 +85,8 @@ class SettingsBackupService {
   Future<String> exportPlainText({
     SettingsBackupOptions options = const SettingsBackupOptions(),
   }) async {
+    // 阅读进度是防抖写入的，导出前先落盘，否则最近读的章节会漏备份。
+    await ReadingHistory.flush();
     final prefs = await SharedPreferences.getInstance();
     final entries = <String, Map<String, dynamic>>{};
     final skippedSensitiveKeys = <String>[];
@@ -125,6 +128,8 @@ class SettingsBackupService {
 
   Future<SettingsBackupSummary> importPlainText(String raw) async {
     final backup = _parseBackup(raw);
+    // 先冲刷待写的阅读进度：否则它会在下方清空之后才落盘，把刚导入的记录盖掉。
+    await ReadingHistory.flush();
     final prefs = await SharedPreferences.getInstance();
     final existingKeys = prefs.getKeys().where(_isUserPreferenceKey).toList();
 
@@ -144,6 +149,8 @@ class SettingsBackupService {
   }
 
   Future<int> clearAllPreferences() async {
+    // 同上：不先落盘的话，待写的阅读进度会在清空之后写回，记录“复活”。
+    await ReadingHistory.flush();
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys().toList();
 

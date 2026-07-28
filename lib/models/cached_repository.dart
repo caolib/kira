@@ -50,6 +50,13 @@ abstract class CachedRepository<T> {
 
   final _cache = AppStorage.cache;
 
+  /// In-flight [load] call, shared by concurrent callers.
+  ///
+  /// `initState` and pull-to-refresh routinely fire at the same moment; without
+  /// this every caller issued its own API request (cache stampede). Callers
+  /// that arrive while a load is running await the same future instead.
+  Future<T>? _inFlight;
+
   CachedRepository({
     required this.cacheKey,
     required this.deserialize,
@@ -76,7 +83,21 @@ abstract class CachedRepository<T> {
   /// Load with the cache-then-API pattern:
   /// - If `skipApiIfCacheFresh` and cache is valid → return cache only.
   /// - Otherwise → fetch from API, write to cache, return fresh data.
-  Future<T> load() async {
+  ///
+  /// Concurrent calls share a single in-flight request; the returned future
+  /// completes with the same value (or error) for every caller.
+  Future<T> load() {
+    final pending = _inFlight;
+    if (pending != null) return pending;
+
+    final future = _loadOnce();
+    _inFlight = future;
+    return future.whenComplete(() {
+      if (identical(_inFlight, future)) _inFlight = null;
+    });
+  }
+
+  Future<T> _loadOnce() async {
     if (skipApiIfCacheFresh) {
       final cached = await loadFromCache();
       // Cache hit with TTL not yet expired (AppPersistentCache already

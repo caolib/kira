@@ -10,7 +10,8 @@ void main() {
         'name': '%E6%B5%8B%E8%AF%95%E7%94%A8%E6%88%B7',
         'token': 'test_token_0123456789abcdef0123456789ab',
         'user_id': '00000000-0000-0000-0000-000000000001',
-        'avatar': '"user/cover/00000000000000000000000000000001/0000000000.jpg"',
+        'avatar':
+            '"user/cover/00000000000000000000000000000001/0000000000.jpg"',
         'email': '""',
         'csrftoken': 'test_csrf_token_0000000000000000',
         'sessionid': 'test_session_id_000000000000000000',

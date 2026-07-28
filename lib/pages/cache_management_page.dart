@@ -14,6 +14,7 @@ import '../theme/app_spacing.dart';
 import '../utils/app_storage.dart';
 import '../utils/font_manager.dart';
 import '../utils/media_kit_native_loader.dart';
+import '../utils/reading_history.dart';
 import '../utils/toast.dart';
 
 class CacheManagementPage extends StatefulWidget {
@@ -84,6 +85,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     });
 
     try {
+      // 阅读进度防抖写入，先落盘再统计，否则刚读的章节不会出现在列表里，
+      // 删除后也会被延迟写回。
+      await ReadingHistory.flush();
       final prefs = await AppStorage.sharedPreferences();
       final entries =
           prefs.getKeys().where((key) => !_isAiConfigKey(key)).map((key) {

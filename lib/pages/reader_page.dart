@@ -500,6 +500,8 @@ class _ReaderPageState extends State<ReaderPage> {
 
   @override
   void dispose() {
+    // 进度保存是防抖的，离开阅读页必须立刻落盘，否则最后几页会丢。
+    unawaited(ReadingHistory.flush());
     _setVolumeIntercept(false);
     _volumeChannel.invokeMethod('disableImmersive').catchError((_) {});
     _volumeChannel.setMethodCallHandler(null);

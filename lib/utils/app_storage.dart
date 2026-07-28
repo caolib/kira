@@ -159,12 +159,40 @@ class AppPersistentCache {
     await Future.wait(keys.map(prefs.remove));
   }
 
-  Future<void> clearExpired() async {
+  /// Matches the trailing expiry stamp written by [put].
+  ///
+  /// [put] encodes `{dataKey: ..., expiresAtKey: <int>}` in that order, so the
+  /// stamp is always the last field — anchoring to the end keeps a same-named
+  /// field inside business data from being mistaken for it.
+  static final _expiresAtProbe = RegExp('"$expiresAtKey":(\\d+)\\}\$');
+
+  /// Removes entries whose TTL has passed. Returns how many were dropped.
+  ///
+  /// Deliberately avoids [get]: that would `jsonDecode` every entry, including
+  /// large unexpired ones such as comic details, which is far too expensive to
+  /// run at startup on the UI isolate. Entries stored without a TTL carry no
+  /// stamp and are left alone.
+  Future<int> clearExpired() async {
     final prefs = await AppStorage.sharedPreferences();
-    final keys = prefs.getKeys().where((key) => key.startsWith(prefix));
+    final keys = prefs
+        .getKeys()
+        .where((key) => key.startsWith(prefix))
+        .toList(growable: false);
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    var removed = 0;
     for (final key in keys) {
-      await get(key);
+      final raw = prefs.getString(key);
+      if (raw == null) continue;
+      final match = _expiresAtProbe.firstMatch(raw);
+      if (match == null) continue;
+      final expiresAt = int.tryParse(match.group(1) ?? '');
+      if (expiresAt != null && now > expiresAt) {
+        await prefs.remove(key);
+        removed++;
+      }
     }
+    return removed;
   }
 }
 

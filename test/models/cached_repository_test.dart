@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kira/models/cached_repository.dart';
@@ -258,4 +260,69 @@ void main() {
       expect(cachedB?.count, 20);
     });
   });
+
+  group('CachedRepository in-flight de-duplication', () {
+    test('concurrent load calls share one API request', () async {
+      final repo = _GatedRepo();
+
+      // 三个调用者在 API 返回之前就发起请求——initState 与下拉刷新同时触发
+      // 正是这个场景。
+      final calls = [repo.load(), repo.load(), repo.load()];
+      repo.gate.complete();
+      final results = await Future.wait(calls);
+
+      expect(repo.fetchCallCount, 1);
+      expect(results.map((item) => item.name).toList(), [
+        'gated',
+        'gated',
+        'gated',
+      ]);
+    });
+
+    test(
+      'a later load issues a fresh request once the first settles',
+      () async {
+        final repo = _GatedRepo();
+        repo.gate.complete();
+
+        await repo.load();
+        await repo.load();
+
+        expect(repo.fetchCallCount, 2);
+      },
+    );
+
+    test('a failed load does not poison later calls', () async {
+      final repo = _FailingOnceRepo();
+
+      await expectLater(repo.load(), throwsA(isA<StateError>()));
+      final recovered = await repo.load();
+
+      expect(repo.fetchCallCount, 2);
+      expect(recovered.name, 'recovered');
+    });
+  });
+}
+
+/// Holds [fetchFromApi] open until [gate] completes, so concurrent callers are
+/// guaranteed to overlap.
+class _GatedRepo extends _TestMemRepo {
+  final gate = Completer<void>();
+
+  @override
+  Future<_TestItem> fetchFromApi() async {
+    fetchCallCount++;
+    await gate.future;
+    return const _TestItem(name: 'gated', count: 7);
+  }
+}
+
+/// Throws on the first fetch, succeeds afterwards.
+class _FailingOnceRepo extends _TestMemRepo {
+  @override
+  Future<_TestItem> fetchFromApi() async {
+    fetchCallCount++;
+    if (fetchCallCount == 1) throw StateError('boom');
+    return const _TestItem(name: 'recovered', count: 1);
+  }
 }

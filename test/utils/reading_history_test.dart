@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
+  setUp(() async {
+    // 待写队列是静态的：先冲刷掉上一个测试的残留，再换上干净的 prefs。
+    await ReadingHistory.flush();
     SharedPreferences.setMockInitialValues({});
   });
 
@@ -81,5 +83,99 @@ void main() {
     expect(latest?.chapterUuid, 'volume-1');
     expect(latest?.group, 'tankobon');
     expect(latest?.updatedAt, isNotNull);
+  });
+
+  test('merged saves keep every chapter in the read set', () async {
+    // 连续翻章会在一个防抖窗口内触发多次保存；中间章节不能被丢掉。
+    for (final uuid in ['ch-1', 'ch-2', 'ch-3']) {
+      await ReadingHistory.save(
+        pathWord: 'comic-d',
+        group: ReadingHistory.defaultGroup,
+        chapterUuid: uuid,
+        chapterName: uuid,
+      );
+    }
+
+    final record = await ReadingHistory.get(
+      'comic-d',
+      group: ReadingHistory.defaultGroup,
+    );
+
+    expect(record?.chapterUuid, 'ch-3');
+    expect(record?.readChapterUuids, containsAll(['ch-1', 'ch-2', 'ch-3']));
+  });
+
+  test(
+    'get flushes pending writes so readers never see stale progress',
+    () async {
+      await ReadingHistory.save(
+        pathWord: 'comic-e',
+        group: ReadingHistory.defaultGroup,
+        chapterUuid: 'ch-9',
+        chapterName: '第9话',
+        page: 4,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      // 防抖未到期，进度仍只在内存队列里。
+      expect(prefs.getString('reading_history_comic-e'), isNull);
+
+      final record = await ReadingHistory.get(
+        'comic-e',
+        group: ReadingHistory.defaultGroup,
+      );
+
+      expect(record?.chapterUuid, 'ch-9');
+      expect(record?.page, 4);
+      // 读取顺带把它落了盘。
+      expect(prefs.getString('reading_history_comic-e'), isNotNull);
+    },
+  );
+
+  test('flush persists pending progress immediately', () async {
+    await ReadingHistory.save(
+      pathWord: 'comic-f',
+      group: ReadingHistory.defaultGroup,
+      chapterUuid: 'ch-5',
+      chapterName: '第5话',
+      page: 2,
+    );
+
+    await ReadingHistory.flush();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('reading_history_comic-f'), isNotNull);
+  });
+
+  test('merged saves across different comics stay separate', () async {
+    await ReadingHistory.save(
+      pathWord: 'comic-g',
+      group: ReadingHistory.defaultGroup,
+      chapterUuid: 'g-1',
+      chapterName: 'G1',
+    );
+    await ReadingHistory.save(
+      pathWord: 'comic-h',
+      group: ReadingHistory.defaultGroup,
+      chapterUuid: 'h-1',
+      chapterName: 'H1',
+    );
+
+    await ReadingHistory.flush();
+
+    expect(
+      (await ReadingHistory.get(
+        'comic-g',
+        group: ReadingHistory.defaultGroup,
+      ))?.chapterUuid,
+      'g-1',
+    );
+    expect(
+      (await ReadingHistory.get(
+        'comic-h',
+        group: ReadingHistory.defaultGroup,
+      ))?.chapterUuid,
+      'h-1',
+    );
   });
 }

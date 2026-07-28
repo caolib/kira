@@ -18,12 +18,33 @@ import 'routing/app_router.dart';
 import 'theme/app_radius.dart';
 import 'theme/app_typography.dart';
 import 'utils/app_logger.dart';
+import 'utils/app_storage.dart';
 import 'utils/display_mode_preference.dart';
 import 'utils/font_manager.dart';
 import 'utils/network_proxy.dart';
 
 bool get isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
+/// Drops expired business cache entries once per launch.
+///
+/// Entries were only ever evicted when something happened to read them again,
+/// so caches for content the user stopped opening lingered indefinitely. Runs
+/// after a delay so it never competes with first-frame rendering.
+Future<void> _clearExpiredCacheInBackground() async {
+  await Future<void>.delayed(const Duration(seconds: 5));
+  try {
+    await AppStorage.cache.clearExpired();
+  } catch (e, stack) {
+    unawaited(
+      AppLogger.instance.recordWarning(
+        e,
+        stackTrace: stack,
+        source: 'startup.clear_expired_cache',
+      ),
+    );
+  }
+}
 
 Locale _parseLocale(String raw) {
   // 仅支持 'zh' 和 'zh-Hant'
@@ -60,6 +81,7 @@ void main() {
       await NetworkProxy.init();
       // 启动时若 COPY 高级设置过时（>1天），后台自动更新；失败静默。
       CopySettingsAutoUpdater.maybeUpdateOnStartup();
+      unawaited(_clearExpiredCacheInBackground());
       if (isDesktop) {
         final font = UserManager().desktopFontFamily;
         if (font.isNotEmpty) {
