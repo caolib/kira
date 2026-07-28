@@ -491,6 +491,9 @@ class _ReaderPageState extends State<ReaderPage> {
       unawaited(_loadCachedSelectedGroup());
     }
     _itemPositionsListener.itemPositions.addListener(_onItemPositionsChanged);
+    // 阅读器读了 readerMode / 滚动方向 / 音量翻页 / 评论预载等一批设置，
+    // 此前只靠设置面板手动回调刷新——从其他入口改设置时阅读页不会更新。
+    _user.addListener(_onUserSettingsChanged);
     _loadChapter();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _volumeChannel.invokeMethod('enableImmersive').catchError((_) {});
@@ -506,6 +509,7 @@ class _ReaderPageState extends State<ReaderPage> {
     _volumeChannel.invokeMethod('disableImmersive').catchError((_) {});
     _volumeChannel.setMethodCallHandler(null);
     _bookmarks.removeListener(_onBookmarksChanged);
+    _user.removeListener(_onUserSettingsChanged);
     _itemPositionsListener.itemPositions.removeListener(
       _onItemPositionsChanged,
     );
@@ -528,6 +532,13 @@ class _ReaderPageState extends State<ReaderPage> {
   void _updateVolumeIntercept() {
     final should = _isPageMode && _user.readerVolumeKey;
     _setVolumeIntercept(should);
+  }
+
+  /// 设置变化时重建，并重新套用依赖设置的副作用（音量键拦截）。
+  void _onUserSettingsChanged() {
+    if (!mounted) return;
+    setState(() {});
+    _updateVolumeIntercept();
   }
 
   Future<void> _setVolumeIntercept(bool enabled) async {

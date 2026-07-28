@@ -60,7 +60,8 @@ Anime functionality is no longer maintained. Ignore anime-related code when maki
 ### UserManager: Facade + Sub-stores
 - `UserManager` is a singleton facade. Internally delegates to `ReaderSettings`, `DanmakuSettings`, `ThemeSettings`, etc.
 - Sub-stores are independent `ChangeNotifier`s — can be used directly or through UserManager.
-- `testInstance` supports dependency injection in tests without changing 85+ call sites.
+- Sub-store changes are forwarded through the facade's single `notifyListeners()`, so a listener on `UserManager` rebuilds on *any* settings change, not just the domain it cares about. Listen to the sub-store directly when that matters.
+- **The split is still partial**: ~48 preference keys are declared in *both* `UserManager` and a sub-store, each keeping its own in-memory copy, and most `UserManager` setters write SharedPreferences directly instead of delegating. Changing such a key through one path does not update the other's copy. It does not currently misbehave only because the two paths happen to touch disjoint sets of settings (sub-stores are used directly only for newer settings like `reader.statusOverlay*` and `theme.appFontFamily`). **When touching one of these keys, route it through the sub-store and delete the `UserManager` copy** — see `readerMode` for the pattern.
 
 ## Build, Test, and Development Commands
 

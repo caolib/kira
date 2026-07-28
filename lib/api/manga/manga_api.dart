@@ -9,6 +9,7 @@ import '../../models/chapter_comment.dart';
 import '../../models/comic.dart';
 import '../../models/comic_comment.dart';
 import '../../utils/app_dio.dart';
+import '../../utils/json_helpers.dart';
 import '../../utils/network_error.dart';
 import '../api_transport.dart';
 
@@ -16,6 +17,21 @@ class MangaApi {
   final ApiTransport _t;
 
   MangaApi(this._t);
+
+  /// 从 JSON 中安全取出对象列表，跳过结构不符的条目。
+  ///
+  /// 取代 `(data['list'] as List).map(...)`：接口返回异常 payload 时
+  /// 应当得到空列表，而不是在解析处抛 TypeError。
+  static List<T> _mapList<T>(
+    Map<String, dynamic>? json,
+    String key,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    return jsonList(json, key)
+        .whereType<Map>()
+        .map((e) => fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
 
   // Manga APIs
 
@@ -186,8 +202,9 @@ class MangaApi {
     );
 
     final data = resp.data;
-    if (data is Map && data['code'] == 200 && data['results'] is Map) {
-      return Map<String, dynamic>.from(data['results'] as Map);
+    if (data is Map && data['code'] == 200) {
+      final results = jsonMap(Map<String, dynamic>.from(data), 'results');
+      if (results != null) return results;
     }
 
     final message = data is Map
@@ -248,12 +265,10 @@ class MangaApi {
     final rawList = data['list'];
     final list = rawList is List
         ? rawList
-              .where((e) => e is Map && e['comic'] is Map)
-              .map(
-                (e) => Comic.fromJson(
-                  Map<String, dynamic>.from((e as Map)['comic'] as Map),
-                ),
-              )
+              .whereType<Map>()
+              .map((e) => jsonMap(Map<String, dynamic>.from(e), 'comic'))
+              .whereType<Map<String, dynamic>>()
+              .map(Comic.fromJson)
               .toList()
         : <Comic>[];
     return (list: list, total: _copyTotal(data, list.length));
@@ -284,7 +299,11 @@ class MangaApi {
       '/api/v3/search/key',
       params: {'limit': 20, 'offset': 0},
     );
-    return (data['list'] as List).map((e) => e['keyword'] as String).toList();
+    return jsonList(data, 'list')
+        .whereType<Map>()
+        .map((e) => jsonString(Map<String, dynamic>.from(e), 'keyword'))
+        .where((keyword) => keyword.isNotEmpty)
+        .toList();
   }
 
   // 2. All comic tags
@@ -293,7 +312,7 @@ class MangaApi {
       '/api/v3/theme/comic/count',
       params: {'free_type': 1, 'limit': 500, 'offset': 0, '_update': true},
     );
-    return (data['list'] as List).map((e) => Theme.fromJson(e)).toList();
+    return _mapList(data, 'list', Theme.fromJson);
   }
 
   // 3. Recommended comics
@@ -306,9 +325,11 @@ class MangaApi {
       '/api/v3/recs',
       params: {'pos': pos, 'limit': limit, 'offset': offset, 'free_type': 1},
     );
-    return (data['list'] as List)
-        .where((e) => e['comic'] != null)
-        .map((e) => Comic.fromJson(e['comic']))
+    return jsonList(data, 'list')
+        .whereType<Map>()
+        .map((e) => jsonMap(Map<String, dynamic>.from(e), 'comic'))
+        .whereType<Map<String, dynamic>>()
+        .map(Comic.fromJson)
         .toList();
   }
 
@@ -329,8 +350,8 @@ class MangaApi {
     if (theme != null) params['theme'] = theme;
     if (author != null) params['author'] = author;
     final data = await _t.get('/api/v3/comics', params: params);
-    final list = (data['list'] as List).map((e) => Comic.fromJson(e)).toList();
-    return (list: list, total: data['total'] as int);
+    final list = _mapList(data, 'list', Comic.fromJson);
+    return (list: list, total: jsonInt(data, 'total', fallback: list.length));
   }
 
   // 5. Comic detail
@@ -358,10 +379,8 @@ class MangaApi {
       '/api/v3/comic/$pathWord/group/$group/chapters',
       params: {'limit': limit, 'offset': offset},
     );
-    final list = (data['list'] as List)
-        .map((e) => Chapter.fromJson(e))
-        .toList();
-    return (list: list, total: data['total'] as int);
+    final list = _mapList(data, 'list', Chapter.fromJson);
+    return (list: list, total: jsonInt(data, 'total', fallback: list.length));
   }
 
   // 8. Search comics
@@ -381,8 +400,8 @@ class MangaApi {
         '_update': true,
       },
     );
-    final list = (data['list'] as List).map((e) => Comic.fromJson(e)).toList();
-    return (list: list, total: data['total'] as int);
+    final list = _mapList(data, 'list', Comic.fromJson);
+    return (list: list, total: jsonInt(data, 'total', fallback: list.length));
   }
 
   // 9. Chapter detail
@@ -445,11 +464,15 @@ class MangaApi {
       },
       options: _t.browserRequestOptions(host),
     );
-    final results = resp.data['results'] as Map<String, dynamic>;
-    final list = (results['list'] as List)
-        .map((e) => ChapterComment.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
-    return (list: list, total: results['total'] as int? ?? 0);
+    final results = jsonMap(
+      resp.data is Map ? Map<String, dynamic>.from(resp.data as Map) : null,
+      'results',
+    );
+    final list = _mapList(results, 'list', ChapterComment.fromJson);
+    return (
+      list: list,
+      total: jsonInt(results, 'total', fallback: list.length),
+    );
   }
 
   // 9.2 Post chapter comment
@@ -557,11 +580,15 @@ class MangaApi {
       },
       options: _t.browserRequestOptions(host, secFetchSite: 'cross-site'),
     );
-    final results = resp.data['results'] as Map<String, dynamic>;
-    final list = (results['list'] as List)
-        .map((e) => ComicComment.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
-    return (list: list, total: results['total'] as int? ?? 0);
+    final results = jsonMap(
+      resp.data is Map ? Map<String, dynamic>.from(resp.data as Map) : null,
+      'results',
+    );
+    final list = _mapList(results, 'list', ComicComment.fromJson);
+    return (
+      list: list,
+      total: jsonInt(results, 'total', fallback: list.length),
+    );
   }
 
   // 10. 个人书架
@@ -580,20 +607,26 @@ class MangaApi {
         '_update': true,
       },
     );
-    final list = (data['list'] as List).map((e) {
-      final comic = Comic.fromJson(e['comic']);
-      final browse = e['last_browse'];
-      return BookshelfItem(
-        comic: comic,
-        lastBrowseId: browse is Map
-            ? browse['last_browse_id']?.toString()
-            : null,
-        lastBrowseName: browse is Map
-            ? browse['last_browse_name']?.toString()
-            : null,
-      );
-    }).toList();
-    return (list: list, total: data['total'] as int);
+    final list = jsonList(data, 'list')
+        .whereType<Map>()
+        .map((raw) {
+          final entry = Map<String, dynamic>.from(raw);
+          final comicJson = jsonMap(entry, 'comic');
+          if (comicJson == null) return null;
+          final browse = entry['last_browse'];
+          return BookshelfItem(
+            comic: Comic.fromJson(comicJson),
+            lastBrowseId: browse is Map
+                ? browse['last_browse_id']?.toString()
+                : null,
+            lastBrowseName: browse is Map
+                ? browse['last_browse_name']?.toString()
+                : null,
+          );
+        })
+        .nonNulls
+        .toList();
+    return (list: list, total: jsonInt(data, 'total', fallback: list.length));
   }
 
   // 11. 收藏/取消收藏漫画

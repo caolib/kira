@@ -133,7 +133,6 @@ class UserManager extends ChangeNotifier {
   static const _keyDesktopFontFamily = 'desktop_font_family';
   static const _keyDisplayModeRefreshRate = 'pref_display_mode_refresh_rate';
   static const _keyBookshelfOrdering = 'bookshelf_ordering';
-  static const _keyReaderMode = 'reader_mode';
   static const _keyReaderScrollDirection = 'reader_scroll_direction';
   static const _keyReaderImageGap = 'reader_image_gap';
   static const _keyReaderVolumeKey = 'reader_volume_key';
@@ -222,7 +221,6 @@ class UserManager extends ChangeNotifier {
   String _desktopFontFamily = '';
   int _displayModeRefreshRate = defaultDisplayModeRefreshRate;
   String _bookshelfOrdering = ApiOrdering.datetimeUpdated;
-  int _readerMode = 0;
   int _readerScrollDirection = 2;
   double _readerImageGap = 0.0;
   bool _readerVolumeKey = true;
@@ -328,7 +326,10 @@ class UserManager extends ChangeNotifier {
       resolveAppThemeVariantOption(_themeVariant.name);
 
   String get bookshelfOrdering => _bookshelfOrdering;
-  int get readerMode => _readerMode;
+
+  /// 委托给 [reader]：两边曾各自缓存 'reader_mode'，
+  /// 经此处修改不会同步到子 store，反之亦然。
+  int get readerMode => reader.mode;
   int get readerScrollDirection => _readerScrollDirection;
   double get readerImageGap => _readerImageGap;
   bool get readerVolumeKey => _readerVolumeKey;
@@ -536,7 +537,6 @@ class UserManager extends ChangeNotifier {
     );
     _bookshelfOrdering =
         prefs.getString(_keyBookshelfOrdering) ?? ApiOrdering.datetimeUpdated;
-    _readerMode = prefs.getInt(_keyReaderMode) ?? 0;
     _readerScrollDirection = prefs.getInt(_keyReaderScrollDirection) ?? 2;
     _readerImageGap = prefs.getDouble(_keyReaderImageGap) ?? 0.0;
     _readerVolumeKey = prefs.getBool(_keyReaderVolumeKey) ?? true;
@@ -957,12 +957,9 @@ class UserManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setReaderMode(int mode) async {
-    _readerMode = mode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyReaderMode, mode);
-    notifyListeners();
-  }
+  /// 委托给 [reader]。子 store 的 notifyListeners 会经
+  /// _onSubStoreChanged 转发到本 facade 的监听者。
+  Future<void> setReaderMode(int mode) => reader.setMode(mode);
 
   Future<void> setReaderScrollDirection(int direction) async {
     _readerScrollDirection = direction;

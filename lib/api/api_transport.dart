@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import '../models/user_manager.dart';
 import '../utils/app_dio.dart';
+import '../utils/app_logger.dart';
 import '../utils/data_cache.dart';
 
 const defaultCopyApiHost = 'api.copy202601.com';
@@ -121,28 +122,7 @@ class ApiTransport {
             }
           }
           // 业务错误码（如 210 账号密码错误）视为请求失败
-          final data = response.data;
-          if (data is Map) {
-            final code = data['code'];
-            if (code != null && code != 200) {
-              final message =
-                  data['message']?.toString() ??
-                  (data['results'] is Map
-                      ? data['results']['detail']?.toString()
-                      : null) ??
-                  'Request failed (code: $code)';
-              return handler.reject(
-                DioException(
-                  requestOptions: response.requestOptions,
-                  response: response,
-                  message: message,
-                  error: message,
-                  type: DioExceptionType.badResponse,
-                ),
-              );
-            }
-          }
-          handler.next(response);
+          return rejectIfBusinessError(response, handler);
         },
         onError: (error, handler) async {
           if (error.response?.statusCode == 401 && user.autoLogin) {
@@ -171,7 +151,16 @@ class ApiTransport {
                       avatar: result['avatar'] ?? '',
                     );
                     _autoLoginCompleter!.complete(true);
-                  } catch (_) {
+                  } catch (e, stack) {
+                    // 自动重登失败不能静默：用户只会看到原始 401，
+                    // 无从判断是令牌过期还是重登本身出了问题。
+                    unawaited(
+                      AppLogger.instance.recordWarning(
+                        e,
+                        stackTrace: stack,
+                        source: 'api_transport.auto_login',
+                      ),
+                    );
                     _autoLoginCompleter!.complete(false);
                     _autoLoginCompleter = null;
                     return handler.next(error);
@@ -183,7 +172,14 @@ class ApiTransport {
                 opts.headers['Authorization'] = 'Token ${user.token}';
                 final resp = await dio.fetch(opts);
                 return handler.resolve(resp);
-              } catch (_) {
+              } catch (e, stack) {
+                unawaited(
+                  AppLogger.instance.recordWarning(
+                    e,
+                    stackTrace: stack,
+                    source: 'api_transport.auto_login_retry',
+                  ),
+                );
                 return handler.next(error);
               }
             }
@@ -193,6 +189,43 @@ class ApiTransport {
       ),
     );
     AppDio.attachCommonInterceptors(dio, source: 'api', enableRateLimit: false);
+
+    // 评论接口走独立的 commentDio（自带一套浏览器请求头），但错误语义必须
+    // 与主 dio 一致：否则服务端返回 HTTP 200 + 业务错误码时不会抛出可处理的
+    // 网络异常，而是在调用点解析 results 时崩溃。
+    commentDio.interceptors.add(
+      InterceptorsWrapper(onResponse: rejectIfBusinessError),
+    );
+  }
+
+  /// 把业务错误码（HTTP 200 但 `code != 200`）转成 [DioException]。
+  ///
+  /// 两个 Dio 实例共用，确保调用方只需处理一种失败形态。
+  static void rejectIfBusinessError(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) {
+    final data = response.data;
+    if (data is Map) {
+      final code = data['code'];
+      if (code != null && code != 200) {
+        final results = data['results'];
+        final message =
+            data['message']?.toString() ??
+            (results is Map ? results['detail']?.toString() : null) ??
+            'Request failed (code: $code)';
+        return handler.reject(
+          DioException(
+            requestOptions: response.requestOptions,
+            response: response,
+            message: message,
+            error: message,
+            type: DioExceptionType.badResponse,
+          ),
+        );
+      }
+    }
+    handler.next(response);
   }
 
   String nextHost() {
@@ -202,7 +235,9 @@ class ApiTransport {
         return fixed;
       }
     }
-    final route = routes[user.apiRoute];
+    // 线路索引来自持久化设置：脏数据或路由表缩短都会越界，
+    // 那会让每个请求都抛 RangeError 而不是退回可用线路。
+    final route = routes[user.apiRoute.clamp(0, routes.length - 1)];
 
     double totalWeight = 0.0;
     for (final host in route) {
@@ -277,11 +312,18 @@ class ApiTransport {
     _hostWeights[host] = weight;
   }
 
+  /// 探测失败后保留的最小权重。
+  ///
+  /// 归零意味着该节点永久出局——一次瞬断就把它拉黑到进程结束，且没有任何
+  /// 自动恢复路径。留一个极小值，它仍有极低概率被选中，一旦恢复正常，
+  /// 下一次测速就会把权重调回去。
+  static const minHostWeight = 0.01;
+
   /// 由网络页测速调用:依据测得的延迟更新线路权重(供线路模式加权选优)。
   /// 旧版会同步反馈给已删除的自动节点选择器,现在仅用于权重调整。
   void recordNodeProbe(String host, int? latencyMs) {
     if (latencyMs == null || latencyMs <= 0) {
-      setHostWeight(host, 0.0);
+      setHostWeight(host, minHostWeight);
     } else {
       setHostWeight(host, 1000.0 / latencyMs);
     }
