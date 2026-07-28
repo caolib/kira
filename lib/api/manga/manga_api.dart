@@ -139,30 +139,41 @@ class MangaApi {
     };
   }
 
-  Dio _copyDio() {
+  /// Long-lived COPY clients.
+  ///
+  /// These are reused across requests so the underlying HttpClient connection
+  /// pool survives — creating a Dio per call leaked sockets and forced a fresh
+  /// TLS handshake every time. Headers depend on the user-configurable app
+  /// version, so they are injected per request instead of baked into
+  /// [BaseOptions].
+  late final Dio _copyDioInstance = _createCopyDio(
+    extraHeaders: const {
+      'Connection': 'keep-alive',
+      'Accept-Encoding': 'gzip',
+      'webp': '1',
+    },
+  );
+
+  late final Dio _copyMinimalDioInstance = _createCopyDio();
+
+  Dio _createCopyDio({Map<String, String> extraHeaders = const {}}) {
     return AppDio.create(
       source: 'copy_api',
-      options: BaseOptions(
-        validateStatus: (_) => true,
-        headers: {
-          ..._copyBasicHeaders(),
-          'Connection': 'keep-alive',
-          'Accept-Encoding': 'gzip',
-          'webp': '1',
-        },
-      ),
+      options: BaseOptions(validateStatus: (_) => true),
+      interceptors: [
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            options.headers.addAll({..._copyBasicHeaders(), ...extraHeaders});
+            handler.next(options);
+          },
+        ),
+      ],
     );
   }
 
-  Dio _copyMinimalDio() {
-    return AppDio.create(
-      source: 'copy_api',
-      options: BaseOptions(
-        validateStatus: (_) => true,
-        headers: _copyBasicHeaders(),
-      ),
-    );
-  }
+  Dio _copyDio() => _copyDioInstance;
+
+  Dio _copyMinimalDio() => _copyMinimalDioInstance;
 
   Future<Map<String, dynamic>> _copyGet(
     String path, {

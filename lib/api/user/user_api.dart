@@ -66,40 +66,44 @@ class UserApi {
       ),
     );
 
-    final resp = await dio.post(
-      'https://$hostCopy/api/kb/web/login',
-      data: Uri(
-        queryParameters: {
-          'username': username,
-          'password': encoded,
-          'salt': salt.toString(),
-          'platform': '2',
-          'version': '2025.12.10',
-          'source': 'freeSite',
-        },
-      ).query,
-    );
+    try {
+      final resp = await dio.post(
+        'https://$hostCopy/api/kb/web/login',
+        data: Uri(
+          queryParameters: {
+            'username': username,
+            'password': encoded,
+            'salt': salt.toString(),
+            'platform': '2',
+            'version': '2025.12.10',
+            'source': 'freeSite',
+          },
+        ).query,
+      );
 
-    final data = resp.data;
-    if (data is Map && data['code'] == 200) {
-      return Map<String, dynamic>.from(data['results']);
-    }
+      final data = resp.data;
+      if (data is Map && data['code'] == 200) {
+        return Map<String, dynamic>.from(data['results']);
+      }
 
-    String? serverMessage;
-    if (data is Map) {
-      final raw = (data['message'] ?? data['detail'])?.toString().trim();
-      if (raw != null && raw.isNotEmpty) serverMessage = raw;
+      String? serverMessage;
+      if (data is Map) {
+        final raw = (data['message'] ?? data['detail'])?.toString().trim();
+        if (raw != null && raw.isNotEmpty) serverMessage = raw;
+      }
+      final message =
+          serverMessage ??
+          (data is Map
+              ? 'Login failed (code: ${data['code'] ?? resp.statusCode ?? 'unknown'})'
+              : 'Login failed (HTTP ${resp.statusCode ?? 'unknown'})');
+      NetworkError.throwBadResponse(
+        response: resp,
+        message: message,
+        source: 'copy_login',
+      );
+    } finally {
+      dio.close();
     }
-    final message =
-        serverMessage ??
-        (data is Map
-            ? 'Login failed (code: ${data['code'] ?? resp.statusCode ?? 'unknown'})'
-            : 'Login failed (HTTP ${resp.statusCode ?? 'unknown'})');
-    NetworkError.throwBadResponse(
-      response: resp,
-      message: message,
-      source: 'copy_login',
-    );
   }
 
   /// 获取个人信息
@@ -188,35 +192,39 @@ class UserApi {
       ),
     );
 
-    final resp = await dio.post(
-      'https://$hostWeb/api/v2/register',
-      data: Uri(
-        queryParameters: {
-          'username': username,
-          'password': password,
-          'source': '',
-          'platform': '2',
-          'code': '',
-          'invite_code': '',
-          'version': '2025.12.10',
-          'question': question,
-          'answer': answer,
-        },
-      ).query,
-    );
+    try {
+      final resp = await dio.post(
+        'https://$hostWeb/api/v2/register',
+        data: Uri(
+          queryParameters: {
+            'username': username,
+            'password': password,
+            'source': '',
+            'platform': '2',
+            'code': '',
+            'invite_code': '',
+            'version': '2025.12.10',
+            'question': question,
+            'answer': answer,
+          },
+        ).query,
+      );
 
-    final data = parseResponse(resp.data);
-    if (resp.statusCode == 200 && data['code'] == 200) {
-      final results = data['results'];
-      return results is Map ? Map<String, dynamic>.from(results) : {};
+      final data = parseResponse(resp.data);
+      if (resp.statusCode == 200 && data['code'] == 200) {
+        final results = data['results'];
+        return results is Map ? Map<String, dynamic>.from(results) : {};
+      }
+
+      final message = resolveMessage(data, resp);
+      NetworkError.throwBadResponse(
+        response: resp,
+        message: message,
+        source: 'register',
+      );
+    } finally {
+      dio.close();
     }
-
-    final message = resolveMessage(data, resp);
-    NetworkError.throwBadResponse(
-      response: resp,
-      message: message,
-      source: 'register',
-    );
   }
 
   /// 获取浏览记录
@@ -264,21 +272,25 @@ class UserApi {
           },
         ),
       );
-      final resp = await dio.delete(
-        'https://${_t.user.copyApiHost}/api/v3/member/browse/comics',
-        queryParameters: {'platform': 3},
-        options: Options(contentType: 'application/x-www-form-urlencoded'),
-      );
-      final data = resp.data;
-      if (data is Map && data['code'] == 200) return;
-      final message = data is Map
-          ? (data['message']?.toString() ?? 'Failed to clear browse history')
-          : 'Failed to clear browse history';
-      NetworkError.throwBadResponse(
-        response: resp,
-        message: message,
-        source: 'copy_api',
-      );
+      try {
+        final resp = await dio.delete(
+          'https://${_t.user.copyApiHost}/api/v3/member/browse/comics',
+          queryParameters: {'platform': 3},
+          options: Options(contentType: 'application/x-www-form-urlencoded'),
+        );
+        final data = resp.data;
+        if (data is Map && data['code'] == 200) return;
+        final message = data is Map
+            ? (data['message']?.toString() ?? 'Failed to clear browse history')
+            : 'Failed to clear browse history';
+        NetworkError.throwBadResponse(
+          response: resp,
+          message: message,
+          source: 'copy_api',
+        );
+      } finally {
+        dio.close();
+      }
     } else {
       await _t.dio.delete(
         _t.url('/api/v3/member/browse/comics'),
@@ -306,21 +318,25 @@ class UserApi {
           },
         ),
       );
-      final resp = await dio.delete(
-        'https://${_t.user.copyApiHost}/api/v3/member/browse/cartoons',
-        queryParameters: {'platform': 3},
-        options: Options(contentType: 'application/x-www-form-urlencoded'),
-      );
-      final data = resp.data;
-      if (data is Map && data['code'] == 200) return;
-      final message = data is Map
-          ? (data['message']?.toString() ?? 'Failed to clear browse history')
-          : 'Failed to clear browse history';
-      NetworkError.throwBadResponse(
-        response: resp,
-        message: message,
-        source: 'copy_api',
-      );
+      try {
+        final resp = await dio.delete(
+          'https://${_t.user.copyApiHost}/api/v3/member/browse/cartoons',
+          queryParameters: {'platform': 3},
+          options: Options(contentType: 'application/x-www-form-urlencoded'),
+        );
+        final data = resp.data;
+        if (data is Map && data['code'] == 200) return;
+        final message = data is Map
+            ? (data['message']?.toString() ?? 'Failed to clear browse history')
+            : 'Failed to clear browse history';
+        NetworkError.throwBadResponse(
+          response: resp,
+          message: message,
+          source: 'copy_api',
+        );
+      } finally {
+        dio.close();
+      }
     } else {
       await _t.dio.delete(
         _t.url('/api/v3/member/browse/cartoons'),

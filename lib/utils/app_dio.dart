@@ -6,6 +6,15 @@ import 'network_error.dart';
 class AppDio {
   const AppDio._();
 
+  /// Fallback timeouts applied when a caller does not specify its own.
+  ///
+  /// Dio treats a `null` timeout as "wait forever", which would let a request
+  /// hang indefinitely on a flaky network. Callers with genuinely long-running
+  /// transfers (downloads, AI streaming) still set their own values and are
+  /// left untouched.
+  static const defaultConnectTimeout = Duration(seconds: 15);
+  static const defaultReceiveTimeout = Duration(seconds: 30);
+
   static Dio create({
     BaseOptions? options,
     required String source,
@@ -14,6 +23,8 @@ class AppDio {
     Iterable<Interceptor> interceptors = const [],
   }) {
     final dio = Dio(options);
+    dio.options.connectTimeout ??= defaultConnectTimeout;
+    dio.options.receiveTimeout ??= defaultReceiveTimeout;
     attachCommonInterceptors(
       dio,
       source: source,

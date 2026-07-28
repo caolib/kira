@@ -571,7 +571,15 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     try {
       await _api.manga.toggleCollect(comicId, collect: newState);
       await _saveCache();
-    } catch (_) {
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comic_detail.toggle_collect',
+        ),
+      );
+      if (!mounted) return;
       setState(() => _isCollected = !newState);
       await _saveCache();
     }

@@ -1042,6 +1042,7 @@ class _LoginPageState extends State<LoginPage> {
       await UserManager().refreshUserInfo();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = '${l10n.profileLoginFailedProxyHint}\n$e';
         _loading = false;
@@ -1085,6 +1086,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       // 令牌无效，清除
       await UserManager().logout();
+      if (!mounted) return;
       setState(() {
         _error = '${l10n.profileTokenInvalidOrExpired}\n$e';
         _loading = false;
