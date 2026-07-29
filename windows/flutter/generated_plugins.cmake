@@ -7,7 +7,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   flutter_inappwebview_windows
   flutter_secure_storage_windows
-  media_kit_libs_windows_video
   media_kit_video
   screen_brightness_windows
   url_launcher_windows

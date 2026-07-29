@@ -1,7 +1,7 @@
 name: kira
 description: "A comic reader app."
 publish_to: "none"
-version: 1.3.1+339
+version: 1.3.1+340
 environment:
   sdk: ^3.11.0
 
@@ -25,10 +25,6 @@ dependencies:
   canvas_danmaku: ^0.3.1
   media_kit: ^1.2.6
   media_kit_video: ^2.0.1
-  # media_kit_libs_windows_video 已移除：它给 Windows 打包 libmpv/ANGLE 预编�?
-  # 二进制，既是 Windows 构建失败（ANGLE.7z 解压）的根源，在本项目也无必要—�?
-  # 应用仅以 Android 为目标平台，动漫功能已停维护，Android 端的 native 库走
-  # 自研按需下载（见 lib/utils/media_kit_native_loader.dart），不依赖该插件包�?
   archive: ^4.0.7
   screen_brightness: ^2.1.8
   wakelock_plus: ^1.3.3
