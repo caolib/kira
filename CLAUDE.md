@@ -84,6 +84,11 @@ Run these from the repository root:
 
 If `ephemeral/cpp_client_wrapper/*.cc` are reported missing (C1083), the Windows engine artifacts extracted incompletely: run `flutter clean` then `flutter precache --windows`.
 
+`media_kit_libs_windows_video` is **not** a dependency — it was removed because it bundles libmpv/ANGLE prebuilt binaries that caused Windows build failures (corrupt `ANGLE.7z` extraction) and serve no purpose here: the app targets Android only, anime is unmaintained, and Android's native libs are fetched on demand by `lib/utils/media_kit_native_loader.dart`. Do not re-add it for Windows debugging. If a residual `C1041` PDB-lock error appears after `rm -rf build/windows/x64`, just retry the build — it's a transient MSVC parallel-compile race, not a real problem.
+
+### Platform Scope
+The app ships on Android only (`platforms:` in `pubspec.yaml`). Windows is a **development/debug host**, not a target — do not add Windows-only native dependencies, and treat Windows runtime gaps (e.g. video playback) as expected.
+
 ### Android Build Note
 After `flutter clean`, `flutter run -d <android>` fails with `package identifier or launch activity not found`. **Run `flutter build apk --debug` once first**, then `flutter run` works again.
 
