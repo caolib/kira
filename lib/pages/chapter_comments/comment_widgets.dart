@@ -106,6 +106,7 @@ class _CommentCard extends StatefulWidget {
   final double fontScale;
   final Set<int> spoilerIds;
   final void Function(ChapterCommentDisplayEntry entry)? onLongPress;
+
   /// 点击合并评论时触发（单条评论不响应点击）。
   final void Function(ChapterCommentDisplayEntry entry)? onTapMerged;
 

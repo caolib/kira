@@ -158,8 +158,7 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (_charging)
-              const Icon(Icons.bolt, color: color, size: iconSize),
+            if (_charging) const Icon(Icons.bolt, color: color, size: iconSize),
             Text('$_batteryLevel%', style: textStyle),
           ],
         ),
