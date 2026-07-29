@@ -4,7 +4,10 @@ import 'package:kira/models/chapter_comment.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/chapter_comments_sheet.dart';
 import 'package:kira/utils/chapter_summary_cache.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -34,14 +37,12 @@ void main() {
       await UserManager().init();
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ChapterCommentsSheet(
-              chapterUuid: chapterUuid,
-              chapterName: '第 1 话',
-              initialComments: [comment()],
-              initialTotal: 1,
-            ),
+        wrapWithApp(
+          ChapterCommentsSheet(
+            chapterUuid: chapterUuid,
+            chapterName: '第 1 话',
+            initialComments: [comment()],
+            initialTotal: 1,
           ),
         ),
       );

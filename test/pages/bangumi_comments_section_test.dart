@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/api/dandanplay_api.dart';
 import 'package:kira/pages/bangumi_comments_section.dart';
+
+import '../test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -69,13 +70,11 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: BangumiCommentsSection(
-            bangumiId: '18319',
-            animeTitle: '测试番剧',
-            loader: loader,
-          ),
+      wrapWithApp(
+        BangumiCommentsSection(
+          bangumiId: '18319',
+          animeTitle: '测试番剧',
+          loader: loader,
         ),
       ),
     );
@@ -110,13 +109,11 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: BangumiCommentsSection(
-            bangumiId: '18319',
-            animeTitle: '测试番剧',
-            loader: loader,
-          ),
+      wrapWithApp(
+        BangumiCommentsSection(
+          bangumiId: '18319',
+          animeTitle: '测试番剧',
+          loader: loader,
         ),
       ),
     );

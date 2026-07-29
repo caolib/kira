@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/widgets/error_retry_view.dart';
 
+import '../test_helpers.dart';
+
 void main() {
   // ── ErrorRetryView ────────────────────────────────────────────────────
 
@@ -12,14 +14,12 @@ void main() {
       String? message,
       String? retryLabel,
     }) {
-      return MaterialApp(
-        home: Scaffold(
-          body: ErrorRetryView(
-            icon: icon ?? Icons.cloud_off,
-            message: message ?? '加载失败',
-            retryLabel: retryLabel ?? '重试',
-            onRetry: onRetry ?? () {},
-          ),
+      return wrapWithApp(
+        ErrorRetryView(
+          icon: icon ?? Icons.cloud_off,
+          message: message ?? '加载失败',
+          retryLabel: retryLabel ?? '重试',
+          onRetry: onRetry ?? () {},
         ),
       );
     }
@@ -66,11 +66,9 @@ void main() {
 
   group('SliverErrorRetryView', () {
     Widget buildSliverSubject({VoidCallback? onRetry}) {
-      return MaterialApp(
-        home: Scaffold(
-          body: CustomScrollView(
-            slivers: [SliverErrorRetryView(onRetry: onRetry ?? () {})],
-          ),
+      return wrapWithApp(
+        CustomScrollView(
+          slivers: [SliverErrorRetryView(onRetry: onRetry ?? () {})],
         ),
       );
     }

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/general_page.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +29,9 @@ void main() {
 
     await UserManager().init();
 
-    await tester.pumpWidget(const MaterialApp(home: GeneralPage()));
+    await tester.pumpWidget(
+      wrapWithApp(const GeneralPage(), wrapInScaffold: false),
+    );
     await tester.pumpAndSettle();
 
     final resetButton = find.widgetWithText(FilledButton, '重置应用');
@@ -52,7 +57,9 @@ void main() {
     final user = UserManager();
     await user.init();
 
-    await tester.pumpWidget(const MaterialApp(home: GeneralPage()));
+    await tester.pumpWidget(
+      wrapWithApp(const GeneralPage(), wrapInScaffold: false),
+    );
     await tester.pumpAndSettle();
 
     expect(user.animeFeatureEnabled, isTrue);
