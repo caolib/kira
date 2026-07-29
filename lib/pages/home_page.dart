@@ -17,6 +17,7 @@ import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/settings_rebuild_guard.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
@@ -60,7 +61,8 @@ double _copySectionContentWidth(
   return math.max(1.0, contentWidth - 56);
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with SettingsRebuildGuard<HomePage> {
   MangaHomeRepository get _repo => ref.read(mangaHomeRepositoryProvider);
   UserManager get _user => ref.read(userManagerProvider);
   MangaHome? _home;
@@ -74,7 +76,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    _user.addListener(_onUserChanged);
+    _user.addListener(handleSettingsChanged);
     _activeSource = _user.mangaHomeSource;
     _loadFromCache();
     _load();
@@ -82,12 +84,16 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   void dispose() {
-    _user.removeListener(_onUserChanged);
+    _user.removeListener(handleSettingsChanged);
     super.dispose();
   }
 
-  void _onUserChanged() {
-    if (!mounted) return;
+  /// 首页只用到这两项；其余设置（阅读器亮度等）变化时不再重建整棵树。
+  @override
+  Object watchedSettings() => (_user.bannerVisible, _user.mangaHomeSource);
+
+  @override
+  void onWatchedSettingsChanged() {
     // 数据源切换时重新加载对应数据
     if (_activeSource != _user.mangaHomeSource) {
       _activeSource = _user.mangaHomeSource;
