@@ -68,6 +68,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
   static const _commentRowSpacing = 8.0;
   static const _commentListBottomPadding = 124.0;
   static const _sheetMaxHeightFactor = 0.85;
+  static const _mergedCommentSheetMaxHeightFactor = 0.5;
 
   final _api = ApiClient();
   final _user = UserManager();
@@ -1055,83 +1056,60 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       showDragHandle: true,
       isScrollControlled: true,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * _sheetMaxHeightFactor,
+        minHeight: MediaQuery.sizeOf(context).height / 3,
+        maxHeight:
+            MediaQuery.sizeOf(context).height *
+            _mergedCommentSheetMaxHeightFactor,
       ),
       builder: (sheetContext) {
         final cs = Theme.of(sheetContext).colorScheme;
         final tt = Theme.of(sheetContext).textTheme;
+        final earliest = comments.isEmpty
+            ? null
+            : TimeFormat.relativeOf(comments.last.createAt, l10n);
+        final latest = comments.isEmpty
+            ? null
+            : TimeFormat.relativeOf(comments.first.createAt, l10n);
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (earliest != null && latest != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Text(
+                    '$earliest ~ $latest',
+                    textAlign: TextAlign.center,
+                    style: _buildCommentTimeStyle(tt, cs),
+                  ),
+                ),
               Flexible(
-                child: ListView.separated(
+                child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   shrinkWrap: true,
-                  itemCount: comments.length,
-                  separatorBuilder: (_, _) =>
-                      Divider(height: 1, color: cs.outlineVariant),
-                  itemBuilder: (_, index) {
-                    final c = comments[index];
-                    final name = c.userName.trim();
-                    // 用 Stack 把时间绝对钉在行右缘，避免依赖 Spacer/Expanded
-                    // 撑宽——父容器宽度异常时也能稳定右对齐。
-                    return Stack(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Wrap(
+                            spacing: _commentRowSpacing,
+                            runSpacing: _commentRowSpacing,
                             children: [
-                              if (_showUserAvatar) ...[
-                                _CommentAvatar(
-                                  imageUrl: c.userAvatar,
-                                  size: 36,
+                              for (final c in comments)
+                                _buildMergedUserCard(
+                                  context,
+                                  c,
+                                  l10n,
+                                  constraints.maxWidth,
                                 ),
-                                const SizedBox(width: AppSpacing.sm),
-                              ],
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 64),
-                                      child: Text(
-                                        name.isEmpty
-                                            ? l10n.commentSettingsAnonymousUser
-                                            : name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: tt.labelLarge?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(c.comment, style: tt.bodyMedium),
-                                  ],
-                                ),
-                              ),
                             ],
-                          ),
-                        ),
-                        Positioned(
-                          right: 16,
-                          top: 10,
-                          child: Text(
-                            TimeFormat.relativeOf(c.createAt, l10n),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: tt.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1147,88 +1125,174 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     return DateTime.tryParse(dateStr.replaceFirst(' ', 'T'));
   }
 
-  Future<void> _showCommentActionMenu(ChapterCommentDisplayEntry entry) async {
-    final l10n = AppLocalizations.of(context)!;
-    final content = entry.content.trim();
-    if (content.isEmpty) return;
+  /// 合并评论用户卡片：按内容宽度自适应，多个卡片同行排列放不下才换行。
+  Widget _buildMergedUserCard(
+    BuildContext context,
+    ChapterComment comment,
+    AppLocalizations l10n,
+    double maxWidth,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final name = comment.userName.trim();
+    final displayName = name.isEmpty ? l10n.commentSettingsAnonymousUser : name;
+    final userStyle = _buildCommentUserStyle(tt, cs, compact: true);
+    final timeStyle = _buildCommentTimeStyle(tt, cs);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final preferredMaxWidth = maxWidth * 0.8;
+    const minWidth = 108.0;
+    const compactCardHorizontalPadding = 20.0;
+    const compactTextWidthBuffer = 10.0;
+    const avatarGap = 6.0;
 
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+    final nameWidth = _measureTextWidth(
+      displayName,
+      userStyle,
+      textScaler,
+      preferredMaxWidth,
+    );
+    final timeWidth = _measureTextWidth(
+      TimeFormat.relativeOf(comment.createAt, l10n),
+      timeStyle,
+      textScaler,
+      preferredMaxWidth,
+    );
+    final avatarWidth = _showUserAvatar ? 20.0 + avatarGap : 0.0;
+    final contentWidth = nameWidth > timeWidth ? nameWidth : timeWidth;
+    final cardWidth =
+        (avatarWidth +
+                contentWidth +
+                compactCardHorizontalPadding +
+                compactTextWidthBuffer)
+            .clamp(minWidth, preferredMaxWidth);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: (details) => _showCommentActions(
+        content: comment.comment,
+        comment: comment,
+        canBlock: true,
+        position: details.globalPosition,
       ),
-      builder: (sheetContext) {
-        final cs = Theme.of(sheetContext).colorScheme;
-        final tt = Theme.of(sheetContext).textTheme;
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      onSecondaryTapDown: (details) => _showCommentActions(
+        content: comment.comment,
+        comment: comment,
+        canBlock: true,
+        position: details.globalPosition,
+      ),
+      child: SizedBox(
+        width: cardWidth,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+          decoration: _buildCommentCardDecoration(
+            cs,
+            brightness: Theme.of(context).brightness,
+            highlightAsHot: false,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_showUserAvatar) ...[
+                _CommentAvatar(imageUrl: comment.userAvatar, size: 20),
+                const SizedBox(width: avatarGap),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      l10n.chapterCommentsActionTitle,
-                      style: tt.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: userStyle,
                     ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: l10n.closeButton,
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      icon: const Icon(Icons.close),
+                    const SizedBox(height: 2),
+                    Text(
+                      TimeFormat.relativeOf(comment.createAt, l10n),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: timeStyle,
                     ),
                   ],
                 ),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerLow,
-                    borderRadius: AppRadius.mdR,
-                    border: Border.all(color: cs.outlineVariant),
-                  ),
-                  child: Text(
-                    content,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: tt.bodyMedium,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  leading: const Icon(Icons.copy_outlined),
-                  title: Text(l10n.copyButton),
-                  onTap: () => Navigator.of(sheetContext).pop('copy'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.add_comment_outlined),
-                  title: const Text('+1'),
-                  subtitle: Text(l10n.chapterCommentsPlusOneSubtitle),
-                  onTap: () => Navigator.of(sheetContext).pop('plus_one'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.block_outlined),
-                  title: Text(l10n.chapterCommentsBlockUser),
-                  subtitle: Text(
-                    l10n.chapterCommentsHideUserComments(
-                      entry.primaryComment.userName,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () => Navigator.of(sheetContext).pop('block'),
-                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCommentActionMenu(
+    ChapterCommentDisplayEntry entry,
+    Offset position,
+  ) => _showCommentActions(
+    content: entry.content,
+    comment: entry.primaryComment,
+    // 合并评论对应多个用户，屏蔽需在用户卡片上单独操作。
+    canBlock: !entry.isMerged,
+    position: position,
+  );
+
+  /// 评论操作菜单（长按 / 右键弹出），单个用户才提供屏蔽入口。
+  Future<void> _showCommentActions({
+    required String content,
+    required ChapterComment comment,
+    required bool canBlock,
+    required Offset position,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    content = content.trim();
+    if (content.isEmpty) return;
+
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'copy',
+          height: 40,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.copy_outlined, size: 18),
+              const SizedBox(width: AppSpacing.sm),
+              Text(l10n.copyButton),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'plus_one',
+          height: 40,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_comment_outlined, size: 18),
+              SizedBox(width: AppSpacing.sm),
+              Text('+1'),
+            ],
+          ),
+        ),
+        if (canBlock)
+          PopupMenuItem<String>(
+            value: 'block',
+            height: 40,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.block_outlined, size: 18),
+                const SizedBox(width: AppSpacing.sm),
+                Text(l10n.chapterCommentsBlockUser),
               ],
             ),
           ),
-        );
-      },
+      ],
     );
 
     if (!mounted || action == null) return;
@@ -1239,7 +1303,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     } else if (action == 'plus_one') {
       await _plusOneComment(content);
     } else if (action == 'block') {
-      await _blockCommentUser(entry.primaryComment);
+      await _blockCommentUser(comment);
     }
   }
 
@@ -1826,7 +1890,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
               showCommentTime: _showCommentTime,
               fontScale: _commentFontScale,
               spoilerIds: _aiSettings.spoilerAnalysis ? _spoilerIds : const {},
-              onLongPress: (entry) => _showCommentActionMenu(entry),
+              onLongPress: (entry, position) =>
+                  _showCommentActionMenu(entry, position),
               onTapMerged: (entry) => _showMergedCommentUsersDialog(entry),
             );
           },
@@ -1889,7 +1954,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                           spoilerIds: _aiSettings.spoilerAnalysis
                               ? _spoilerIds
                               : const {},
-                          onLongPress: (entry) => _showCommentActionMenu(entry),
+                          onLongPress: (entry, position) =>
+                              _showCommentActionMenu(entry, position),
                           onTapMerged: (entry) =>
                               _showMergedCommentUsersDialog(entry),
                         ),

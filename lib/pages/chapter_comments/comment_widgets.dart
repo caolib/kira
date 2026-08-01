@@ -105,7 +105,10 @@ class _CommentCard extends StatefulWidget {
   final bool showCommentTime;
   final double fontScale;
   final Set<int> spoilerIds;
-  final void Function(ChapterCommentDisplayEntry entry)? onLongPress;
+
+  /// 长按 / 右键评论时触发（携带触发位置，用于弹出上下文菜单）。
+  final void Function(ChapterCommentDisplayEntry entry, Offset position)?
+  onLongPress;
 
   /// 点击合并评论时触发（单条评论不响应点击）。
   final void Function(ChapterCommentDisplayEntry entry)? onTapMerged;
@@ -278,9 +281,12 @@ class _CommentCardState extends State<_CommentCard> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: tapMerged,
-      onLongPress: widget.onLongPress == null
+      onLongPressStart: widget.onLongPress == null
           ? null
-          : () => widget.onLongPress!(entry),
+          : (details) => widget.onLongPress!(entry, details.globalPosition),
+      onSecondaryTapDown: widget.onLongPress == null
+          ? null
+          : (details) => widget.onLongPress!(entry, details.globalPosition),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_commentCardCornerRadius),
         child: Stack(
