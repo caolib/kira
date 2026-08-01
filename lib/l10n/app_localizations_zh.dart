@@ -2346,6 +2346,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerStatusPage => '页码';
 
   @override
+  String get readerStatusFps => '帧率';
+
+  @override
   String get readerDimming => '降低亮度';
 
   @override
@@ -5952,6 +5955,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get readerStatusPage => '頁碼';
+
+  @override
+  String get readerStatusFps => '幀率';
 
   @override
   String get readerDimming => '降低亮度';

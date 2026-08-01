@@ -37,6 +37,17 @@ class ReaderSettings extends PrefsStore {
   static const _keyStatusOverlayBattery = 'reader_status_overlay_battery';
   static const _keyStatusOverlayNetwork = 'reader_status_overlay_network';
   static const _keyStatusOverlayPage = 'reader_status_overlay_page';
+  static const _keyStatusOverlayFps = 'reader_status_overlay_fps';
+  static const _keyStatusOverlayOrder = 'reader_status_overlay_order';
+
+  /// 状态显示各段位的默认显示顺序（时间/网络/电量/页码/帧率）。
+  static const List<String> defaultStatusOverlayOrder = [
+    'time',
+    'network',
+    'battery',
+    'page',
+    'fps',
+  ];
 
   // ── Fields ─────────────────────────────────────────────────────────
 
@@ -63,6 +74,8 @@ class ReaderSettings extends PrefsStore {
   bool _statusOverlayBattery = true;
   bool _statusOverlayNetwork = true;
   bool _statusOverlayPage = false;
+  bool _statusOverlayFps = false;
+  List<String> _statusOverlayOrder = List.of(defaultStatusOverlayOrder);
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -89,6 +102,10 @@ class ReaderSettings extends PrefsStore {
   bool get statusOverlayBattery => _statusOverlayBattery;
   bool get statusOverlayNetwork => _statusOverlayNetwork;
   bool get statusOverlayPage => _statusOverlayPage;
+  bool get statusOverlayFps => _statusOverlayFps;
+
+  /// 状态显示段位顺序（未知 id 会被剔除，缺失的段位按默认顺序补到末尾）。
+  List<String> get statusOverlayOrder => List.unmodifiable(_statusOverlayOrder);
 
   // ── Init (called from UserManager.init) ────────────────────────────
 
@@ -123,6 +140,9 @@ class ReaderSettings extends PrefsStore {
     _statusOverlayBattery = prefs.getBool(_keyStatusOverlayBattery) ?? true;
     _statusOverlayNetwork = prefs.getBool(_keyStatusOverlayNetwork) ?? true;
     _statusOverlayPage = prefs.getBool(_keyStatusOverlayPage) ?? false;
+    _statusOverlayFps = prefs.getBool(_keyStatusOverlayFps) ?? false;
+    final savedOrder = prefs.getStringList(_keyStatusOverlayOrder) ?? const [];
+    _statusOverlayOrder = _sanitizeStatusOverlayOrder(savedOrder);
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -244,4 +264,38 @@ class ReaderSettings extends PrefsStore {
     _statusOverlayPage = value;
     await setBool(_keyStatusOverlayPage, value);
   }
+
+  Future<void> setStatusOverlayFps(bool value) async {
+    _statusOverlayFps = value;
+    await setBool(_keyStatusOverlayFps, value);
+  }
+
+  Future<void> setStatusOverlayOrder(List<String> value) async {
+    final sanitized = _sanitizeStatusOverlayOrder(value);
+    if (_listEquals(_statusOverlayOrder, sanitized)) return;
+    _statusOverlayOrder = sanitized;
+    await setStringList(_keyStatusOverlayOrder, sanitized);
+  }
+}
+
+/// 保留输入顺序、剔除未知 id、去重，并把缺失的段位按默认顺序补到末尾。
+List<String> _sanitizeStatusOverlayOrder(List<String> input) {
+  final seen = <String>{};
+  final sanitized = [
+    for (final id in input)
+      if (ReaderSettings.defaultStatusOverlayOrder.contains(id) && seen.add(id))
+        id,
+    ...ReaderSettings.defaultStatusOverlayOrder.where(
+      (id) => !seen.contains(id),
+    ),
+  ];
+  return sanitized;
+}
+
+bool _listEquals(List<String> a, List<String> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

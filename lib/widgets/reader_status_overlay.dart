@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../models/reader_settings.dart';
 import '../theme/app_radius.dart';
@@ -10,7 +11,7 @@ import '../theme/app_spacing.dart';
 import '../theme/reader_chrome.dart';
 import '../utils/app_logger.dart';
 
-/// 阅读器沉浸式状态显示：时间 / 电量 / 网络 / 页码。
+/// 阅读器沉浸式状态显示：时间 / 电量 / 网络 / 页码 / 帧率。
 ///
 /// 设计上刻意保持低调：小字号、黑色半透明圆角底、不可点击，
 /// 仅提供系统状态与阅读进度的一眼速览，不打扰阅读。
@@ -28,15 +29,20 @@ class ReaderStatusOverlay extends StatefulWidget {
   State<ReaderStatusOverlay> createState() => _ReaderStatusOverlayState();
 }
 
-class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
+class _ReaderStatusOverlayState extends State<ReaderStatusOverlay>
+    with SingleTickerProviderStateMixin {
   final Battery _battery = Battery();
   StreamSubscription<BatteryState>? _batteryStateSub;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _clockTimer;
+  Ticker? _fpsTicker;
+  Timer? _fpsTimer;
 
   TimeOfDay _time = TimeOfDay.now();
   int? _batteryLevel;
   bool _charging = false;
+  int _frameCount = 0;
+  double _fps = 0;
 
   /// 桌面设备（Windows/Linux 无电池）可能返回 -1，此类设备直接隐藏电量段
   bool get _hasBattery => _batteryLevel != null && _batteryLevel! >= 0;
@@ -49,8 +55,23 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
       final now = TimeOfDay.now();
       if (now != _time && mounted) setState(() => _time = now);
     });
+    _startFps();
     _initBattery();
     _initConnectivity();
+  }
+
+  /// 帧率统计：Ticker 驱动连续渲染并每秒结算一次帧数。
+  /// 空闲时显示刷新率上限，滚动/翻页卡顿时数值随之下降。
+  void _startFps() {
+    _fpsTicker = createTicker((_) => _frameCount++);
+    _fpsTicker!.start();
+    _fpsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _fps = _frameCount.toDouble();
+        _frameCount = 0;
+      });
+    });
   }
 
   void _applyBatteryState(BatteryState state, int level) {
@@ -104,6 +125,8 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
     _clockTimer?.cancel();
     _batteryStateSub?.cancel();
     _connectivitySub?.cancel();
+    _fpsTicker?.dispose();
+    _fpsTimer?.cancel();
     super.dispose();
   }
 
@@ -149,23 +172,48 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay> {
       segments.add(w);
     }
 
-    if (settings.statusOverlayTime) add(Text(_timeLabel, style: textStyle));
-    if (settings.statusOverlayNetwork) {
-      add(Icon(_networkIcon, color: color, size: iconSize));
-    }
-    if (settings.statusOverlayBattery && _hasBattery) {
-      add(
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_charging) const Icon(Icons.bolt, color: color, size: iconSize),
-            Text('$_batteryLevel%', style: textStyle),
-          ],
-        ),
-      );
-    }
-    if (settings.statusOverlayPage && widget.totalPages > 0) {
-      add(Text('${widget.currentPage}/${widget.totalPages}', style: textStyle));
+    for (final id in settings.statusOverlayOrder) {
+      switch (id) {
+        case 'time':
+          if (settings.statusOverlayTime) {
+            add(Text(_timeLabel, style: textStyle));
+          }
+          break;
+        case 'network':
+          if (settings.statusOverlayNetwork) {
+            add(Icon(_networkIcon, color: color, size: iconSize));
+          }
+          break;
+        case 'battery':
+          if (settings.statusOverlayBattery && _hasBattery) {
+            add(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_charging)
+                    const Icon(Icons.bolt, color: color, size: iconSize),
+                  Text('$_batteryLevel%', style: textStyle),
+                ],
+              ),
+            );
+          }
+          break;
+        case 'page':
+          if (settings.statusOverlayPage && widget.totalPages > 0) {
+            add(
+              Text(
+                '${widget.currentPage}/${widget.totalPages}',
+                style: textStyle,
+              ),
+            );
+          }
+          break;
+        case 'fps':
+          if (settings.statusOverlayFps) {
+            add(Text('${_fps.round()} FPS', style: textStyle));
+          }
+          break;
+      }
     }
 
     // 真机上打孔/刘海状态栏高度可达 48+，组件用固定内边距保持轻薄，

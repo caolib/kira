@@ -56,6 +56,20 @@ void main() {
     test('imageRetryCount defaults to 1', () {
       expect(settings.imageRetryCount, 1);
     });
+
+    test('statusOverlayFps defaults to false', () {
+      expect(settings.statusOverlayFps, false);
+    });
+
+    test('statusOverlayOrder defaults to time/network/battery/page/fps', () {
+      expect(settings.statusOverlayOrder, [
+        'time',
+        'network',
+        'battery',
+        'page',
+        'fps',
+      ]);
+    });
   });
 
   // ── Persistence ──────────────────────────────────────────────────────
@@ -121,6 +135,65 @@ void main() {
       await settings.initFromPrefs(prefs);
       expect(settings.autoScrollEnabled, true);
     });
+
+    test('statusOverlayFps persists after re-init', () async {
+      await settings.setStatusOverlayFps(true);
+      expect(settings.statusOverlayFps, true);
+
+      settings.resetPrefsCache();
+      final prefs = await SharedPreferences.getInstance();
+      await settings.initFromPrefs(prefs);
+      expect(settings.statusOverlayFps, true);
+    });
+
+    test('statusOverlayOrder persists after re-init', () async {
+      await settings.setStatusOverlayOrder(['fps', 'time', 'page']);
+      expect(settings.statusOverlayOrder, [
+        'fps',
+        'time',
+        'page',
+        'network',
+        'battery',
+      ]);
+
+      settings.resetPrefsCache();
+      final prefs = await SharedPreferences.getInstance();
+      await settings.initFromPrefs(prefs);
+      expect(settings.statusOverlayOrder, [
+        'fps',
+        'time',
+        'page',
+        'network',
+        'battery',
+      ]);
+    });
+
+    test(
+      'statusOverlayOrder drops unknown ids and appends missing ones',
+      () async {
+        await settings.setStatusOverlayOrder(['bogus', 'battery', 'time']);
+        expect(settings.statusOverlayOrder, [
+          'battery',
+          'time',
+          'network',
+          'page',
+          'fps',
+        ]);
+      },
+    );
+
+    test('statusOverlayOrder ignores a no-op reorder', () async {
+      var callCount = 0;
+      settings.addListener(() => callCount++);
+      await settings.setStatusOverlayOrder([
+        'time',
+        'network',
+        'battery',
+        'page',
+        'fps',
+      ]);
+      expect(callCount, 0);
+    });
   });
 
   // ── notifyListeners ──────────────────────────────────────────────────
@@ -158,6 +231,13 @@ void main() {
       var callCount = 0;
       settings.addListener(() => callCount++);
       await settings.setAutoScrollEnabled(true);
+      expect(callCount, 1);
+    });
+
+    test('setStatusOverlayFps notifies listeners', () async {
+      var callCount = 0;
+      settings.addListener(() => callCount++);
+      await settings.setStatusOverlayFps(true);
       expect(callCount, 1);
     });
   });

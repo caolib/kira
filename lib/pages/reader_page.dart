@@ -2483,7 +2483,7 @@ class _ReaderPageState extends State<ReaderPage> {
                   ),
                 ),
               ),
-            // 状态显示（时间/电量/网络/页码）：默认关闭，开启后右上角低调展示
+            // 状态显示（时间/电量/网络/页码/帧率）：默认关闭，开启后右上角低调展示
             if (_user.reader.statusOverlay)
               Positioned(
                 top: 0,

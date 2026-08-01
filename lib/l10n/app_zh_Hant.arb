@@ -1529,6 +1529,7 @@
   "readerStatusNetwork": "網路",
   "readerStatusBattery": "電量",
   "readerStatusPage": "頁碼",
+  "readerStatusFps": "幀率",
   "readerDimming": "降低亮度",
   "readerImageLoadingSection": "圖片載入",
   "readerTimeout": "逾時時間",

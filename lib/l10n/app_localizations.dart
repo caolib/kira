@@ -4295,6 +4295,12 @@ abstract class AppLocalizations {
   /// **'页码'**
   String get readerStatusPage;
 
+  /// No description provided for @readerStatusFps.
+  ///
+  /// In zh, this message translates to:
+  /// **'帧率'**
+  String get readerStatusFps;
+
   /// No description provided for @readerDimming.
   ///
   /// In zh, this message translates to:

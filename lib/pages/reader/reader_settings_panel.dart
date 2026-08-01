@@ -35,6 +35,79 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
     if (mounted) setState(() {});
   }
 
+  /// 当前状态显示段位顺序（由持久化配置决定）。
+  List<String> get _statusSegments => _user.reader.statusOverlayOrder;
+
+  /// 拖动调整状态显示段位的显示顺序。
+  void _onStatusSegmentReorder(int oldIndex, int newIndex) {
+    setState(() {
+      final order = [..._user.reader.statusOverlayOrder];
+      final item = order.removeAt(oldIndex);
+      order.insert(newIndex, item);
+      _user.reader.setStatusOverlayOrder(order);
+    });
+    widget.onChanged();
+  }
+
+  Widget _buildStatusSegmentRow(AppLocalizations l10n, String id, int index) {
+    final (title, value, onChanged) = switch (id) {
+      'time' => (
+        l10n.readerStatusTime,
+        _user.reader.statusOverlayTime,
+        _user.reader.setStatusOverlayTime,
+      ),
+      'network' => (
+        l10n.readerStatusNetwork,
+        _user.reader.statusOverlayNetwork,
+        _user.reader.setStatusOverlayNetwork,
+      ),
+      'battery' => (
+        l10n.readerStatusBattery,
+        _user.reader.statusOverlayBattery,
+        _user.reader.setStatusOverlayBattery,
+      ),
+      'page' => (
+        l10n.readerStatusPage,
+        _user.reader.statusOverlayPage,
+        _user.reader.setStatusOverlayPage,
+      ),
+      'fps' => (
+        l10n.readerStatusFps,
+        _user.reader.statusOverlayFps,
+        _user.reader.setStatusOverlayFps,
+      ),
+      _ => (l10n.readerStatusTime, false, _user.reader.setStatusOverlayTime),
+    };
+    return Padding(
+      key: ValueKey(id),
+      padding: EdgeInsets.zero,
+      child: Row(
+        children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Icon(Icons.drag_handle, size: 18),
+            ),
+          ),
+          Expanded(
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(title),
+              value: value,
+              onChanged: (v) {
+                onChanged(v);
+                setState(() {});
+                widget.onChanged();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title, ColorScheme cs, TextTheme tt) {
     final line = Divider(
       height: 1,
@@ -350,52 +423,14 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 if (_user.reader.statusOverlay) ...[
                   Padding(
                     padding: const EdgeInsets.only(left: AppSpacing.lg),
-                    child: Column(
+                    child: ReorderableListView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      buildDefaultDragHandles: false,
+                      onReorderItem: _onStatusSegmentReorder,
                       children: [
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          title: Text(l10n.readerStatusTime),
-                          value: _user.reader.statusOverlayTime,
-                          onChanged: (v) {
-                            _user.reader.setStatusOverlayTime(v);
-                            setState(() {});
-                            widget.onChanged();
-                          },
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          title: Text(l10n.readerStatusNetwork),
-                          value: _user.reader.statusOverlayNetwork,
-                          onChanged: (v) {
-                            _user.reader.setStatusOverlayNetwork(v);
-                            setState(() {});
-                            widget.onChanged();
-                          },
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          title: Text(l10n.readerStatusBattery),
-                          value: _user.reader.statusOverlayBattery,
-                          onChanged: (v) {
-                            _user.reader.setStatusOverlayBattery(v);
-                            setState(() {});
-                            widget.onChanged();
-                          },
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          title: Text(l10n.readerStatusPage),
-                          value: _user.reader.statusOverlayPage,
-                          onChanged: (v) {
-                            _user.reader.setStatusOverlayPage(v);
-                            setState(() {});
-                            widget.onChanged();
-                          },
-                        ),
+                        for (var i = 0; i < _statusSegments.length; i++)
+                          _buildStatusSegmentRow(l10n, _statusSegments[i], i),
                       ],
                     ),
                   ),
