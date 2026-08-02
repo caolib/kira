@@ -1136,8 +1136,15 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     final tt = Theme.of(context).textTheme;
     final name = comment.userName.trim();
     final displayName = name.isEmpty ? l10n.commentSettingsAnonymousUser : name;
-    final userStyle = _buildCommentUserStyle(tt, cs, compact: true);
-    final timeStyle = _buildCommentTimeStyle(tt, cs);
+    final userStyle = _buildCommentUserStyle(
+      tt,
+      cs,
+      compact: true,
+    )?.copyWith(color: cs.onSurface);
+    final timeStyle = _buildCommentTimeStyle(
+      tt,
+      cs,
+    )?.copyWith(color: cs.onSurfaceVariant);
     final textScaler = MediaQuery.textScalerOf(context);
     final preferredMaxWidth = maxWidth * 0.8;
     const minWidth = 108.0;
@@ -1188,6 +1195,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
             cs,
             brightness: Theme.of(context).brightness,
             highlightAsHot: false,
+            withShadow: false,
+            backgroundColor: cs.surfaceContainerHigh,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

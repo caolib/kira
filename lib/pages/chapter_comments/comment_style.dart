@@ -96,27 +96,28 @@ BoxDecoration _buildCommentCardDecoration(
   ColorScheme colorScheme, {
   required Brightness brightness,
   required bool highlightAsHot,
+  bool withShadow = true,
+  Color? backgroundColor,
 }) {
   final borderRadius = BorderRadius.circular(_commentCardCornerRadius);
-  final shadows = _buildCommentCardShadows(
-    brightness,
-    highlightAsHot: highlightAsHot,
-  );
+  final shadows = withShadow
+      ? _buildCommentCardShadows(brightness, highlightAsHot: highlightAsHot)
+      : null;
   if (!highlightAsHot) {
     return BoxDecoration(
-      color: colorScheme.surfaceContainerLow,
+      color: backgroundColor ?? colorScheme.surfaceContainerLow,
       borderRadius: borderRadius,
       border: Border.all(
         color: colorScheme.outlineVariant.withValues(
-          alpha: brightness == Brightness.dark ? 0.22 : 0.45,
+          alpha: brightness == Brightness.dark ? 0.35 : 0.6,
         ),
-        width: 0.6,
+        width: 0.8,
       ),
       boxShadow: shadows,
     );
   }
 
-  final surface = colorScheme.surfaceContainerLow;
+  final surface = backgroundColor ?? colorScheme.surfaceContainerLow;
   return BoxDecoration(
     color: surface,
     borderRadius: borderRadius,

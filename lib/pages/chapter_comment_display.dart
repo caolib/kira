@@ -111,6 +111,22 @@ class ChapterCommentDisplayEntry {
     return avatars;
   }
 
+  /// 去重后的用户名列表（按首次出现顺序），用于轮播展示。
+  List<String> userNames() {
+    final names = <String>[];
+    final seenUsers = <String>{};
+
+    for (final comment in comments) {
+      final identity = _userIdentity(comment);
+      if (!seenUsers.add(identity)) continue;
+
+      final name = comment.userName.trim();
+      names.add(name);
+    }
+
+    return names;
+  }
+
   String _userIdentity(ChapterComment comment) {
     if (comment.userId.isNotEmpty) return 'id:${comment.userId}';
     if (comment.userAvatar.isNotEmpty) return 'avatar:${comment.userAvatar}';

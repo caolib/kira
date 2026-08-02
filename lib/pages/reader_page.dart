@@ -2438,11 +2438,7 @@ class _ReaderPageState extends State<ReaderPage> {
         body: Stack(
           children: [
             if (_loading)
-              const Center(
-                child: ExpressiveLoadingIndicator(
-                  color: ReaderChrome.onSurface,
-                ),
-              )
+              const Center(child: ExpressiveLoadingIndicator())
             else if (_detail != null)
               _buildRefreshableReader(
                 _isPageMode ? _buildPageMode() : _buildScrollMode(),

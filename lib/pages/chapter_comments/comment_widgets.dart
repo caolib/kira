@@ -265,14 +265,14 @@ class _CommentCardState extends State<_CommentCard> {
     final contentSpacing = compact ? 9.0 : 8.0;
     final userStyle = _buildCommentUserStyle(tt, cs, compact: compact);
     final timeStyle = _buildCommentTimeStyle(tt, cs);
+    final showMetaRow = showAvatar || showUserName || showCommentTime;
+    final isHotMergedComment =
+        entry.isMerged && _isHotMergedComment(entry.count);
     final bodyStyle = buildCommentBodyStyle(
       tt,
       compact: compact,
       fontScale: fontScale,
-    );
-    final showMetaRow = showAvatar || showUserName || showCommentTime;
-    final isHotMergedComment =
-        entry.isMerged && _isHotMergedComment(entry.count);
+    )?.copyWith(color: isHotMergedComment ? _hotCommentAccentColor : null);
     // 仅合并评论响应点击：弹出所有发表该评论的用户列表。
     final tapMerged = entry.isMerged && widget.onTapMerged != null
         ? () => widget.onTapMerged!(entry)
@@ -310,7 +310,9 @@ class _CommentCardState extends State<_CommentCard> {
                       compact: compact,
                       contentSpacing: contentSpacing,
                       bodyStyle: bodyStyle,
+                      userStyle: userStyle,
                       showAvatar: showAvatar,
+                      showUserName: showUserName,
                     )
                   : Column(
                       mainAxisSize: MainAxisSize.min,
@@ -367,7 +369,9 @@ class _MergedCommentContent extends StatefulWidget {
   final bool compact;
   final double contentSpacing;
   final TextStyle? bodyStyle;
+  final TextStyle? userStyle;
   final bool showAvatar;
+  final bool showUserName;
   final Set<int> spoilerIds;
 
   const _MergedCommentContent({
@@ -375,7 +379,9 @@ class _MergedCommentContent extends StatefulWidget {
     required this.compact,
     required this.contentSpacing,
     required this.bodyStyle,
+    this.userStyle,
     this.showAvatar = true,
+    this.showUserName = true,
   }) : spoilerIds = const {};
 
   @override
@@ -496,6 +502,7 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
     final entry = widget.entry;
     final compact = widget.compact;
     final showAvatar = widget.showAvatar;
+    final showUserName = widget.showUserName;
     final showCountTag = _shouldShowMergedCountTag(entry.count);
 
     Widget spoilerWrap(Widget child) {
@@ -503,25 +510,47 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
       return Stack(children: [child, _buildSpoilerOverlay(cs, tt)]);
     }
 
+    final rotatingName = (showUserName && entry.isMerged)
+        ? _RotatingUserName(
+            names: entry.userNames(),
+            style: widget.userStyle,
+            compact: compact,
+          )
+        : null;
+
     if (!showAvatar) {
       if (!showCountTag) {
-        return spoilerWrap(Text(entry.content, style: widget.bodyStyle));
+        return spoilerWrap(
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (rotatingName != null) ...[
+                rotatingName,
+                SizedBox(height: compact ? 4 : 6),
+              ],
+              Text(entry.content, style: widget.bodyStyle),
+            ],
+          ),
+        );
       }
       return spoilerWrap(
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: compact ? 4 : 6),
-                child: _MergedCommentCountTag(
-                  count: entry.count,
-                  compact: compact,
-                ),
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (rotatingName != null)
+                  Expanded(child: rotatingName)
+                else
+                  const Spacer(),
+                SizedBox(width: compact ? 6 : AppSpacing.sm),
+                _MergedCommentCountTag(count: entry.count, compact: compact),
+              ],
             ),
+            SizedBox(height: compact ? 4 : 6),
             Text(entry.content, style: widget.bodyStyle),
           ],
         ),
@@ -533,12 +562,17 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _CommentAvatarStack(
               comments: entry.avatarComments(),
               avatarSize: compact ? 22.0 : 26.0,
               overlap: compact ? 8.0 : 10.0,
             ),
+            if (rotatingName != null) ...[
+              SizedBox(width: compact ? 6 : 8),
+              Expanded(child: rotatingName),
+            ],
             const Spacer(),
             if (showCountTag) ...[
               const SizedBox(width: AppSpacing.sm),
@@ -549,6 +583,105 @@ class _MergedCommentContentState extends State<_MergedCommentContent> {
         SizedBox(height: widget.contentSpacing + (compact ? 1 : 2)),
         spoilerWrap(Text(entry.content, style: widget.bodyStyle)),
       ],
+    );
+  }
+}
+
+/// 合并评论的用户名轮播：定时淡入淡出切换显示不同的发表者名称。
+class _RotatingUserName extends StatefulWidget {
+  final List<String> names;
+  final TextStyle? style;
+  final bool compact;
+
+  const _RotatingUserName({
+    required this.names,
+    this.style,
+    this.compact = false,
+  });
+
+  @override
+  State<_RotatingUserName> createState() => _RotatingUserNameState();
+}
+
+class _RotatingUserNameState extends State<_RotatingUserName> {
+  late final Timer _timer;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.names.length > 1) {
+      _timer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+        if (!mounted) return;
+        setState(() {
+          _index = (_index + 1) % widget.names.length;
+        });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.names.length > 1) {
+      _timer.cancel();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final names = widget.names;
+    if (names.isEmpty) return const SizedBox.shrink();
+
+    final displayName = names[_index].trim().isEmpty
+        ? l10n.commentSettingsAnonymousUser
+        : names[_index];
+
+    final textScaler = MediaQuery.textScalerOf(context);
+    final painter = TextPainter(
+      text: TextSpan(text: displayName, style: widget.style),
+      textDirection: TextDirection.ltr,
+      textScaler: textScaler,
+      maxLines: 1,
+    )..layout();
+    final lineHeight = painter.size.height;
+    painter.dispose();
+
+    return ClipRect(
+      child: SizedBox(
+        width: double.infinity,
+        height: lineHeight,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 360),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeIn,
+          layoutBuilder: (currentChild, previousChildren) => Stack(
+            alignment: Alignment.centerLeft,
+            children: <Widget>[...previousChildren, ?currentChild],
+          ),
+          transitionBuilder: (child, animation) {
+            final key = child.key as ValueKey<String>;
+            final isNew = key.value == 'rotating-name-$_index';
+            // 进入（新名字）：动画正向 0→1，从顶部滑入到中心。
+            // 退出（旧名字）：动画反向 1→0，对调 begin/end 使其从中心滑向底部。
+            final offsetTween = isNew
+                ? Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
+                : Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero);
+            return SlideTransition(
+              position: offsetTween.animate(animation),
+              child: child,
+            );
+          },
+          child: Text(
+            displayName,
+            key: ValueKey('rotating-name-$_index'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: widget.style,
+          ),
+        ),
+      ),
     );
   }
 }
