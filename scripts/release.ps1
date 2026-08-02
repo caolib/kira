@@ -17,8 +17,12 @@ function Test-LocalTagExists {
 # 检查 tag 是否已推送到远端
 function Test-RemoteTagExists {
     param([string]$Tag)
-    git ls-remote --tags origin "refs/tags/$Tag" 2>$null | Select-String -Quiet $Tag
-    return $?
+    $out = git ls-remote --tags origin "refs/tags/$Tag" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "警告: 无法查询远程 tag 列表" -ForegroundColor Yellow
+        return $false
+    }
+    return [bool]($out | Select-String -Quiet $Tag)
 }
 
 # 检查 release commit 是否已存在（按提交信息匹配）

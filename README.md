@@ -18,7 +18,7 @@
 
 ## 简介
 
-一个热辣漫画的第三方客户端 | A third-party client based on hotmanga
+[kira](https://kirakira.dpdns.org/) 是一个拷贝漫画、热辣漫画的第三方客户端
 
 <table>
   <tr>
@@ -49,40 +49,27 @@
   </tr>
 </table>
 </details>
-
 ## 开发
 
-### 环境要求
+环境要求
 
 - Dart
 - Flutter
 - Java 17
-
-### 初始化项目
 
 ```sh
 git clone https://github.com/caolib/kira.git
 cd kira
 ```
 
-### 运行项目
-
-如果你需要弹幕功能，需要先创建弹弹play账号，获取`appId`和`appSecret`，然后在项目根目录下创建一个`.env`文件，内容参考`.env.example`
-
 如果是安卓设备，第一次使用需要先 build 一次，后续如果 clean 了需要重新 build
 ```sh
 flutter build apk --debug
 ```
 
-然后启动
+启动
 ```sh
 flutter run -d <设备ID> --dart-define-from-file=.env
-```
-
-### 构建安装包
-
-```sh
-flutter build apk --release --target-platform android-arm64 --dart-define-from-file=.env
 ```
 
 ## 致谢
