@@ -1382,10 +1382,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statsTitle => '阅读统计';
 
   @override
-  String get statsEnableTitle => '开启阅读统计';
-
-  @override
-  String get statsEnableSubtitle => '记录你读过的漫画、章节、页数与常看类型，生成阅读活跃度热力图。';
+  String get statsEnableTitle => '阅读统计';
 
   @override
   String get statsEnableButton => '开启';
@@ -1400,10 +1397,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statsRecordChapters => '读过的章节数量';
 
   @override
-  String get statsRecordPages => '阅读页数（按章节累计）';
+  String get statsRecordPages => '阅读页数';
 
   @override
-  String get statsRecordTags => '常看类型（按漫画数排序）';
+  String get statsRecordTags => '常看类型';
 
   @override
   String get statsRecordHeatmap => '每日阅读活跃度热力图';
@@ -1419,9 +1416,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get statsPagesRead => '页数';
-
-  @override
-  String get statsPagesReadNote => '按已读章节页数累计';
 
   @override
   String get statsTopTags => '常看类型';
@@ -1448,9 +1442,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statsHeatmapWeekdayFri => '五';
 
   @override
-  String get statsHeatmapTooNarrow => '屏幕太窄，无法显示热力图';
-
-  @override
   String statsRecordingSince(String date) {
     return '统计自 $date 起记录';
   }
@@ -1459,12 +1450,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String statsPagesOnDate(int count) {
     return '$count 页';
   }
-
-  @override
-  String get statsEmptyTitle => '还没有阅读数据';
-
-  @override
-  String get statsEmptySubtitle => '开启阅读统计后，阅读漫画即会开始记录。';
 
   @override
   String get statsClearButton => '清除';
@@ -5090,10 +5075,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get statsTitle => '閱讀統計';
 
   @override
-  String get statsEnableTitle => '開啟閱讀統計';
-
-  @override
-  String get statsEnableSubtitle => '記錄你讀過的漫畫、章節、頁數與常看類型，生成閱讀活躍度熱力圖。';
+  String get statsEnableTitle => '閱讀統計';
 
   @override
   String get statsEnableButton => '開啟';
@@ -5108,10 +5090,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get statsRecordChapters => '讀過的章節數量';
 
   @override
-  String get statsRecordPages => '閱讀頁數（按章節累計）';
+  String get statsRecordPages => '閱讀頁數';
 
   @override
-  String get statsRecordTags => '常看類型（按漫畫數排序）';
+  String get statsRecordTags => '常看類型';
 
   @override
   String get statsRecordHeatmap => '每日閱讀活躍度熱力圖';
@@ -5127,9 +5109,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get statsPagesRead => '頁數';
-
-  @override
-  String get statsPagesReadNote => '按已讀章節頁數累計';
 
   @override
   String get statsTopTags => '常看類型';
@@ -5156,9 +5135,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get statsHeatmapWeekdayFri => '五';
 
   @override
-  String get statsHeatmapTooNarrow => '螢幕太窄，無法顯示熱力圖';
-
-  @override
   String statsRecordingSince(String date) {
     return '統計自 $date 起記錄';
   }
@@ -5167,12 +5143,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String statsPagesOnDate(int count) {
     return '$count 頁';
   }
-
-  @override
-  String get statsEmptyTitle => '還沒有閱讀資料';
-
-  @override
-  String get statsEmptySubtitle => '開啟閱讀統計後，閱讀漫畫即會開始記錄。';
 
   @override
   String get statsClearButton => '清除';

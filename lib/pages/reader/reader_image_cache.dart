@@ -32,8 +32,15 @@ class _ReaderImageFileService extends FileService {
     _defaultHeaders.forEach(request.headers.set);
     headers?.forEach(request.headers.add);
 
+    // 命中缓存不会走到这里；只有真实网络请求才有归属，供阅读统计埋点反查。
+    final statsOwner = _statsImageOwnerByUrl[url];
     final response = await request.close().timeout(timeout);
-    return _ReaderImageFileServiceResponse(response, timeout, stopwatch);
+    return _ReaderImageFileServiceResponse(
+      response,
+      timeout,
+      stopwatch,
+      statsOwner,
+    );
   }
 }
 
@@ -53,12 +60,17 @@ class _ReaderImageFileServiceResponse implements FileServiceResponse {
     this._response,
     this._timeout,
     this._stopwatch,
+    this._statsOwner,
   );
 
   final HttpClientResponse _response;
   final Duration _timeout;
   final Stopwatch _stopwatch;
   final DateTime _receivedTime = DateTime.now();
+
+  /// 该图片 URL 登记的归属（漫画 + 章节）。未登记（非章节图/异常）为 null。
+  final ({String pathWord, String chapterUuid})? _statsOwner;
+
   bool _recorded = false;
 
   @override
@@ -72,6 +84,19 @@ class _ReaderImageFileServiceResponse implements FileServiceResponse {
                 _recorded = true;
                 _stopwatch.stop();
                 ImageLoadStats().record(_stopwatch.elapsed);
+                // 阅读统计：与 ImageLoadStats 同口径，仅真实网络请求计入。
+                final owner = _statsOwner;
+                if (owner != null) {
+                  final meta = _statsComicMetaByPath[owner.pathWord];
+                  unawaited(
+                    ReadingStats.recordImageLoad(
+                      pathWord: owner.pathWord,
+                      chapterUuid: owner.chapterUuid,
+                      comicName: meta?.name,
+                      tags: meta?.tags,
+                    ),
+                  );
+                }
               }
               sink.close();
             },

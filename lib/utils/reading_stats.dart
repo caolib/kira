@@ -5,24 +5,31 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/reader_settings.dart';
+import 'app_logger.dart';
 
 /// 阅读统计的本地存储与聚合。
 ///
 /// 与阅读历史（ReadingHistory）不同：这里不存"读到哪一页"，而是聚合计数——读过
 /// 多少本漫画、多少话、多少页、常看类型、每日阅读活跃度（热力图）。
 ///
+/// ## 计数口径
+/// 页数 = 实际发出的图片网络请求数。每次图片**网络加载成功** +1（由 reader
+/// 的 `_ReaderImageFileService` 在 `ImageLoadStats().record` 同一点埋点），
+/// 命中磁盘/内存缓存、本地已下载章节不触发请求，不计入——与
+/// [lib/utils/image_load_stats.dart] 同一口径。
+///
 /// ## 开关
 /// 默认关闭。开关位 [ReaderSettings.readingStatsEnabled]（bool，prefs 键
-/// `reader_reading_stats_enabled`）。关闭时 [recordChapterRead] 立即返回，
+/// `reader_reading_stats_enabled`）。关闭时 [recordImageLoad] 立即返回，
 /// 不写任何统计键——未开启的用户零成本。
 ///
 /// ## 数据来源
-/// 首次开启后数据为空，之后纯靠 [recordChapterRead] 增量累积（阅读章节时
+/// 首次开启后数据为空，之后纯靠 [recordImageLoad] 增量累积（阅读章节时
 /// 由 reader 埋点）。不从本地缓存导入历史数据。
 ///
 /// ## 存储
 /// 单键 `reading_stats_v1`（JSON），结构见 [_StatsData]。约 120KB/100 部，
-/// 配合 daily 730 天裁剪 + chapterPages 按 uuid 去重，增长可控。
+/// 配合 daily 730 天裁剪 + chapterImages 按 uuid 聚合，增长可控。
 class ReadingStats {
   static const _dataKey = 'reading_stats_v1';
 
@@ -37,6 +44,10 @@ class ReadingStats {
 
   static bool _dirty = false;
   static Timer? _debounceTimer;
+
+  /// 写入代际。`clear()`/`resetMemoryCache()` 递增；在途 `_flush()` 写盘前校验，
+  /// 防止清除后旧数据被回写"复活"。
+  static int _generation = 0;
 
   // ── 开关 ──────────────────────────────────────────────────────────
 
@@ -54,24 +65,18 @@ class ReadingStats {
 
   // ── 埋点 ──────────────────────────────────────────────────────────
 
-  /// 记一次章节阅读（翻页/换章时由 reader 调用）。
+  /// 记一次图片网络加载成功（reader 的图片请求完成时调用）。
   ///
   /// - 未开启时立即返回，零写入。
-  /// - [pageCount] 是该章**当前翻到的页号**（1-based），存储端按
-  ///   `max(已存, pageCount)` 合并——只增不减，反映"翻到过的最远页"。
-  ///   这样概览页数 = 各章最远页之和，反映实际阅读量，而非章节总页数
-  ///   （打开200页章节只看1页不会 +200）。
-  /// - [pagesToday] 是本次埋点新前进的页数（翻页前进 N → +N，回翻不计），
-  ///   累加进 [daily] 当日条目。热力图按"当天页数"分级，不受章节页数
-  ///   差异影响，用户间可比。
+  /// - 每张图片**真实请求**成功 → 该章计数 +1、当日 [daily] 计数 +1。
+  ///   命中缓存/本地章节不会走到请求层，天然不计入，无需调用方去重。
+  /// - 同一章节反复加载（重读/重试）按请求次数累加。
   /// - [comicName] / [tags] 懒填充：传入非空且当前为空时才写入，避免覆盖
   ///   已有更完整的数据。
-  /// - 防抖落盘：连续翻页合并为一次写。
-  static Future<void> recordChapterRead({
+  /// - 防抖落盘：连续加载合并为一次写。
+  static Future<void> recordImageLoad({
     required String pathWord,
     required String chapterUuid,
-    int pageCount = 0,
-    int pagesToday = 0,
     String? comicName,
     List<String>? tags,
   }) async {
@@ -84,7 +89,7 @@ class ReadingStats {
     // comicMeta 增量更新
     final comic = data.comicMeta.putIfAbsent(
       pathWord,
-      () => _ComicStatData(name: '', tags: const [], chapterPages: {}),
+      () => _ComicStatData(name: '', tags: const [], chapterImages: {}),
     );
     if (comicName != null && comicName.isNotEmpty && comic.name.isEmpty) {
       comic.name = comicName;
@@ -92,14 +97,12 @@ class ReadingStats {
     if (tags != null && tags.isNotEmpty && comic.tags.isEmpty) {
       comic.tags = List<String>.unmodifiable(tags);
     }
-    // 按 uuid 去重且只增不减：记录该章翻到的最远页号（回翻不降）
-    final prev = comic.chapterPages[chapterUuid] ?? 0;
-    if (pageCount > prev) comic.chapterPages[chapterUuid] = pageCount;
+    // 该章实际加载图片数（每次网络请求 +1）
+    comic.chapterImages[chapterUuid] =
+        (comic.chapterImages[chapterUuid] ?? 0) + 1;
 
-    // daily 当日阅读页数（前进页数累加；回翻不计）
-    if (pagesToday > 0) {
-      data.daily[today] = (data.daily[today] ?? 0) + pagesToday;
-    }
+    // daily 当日加载图片数（与 ImageLoadStats 同口径：仅真实请求）
+    data.daily[today] = (data.daily[today] ?? 0) + 1;
 
     // since 首次记录日
     data.since ??= today;
@@ -127,6 +130,7 @@ class ReadingStats {
   static void resetMemoryCache() {
     _debounceTimer?.cancel();
     _debounceTimer = null;
+    _generation++;
     _cache = null;
     _dirty = false;
   }
@@ -135,6 +139,7 @@ class ReadingStats {
   static Future<void> clear() async {
     _debounceTimer?.cancel();
     _debounceTimer = null;
+    _generation++;
     _cache = null;
     _dirty = false;
     final prefs = await SharedPreferences.getInstance();
@@ -152,8 +157,19 @@ class ReadingStats {
     }
     try {
       final json = jsonDecode(raw);
-      _cache = _StatsData.fromJson(json as Map<String, dynamic>);
-    } catch (_) {
+      if (json is! Map<String, dynamic>) {
+        throw const FormatException('reading_stats 顶层不是 JSON 对象');
+      }
+      _cache = _StatsData.fromJson(json);
+    } catch (e, stack) {
+      // 整段数据损坏（极少见）：记日志后按空数据继续，不因坏数据崩溃或死循环。
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'reading_stats.load_cache',
+        ),
+      );
       _cache = _StatsData.empty();
     }
     return _cache!;
@@ -164,11 +180,15 @@ class ReadingStats {
     _debounceTimer = null;
     if (!_dirty) return;
     final data = _cache;
+    final gen = _generation;
     if (data == null) {
       _dirty = false;
       return;
     }
     final prefs = await SharedPreferences.getInstance();
+    // clear()/resetMemoryCache() 可能在等待期间执行：代际变化说明数据已被清除，
+    // 丢弃本次写，避免"复活"已删除的统计。
+    if (gen != _generation) return;
     await prefs.setString(_dataKey, jsonEncode(data.toJson()));
     _dirty = false;
   }
@@ -197,16 +217,16 @@ class ReadingStats {
 /// 读过的漫画数 = comicMeta 键数。
 int comicsReadCount(ReadingStatsSnapshot s) => s.comicMeta.length;
 
-/// 读过的章节数 = 各漫画 chapterPages 键数之和。
+/// 读过的章节数 = 各漫画 chapterImages 键数之和。
 int chaptersReadCount(ReadingStatsSnapshot s) =>
-    s.comicMeta.values.fold<int>(0, (sum, c) => sum + c.chapterPages.length);
+    s.comicMeta.values.fold<int>(0, (sum, c) => sum + c.chapterImages.length);
 
-/// 阅读页数 = 各漫画 chapterPages 值之和（按章节 uuid 去重后）。
+/// 阅读页数 = 各漫画 chapterImages 值之和（实际加载的图片数）。
 int pagesReadCount(ReadingStatsSnapshot s) =>
     s.comicMeta.values.fold<int>(0, (sum, c) {
       var sub = 0;
-      for (final pages in c.chapterPages.values) {
-        sub += pages;
+      for (final images in c.chapterImages.values) {
+        sub += images;
       }
       return sum + sub;
     });
@@ -253,12 +273,12 @@ class ReadingStatsSnapshot {
 class ComicStat {
   final String name;
   final List<String> tags;
-  final Map<String, int> chapterPages;
+  final Map<String, int> chapterImages;
 
   const ComicStat({
     required this.name,
     required this.tags,
-    required this.chapterPages,
+    required this.chapterImages,
   });
 }
 
@@ -288,16 +308,21 @@ class _StatsData {
       for (final entry in metaRaw.entries) {
         final pw = entry.key.toString();
         final m = entry.value;
-        if (m is Map) {
+        if (m is! Map) continue;
+        try {
           comicMeta[pw] = _ComicStatData(
             name: m['name']?.toString() ?? '',
-            tags:
-                (m['tags'] as List?)
-                    ?.map((t) => t.toString())
-                    .where((t) => t.isNotEmpty)
-                    .toList() ??
-                const [],
-            chapterPages: _readIntMap(m['chapterPages']),
+            tags: _readTags(m['tags']),
+            chapterImages: _readIntMap(m['chapterImages']),
+          );
+        } catch (e, stack) {
+          // 单本漫画条目损坏：跳过该条，不拖垮整份统计。
+          unawaited(
+            AppLogger.instance.recordWarning(
+              e,
+              stackTrace: stack,
+              source: 'reading_stats.parse_comic',
+            ),
           );
         }
       }
@@ -327,7 +352,7 @@ class _StatsData {
         e.key: {
           'name': e.value.name,
           'tags': e.value.tags,
-          'chapterPages': e.value.chapterPages,
+          'chapterImages': e.value.chapterImages,
         },
     },
     'daily': daily,
@@ -341,7 +366,7 @@ class _StatsData {
         ComicStat(
           name: v.name,
           tags: List<String>.unmodifiable(v.tags),
-          chapterPages: Map<String, int>.unmodifiable(v.chapterPages),
+          chapterImages: Map<String, int>.unmodifiable(v.chapterImages),
         ),
       ),
     );
@@ -358,12 +383,12 @@ class _StatsData {
 class _ComicStatData {
   String name;
   List<String> tags;
-  final Map<String, int> chapterPages;
+  final Map<String, int> chapterImages;
 
   _ComicStatData({
     required this.name,
     required this.tags,
-    required this.chapterPages,
+    required this.chapterImages,
   });
 }
 
@@ -381,4 +406,12 @@ Map<String, int> _readIntMap(Object? value) {
     return result;
   }
   return {};
+}
+
+/// 读取 tags 列表。非 List 或元素非字符串时静默剔除，不因坏数据抛错。
+List<String> _readTags(Object? value) {
+  if (value is List) {
+    return value.whereType<String>().where((t) => t.isNotEmpty).toList();
+  }
+  return const [];
 }

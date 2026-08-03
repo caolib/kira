@@ -210,12 +210,6 @@ class _StatsPageState extends State<StatsPage> {
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(l10n.statsEnableTitle, style: tt.titleLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              l10n.statsEnableSubtitle,
-              textAlign: TextAlign.center,
-              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-            ),
             const SizedBox(height: AppSpacing.xl),
             // 记录内容说明卡
             Card(
@@ -285,13 +279,12 @@ class _StatsPageState extends State<StatsPage> {
       return ErrorRetryView(message: l10n.loadingFailed, onRetry: _load);
     }
     final snap = _snapshot;
-    if (snap == null || snap.isEmpty) {
-      return _buildEmptyBody();
-    }
-    final comicsCount = comicsReadCount(snap);
-    final chaptersCount = chaptersReadCount(snap);
-    final pagesCount = pagesReadCount(snap);
-    final tags = topTags(snap);
+    // 无数据时不显示空态，直接按 0 渲染（热力图、tag 列表自然为空）。
+    final comicsCount = snap == null ? 0 : comicsReadCount(snap);
+    final chaptersCount = snap == null ? 0 : chaptersReadCount(snap);
+    final pagesCount = snap == null ? 0 : pagesReadCount(snap);
+    final tags = snap == null ? const <TagCount>[] : topTags(snap);
+    final daily = snap?.daily ?? const <String, int>{};
     // 刷新时顶部进度条
     return RefreshIndicator(
       onRefresh: _load,
@@ -321,7 +314,7 @@ class _StatsPageState extends State<StatsPage> {
                 _TagsCard(tags: tags),
                 const SizedBox(height: AppSpacing.md),
                 // 热力图
-                _HeatmapCard(daily: snap.daily, since: snap.since),
+                _HeatmapCard(daily: daily, since: snap?.since),
                 const SizedBox(height: AppSpacing.xxl),
               ]),
             ),
@@ -358,32 +351,6 @@ class _StatsPageState extends State<StatsPage> {
               height: 140,
               radius: AppRadius.lg,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyBody() {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.sentiment_satisfied_outlined,
-            size: 64,
-            color: cs.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Text(l10n.statsEmptyTitle, style: tt.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            l10n.statsEmptySubtitle,
-            textAlign: TextAlign.center,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -454,7 +421,6 @@ class _OverviewCard extends StatelessWidget {
                   icon: Icons.image_outlined,
                   value: _format(pages),
                   label: l10n.statsPagesRead,
-                  note: l10n.statsPagesReadNote,
                 ),
               ),
             ],
@@ -464,20 +430,26 @@ class _OverviewCard extends StatelessWidget {
     );
   }
 
-  /// 千位逗号。
-  static String _format(int n) => n.toString();
+  /// 千位逗号：1234 → '1,234'。统计值可能很大，逗号便于快速读取。
+  static String _format(int n) {
+    final s = n.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(s[i]);
+    }
+    return buffer.toString();
+  }
 }
 
 class _StatCell extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
-  final String? note;
   const _StatCell({
     required this.icon,
     required this.value,
     required this.label,
-    this.note,
   });
 
   @override
@@ -504,17 +476,6 @@ class _StatCell extends StatelessWidget {
           style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
-        if (note != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              note!,
-              style: tt.labelSmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontSize: 9,
-              ),
-            ),
-          ),
       ],
     );
   }

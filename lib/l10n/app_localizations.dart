@@ -2541,14 +2541,8 @@ abstract class AppLocalizations {
   /// No description provided for @statsEnableTitle.
   ///
   /// In zh, this message translates to:
-  /// **'开启阅读统计'**
+  /// **'阅读统计'**
   String get statsEnableTitle;
-
-  /// No description provided for @statsEnableSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'记录你读过的漫画、章节、页数与常看类型，生成阅读活跃度热力图。'**
-  String get statsEnableSubtitle;
 
   /// No description provided for @statsEnableButton.
   ///
@@ -2577,13 +2571,13 @@ abstract class AppLocalizations {
   /// No description provided for @statsRecordPages.
   ///
   /// In zh, this message translates to:
-  /// **'阅读页数（按章节累计）'**
+  /// **'阅读页数'**
   String get statsRecordPages;
 
   /// No description provided for @statsRecordTags.
   ///
   /// In zh, this message translates to:
-  /// **'常看类型（按漫画数排序）'**
+  /// **'常看类型'**
   String get statsRecordTags;
 
   /// No description provided for @statsRecordHeatmap.
@@ -2615,12 +2609,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'页数'**
   String get statsPagesRead;
-
-  /// No description provided for @statsPagesReadNote.
-  ///
-  /// In zh, this message translates to:
-  /// **'按已读章节页数累计'**
-  String get statsPagesReadNote;
 
   /// No description provided for @statsTopTags.
   ///
@@ -2670,12 +2658,6 @@ abstract class AppLocalizations {
   /// **'五'**
   String get statsHeatmapWeekdayFri;
 
-  /// No description provided for @statsHeatmapTooNarrow.
-  ///
-  /// In zh, this message translates to:
-  /// **'屏幕太窄，无法显示热力图'**
-  String get statsHeatmapTooNarrow;
-
   /// No description provided for @statsRecordingSince.
   ///
   /// In zh, this message translates to:
@@ -2687,18 +2669,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{count} 页'**
   String statsPagesOnDate(int count);
-
-  /// No description provided for @statsEmptyTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'还没有阅读数据'**
-  String get statsEmptyTitle;
-
-  /// No description provided for @statsEmptySubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'开启阅读统计后，阅读漫画即会开始记录。'**
-  String get statsEmptySubtitle;
 
   /// No description provided for @statsClearButton.
   ///

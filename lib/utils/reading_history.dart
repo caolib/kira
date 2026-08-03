@@ -14,9 +14,6 @@ class ReadingHistory {
   static const _prefix = 'reading_history_';
   static const defaultGroup = 'default';
 
-  /// 公开前缀，供统计扫描 `reading_history_*` 键复用。
-  static const legacyKeyPrefix = _prefix;
-
   /// 合并窗口。取值需短到用户察觉不出，长到能吃掉连续翻页。
   static const _debounceDelay = Duration(milliseconds: 800);
 

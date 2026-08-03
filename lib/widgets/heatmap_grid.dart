@@ -93,7 +93,6 @@ class _HeatmapGridState extends State<HeatmapGrid> {
     final today = widget.end ?? DateTime.now();
     final endSunday = _floorToSunday(today);
     final startSunday = endSunday.subtract(Duration(days: 7 * (weeks - 1)));
-    final maxCount = widget.dailyCounts.values.fold<int>(0, _maxInt);
 
     // 月份标签：每周检查列首日期是否跨月，跨月则标月号。
     final monthLabels = <_MonthLabel>[];
@@ -182,7 +181,6 @@ class _HeatmapGridState extends State<HeatmapGrid> {
                             startSunday,
                             w,
                             r,
-                            maxCount,
                             cellEmpty,
                             cellSize,
                             cellGap,
@@ -205,7 +203,6 @@ class _HeatmapGridState extends State<HeatmapGrid> {
     DateTime startSunday,
     int week,
     int row,
-    int maxCount,
     Color cellEmpty,
     double cellSize,
     double cellGap,
@@ -234,9 +231,7 @@ class _HeatmapGridState extends State<HeatmapGrid> {
     final key = _dayKey(date);
     final count = widget.dailyCounts[key] ?? 0;
     final cs = Theme.of(context).colorScheme;
-    final color = count == 0
-        ? cellEmpty
-        : _levelColor(cs.primary, count, maxCount);
+    final color = count == 0 ? cellEmpty : _levelColor(cs.primary, count);
     // 单击触发 Tooltip（贴在格子上方的小气泡），而非悬浮/长按——
     // 手机无鼠标，悬浮不可用；长按体验差。tap 模式单击即弹。
     final message = count == 0
@@ -269,7 +264,7 @@ class _HeatmapGridState extends State<HeatmapGrid> {
   /// - 21-50 页：日常阅读
   /// - 51-100 页：深度阅读
   /// - 101+ 页（最深）：重度阅读
-  Color _levelColor(Color base, int count, int maxCount) {
+  Color _levelColor(Color base, int count) {
     double alpha;
     if (count <= 0) {
       // 由调用方处理空格底色，此处不预期为 0
@@ -296,8 +291,6 @@ class _HeatmapGridState extends State<HeatmapGrid> {
       '-${t.month.toString().padLeft(2, '0')}'
       '-${t.day.toString().padLeft(2, '0')}';
 }
-
-int _maxInt(int a, int b) => a > b ? a : b;
 
 class _MonthLabel {
   final int weekIndex;
