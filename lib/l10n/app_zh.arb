@@ -960,6 +960,52 @@
   "downloadCenterTitle": "下载中心",
   "browseHistoryTitle": "浏览记录",
   "bookmarksTitle": "书签",
+  "statsTitle": "阅读统计",
+  "statsEnableTitle": "开启阅读统计",
+  "statsEnableSubtitle": "记录你读过的漫画、章节、页数与常看类型，生成阅读活跃度热力图。",
+  "statsEnableButton": "开启",
+  "statsDisableButton": "统计功能",
+  "statsRecordComics": "读过的漫画数量",
+  "statsRecordChapters": "读过的章节数量",
+  "statsRecordPages": "阅读页数（按章节累计）",
+  "statsRecordTags": "常看类型（按漫画数排序）",
+  "statsRecordHeatmap": "每日阅读活跃度热力图",
+  "statsPrivacyNote": "数据仅保存在本地，不上传服务器，可随时关闭或清除。",
+  "statsComicsRead": "漫画",
+  "statsChaptersRead": "章节",
+  "statsPagesRead": "页数",
+  "statsPagesReadNote": "按已读章节页数累计",
+  "statsTopTags": "常看类型",
+  "statsNoTags": "暂无标签数据",
+  "statsActivityHeatmap": "阅读活跃度",
+  "statsHeatmapLess": "少",
+  "statsHeatmapMore": "多",
+  "statsHeatmapWeekdayMon": "一",
+  "statsHeatmapWeekdayWed": "三",
+  "statsHeatmapWeekdayFri": "五",
+  "statsHeatmapTooNarrow": "屏幕太窄，无法显示热力图",
+  "statsRecordingSince": "统计自 {date} 起记录",
+  "@statsRecordingSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "statsPagesOnDate": "{count} 页",
+  "@statsPagesOnDate": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statsEmptyTitle": "还没有阅读数据",
+  "statsEmptySubtitle": "开启阅读统计后，阅读漫画即会开始记录。",
+  "statsClearButton": "清除",
+  "statsClearConfirmTitle": "清除阅读统计？",
+  "statsClearConfirmContent": "将删除全部阅读统计数据，此操作不可恢复。",
+  "statsSettings": "阅读统计设置",
   "bookmarkAdd": "添加书签",
   "bookmarkRemove": "取消书签",
   "bookmarkAdded": "已添加书签",
@@ -1382,7 +1428,6 @@
     }
   },
   "chapterCommentsReasoning": "思考过程",
-  "chapterCommentsReasoningCollapsed": "思考过程（已折叠）",
   "chapterCommentsGenerating": "正在生成中…",
   "chapterCommentsCollapse": "收起",
   "chapterCommentsExpand": "展开",

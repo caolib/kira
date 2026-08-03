@@ -27,6 +27,7 @@ import '../utils/download_manager.dart';
 import '../utils/image_load_stats.dart';
 import '../utils/network_error.dart';
 import '../utils/reading_history.dart';
+import '../utils/reading_stats.dart';
 import '../utils/toast.dart';
 import '../widgets/reader_status_overlay.dart';
 import 'chapter_comment_display.dart';
@@ -750,9 +751,10 @@ class _ReaderPageState extends State<ReaderPage> {
     showToast(context, added ? l10n.bookmarkAdded : l10n.bookmarkRemoved);
   }
 
-  /// 从漫画详情本地缓存读取漫画名、封面与分组（纯缓存读取，无网络请求）。
+  /// 从漫画详情本地缓存读取漫画名、封面、标签与分组（纯缓存读取，无网络请求）。
   /// 分组缺失时回退到 widget.group（详情页入口会传入当前选中分组）。
-  Future<({String comicName, String cover, String group})>
+  /// 顺带填充 [_cachedComicName] / [_cachedTags]，供阅读统计埋点复用。
+  Future<({String comicName, String cover, String group, List<String> tags})>
   _comicMetaFromCache() async {
     final fallbackGroup = widget.group?.trim() ?? '';
     try {
@@ -760,10 +762,23 @@ class _ReaderPageState extends State<ReaderPage> {
       final comic = data?.comic;
       final cachedGroup = data?.selectedGroup.trim() ?? '';
       if (cachedGroup.isNotEmpty) _cachedSelectedGroup = cachedGroup;
+      final name = comic?.name ?? '';
+      // 显式类别避免 ?. 链推断为 List<dynamic>
+      var tags = const <String>[];
+      if (comic != null) {
+        tags = comic.themes
+            .where((t) => t.name.isNotEmpty)
+            .map((t) => t.name)
+            .toList(growable: false);
+      }
+      // 懒填充缓存：埋点时无需再次读盘
+      if (name.isNotEmpty) _cachedComicName ??= name;
+      if (tags.isNotEmpty) _cachedTags ??= tags;
       return (
-        comicName: comic?.name ?? '',
+        comicName: name,
         cover: comic?.cover ?? '',
         group: cachedGroup.isNotEmpty ? cachedGroup : fallbackGroup,
+        tags: tags,
       );
     } catch (e, stack) {
       unawaited(
@@ -773,7 +788,7 @@ class _ReaderPageState extends State<ReaderPage> {
           source: 'reader.comic_meta_from_cache',
         ),
       );
-      return (comicName: '', cover: '', group: fallbackGroup);
+      return (comicName: '', cover: '', group: fallbackGroup, tags: const <String>[]);
     }
   }
 
@@ -793,11 +808,78 @@ class _ReaderPageState extends State<ReaderPage> {
       page: _currentPage,
       totalPage: _detail?.contents.length ?? 0,
     );
+    // 阅读统计埋点：仅统计开启时，且仅在切换到新章节时记一次（翻页不重复计）
+    _maybeRecordStats();
+  }
+
+  /// 阅读统计埋点。仅在开关开启时触发。
+  ///
+  /// 追踪**实际前进的页数**（而非章节切换次数）：翻页页号前进 N → 当日页数
+  /// +N；回翻不计；换章只记新章已读页数。这样热力图反映"当天读了多少页"，
+  /// 不受章节页数差异影响。
+  void _maybeRecordStats() {
+    if (!ReadingStats.isEnabled) return;
+    final uuid = _currentUuid;
+    final page = _currentPage;
+    if (uuid.isEmpty) return;
+
+    // 计算自上次记录以来的页数增量
+    int delta;
+    final lastUuid = _lastStatsChapterUuid;
+    final lastPage = _lastStatsPage;
+    if (lastUuid == null || lastPage == null) {
+      // 首次记录（如刚开启统计）：把当前页号当作已读页数
+      delta = page > 0 ? page : 0;
+    } else if (uuid == lastUuid) {
+      // 同章：只算前进的页数
+      delta = page > lastPage ? page - lastPage : 0;
+    } else {
+      // 换章：新章从第 1 页读到 page，记 page 页（上一章末尾不计）
+      delta = page > 0 ? page : 0;
+    }
+
+    _lastStatsChapterUuid = uuid;
+    _lastStatsPage = page;
+
+    if (delta <= 0) return;
+    // pageCount = 当前页号（该章翻到的最远页），存端 max 合并只增不减。
+    unawaited(_recordStatsOnce(uuid, delta, page));
+  }
+
+  Future<void> _recordStatsOnce(
+    String chapterUuid,
+    int pagesToday,
+    int pageCount,
+  ) async {
+    // 标签/漫画名优先用已缓存值，缺失时再读盘一次
+    var name = _cachedComicName;
+    var tags = _cachedTags;
+    if (name == null || tags == null) {
+      final meta = await _comicMetaFromCache();
+      name ??= meta.comicName;
+      tags ??= meta.tags;
+    }
+    await ReadingStats.recordChapterRead(
+      pathWord: widget.pathWord,
+      chapterUuid: chapterUuid,
+      pageCount: pageCount,
+      comicName: name,
+      tags: tags,
+      pagesToday: pagesToday,
+    );
   }
 
   /// 详情本地缓存中的选中分组（_comicMetaFromCache 顺带填充），
   /// 供 widget.group 为空时（书签入口）回退使用。
   String? _cachedSelectedGroup;
+
+  /// 缓存的漫画名/标签，供阅读统计埋点复用，避免每次埋点都读盘。
+  String? _cachedComicName;
+  List<String>? _cachedTags;
+
+  /// 上一次埋点记录的章节 uuid 与页号，用于计算页数增量。
+  String? _lastStatsChapterUuid;
+  int? _lastStatsPage;
 
   Future<void> _loadCachedSelectedGroup() async {
     if (_cachedSelectedGroup != null) return;

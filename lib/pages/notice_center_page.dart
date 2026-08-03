@@ -614,6 +614,10 @@ class _NoticeContent extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 onPressed: () => _openUrl(notice.url!),
+                style: TextButton.styleFrom(
+                  foregroundColor: style.accent,
+                  iconColor: style.accent,
+                ),
                 icon: const Icon(Icons.open_in_new_rounded, size: 18),
                 label: Text(AppLocalizations.of(context)!.noticeOpenLink),
               ),

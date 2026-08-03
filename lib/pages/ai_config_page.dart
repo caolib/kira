@@ -1341,11 +1341,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
-                  expanded
-                      ? AppLocalizations.of(context)!.chapterCommentsReasoning
-                      : AppLocalizations.of(
-                          context,
-                        )!.chapterCommentsReasoningCollapsed,
+                  AppLocalizations.of(context)!.chapterCommentsReasoning,
                   style: textStyle?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (collapsed) ...[

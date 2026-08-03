@@ -39,6 +39,7 @@ class ReaderSettings extends PrefsStore {
   static const _keyStatusOverlayPage = 'reader_status_overlay_page';
   static const _keyStatusOverlayFps = 'reader_status_overlay_fps';
   static const _keyStatusOverlayOrder = 'reader_status_overlay_order';
+  static const _keyReadingStatsEnabled = 'reader_reading_stats_enabled';
 
   /// 状态显示各段位的默认显示顺序（时间/网络/电量/页码/帧率）。
   static const List<String> defaultStatusOverlayOrder = [
@@ -76,6 +77,7 @@ class ReaderSettings extends PrefsStore {
   bool _statusOverlayPage = false;
   bool _statusOverlayFps = false;
   List<String> _statusOverlayOrder = List.of(defaultStatusOverlayOrder);
+  bool _readingStatsEnabled = false;
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -103,6 +105,7 @@ class ReaderSettings extends PrefsStore {
   bool get statusOverlayNetwork => _statusOverlayNetwork;
   bool get statusOverlayPage => _statusOverlayPage;
   bool get statusOverlayFps => _statusOverlayFps;
+  bool get readingStatsEnabled => _readingStatsEnabled;
 
   /// 状态显示段位顺序（未知 id 会被剔除，缺失的段位按默认顺序补到末尾）。
   List<String> get statusOverlayOrder => List.unmodifiable(_statusOverlayOrder);
@@ -143,6 +146,7 @@ class ReaderSettings extends PrefsStore {
     _statusOverlayFps = prefs.getBool(_keyStatusOverlayFps) ?? false;
     final savedOrder = prefs.getStringList(_keyStatusOverlayOrder) ?? const [];
     _statusOverlayOrder = _sanitizeStatusOverlayOrder(savedOrder);
+    _readingStatsEnabled = prefs.getBool(_keyReadingStatsEnabled) ?? false;
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -275,6 +279,11 @@ class ReaderSettings extends PrefsStore {
     if (_listEquals(_statusOverlayOrder, sanitized)) return;
     _statusOverlayOrder = sanitized;
     await setStringList(_keyStatusOverlayOrder, sanitized);
+  }
+
+  Future<void> setReadingStatsEnabled(bool value) async {
+    _readingStatsEnabled = value;
+    await setBool(_keyReadingStatsEnabled, value);
   }
 }
 

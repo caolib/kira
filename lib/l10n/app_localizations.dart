@@ -2532,6 +2532,198 @@ abstract class AppLocalizations {
   /// **'书签'**
   String get bookmarksTitle;
 
+  /// No description provided for @statsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读统计'**
+  String get statsTitle;
+
+  /// No description provided for @statsEnableTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启阅读统计'**
+  String get statsEnableTitle;
+
+  /// No description provided for @statsEnableSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录你读过的漫画、章节、页数与常看类型，生成阅读活跃度热力图。'**
+  String get statsEnableSubtitle;
+
+  /// No description provided for @statsEnableButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启'**
+  String get statsEnableButton;
+
+  /// No description provided for @statsDisableButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计功能'**
+  String get statsDisableButton;
+
+  /// No description provided for @statsRecordComics.
+  ///
+  /// In zh, this message translates to:
+  /// **'读过的漫画数量'**
+  String get statsRecordComics;
+
+  /// No description provided for @statsRecordChapters.
+  ///
+  /// In zh, this message translates to:
+  /// **'读过的章节数量'**
+  String get statsRecordChapters;
+
+  /// No description provided for @statsRecordPages.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读页数（按章节累计）'**
+  String get statsRecordPages;
+
+  /// No description provided for @statsRecordTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'常看类型（按漫画数排序）'**
+  String get statsRecordTags;
+
+  /// No description provided for @statsRecordHeatmap.
+  ///
+  /// In zh, this message translates to:
+  /// **'每日阅读活跃度热力图'**
+  String get statsRecordHeatmap;
+
+  /// No description provided for @statsPrivacyNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据仅保存在本地，不上传服务器，可随时关闭或清除。'**
+  String get statsPrivacyNote;
+
+  /// No description provided for @statsComicsRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'漫画'**
+  String get statsComicsRead;
+
+  /// No description provided for @statsChaptersRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'章节'**
+  String get statsChaptersRead;
+
+  /// No description provided for @statsPagesRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'页数'**
+  String get statsPagesRead;
+
+  /// No description provided for @statsPagesReadNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'按已读章节页数累计'**
+  String get statsPagesReadNote;
+
+  /// No description provided for @statsTopTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'常看类型'**
+  String get statsTopTags;
+
+  /// No description provided for @statsNoTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无标签数据'**
+  String get statsNoTags;
+
+  /// No description provided for @statsActivityHeatmap.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读活跃度'**
+  String get statsActivityHeatmap;
+
+  /// No description provided for @statsHeatmapLess.
+  ///
+  /// In zh, this message translates to:
+  /// **'少'**
+  String get statsHeatmapLess;
+
+  /// No description provided for @statsHeatmapMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'多'**
+  String get statsHeatmapMore;
+
+  /// No description provided for @statsHeatmapWeekdayMon.
+  ///
+  /// In zh, this message translates to:
+  /// **'一'**
+  String get statsHeatmapWeekdayMon;
+
+  /// No description provided for @statsHeatmapWeekdayWed.
+  ///
+  /// In zh, this message translates to:
+  /// **'三'**
+  String get statsHeatmapWeekdayWed;
+
+  /// No description provided for @statsHeatmapWeekdayFri.
+  ///
+  /// In zh, this message translates to:
+  /// **'五'**
+  String get statsHeatmapWeekdayFri;
+
+  /// No description provided for @statsHeatmapTooNarrow.
+  ///
+  /// In zh, this message translates to:
+  /// **'屏幕太窄，无法显示热力图'**
+  String get statsHeatmapTooNarrow;
+
+  /// No description provided for @statsRecordingSince.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计自 {date} 起记录'**
+  String statsRecordingSince(String date);
+
+  /// No description provided for @statsPagesOnDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 页'**
+  String statsPagesOnDate(int count);
+
+  /// No description provided for @statsEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有阅读数据'**
+  String get statsEmptyTitle;
+
+  /// No description provided for @statsEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启阅读统计后，阅读漫画即会开始记录。'**
+  String get statsEmptySubtitle;
+
+  /// No description provided for @statsClearButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除'**
+  String get statsClearButton;
+
+  /// No description provided for @statsClearConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除阅读统计？'**
+  String get statsClearConfirmTitle;
+
+  /// No description provided for @statsClearConfirmContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'将删除全部阅读统计数据，此操作不可恢复。'**
+  String get statsClearConfirmContent;
+
+  /// No description provided for @statsSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读统计设置'**
+  String get statsSettings;
+
   /// No description provided for @bookmarkAdd.
   ///
   /// In zh, this message translates to:
@@ -3760,12 +3952,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'思考过程'**
   String get chapterCommentsReasoning;
-
-  /// No description provided for @chapterCommentsReasoningCollapsed.
-  ///
-  /// In zh, this message translates to:
-  /// **'思考过程（已折叠）'**
-  String get chapterCommentsReasoningCollapsed;
 
   /// No description provided for @chapterCommentsGenerating.
   ///

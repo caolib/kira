@@ -102,6 +102,7 @@ Future<T> load() async {
 | 模块 | 前缀/键 | 文件 |
 | ---- | ---------- | ---- |
 | 漫画阅读历史 | `reading_history_$pathWord` / `..._group_$g` | `lib/utils/reading_history.dart:6` |
+| 阅读统计 | `reading_stats_v1` / `reader_reading_stats_enabled` | `lib/utils/reading_stats.dart` |
 | 动漫播放历史 | `anime_playback_history_${pathWord}_${chapterUuid}` | `lib/utils/anime_playback_history.dart:7` |
 | dandanplay 绑定 | `dandanplay_binding_$pathWord` | `lib/utils/dandanplay_binding_store.dart:102` |
 | AI 章节总结 | `zhipu_chapter_summary_$chapterUuid` | `lib/utils/chapter_summary_cache.dart:64` |

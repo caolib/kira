@@ -1379,6 +1379,106 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bookmarksTitle => '书签';
 
   @override
+  String get statsTitle => '阅读统计';
+
+  @override
+  String get statsEnableTitle => '开启阅读统计';
+
+  @override
+  String get statsEnableSubtitle => '记录你读过的漫画、章节、页数与常看类型，生成阅读活跃度热力图。';
+
+  @override
+  String get statsEnableButton => '开启';
+
+  @override
+  String get statsDisableButton => '统计功能';
+
+  @override
+  String get statsRecordComics => '读过的漫画数量';
+
+  @override
+  String get statsRecordChapters => '读过的章节数量';
+
+  @override
+  String get statsRecordPages => '阅读页数（按章节累计）';
+
+  @override
+  String get statsRecordTags => '常看类型（按漫画数排序）';
+
+  @override
+  String get statsRecordHeatmap => '每日阅读活跃度热力图';
+
+  @override
+  String get statsPrivacyNote => '数据仅保存在本地，不上传服务器，可随时关闭或清除。';
+
+  @override
+  String get statsComicsRead => '漫画';
+
+  @override
+  String get statsChaptersRead => '章节';
+
+  @override
+  String get statsPagesRead => '页数';
+
+  @override
+  String get statsPagesReadNote => '按已读章节页数累计';
+
+  @override
+  String get statsTopTags => '常看类型';
+
+  @override
+  String get statsNoTags => '暂无标签数据';
+
+  @override
+  String get statsActivityHeatmap => '阅读活跃度';
+
+  @override
+  String get statsHeatmapLess => '少';
+
+  @override
+  String get statsHeatmapMore => '多';
+
+  @override
+  String get statsHeatmapWeekdayMon => '一';
+
+  @override
+  String get statsHeatmapWeekdayWed => '三';
+
+  @override
+  String get statsHeatmapWeekdayFri => '五';
+
+  @override
+  String get statsHeatmapTooNarrow => '屏幕太窄，无法显示热力图';
+
+  @override
+  String statsRecordingSince(String date) {
+    return '统计自 $date 起记录';
+  }
+
+  @override
+  String statsPagesOnDate(int count) {
+    return '$count 页';
+  }
+
+  @override
+  String get statsEmptyTitle => '还没有阅读数据';
+
+  @override
+  String get statsEmptySubtitle => '开启阅读统计后，阅读漫画即会开始记录。';
+
+  @override
+  String get statsClearButton => '清除';
+
+  @override
+  String get statsClearConfirmTitle => '清除阅读统计？';
+
+  @override
+  String get statsClearConfirmContent => '将删除全部阅读统计数据，此操作不可恢复。';
+
+  @override
+  String get statsSettings => '阅读统计设置';
+
+  @override
   String get bookmarkAdd => '添加书签';
 
   @override
@@ -2053,9 +2153,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chapterCommentsReasoning => '思考过程';
-
-  @override
-  String get chapterCommentsReasoningCollapsed => '思考过程（已折叠）';
 
   @override
   String get chapterCommentsGenerating => '正在生成中…';
@@ -4990,6 +5087,106 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get bookmarksTitle => '書籤';
 
   @override
+  String get statsTitle => '閱讀統計';
+
+  @override
+  String get statsEnableTitle => '開啟閱讀統計';
+
+  @override
+  String get statsEnableSubtitle => '記錄你讀過的漫畫、章節、頁數與常看類型，生成閱讀活躍度熱力圖。';
+
+  @override
+  String get statsEnableButton => '開啟';
+
+  @override
+  String get statsDisableButton => '統計功能';
+
+  @override
+  String get statsRecordComics => '讀過的漫畫數量';
+
+  @override
+  String get statsRecordChapters => '讀過的章節數量';
+
+  @override
+  String get statsRecordPages => '閱讀頁數（按章節累計）';
+
+  @override
+  String get statsRecordTags => '常看類型（按漫畫數排序）';
+
+  @override
+  String get statsRecordHeatmap => '每日閱讀活躍度熱力圖';
+
+  @override
+  String get statsPrivacyNote => '資料僅儲存在本地，不上傳伺服器，可隨時關閉或清除。';
+
+  @override
+  String get statsComicsRead => '漫畫';
+
+  @override
+  String get statsChaptersRead => '章節';
+
+  @override
+  String get statsPagesRead => '頁數';
+
+  @override
+  String get statsPagesReadNote => '按已讀章節頁數累計';
+
+  @override
+  String get statsTopTags => '常看類型';
+
+  @override
+  String get statsNoTags => '暫無標籤資料';
+
+  @override
+  String get statsActivityHeatmap => '閱讀活躍度';
+
+  @override
+  String get statsHeatmapLess => '少';
+
+  @override
+  String get statsHeatmapMore => '多';
+
+  @override
+  String get statsHeatmapWeekdayMon => '一';
+
+  @override
+  String get statsHeatmapWeekdayWed => '三';
+
+  @override
+  String get statsHeatmapWeekdayFri => '五';
+
+  @override
+  String get statsHeatmapTooNarrow => '螢幕太窄，無法顯示熱力圖';
+
+  @override
+  String statsRecordingSince(String date) {
+    return '統計自 $date 起記錄';
+  }
+
+  @override
+  String statsPagesOnDate(int count) {
+    return '$count 頁';
+  }
+
+  @override
+  String get statsEmptyTitle => '還沒有閱讀資料';
+
+  @override
+  String get statsEmptySubtitle => '開啟閱讀統計後，閱讀漫畫即會開始記錄。';
+
+  @override
+  String get statsClearButton => '清除';
+
+  @override
+  String get statsClearConfirmTitle => '清除閱讀統計？';
+
+  @override
+  String get statsClearConfirmContent => '將刪除全部閱讀統計資料，此操作不可復原。';
+
+  @override
+  String get statsSettings => '閱讀統計設置';
+
+  @override
   String get bookmarkAdd => '新增書籤';
 
   @override
@@ -5664,9 +5861,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get chapterCommentsReasoning => '思考過程';
-
-  @override
-  String get chapterCommentsReasoningCollapsed => '思考過程（已摺疊）';
 
   @override
   String get chapterCommentsGenerating => '正在生成中…';

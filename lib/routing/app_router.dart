@@ -35,6 +35,7 @@ import '../pages/reader_page.dart';
 import '../pages/recommend_page.dart';
 import '../pages/register_page.dart' show RegisterPage;
 import '../pages/search_page.dart';
+import '../pages/stats_page.dart';
 import '../pages/webview_login_page.dart';
 import '../widgets/comic_hero_tags.dart';
 import 'main_shell.dart';
@@ -80,6 +81,7 @@ final class AppRoutes {
   static const acknowledgement = 'acknowledgement';
   static const license = 'license';
   static const cacheManagement = 'cache_management';
+  static const stats = 'stats';
 }
 
 /// Extra data for [ComicDetailPage] route.
@@ -407,6 +409,11 @@ GoRouter createAppRouter() {
         path: '/bookmarks',
         name: AppRoutes.bookmarks,
         builder: (_, _) => const BookmarksPage(),
+      ),
+      GoRoute(
+        path: '/stats',
+        name: AppRoutes.stats,
+        builder: (_, _) => const StatsPage(),
       ),
       GoRoute(
         path: '/notices',

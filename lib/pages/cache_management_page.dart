@@ -682,6 +682,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       return _CacheCategory.account;
     }
     if (key.startsWith('reading_history_')) return _CacheCategory.mangaHistory;
+    if (key.startsWith('reading_stats_')) return _CacheCategory.mangaHistory;
     if (key.startsWith('comic_bookmarks')) return _CacheCategory.mangaHistory;
     if (key.startsWith('anime_playback_history_')) {
       return _CacheCategory.animeHistory;

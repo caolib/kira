@@ -1145,33 +1145,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       tt,
       cs,
     )?.copyWith(color: cs.onSurfaceVariant);
-    final textScaler = MediaQuery.textScalerOf(context);
-    final preferredMaxWidth = maxWidth * 0.8;
-    const minWidth = 108.0;
-    const compactCardHorizontalPadding = 20.0;
-    const compactTextWidthBuffer = 10.0;
     const avatarGap = 6.0;
-
-    final nameWidth = _measureTextWidth(
-      displayName,
-      userStyle,
-      textScaler,
-      preferredMaxWidth,
-    );
-    final timeWidth = _measureTextWidth(
-      TimeFormat.relativeOf(comment.createAt, l10n),
-      timeStyle,
-      textScaler,
-      preferredMaxWidth,
-    );
-    final avatarWidth = _showUserAvatar ? 20.0 + avatarGap : 0.0;
-    final contentWidth = nameWidth > timeWidth ? nameWidth : timeWidth;
-    final cardWidth =
-        (avatarWidth +
-                contentWidth +
-                compactCardHorizontalPadding +
-                compactTextWidthBuffer)
-            .clamp(minWidth, preferredMaxWidth);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1187,26 +1161,26 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
         canBlock: true,
         position: details.globalPosition,
       ),
-      child: SizedBox(
-        width: cardWidth,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-          decoration: _buildCommentCardDecoration(
-            cs,
-            brightness: Theme.of(context).brightness,
-            highlightAsHot: false,
-            withShadow: false,
-            backgroundColor: cs.surfaceContainerHigh,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_showUserAvatar) ...[
-                _CommentAvatar(imageUrl: comment.userAvatar, size: 20),
-                const SizedBox(width: avatarGap),
-              ],
-              Expanded(
-                child: Column(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth * 0.8),
+        child: IntrinsicWidth(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+            decoration: _buildCommentCardDecoration(
+              cs,
+              brightness: Theme.of(context).brightness,
+              highlightAsHot: false,
+              withShadow: false,
+              backgroundColor: cs.surfaceContainerHigh,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_showUserAvatar) ...[
+                  _CommentAvatar(imageUrl: comment.userAvatar, size: 20),
+                  const SizedBox(width: avatarGap),
+                ],
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1225,8 +1199,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -2550,9 +2524,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
-                  expanded
-                      ? l10n.chapterCommentsReasoning
-                      : l10n.chapterCommentsReasoningCollapsed,
+                  l10n.chapterCommentsReasoning,
                   style: textStyle?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (toggleable) ...[
