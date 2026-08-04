@@ -58,6 +58,7 @@ void main() {
     expect(find.text('页数'), findsWidgets);
     expect(find.text('常看类型'), findsOneWidget);
     expect(find.text('恋爱'), findsOneWidget);
+    expect(find.text('开始于 2026-08-03'), findsOneWidget);
   });
 
   testWidgets('enabled empty state shows zeros instead of empty hint', (

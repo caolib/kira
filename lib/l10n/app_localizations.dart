@@ -2661,7 +2661,7 @@ abstract class AppLocalizations {
   /// No description provided for @statsRecordingSince.
   ///
   /// In zh, this message translates to:
-  /// **'统计自 {date} 起记录'**
+  /// **'开始于 {date}'**
   String statsRecordingSince(String date);
 
   /// No description provided for @statsPagesOnDate.

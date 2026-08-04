@@ -1443,7 +1443,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String statsRecordingSince(String date) {
-    return '统计自 $date 起记录';
+    return '开始于 $date';
   }
 
   @override
@@ -5136,7 +5136,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String statsRecordingSince(String date) {
-    return '統計自 $date 起記錄';
+    return '開始於 $date';
   }
 
   @override

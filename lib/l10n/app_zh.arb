@@ -981,7 +981,7 @@
   "statsHeatmapWeekdayMon": "一",
   "statsHeatmapWeekdayWed": "三",
   "statsHeatmapWeekdayFri": "五",
-  "statsRecordingSince": "统计自 {date} 起记录",
+  "statsRecordingSince": "开始于 {date}",
   "@statsRecordingSince": {
     "placeholders": {
       "date": {

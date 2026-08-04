@@ -6,7 +6,7 @@ import '../theme/app_spacing.dart';
 /// GitHub 风格的阅读活跃度热力图。
 ///
 /// 显示最近 [weeks] 周（默认 53）× 7 天的网格，每格颜色深浅对应当日阅读
-/// 章节数。颜色用 [ColorScheme.primary] 的不同透明度分 5 级，跟随主题色。
+/// 页数。颜色用 [ColorScheme.primary] 的不同透明度分 5 级，跟随主题色。
 /// 左侧星期标签（一/三/五），顶部月份标签。单击单元格触发 Tooltip
 /// 弹出小气泡显示当日详情（手机无鼠标，tap 模式比悬浮/长按更直观）。
 ///
@@ -260,20 +260,20 @@ class _HeatmapGridState extends State<HeatmapGrid> {
   /// 按"当天阅读页数"固定阈值选 4 级透明度（GitHub 风格）。
   ///
   /// 含义固定、用户间可比，不受章节页数差异影响：
-  /// - 1-20 页（浅色）：翻几页浏览
-  /// - 21-50 页：日常阅读
-  /// - 51-100 页：深度阅读
-  /// - 101+ 页（最深）：重度阅读
+  /// - 1-50 页（浅色）
+  /// - 51-150 页
+  /// - 151-300 页
+  /// - 301+ 页（最深）
   Color _levelColor(Color base, int count) {
     double alpha;
     if (count <= 0) {
       // 由调用方处理空格底色，此处不预期为 0
       alpha = 0.0;
-    } else if (count <= 20) {
-      alpha = 0.35;
     } else if (count <= 50) {
+      alpha = 0.35;
+    } else if (count <= 150) {
       alpha = 0.55;
-    } else if (count <= 100) {
+    } else if (count <= 300) {
       alpha = 0.75;
     } else {
       alpha = 1.0;
