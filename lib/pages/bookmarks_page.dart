@@ -88,11 +88,6 @@ class _BookmarksPageState extends State<BookmarksPage> {
 
   /// 书签自带封面（打书签时从详情缓存读取并持久化）；旧书签缺失时
   /// 回退到详情本地缓存，均无则为空（显示占位图）。
-  String _coverOf(ComicBookmark bookmark) {
-    if (bookmark.cover.isNotEmpty) return bookmark.cover;
-    return _details[bookmark.pathWord]?.comic.cover ?? '';
-  }
-
   String _groupCoverOf(List<ComicBookmark> group) {
     for (final bookmark in group) {
       if (bookmark.cover.isNotEmpty) return bookmark.cover;
@@ -185,6 +180,13 @@ class _BookmarksPageState extends State<BookmarksPage> {
     setState(() {});
   }
 
+  Future<void> _openComic(String pathWord) async {
+    await context.pushNamed(
+      AppRoutes.comicDetail,
+      pathParameters: {'pathWord': pathWord},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -273,27 +275,16 @@ class _BookmarksPageState extends State<BookmarksPage> {
                         final group = groups[index];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          // 只有一条书签的漫画用单条卡片，多条才合并为组卡片。
-                          child: group.value.length == 1
-                              ? _SingleBookmarkCard(
-                                  bookmark: group.value.single,
-                                  coverUrl: _coverOf(group.value.single),
-                                  onFetchCover: () =>
-                                      _loadCachedDetail(group.key),
-                                  onTap: () =>
-                                      _openBookmark(group.value.single),
-                                  onRemove: _remove,
-                                )
-                              : _BookmarkGroupCard(
-                                  pathWord: group.key,
-                                  bookmarks: group.value,
-                                  coverUrl: _groupCoverOf(group.value),
-                                  onFetchCover: () =>
-                                      _loadCachedDetail(group.key),
-                                  onOpen: _openBookmark,
-                                  onRemove: _remove,
-                                  onClearGroup: _clearGroup,
-                                ),
+                          child: _BookmarkGroupCard(
+                            pathWord: group.key,
+                            bookmarks: group.value,
+                            coverUrl: _groupCoverOf(group.value),
+                            onFetchCover: () => _loadCachedDetail(group.key),
+                            onOpenComic: () => _openComic(group.key),
+                            onOpenBookmark: _openBookmark,
+                            onRemove: _remove,
+                            onClearGroup: _clearGroup,
+                          ),
                         );
                       },
                     ),
@@ -302,14 +293,15 @@ class _BookmarksPageState extends State<BookmarksPage> {
   }
 }
 
-/// 单部漫画的书签组卡片：封面 + 漫画名 header（带组删除按钮），
-/// 下方列出该漫画的全部书签条目。
+/// 单部漫画的书签组卡片：封面 + 漫画名 header，下方列出全部书签。
+/// 左滑 header 删除该漫画的全部书签，左滑书签条目仅删除单条。
 class _BookmarkGroupCard extends StatelessWidget {
   final String pathWord;
   final List<ComicBookmark> bookmarks;
   final String coverUrl;
   final VoidCallback onFetchCover;
-  final ValueChanged<ComicBookmark> onOpen;
+  final VoidCallback onOpenComic;
+  final ValueChanged<ComicBookmark> onOpenBookmark;
   final ValueChanged<ComicBookmark> onRemove;
   final ValueChanged<List<ComicBookmark>> onClearGroup;
 
@@ -318,7 +310,8 @@ class _BookmarkGroupCard extends StatelessWidget {
     required this.bookmarks,
     required this.coverUrl,
     required this.onFetchCover,
-    required this.onOpen,
+    required this.onOpenComic,
+    required this.onOpenBookmark,
     required this.onRemove,
     required this.onClearGroup,
   });
@@ -344,46 +337,56 @@ class _BookmarkGroupCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 44,
-                  child: AspectRatio(
-                    aspectRatio: 0.72,
-                    child: _BookmarkCover(coverUrl: coverUrl),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        comicName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+          Dismissible(
+            key: ValueKey('bookmark_group_$pathWord'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              color: cs.errorContainer,
+              child: Icon(Icons.delete_outline, color: cs.onErrorContainer),
+            ),
+            onDismissed: (_) => onClearGroup(bookmarks),
+            child: InkWell(
+              key: ValueKey('bookmark_comic_$pathWord'),
+              onTap: onOpenComic,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 44,
+                      child: AspectRatio(
+                        aspectRatio: 0.72,
+                        child: _BookmarkCover(coverUrl: coverUrl),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.bookmarksCount(bookmarks.length),
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            comicName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            l10n.bookmarksCount(bookmarks.length),
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: Icon(Icons.delete_outline, color: cs.onSurfaceVariant),
-                  tooltip: l10n.bookmarksClearGroupTitle,
-                  onPressed: () => onClearGroup(bookmarks),
-                ),
-              ],
+              ),
             ),
           ),
           const Divider(height: 1, indent: 10, endIndent: 10),
@@ -400,124 +403,11 @@ class _BookmarkGroupCard extends StatelessWidget {
               onDismissed: (_) => onRemove(bookmark),
               child: _BookmarkTile(
                 bookmark: bookmark,
-                onTap: () => onOpen(bookmark),
+                onTap: () => onOpenBookmark(bookmark),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// 单条书签卡片：漫画只有一条书签时的布局（封面 + 漫画名 + 章节/页码）。
-class _SingleBookmarkCard extends StatelessWidget {
-  final ComicBookmark bookmark;
-  final String coverUrl;
-  final VoidCallback onFetchCover;
-  final VoidCallback onTap;
-  final ValueChanged<ComicBookmark> onRemove;
-
-  const _SingleBookmarkCard({
-    required this.bookmark,
-    required this.coverUrl,
-    required this.onFetchCover,
-    required this.onTap,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final l10n = AppLocalizations.of(context)!;
-
-    // 同上：封面拉取延迟到帧结束，避免 build 期间触发 setState。
-    if (coverUrl.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => onFetchCover());
-    }
-
-    return Dismissible(
-      key: ValueKey('bookmark_${bookmark.id}'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        decoration: BoxDecoration(
-          color: cs.errorContainer,
-          borderRadius: AppRadius.mdR,
-        ),
-        child: Icon(Icons.delete_outline, color: cs.onErrorContainer),
-      ),
-      onDismissed: (_) => onRemove(bookmark),
-      child: Card(
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 52,
-                  child: AspectRatio(
-                    aspectRatio: 0.72,
-                    child: _BookmarkCover(coverUrl: coverUrl),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        bookmark.comicName.isNotEmpty
-                            ? bookmark.comicName
-                            : bookmark.pathWord,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.bookmark, size: 14, color: cs.primary),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              bookmark.chapterName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: tt.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        [
-                          l10n.bookmarkPage(bookmark.page),
-                          if (bookmark.updatedAt != null)
-                            TimeFormat.relative(bookmark.updatedAt!, l10n),
-                        ].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -577,6 +467,7 @@ class _BookmarkTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return InkWell(
+      key: ValueKey('bookmark_open_${bookmark.id}'),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
