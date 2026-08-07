@@ -276,7 +276,8 @@ class _GeneralPageState extends State<GeneralPage> {
                     title: Text(l10n.languageTitle),
                     subtitle: Text(switch (_user.locale) {
                       'zh-Hant' => l10n.languageTraditional,
-                      _ => l10n.languageSimplifiedSystem,
+                      'zh' => l10n.languageSimplified,
+                      _ => l10n.languageSystem,
                     }, style: tt.bodySmall),
                     trailing: PopupMenuButton<String>(
                       icon: const Icon(Icons.arrow_drop_down),
@@ -284,7 +285,11 @@ class _GeneralPageState extends State<GeneralPage> {
                       itemBuilder: (ctx) => [
                         PopupMenuItem(
                           value: '',
-                          child: Text(l10n.languageSimplifiedSystem),
+                          child: Text(l10n.languageSystem),
+                        ),
+                        PopupMenuItem(
+                          value: 'zh',
+                          child: Text(l10n.languageSimplified),
                         ),
                         PopupMenuItem(
                           value: 'zh-Hant',

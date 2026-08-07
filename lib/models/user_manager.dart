@@ -261,7 +261,8 @@ class UserManager extends ChangeNotifier {
   int _networkProxyPort = 0;
   bool _animeFeatureEnabled = true;
   bool _remoteNoticeEnabled = true;
-  String _locale = ''; // '' = follow system, 'zh' = 简体, 'zh-Hant' = 繁体
+  /// '' = follow system, 'zh' = Simplified, 'zh-Hant' = Traditional.
+  String _locale = '';
   bool _bannerVisible = true;
   String _mangaHomeSource = 'hot';
   String _copyApiHost = defaultCopyApiHost;

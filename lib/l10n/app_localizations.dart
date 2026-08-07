@@ -871,11 +871,17 @@ abstract class AppLocalizations {
   /// **'语言'**
   String get languageTitle;
 
-  /// No description provided for @languageSimplifiedSystem.
+  /// No description provided for @languageSystem.
   ///
   /// In zh, this message translates to:
-  /// **'简体中文（跟随系统）'**
-  String get languageSimplifiedSystem;
+  /// **'跟随系统'**
+  String get languageSystem;
+
+  /// No description provided for @languageSimplified.
+  ///
+  /// In zh, this message translates to:
+  /// **'简体中文'**
+  String get languageSimplified;
 
   /// No description provided for @languageTraditional.
   ///
