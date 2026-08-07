@@ -106,16 +106,36 @@ class _BookmarksPageState extends State<BookmarksPage> {
 
   void _showUndoSnackBar(String message, List<ComicBookmark> removed) {
     final l10n = AppLocalizations.of(context)!;
+    // 与消息正文同色,避免默认 primary 蓝色按钮在通知条上过于扎眼。
+    final btnStyle = TextButton.styleFrom(
+      foregroundColor: Theme.of(context).colorScheme.onInverseSurface,
+    );
+    // SnackBar 原生只支持单个 action,这里用 content 内嵌 Row 放「撤销」「关闭」
+    // 两个按钮,让用户既能撤销删除,也能手动关掉通知。
     _messenger
       ?..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 3),
-          action: SnackBarAction(
-            label: l10n.bookmarkUndo,
-            onPressed: () => _store.restoreAll(removed),
+          duration: const Duration(seconds: 5),
+          content: Row(
+            children: [
+              Expanded(child: Text(message)),
+              TextButton(
+                style: btnStyle,
+                onPressed: () {
+                  _store.restoreAll(removed);
+                  _messenger?.hideCurrentSnackBar();
+                },
+                child: Text(l10n.bookmarkUndo),
+              ),
+              TextButton(
+                style: btnStyle,
+                onPressed: () => _messenger?.hideCurrentSnackBar(),
+                child: Text(l10n.closeButton),
+              ),
+            ],
           ),
+          behavior: SnackBarBehavior.fixed,
         ),
       );
   }
@@ -160,6 +180,9 @@ class _BookmarksPageState extends State<BookmarksPage> {
   }
 
   Future<void> _openBookmark(ComicBookmark bookmark) async {
+    // 打开阅读器前清掉撤销 SnackBar：阅读器为全屏覆盖式页面,
+    // 通知赖在根 messenger 上既无法手动关闭也干扰阅读体验。
+    _messenger?.clearSnackBars();
     await context.pushNamed(
       AppRoutes.reader,
       pathParameters: {
@@ -181,6 +204,8 @@ class _BookmarksPageState extends State<BookmarksPage> {
   }
 
   Future<void> _openComic(String pathWord) async {
+    // 与 _openBookmark 一致：跳转详情前清掉可能残留的撤销 SnackBar。
+    _messenger?.clearSnackBars();
     await context.pushNamed(
       AppRoutes.comicDetail,
       pathParameters: {'pathWord': pathWord},
