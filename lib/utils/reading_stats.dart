@@ -231,15 +231,21 @@ int pagesReadCount(ReadingStatsSnapshot s) =>
       return sum + sub;
     });
 
-/// 最爱标签：聚合各漫画 tags，按"出现过的漫画数"降序取前 [limit] 条。
+/// 最爱标签：聚合各漫画 tags，按「已读章节数」加权降序取前 [limit] 条。
+///
+/// 权重 = 该漫画 `chapterImages` 的键数（已读章节数，非页数）。
+/// 同一漫画内同名标签只计一次；只翻过 1 话的短读不会和读了 100 话的长篇
+/// 并列，更贴近「常看」语义。
 List<TagCount> topTags(ReadingStatsSnapshot s, {int limit = 10}) {
   final counts = <String, int>{};
   for (final comic in s.comicMeta.values) {
+    final weight = comic.chapterImages.length;
+    if (weight <= 0) continue;
     // 同一漫画内同名的标签只计一次
     final seen = <String>{};
     for (final tag in comic.tags) {
       if (tag.isEmpty || !seen.add(tag)) continue;
-      counts[tag] = (counts[tag] ?? 0) + 1;
+      counts[tag] = (counts[tag] ?? 0) + weight;
     }
   }
   final list =

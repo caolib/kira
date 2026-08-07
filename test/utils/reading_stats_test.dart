@@ -123,33 +123,77 @@ void main() {
   });
 
   group('聚合助手', () {
-    test('topTags 按漫画数降序、同名标签在一本内只计一次', () async {
+    test('topTags 按已读章节数加权、同名标签在一本内只计一次', () async {
+      // c1: 2 章 → 恋爱/校园 各 +2；同名「恋爱」在一本内只计一次
       await ReadingStats.recordImageLoad(
         pathWord: 'c1',
-        chapterUuid: 'x',
-        tags: const ['恋爱', '校园', '恋爱'], // 同名重复只计1
+        chapterUuid: 'c1-1',
+        tags: const ['恋爱', '校园', '恋爱'],
       );
       await ReadingStats.recordImageLoad(
+        pathWord: 'c1',
+        chapterUuid: 'c1-2',
+      );
+      // c2: 1 章 → 恋爱 +1
+      await ReadingStats.recordImageLoad(
         pathWord: 'c2',
-        chapterUuid: 'x',
+        chapterUuid: 'c2-1',
         tags: const ['恋爱'],
+      );
+      // c3: 3 章 → 校园/日常 各 +3
+      await ReadingStats.recordImageLoad(
+        pathWord: 'c3',
+        chapterUuid: 'c3-1',
+        tags: const ['校园', '日常'],
       );
       await ReadingStats.recordImageLoad(
         pathWord: 'c3',
-        chapterUuid: 'x',
-        tags: const ['校园', '日常'],
+        chapterUuid: 'c3-2',
+      );
+      await ReadingStats.recordImageLoad(
+        pathWord: 'c3',
+        chapterUuid: 'c3-3',
       );
       final snap = await ReadingStats.load();
       final tags = topTags(snap);
 
-      // 恋爱: 2本, 校园: 2本, 日常: 1本
+      // 恋爱: 2+1=3, 校园: 2+3=5, 日常: 3
       expect(tags.length, 3);
       final byName = {for (final t in tags) t.name: t.count};
-      expect(byName['恋爱'], 2);
-      expect(byName['校园'], 2);
-      expect(byName['日常'], 1);
-      // 计数相同时按 name 字典序排：恋(U+604B) < 校(U+6821)
-      expect(tags.first.name, '恋爱');
+      expect(byName['校园'], 5);
+      expect(byName['恋爱'], 3);
+      expect(byName['日常'], 3);
+      // 校园最高；恋爱与日常同分时按 name 字典序：恋 < 日
+      expect(tags.map((t) => t.name).toList(), ['校园', '恋爱', '日常']);
+    });
+
+    test('topTags 长篇章节远多于短读时正确拉开差距', () async {
+      // A 只读 2 章（tag1/tag2），B 读 5 章（tag3/tag4）→ 后者应明显靠前
+      await ReadingStats.recordImageLoad(
+        pathWord: 'comic-a',
+        chapterUuid: 'a-1',
+        tags: const ['tag1', 'tag2'],
+      );
+      await ReadingStats.recordImageLoad(
+        pathWord: 'comic-a',
+        chapterUuid: 'a-2',
+      );
+      for (var i = 1; i <= 5; i++) {
+        await ReadingStats.recordImageLoad(
+          pathWord: 'comic-b',
+          chapterUuid: 'b-$i',
+          tags: const ['tag3', 'tag4'],
+        );
+      }
+      final snap = await ReadingStats.load();
+      final tags = topTags(snap);
+      final byName = {for (final t in tags) t.name: t.count};
+
+      expect(byName['tag1'], 2);
+      expect(byName['tag2'], 2);
+      expect(byName['tag3'], 5);
+      expect(byName['tag4'], 5);
+      expect(tags.first.count, 5);
     });
 
     test('topTags 遵守 limit', () async {
