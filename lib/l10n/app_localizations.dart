@@ -835,6 +835,12 @@ abstract class AppLocalizations {
   /// **'关闭后隐藏动漫相关功能'**
   String get animeFeatureDesc;
 
+  /// No description provided for @animeFeatureMaintenanceWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'动漫功能已经停止维护'**
+  String get animeFeatureMaintenanceWarning;
+
   /// No description provided for @remoteNoticeTitle.
   ///
   /// In zh, this message translates to:

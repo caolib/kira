@@ -62,12 +62,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(user.animeFeatureEnabled, isTrue);
+    expect(user.animeFeatureEnabled, isFalse);
     expect(find.text('动漫功能'), findsOneWidget);
 
     await tester.tap(find.text('动漫功能'));
     await tester.pumpAndSettle();
 
-    expect(user.animeFeatureEnabled, isFalse);
+    expect(user.animeFeatureEnabled, isTrue);
   });
 }

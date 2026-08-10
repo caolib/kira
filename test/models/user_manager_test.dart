@@ -62,16 +62,16 @@ void main() {
     },
   );
 
-  test('anime feature setting defaults to enabled and persists', () async {
+  test('anime feature setting defaults to disabled and persists', () async {
     final user = UserManager();
     await user.init();
 
-    expect(user.animeFeatureEnabled, isTrue);
+    expect(user.animeFeatureEnabled, isFalse);
 
-    await user.setAnimeFeatureEnabled(false);
+    await user.setAnimeFeatureEnabled(true);
     await user.init();
 
-    expect(user.animeFeatureEnabled, isFalse);
+    expect(user.animeFeatureEnabled, isTrue);
   });
 
   test('network selection mode and fixed node persist', () async {

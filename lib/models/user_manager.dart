@@ -259,8 +259,9 @@ class UserManager extends ChangeNotifier {
   NetworkProxyType _networkProxyType = NetworkProxyType.http;
   String _networkProxyHost = '';
   int _networkProxyPort = 0;
-  bool _animeFeatureEnabled = true;
+  bool _animeFeatureEnabled = false;
   bool _remoteNoticeEnabled = true;
+
   /// '' = follow system, 'zh' = Simplified, 'zh-Hant' = Traditional.
   String _locale = '';
   bool _bannerVisible = true;
@@ -598,7 +599,7 @@ class UserManager extends ChangeNotifier {
     );
     _networkProxyHost = prefs.getString(_keyNetworkProxyHost)?.trim() ?? '';
     _networkProxyPort = _normalizeProxyPort(prefs.getInt(_keyNetworkProxyPort));
-    _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? true;
+    _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? false;
     _remoteNoticeEnabled = prefs.getBool(_keyRemoteNoticeEnabled) ?? true;
     _locale = prefs.getString(_keyLocale) ?? '';
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;

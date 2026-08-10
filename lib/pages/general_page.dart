@@ -258,7 +258,12 @@ class _GeneralPageState extends State<GeneralPage> {
                   SwitchListTile(
                     secondary: const Icon(Icons.movie_outlined),
                     title: Text(l10n.animeFeatureTitle),
-                    subtitle: Text(l10n.animeFeatureDesc, style: tt.bodySmall),
+                    subtitle: Text(
+                      l10n.animeFeatureMaintenanceWarning,
+                      style: tt.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                     value: _user.animeFeatureEnabled,
                     onChanged: _user.setAnimeFeatureEnabled,
                   ),

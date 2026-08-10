@@ -317,6 +317,7 @@
   "autoLoginUnavailableDesc": "登录并保存账号密码后可用",
   "animeFeatureTitle": "动漫功能",
   "animeFeatureDesc": "关闭后隐藏动漫相关功能",
+  "animeFeatureMaintenanceWarning": "动漫功能已经停止维护",
   "remoteNoticeTitle": "通知",
   "remoteNoticeDesc": "开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取",
   "noticeSettingsTooltip": "通知设置",

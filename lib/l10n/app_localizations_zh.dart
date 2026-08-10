@@ -431,6 +431,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get animeFeatureDesc => '关闭后隐藏动漫相关功能';
 
   @override
+  String get animeFeatureMaintenanceWarning => '动漫功能已经停止维护';
+
+  @override
   String get remoteNoticeTitle => '通知';
 
   @override
@@ -4125,6 +4128,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get animeFeatureDesc => '關閉後隱藏動漫相關功能';
+
+  @override
+  String get animeFeatureMaintenanceWarning => '動漫功能已經停止維護';
 
   @override
   String get remoteNoticeTitle => '通知';
