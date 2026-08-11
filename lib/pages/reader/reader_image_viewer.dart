@@ -186,6 +186,112 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
     );
   }
 
+  Future<void> _saveImage() async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess && !await Gal.requestAccess()) {
+        if (mounted) {
+          showToast(
+            context,
+            l10n.readerSaveImagePermissionDenied,
+            isError: true,
+          );
+        }
+        return;
+      }
+      final Uint8List bytes;
+      if (widget.isDownloaded) {
+        bytes = await File(widget.imageSource).readAsBytes();
+      } else {
+        final fileInfo = await widget.cacheManager.getFileFromCache(
+          widget.imageSource,
+        );
+        if (fileInfo != null) {
+          bytes = await fileInfo.file.readAsBytes();
+        } else {
+          bytes = await _downloadImageBytes();
+        }
+      }
+      final ext = _detectImageExtension(bytes);
+      if (ext == '.webp') {
+        // gal 原生端用 Apache Imaging 猜测格式，对部分 webp 字节识别不稳定，
+        // 先写临时文件走 putImage 路径让系统解码器处理。
+        final dir = await getTemporaryDirectory();
+        final tempFile = File(
+          '${dir.path}/kira_save_${DateTime.now().millisecondsSinceEpoch}.webp',
+        );
+        try {
+          await tempFile.writeAsBytes(bytes, flush: true);
+          await Gal.putImage(tempFile.path, album: 'kira');
+        } finally {
+          if (tempFile.existsSync()) {
+            unawaited(
+              tempFile.delete().catchError(
+                (_) => tempFile,
+              ),
+            );
+          }
+        }
+      } else {
+        await Gal.putImageBytes(bytes, album: 'kira');
+      }
+      if (mounted) showToast(context, l10n.readerImageSaved);
+    } catch (error, stackTrace) {
+      unawaited(
+        AppLogger().recordWarning(
+          '保存图片失败: $error',
+          stackTrace: stackTrace,
+          source: 'reader_image_viewer',
+        ),
+      );
+      if (mounted) showToast(context, l10n.readerSaveImageFailed, isError: true);
+    }
+  }
+
+  /// 按魔数识别常见图片格式，识别不出时默认 jpg（copymanga 实际多为 jpg/webp）。
+  String _detectImageExtension(Uint8List bytes) {
+    if (bytes.length >= 12 &&
+        bytes[0] == 0x52 && // R
+        bytes[1] == 0x49 && // I
+        bytes[2] == 0x46 && // F
+        bytes[3] == 0x46 && // F
+        bytes[8] == 0x57 && // W
+        bytes[9] == 0x45 && // E
+        bytes[10] == 0x42 && // B
+        bytes[11] == 0x50) {
+      // P
+      return '.webp';
+    }
+    if (bytes.length >= 8 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
+      return '.png';
+    }
+    if (bytes.length >= 6 &&
+        bytes[0] == 0x47 && // G
+        bytes[1] == 0x49 && // I
+        bytes[2] == 0x46) {
+      // F
+      return '.gif';
+    }
+    return '.jpg';
+  }
+
+  Future<Uint8List> _downloadImageBytes() async {
+    final response = await Dio().get<List<int>>(
+      widget.imageSource,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final data = response.data;
+    if (data == null) {
+      throw StateError('图片下载失败: ${response.statusCode}');
+    }
+    return Uint8List.fromList(data);
+  }
+
   void _showViewerSettings() {
     showModalBottomSheet(
       context: context,
@@ -292,10 +398,67 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
     required VoidCallback onPressed,
   }) {
     return IconButton(
-      icon: Icon(icon, color: ReaderChrome.onSurface),
+      icon: Icon(icon, color: ReaderChrome.onSurface, size: 20),
       tooltip: tooltip,
       onPressed: onPressed,
-      style: IconButton.styleFrom(backgroundColor: ReaderChrome.controlScrim),
+      visualDensity: VisualDensity.compact,
+      style: IconButton.styleFrom(
+        backgroundColor: ReaderChrome.controlScrim,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    final l10n = AppLocalizations.of(context)!;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+        child: Row(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: ReaderChrome.controlScrim,
+                borderRadius: AppRadius.lgR,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Text(
+                  '${widget.pageNumber}/${widget.pageCount}',
+                  style: const TextStyle(
+                    color: ReaderChrome.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+            _buildIconButton(
+              icon: Icons.save_alt,
+              tooltip: l10n.readerSaveImage,
+              onPressed: _saveImage,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _buildIconButton(
+              icon: Icons.copy_all_outlined,
+              tooltip: widget.isDownloaded
+                  ? l10n.readerCopyImagePath
+                  : l10n.readerCopyImageUrl,
+              onPressed: _copyImageSource,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _buildIconButton(
+              icon: Icons.settings,
+              tooltip: l10n.readerImageViewerSettingsTooltip,
+              onPressed: _showViewerSettings,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -307,37 +470,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
         body: Stack(
           children: [
             Positioned.fill(child: _buildViewport()),
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: ReaderChrome.controlScrim,
-                        borderRadius: AppRadius.lgR,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Text(
-                          '${widget.pageNumber}/${widget.pageCount}',
-                          style: const TextStyle(
-                            color: ReaderChrome.onSurface,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            Align(alignment: Alignment.topCenter, child: _buildTopBar()),
             SafeArea(
               child: Align(
                 alignment: Alignment.bottomCenter,
@@ -348,20 +481,6 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
                     spacing: 4,
                     runSpacing: 4,
                     children: [
-                      _buildIconButton(
-                        icon: Icons.copy_all_outlined,
-                        tooltip: widget.isDownloaded
-                            ? AppLocalizations.of(context)!.readerCopyImagePath
-                            : AppLocalizations.of(context)!.readerCopyImageUrl,
-                        onPressed: _copyImageSource,
-                      ),
-                      _buildIconButton(
-                        icon: Icons.settings,
-                        tooltip: AppLocalizations.of(
-                          context,
-                        )!.readerImageViewerSettingsTooltip,
-                        onPressed: _showViewerSettings,
-                      ),
                       _buildIconButton(
                         icon: Icons.center_focus_strong,
                         tooltip: AppLocalizations.of(context)!.resetButton,

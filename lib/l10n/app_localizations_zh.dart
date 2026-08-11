@@ -3323,6 +3323,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerCopyImageUrl => '复制图片链接';
 
   @override
+  String get readerSaveImage => '保存图片';
+
+  @override
+  String get readerImageSaved => '图片已保存到相册';
+
+  @override
+  String get readerSaveImageFailed => '图片保存失败';
+
+  @override
+  String get readerSaveImagePermissionDenied => '没有相册写入权限，保存失败';
+
+  @override
   String get updateAlreadyLatest => '当前已是最新版本';
 
   @override
@@ -3355,7 +3367,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateOpenReleasePage => '打开发布页';
 
   @override
-  String get updatePackagesBeta => '安装包（按版本号倒序）';
+  String get updatePackagesBeta => '安装包';
 
   @override
   String get updatePackages => '安装包';
@@ -7022,6 +7034,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get readerCopyImageUrl => '複製圖片連結';
 
   @override
+  String get readerSaveImage => '儲存圖片';
+
+  @override
+  String get readerImageSaved => '圖片已儲存到相簿';
+
+  @override
+  String get readerSaveImageFailed => '圖片儲存失敗';
+
+  @override
+  String get readerSaveImagePermissionDenied => '沒有相簿寫入權限，儲存失敗';
+
+  @override
   String get updateAlreadyLatest => '目前已是最新版本';
 
   @override
@@ -7054,7 +7078,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get updateOpenReleasePage => '開啟發布頁';
 
   @override
-  String get updatePackagesBeta => '安裝包（按版本號倒序）';
+  String get updatePackagesBeta => '安裝包';
 
   @override
   String get updatePackages => '安裝包';

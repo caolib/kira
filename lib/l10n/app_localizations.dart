@@ -6035,6 +6035,30 @@ abstract class AppLocalizations {
   /// **'复制图片链接'**
   String get readerCopyImageUrl;
 
+  /// No description provided for @readerSaveImage.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存图片'**
+  String get readerSaveImage;
+
+  /// No description provided for @readerImageSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片已保存到相册'**
+  String get readerImageSaved;
+
+  /// No description provided for @readerSaveImageFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片保存失败'**
+  String get readerSaveImageFailed;
+
+  /// No description provided for @readerSaveImagePermissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有相册写入权限，保存失败'**
+  String get readerSaveImagePermissionDenied;
+
   /// No description provided for @updateAlreadyLatest.
   ///
   /// In zh, this message translates to:
@@ -6098,7 +6122,7 @@ abstract class AppLocalizations {
   /// No description provided for @updatePackagesBeta.
   ///
   /// In zh, this message translates to:
-  /// **'安装包（按版本号倒序）'**
+  /// **'安装包'**
   String get updatePackagesBeta;
 
   /// No description provided for @updatePackages.
