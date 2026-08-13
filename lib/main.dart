@@ -21,6 +21,7 @@ import 'utils/app_logger.dart';
 import 'utils/app_storage.dart';
 import 'utils/display_mode_preference.dart';
 import 'utils/font_manager.dart';
+import 'utils/kira_links.dart';
 import 'utils/network_proxy.dart';
 
 bool get isDesktop =>
@@ -145,8 +146,14 @@ class KiraApp extends ConsumerStatefulWidget {
   ConsumerState<KiraApp> createState() => _KiraAppState();
 }
 
-class _KiraAppState extends ConsumerState<KiraApp> {
+class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
   final _user = UserManager();
+
+  /// 根 ScaffoldMessenger，用于在任意页面上方弹出「检测到分享链接」提示。
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  /// 本次会话内已处理过的分享链接内存镜像，避免每次回前台都读 prefs。
+  String? _lastHandledSharedPathWord;
 
   CardThemeData get _cardTheme => CardThemeData(
     clipBehavior: Clip.hardEdge,
@@ -164,15 +171,74 @@ class _KiraAppState extends ConsumerState<KiraApp> {
   void initState() {
     super.initState();
     _user.addListener(_onChanged);
+    WidgetsBinding.instance.addObserver(this);
     unawaited(
       DisplayModePreference.applyRefreshRate(_user.displayModeRefreshRate),
     );
+    // 冷启动后检测一次剪贴板中的分享链接（浏览器/聊天 App 里点不开
+    // kira:// 时，接收方可复制文本后打开 kira 跳转）。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_checkSharedLinkClipboard());
+    });
   }
 
   @override
   void dispose() {
     _user.removeListener(_onChanged);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_checkSharedLinkClipboard());
+    }
+  }
+
+  /// 剪贴板里有漫画分享链接时弹 SnackBar，点击「打开」跳转对应详情页。
+  Future<void> _checkSharedLinkClipboard() async {
+    try {
+      if (!await Clipboard.hasStrings()) return;
+      final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
+      if (text == null || text.isEmpty) return;
+      final pathWord = KiraLinks.extractComicPathWord(text);
+      if (pathWord == null) return;
+      if (pathWord == _lastHandledSharedPathWord) return;
+      final handled = await SharedLinkRecord.read();
+      if (handled == pathWord) {
+        // 分享者（分享时已标记）或之前已提示过——同步内存镜像，本次不再弹。
+        _lastHandledSharedPathWord = pathWord;
+        return;
+      }
+      _lastHandledSharedPathWord = pathWord;
+      await SharedLinkRecord.markHandled(pathWord);
+      final messengerContext = _messengerKey.currentContext;
+      if (messengerContext == null || !messengerContext.mounted) return;
+      final l10n = AppLocalizations.of(messengerContext)!;
+      final name = KiraLinks.extractComicName(text) ?? pathWord;
+      _messengerKey.currentState
+        ?..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(l10n.sharedLinkDetected(name)),
+            showCloseIcon: true,
+            action: SnackBarAction(
+              label: l10n.sharedLinkOpen,
+              onPressed: () => _router.push('/comic/$pathWord'),
+            ),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'shared_link_clipboard',
+        ),
+      );
+    }
   }
 
   void _onChanged() {
@@ -254,6 +320,7 @@ class _KiraAppState extends ConsumerState<KiraApp> {
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _user.themeMode,
       routerConfig: _router,
+      scaffoldMessengerKey: _messengerKey,
       locale: _user.locale.isEmpty ? null : _parseLocale(_user.locale),
     );
   }

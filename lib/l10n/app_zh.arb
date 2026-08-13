@@ -2026,6 +2026,27 @@
   "comicDetailAuthorUnavailable": "当前作者暂时无法查看作品",
   "comicDetailThemeUnavailable": "当前主题暂时无法查看作品",
   "comicDetailSelectUndownloadedChapters": "请选择未下载的章节",
+  "comicDetailShare": "分享漫画",
+  "comicDetailShareContent": "《{name}》 {url}",
+  "@comicDetailShareContent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedLinkDetected": "检测到分享的漫画《{name}》",
+  "@sharedLinkDetected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedLinkOpen": "打开",
   "comicDetailAddedToDownloadQueue": "已加入下载队列：{count} 章（顺序下载）",
   "@comicDetailAddedToDownloadQueue": {
     "placeholders": {

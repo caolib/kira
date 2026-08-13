@@ -2986,6 +2986,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get comicDetailSelectUndownloadedChapters => '请选择未下载的章节';
 
   @override
+  String get comicDetailShare => '分享漫画';
+
+  @override
+  String comicDetailShareContent(String name, String url) {
+    return '《$name》 $url';
+  }
+
+  @override
+  String sharedLinkDetected(String name) {
+    return '检测到分享的漫画《$name》';
+  }
+
+  @override
+  String get sharedLinkOpen => '打开';
+
+  @override
   String comicDetailAddedToDownloadQueue(int count) {
     return '已加入下载队列：$count 章（顺序下载）';
   }
@@ -6695,6 +6711,22 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get comicDetailSelectUndownloadedChapters => '請選擇未下載的章節';
+
+  @override
+  String get comicDetailShare => '分享漫畫';
+
+  @override
+  String comicDetailShareContent(String name, String url) {
+    return '《$name》 $url';
+  }
+
+  @override
+  String sharedLinkDetected(String name) {
+    return '檢測到分享的漫畫《$name》';
+  }
+
+  @override
+  String get sharedLinkOpen => '打開';
 
   @override
   String comicDetailAddedToDownloadQueue(int count) {

@@ -37,6 +37,7 @@ import '../pages/register_page.dart' show RegisterPage;
 import '../pages/search_page.dart';
 import '../pages/stats_page.dart';
 import '../pages/webview_login_page.dart';
+import '../utils/kira_links.dart';
 import '../widgets/comic_hero_tags.dart';
 import 'main_shell.dart';
 
@@ -211,6 +212,13 @@ GoRouter createAppRouter() {
             ],
           ),
         ],
+      ),
+      // https 分享落地页链接(App Link):https://{KiraLinks.webHost}/c/?w={pathWord}
+      // 系统把它交给 GoRouter 时 path 为 /c,这里重定向到真实的漫画详情路由。
+      GoRoute(
+        path: '/c',
+        redirect: (context, state) =>
+            KiraLinks.comicPathFromShareUrl(state.uri) ?? '/',
       ),
       GoRoute(
         path: '/comic/:pathWord',

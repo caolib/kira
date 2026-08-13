@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -17,6 +18,7 @@ import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
+import '../utils/kira_links.dart';
 import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
@@ -764,6 +766,35 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         .then((_) => _loadLocalHistory());
   }
 
+  /// 通过系统分享面板分享漫画的 https 落地页链接（见 [KiraLinks.comicShareUrl]），
+  /// 接收方点击后由系统或落地页拉起 kira 并打开本漫画详情页。
+  Future<void> _shareComic() async {
+    final l10n = AppLocalizations.of(context)!;
+    final name = _comic?.name ?? widget.pathWord;
+    // 分享面板关闭时 app 恢复前台会触发剪贴板检测；先把自己分享的链接
+    // 记为已处理，避免分享者收到自己刚分享的提示。
+    unawaited(SharedLinkRecord.markHandled(widget.pathWord));
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: l10n.comicDetailShareContent(
+            name,
+            KiraLinks.comicShareUrl(widget.pathWord),
+          ),
+          subject: name,
+        ),
+      );
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comic_detail.share',
+        ),
+      );
+    }
+  }
+
   List<Chapter> get _displayChapters =>
       _reversed ? _chapters.reversed.toList() : _chapters;
 
@@ -773,7 +804,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_comic?.name ?? '')),
+      appBar: AppBar(
+        title: Text(_comic?.name ?? ''),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: AppLocalizations.of(context)!.comicDetailShare,
+            onPressed: _shareComic,
+          ),
+        ],
+      ),
       body: _loadingComic
           ? const Center(child: ExpressiveLoadingIndicator())
           : _comic == null

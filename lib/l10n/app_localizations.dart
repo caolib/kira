@@ -5417,6 +5417,30 @@ abstract class AppLocalizations {
   /// **'请选择未下载的章节'**
   String get comicDetailSelectUndownloadedChapters;
 
+  /// No description provided for @comicDetailShare.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享漫画'**
+  String get comicDetailShare;
+
+  /// No description provided for @comicDetailShareContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'《{name}》 {url}'**
+  String comicDetailShareContent(String name, String url);
+
+  /// No description provided for @sharedLinkDetected.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到分享的漫画《{name}》'**
+  String sharedLinkDetected(String name);
+
+  /// No description provided for @sharedLinkOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开'**
+  String get sharedLinkOpen;
+
   /// No description provided for @comicDetailAddedToDownloadQueue.
   ///
   /// In zh, this message translates to:

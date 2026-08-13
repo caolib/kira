@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Platform folders (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) hold only platform-specific integration code. Static assets live in `assets/` and must be declared in `pubspec.yaml`. Release notes belong in `docs/CHANGELOG.md`. `ref/` holds reference material only (dandanplay API docs, sample JSON, category scratch dirs) — never import from it in production code.
+Platform folders (`android/`, `ios/`, `linux/`, `macos/`, `web/`, `windows/`) hold only platform-specific integration code. Static assets live in `assets/` and must be declared in `pubspec.yaml`. `ref/` holds reference material only (dandanplay API docs, sample JSON, category scratch dirs) — never import from it in production code.
 
 ### `lib/` 一级目录速览
 

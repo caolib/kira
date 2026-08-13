@@ -107,6 +107,7 @@ Future<T> load() async {
 | dandanplay 绑定 | `dandanplay_binding_$pathWord` | `lib/utils/dandanplay_binding_store.dart:102` |
 | AI 章节总结 | `zhipu_chapter_summary_$chapterUuid` | `lib/utils/chapter_summary_cache.dart:64` |
 | 远程公告已读 | `remote_notice_seen_keys_v2` | `lib/utils/remote_notice_service.dart:32` |
+| 分享链接已处理标记 | `shared_link_last_handled` | `lib/utils/kira_links.dart` |
 
 新增此类"按实体 ID 索引的历史/记录"时，沿用对应前缀，并确保 `cache_management_page._categoryOf` 能识别分类。
 

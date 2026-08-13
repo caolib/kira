@@ -1997,6 +1997,27 @@
   "comicDetailAuthorUnavailable": "目前作者暫時無法查看作品",
   "comicDetailThemeUnavailable": "目前主題暫時無法查看作品",
   "comicDetailSelectUndownloadedChapters": "請選擇未下載的章節",
+  "comicDetailShare": "分享漫畫",
+  "comicDetailShareContent": "《{name}》 {url}",
+  "@comicDetailShareContent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedLinkDetected": "檢測到分享的漫畫《{name}》",
+  "@sharedLinkDetected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedLinkOpen": "打開",
   "comicDetailAddedToDownloadQueue": "已加入下載佇列：{count} 章（順序下載）",
   "@comicDetailAddedToDownloadQueue": {
     "placeholders": {

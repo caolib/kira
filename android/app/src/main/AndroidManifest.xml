@@ -18,6 +18,24 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- kira:// 自定义协议深链（如 kira://open/comic/{pathWord} 打开漫画详情）。
+                 只加在 MainActivity 上；activity-alias 仅承担桌面图标入口，不要动。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="kira" android:host="open" android:pathPrefix="/comic/"/>
+            </intent-filter>
+            <!-- https 分享链接（官网落地页，host 需与 KiraLinks.webHost 一致）。
+                 autoVerify + 官网已部署的 /.well-known/assetlinks.json 实现
+                 App Links 免确认直达；/c 路由在 app_router.dart 中重定向到
+                 /comic/:pathWord。 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="kirakira.dpdns.org" android:pathPrefix="/c/"/>
+            </intent-filter>
         </activity>
         <activity-alias
             android:name=".LauncherDefault"
