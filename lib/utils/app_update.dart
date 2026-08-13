@@ -75,6 +75,10 @@ class AppUpdateInfo {
   final String releasePageUrl;
   final List<ReleaseAsset> assets;
   final bool isBetaChannel;
+  /// True when [latestVersion] equals the installed version — i.e. there is
+  /// no update, but the info still carries the current release's notes/page
+  /// so the About page can show "what's in this version".
+  final bool isCurrentVersion;
 
   const AppUpdateInfo({
     required this.currentVersion,
@@ -84,6 +88,7 @@ class AppUpdateInfo {
     required this.releasePageUrl,
     required this.assets,
     this.isBetaChannel = false,
+    this.isCurrentVersion = false,
   });
 }
 
@@ -94,13 +99,26 @@ class AppUpdateInfo {
 class AppUpdateState {
   final AppUpdateStatus status;
   final AppUpdateInfo? info;
-  const AppUpdateState._({required this.status, this.info});
+  /// Human-readable failure cause (already localized) for the
+  /// [AppUpdateStatus.failed] state. Null when the failure reason is unknown
+  /// or when the state is not a failure.
+  final String? errorDetail;
+  const AppUpdateState._({
+    required this.status,
+    this.info,
+    this.errorDetail,
+  });
   const AppUpdateState.idle() : this._(status: AppUpdateStatus.idle);
   const AppUpdateState.checking() : this._(status: AppUpdateStatus.checking);
   const AppUpdateState.available(AppUpdateInfo info)
     : this._(status: AppUpdateStatus.available, info: info);
-  const AppUpdateState.latest() : this._(status: AppUpdateStatus.latest);
-  const AppUpdateState.failed() : this._(status: AppUpdateStatus.failed);
+  /// "Already latest" — [info] optionally carries the current installed
+  /// version's release notes so the About page can show them.
+  const AppUpdateState.latest([AppUpdateInfo? info])
+    : this._(status: AppUpdateStatus.latest, info: info);
+  const AppUpdateState.failed([this.errorDetail])
+      : status = AppUpdateStatus.failed,
+        info = null;
 }
 
 enum AppUpdateStatus { idle, checking, available, latest, failed }
@@ -184,7 +202,22 @@ class AppUpdateService {
 
     final latestVersion = _normalizeVersion(tagName);
     if (latestVersion.isEmpty) return null;
-    if (_compareVersions(latestVersion, currentVersion) <= 0) return null;
+
+    // No update available. Still surface the current release's notes so the
+    // About page can show "what's in this version" — the GitHub "latest"
+    // release mapped here corresponds to (or is older than) what's installed.
+    if (_compareVersions(latestVersion, currentVersion) <= 0) {
+      return AppUpdateInfo(
+        currentVersion: currentVersion,
+        latestVersion: currentVersion,
+        releaseName:
+            releaseName.isNotEmpty ? releaseName : 'Current version',
+        releaseNotes: releaseNotes,
+        releasePageUrl: releasePageUrl,
+        assets: assets,
+        isCurrentVersion: true,
+      );
+    }
 
     if (respectSkippedVersion && user.skippedUpdateVersion == latestVersion) {
       return null;
@@ -228,10 +261,22 @@ class AppUpdateService {
     final newest = _maxByVersion(assets);
 
     // Compare internal build number: current >= latest means no update.
+    // Still surface the current CI build's notes for the About page.
     if (newest.versionParts.isNotEmpty) {
       final latestBuild = newest.versionParts.last;
       final currentBuild = int.tryParse(currentBuildNumber) ?? 0;
-      if (currentBuild >= latestBuild) return null;
+      if (currentBuild >= latestBuild) {
+        return AppUpdateInfo(
+          currentVersion: currentVersion,
+          latestVersion: tagName.isNotEmpty ? tagName : 'CI',
+          releaseName: releaseName.isNotEmpty ? releaseName : 'CI build',
+          releaseNotes: releaseNotes,
+          releasePageUrl: releasePageUrl,
+          assets: assets,
+          isBetaChannel: true,
+          isCurrentVersion: true,
+        );
+      }
     }
 
     if (autoCheck && user.lastBetaAssetName == newest.name) {
@@ -339,6 +384,17 @@ class AppUpdateService {
         return;
       }
 
+      // No update, but we have the current version's release notes — surface
+      // them via the "latest" state without lighting the badge.
+      if (updateInfo.isCurrentVersion) {
+        state.value = AppUpdateState.latest(updateInfo);
+        hasUnseenUpdate.value = false;
+        if (!auto && context.mounted) {
+          showToast(context, AppLocalizations.of(context)!.updateAlreadyLatest);
+        }
+        return;
+      }
+
       // Record latest beta build to dedupe auto-check prompts.
       if (updateInfo.isBetaChannel && updateInfo.assets.isNotEmpty) {
         await UserManager().setLastBetaAssetName(updateInfo.assets.first.name);
@@ -348,15 +404,20 @@ class AppUpdateService {
       // Manual check is only triggered from About; keep the badge off so
       // leaving the page does not re-light a dot the user already saw.
       hasUnseenUpdate.value = auto;
-    } catch (_) {
-      state.value = const AppUpdateState.failed();
+    } catch (e, st) {
+      await AppLogger.instance.recordWarning(
+        'update check failed: $e',
+        stackTrace: st,
+        source: 'app_update',
+      );
+      // Open-source project: surface the raw error as-is. No need to dress
+      // it up — the raw message (DioException includes status code, URL,
+      // type) is the most useful thing to show.
+      final detail = e.toString();
+      state.value = AppUpdateState.failed(detail);
       hasUnseenUpdate.value = false;
       if (!context.mounted || auto) return;
-      showToast(
-        context,
-        AppLocalizations.of(context)!.updateCheckFailedRetryLater,
-        isError: true,
-      );
+      showToast(context, detail, isError: true);
     }
   }
 

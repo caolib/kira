@@ -169,6 +169,12 @@ class _AboutPageState extends State<AboutPage> {
     _user.addListener(_onChanged);
     // Entry dots (profile "About" + bottom-nav) clear on open; update card keeps state.
     AppUpdateService.markUpdateBadgeSeen();
+    // If no check has run yet, silently fetch so the About page can show the
+    // current version's changelog (and surface an available update). auto=true
+    // keeps it badge-free and toast-free.
+    if (AppUpdateService.state.value.status == AppUpdateStatus.idle) {
+      AppUpdateService.checkAndPrompt(context, auto: true);
+    }
   }
 
   @override
@@ -664,8 +670,6 @@ class _UpdateCard extends StatefulWidget {
 }
 
 class _UpdateCardState extends State<_UpdateCard> {
-  bool _betaAssetsExpanded = false;
-
   /// Available-update body starts open so notes/actions are visible; user can fold to save space.
   bool _cardExpanded = true;
   late bool _useMirror;
@@ -766,6 +770,100 @@ class _UpdateCardState extends State<_UpdateCard> {
       styleSheet: githubMarkdownStyleSheet(
         context,
         foreground: cs.onSurfaceVariant,
+      ),
+    );
+  }
+
+  /// Compact card showing the changelog for the *currently installed* version.
+  /// Rendered when the update check found no update but still returned release
+  /// notes. No download/skip/mirror controls — just notes + release page link.
+  Widget _buildCurrentVersionCard(
+    ColorScheme cs,
+    TextTheme tt,
+    AppUpdateInfo info,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    return Card(
+      color: cs.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => setState(() => _cardExpanded = !_cardExpanded),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l10n.updateCurrentVersionNotes,
+                            style: tt.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            info.latestVersion,
+                            style: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l10n.updateOpenReleasePage,
+                      iconSize: 20,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _isInstalling
+                          ? null
+                          : () => _openUrl(info.releasePageUrl),
+                      icon: Icon(
+                        Icons.open_in_new,
+                        size: 20,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    Icon(
+                      _cardExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  child: _buildReleaseNotes(info.releaseNotes, cs),
+                ),
+              ),
+            ),
+            crossFadeState: _cardExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+            sizeCurve: Curves.easeInOut,
+          ),
+        ],
       ),
     );
   }
@@ -986,43 +1084,6 @@ class _UpdateCardState extends State<_UpdateCard> {
     );
   }
 
-  Widget _buildBetaExpandToggle(ColorScheme cs, TextTheme tt, int count) {
-    final l10n = AppLocalizations.of(context)!;
-    return InkWell(
-      onTap: _isInstalling
-          ? null
-          : () => setState(() => _betaAssetsExpanded = !_betaAssetsExpanded),
-      borderRadius: AppRadius.mdR,
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: AppRadius.mdR,
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _betaAssetsExpanded ? Icons.expand_less : Icons.expand_more,
-              size: 18,
-              color: cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              _betaAssetsExpanded
-                  ? l10n.updateCollapseOtherVersions
-                  : l10n.updateViewMoreVersions(count),
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -1030,10 +1091,21 @@ class _UpdateCardState extends State<_UpdateCard> {
     final tt = Theme.of(context).textTheme;
     final state = AppUpdateService.state.value;
 
-    // Idle / latest: no card. The About page's own "check update" tile covers
-    // manual checks.
-    if (state.status == AppUpdateStatus.idle ||
-        state.status == AppUpdateStatus.latest) {
+    // Idle: a silent fetch is triggered on entering About; render nothing
+    // while it resolves (fast), then latest/available/failed cards appear.
+    if (state.status == AppUpdateStatus.idle) {
+      return const SizedBox.shrink();
+    }
+
+    // Latest with current-version release notes: show a compact changelog
+    // card so the user can see what's in the version they're running.
+    if (state.status == AppUpdateStatus.latest && state.info != null) {
+      return _buildCurrentVersionCard(cs, tt, state.info!);
+    }
+
+    // Latest without info (e.g. assets empty) or other non-available states
+    // below fall through to the checking/failed/available branches.
+    if (state.status == AppUpdateStatus.latest) {
       return const SizedBox.shrink();
     }
 
@@ -1061,6 +1133,7 @@ class _UpdateCardState extends State<_UpdateCard> {
     }
 
     if (state.status == AppUpdateStatus.failed) {
+      final detail = state.errorDetail;
       return Card(
         color: cs.surfaceContainerLow,
         child: InkWell(
@@ -1073,7 +1146,23 @@ class _UpdateCardState extends State<_UpdateCard> {
                 Icon(Icons.error_outline, size: 20, color: cs.error),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: Text(l10n.updateCardFailed, style: tt.bodyMedium),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.updateCardFailed, style: tt.bodyMedium),
+                      if (detail != null && detail.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            detail,
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 TextButton(
                   onPressed: widget.onCheckUpdate,
@@ -1159,12 +1248,18 @@ class _UpdateCardState extends State<_UpdateCard> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  if (assets.length <= 1) ...[
+                  // Beta channel: don't list packages — just offer the newest
+                  // build via the same install/download buttons stable uses
+                  // for a single-asset release.
+                  if (isBeta) ...[
+                    if (assets.isNotEmpty)
+                      _buildInstallButtons(assets.first, cs, tt),
+                  ] else if (assets.length <= 1) ...[
                     if (assets.isNotEmpty)
                       _buildInstallButtons(assets.first, cs, tt),
                   ] else ...[
                     Text(
-                      isBeta ? l10n.updatePackagesBeta : l10n.updatePackages,
+                      l10n.updatePackages,
                       style: tt.labelLarge?.copyWith(
                         color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -1177,29 +1272,10 @@ class _UpdateCardState extends State<_UpdateCard> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: isBeta
-                              ? [
-                                  _buildAssetTile(
-                                    assets.first,
-                                    cs,
-                                    tt,
-                                    badge: l10n.updateLatestBadge,
-                                  ),
-                                  if (assets.length > 1) ...[
-                                    _buildBetaExpandToggle(
-                                      cs,
-                                      tt,
-                                      assets.length - 1,
-                                    ),
-                                    if (_betaAssetsExpanded)
-                                      for (final a in assets.skip(1))
-                                        _buildAssetTile(a, cs, tt),
-                                  ],
-                                ]
-                              : [
-                                  for (final a in assets)
-                                    _buildAssetTile(a, cs, tt),
-                                ],
+                          children: [
+                            for (final a in assets)
+                              _buildAssetTile(a, cs, tt),
+                          ],
                         ),
                       ),
                     ),

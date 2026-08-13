@@ -123,7 +123,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTE: ${{ github.event.inputs.note }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
 
@@ -136,14 +135,11 @@ jobs:
           test -n "$APK"
 
           {
-            echo "集中 CI APK 测试包。"
+            echo "${APP_VERSION}"
             echo
-            echo "最新上传版本: ${APP_VERSION}"
-            echo "最近提交:"
-            git log --oneline -5
-            echo
-            echo "工作流: ${RUN_URL}"
+            git log --pretty=format:"- %s" -5
             if [ -n "$NOTE" ]; then
+              echo
               echo
               echo "$NOTE"
             fi

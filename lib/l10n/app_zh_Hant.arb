@@ -2245,6 +2245,7 @@
   "updateCheckFailedRetryLater": "檢查更新失敗，請稍後重試",
   "updateOpenDownloadFailed": "無法開啟下載連結",
   "updateNoReleaseNotes": "暫無更新說明",
+  "updateCurrentVersionNotes": "目前版本",
   "updateMirrorDownload": "鏡像下載",
   "updateLatestBadge": "最新",
   "updateCollapseOtherVersions": "收起其他版本",

@@ -6107,6 +6107,12 @@ abstract class AppLocalizations {
   /// **'暂无更新说明'**
   String get updateNoReleaseNotes;
 
+  /// No description provided for @updateCurrentVersionNotes.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前版本'**
+  String get updateCurrentVersionNotes;
+
   /// No description provided for @updateMirrorDownload.
   ///
   /// In zh, this message translates to:

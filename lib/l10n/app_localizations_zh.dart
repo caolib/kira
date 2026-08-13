@@ -3363,6 +3363,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateNoReleaseNotes => '暂无更新说明';
 
   @override
+  String get updateCurrentVersionNotes => '当前版本';
+
+  @override
   String get updateMirrorDownload => '镜像下载';
 
   @override
@@ -7088,6 +7091,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get updateNoReleaseNotes => '暫無更新說明';
+
+  @override
+  String get updateCurrentVersionNotes => '目前版本';
 
   @override
   String get updateMirrorDownload => '鏡像下載';

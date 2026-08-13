@@ -2274,6 +2274,7 @@
   "updateCheckFailedRetryLater": "检查更新失败，请稍后重试",
   "updateOpenDownloadFailed": "无法打开下载链接",
   "updateNoReleaseNotes": "暂无更新说明",
+  "updateCurrentVersionNotes": "当前版本",
   "updateMirrorDownload": "镜像下载",
   "updateLatestBadge": "最新",
   "updateCollapseOtherVersions": "收起其他版本",
