@@ -181,10 +181,8 @@ class _NetworkPageState extends State<NetworkPage>
         secondary = l10n.networkStatusUnknownHint;
     }
 
-    return _buildElevatedCard(
+    return Card(
       color: Color.alphaBlend(color.withValues(alpha: 0.12), cs.surface),
-      borderRadius: AppRadius.xlR,
-      side: BorderSide(color: color.withValues(alpha: 0.4)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Row(
@@ -217,21 +215,6 @@ class _NetworkPageState extends State<NetworkPage>
           ],
         ),
       ),
-    );
-  }
-
-  /// 使用全局 CardTheme 的 elevation，让外观页的统一阴影设置在本页生效。
-  Widget _buildElevatedCard({
-    required Widget child,
-    required Color color,
-    required BorderRadius borderRadius,
-    BorderSide side = BorderSide.none,
-  }) {
-    return Card(
-      margin: EdgeInsets.zero,
-      color: color,
-      shape: RoundedRectangleBorder(borderRadius: borderRadius, side: side),
-      child: child,
     );
   }
 
@@ -420,13 +403,11 @@ class _NetworkPageState extends State<NetworkPage>
   }
 
   Widget _buildEmptyHint(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
-    return _buildElevatedCard(
+    return Card(
       color: Color.alphaBlend(
         cs.surfaceContainerHighest.withValues(alpha: 0.3),
         cs.surface,
       ),
-      borderRadius: AppRadius.lgR,
-      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
       child: SizedBox(
         width: double.infinity,
         child: Padding(
@@ -482,7 +463,7 @@ class _NetworkPageState extends State<NetworkPage>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppRadius.xsR,
                 ),
                 child: Text(
                   l10n.networkRouteLabel(routeIndex + 1),
@@ -588,17 +569,15 @@ class _NetworkPageState extends State<NetworkPage>
           }
         : null;
 
-    return _buildElevatedCard(
+    return Card(
       color: cs.surface,
-      borderRadius: AppRadius.lgR,
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadius.lgR,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           decoration: BoxDecoration(
-            // 选中态用更淡的填充+细描边,避免过于抢眼。
+            // 选中态用更淡的填充,避免过于抢眼;无描边,靠填充+文字色区分。
             color: isSelected
                 ? Color.alphaBlend(
                     cs.primary.withValues(alpha: 0.08),
@@ -606,11 +585,6 @@ class _NetworkPageState extends State<NetworkPage>
                   )
                 : cs.surface,
             borderRadius: AppRadius.lgR,
-            border: Border.all(
-              color: isSelected
-                  ? cs.primary.withValues(alpha: 0.4)
-                  : color.withValues(alpha: 0.5),
-            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -671,7 +645,7 @@ class _NetworkPageState extends State<NetworkPage>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: cs.secondaryContainer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppRadius.xsR,
                 ),
                 child: Text(
                   l10n.networkOtherRouteGroup,
@@ -735,13 +709,11 @@ class _NetworkPageState extends State<NetworkPage>
         ? l10n.networkTesting
         : (latency == null ? l10n.networkTimeout : '$latency ms');
 
-    return _buildElevatedCard(
+    return Card(
       color: Color.alphaBlend(
         cs.surfaceContainerHighest.withValues(alpha: 0.35),
         cs.surface,
       ),
-      borderRadius: AppRadius.mdR,
-      side: BorderSide(color: color.withValues(alpha: 0.35)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         child: Column(
@@ -781,10 +753,8 @@ class _NetworkPageState extends State<NetworkPage>
   Widget _buildProxyCard(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
     final isManual = _user.networkProxyMode == NetworkProxyMode.manual;
 
-    return _buildElevatedCard(
+    return Card(
       color: cs.surfaceContainerLow,
-      borderRadius: AppRadius.xlR,
-      side: BorderSide(color: cs.outlineVariant),
       child: Column(
         children: [
           Padding(
@@ -907,10 +877,8 @@ class _NetworkPageState extends State<NetworkPage>
     TextTheme tt,
     ColorScheme cs,
   ) {
-    return _buildElevatedCard(
+    return Card(
       color: cs.surfaceContainerLow,
-      borderRadius: AppRadius.xlR,
-      side: BorderSide(color: cs.outlineVariant),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -919,9 +887,6 @@ class _NetworkPageState extends State<NetworkPage>
             child: InkWell(
               onTap: () =>
                   setState(() => _advancedExpanded = !_advancedExpanded),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
                 child: Row(
@@ -1503,7 +1468,7 @@ class _ProxyPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: active ? 0.14 : 0.06),
-        borderRadius: AppRadius.xlR,
+        borderRadius: AppRadius.smR,
         border: Border.all(color: color.withValues(alpha: active ? 0.4 : 0.2)),
       ),
       child: Row(
@@ -1567,8 +1532,8 @@ class _ConnectedButtonGroup extends StatelessWidget {
 
           final shape = RoundedRectangleBorder(
             borderRadius: BorderRadius.horizontal(
-              left: isFirst ? const Radius.circular(8) : Radius.zero,
-              right: isLast ? const Radius.circular(8) : Radius.zero,
+              left: isFirst ? const Radius.circular(AppRadius.sm) : Radius.zero,
+              right: isLast ? const Radius.circular(AppRadius.sm) : Radius.zero,
             ),
           );
 
