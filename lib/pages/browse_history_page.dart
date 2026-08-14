@@ -13,6 +13,7 @@ import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
@@ -172,8 +173,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
       if (!silent && mounted) {
         showToast(context, l10n.refreshSuccess);
       }
-    } catch (e) {
-      debugPrint('BrowseHistoryPage load error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'browse_history_page.load',
+        ),
+      );
       if (isInitial && mounted) setState(() => _loading = false);
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
@@ -206,8 +213,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
           _offset = _comicItems.length;
         });
       }
-    } catch (e) {
-      debugPrint('BrowseHistoryPage loadMore error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'browse_history_page.load_more',
+        ),
+      );
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
       }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,6 +12,7 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_logger.dart';
 import '../utils/app_storage.dart';
 import '../utils/font_manager.dart';
 import '../utils/media_kit_native_loader.dart';
@@ -587,7 +589,15 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       if (await file.exists()) {
         try {
           sizeBytes = await file.length();
-        } catch (_) {}
+        } catch (e, stack) {
+          unawaited(
+            AppLogger.instance.recordWarning(
+              e,
+              stackTrace: stack,
+              source: 'cache_management.scan_font_size',
+            ),
+          );
+        }
       }
       totalBytes += sizeBytes;
       fonts.add(_FontCacheEntry(id: name, name: name, sizeBytes: sizeBytes));

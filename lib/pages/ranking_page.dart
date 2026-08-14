@@ -107,7 +107,14 @@ class _RankingPageState extends State<RankingPage> {
         _offset = data.list.length;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'ranking_page.load',
+        ),
+      );
       if (mounted) setState(() => _loading = false);
     }
   }

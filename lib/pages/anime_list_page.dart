@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/anime.dart';
 import '../routing/app_router.dart';
+import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../widgets/comic_card_skeleton.dart';
 import 'home_page.dart';
@@ -109,8 +112,14 @@ class _AnimeListPageState extends State<AnimeListPage> {
         _total = data.total;
         _loading = false;
       });
-    } catch (e) {
-      debugPrint('AnimeListPage load error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_list_page.load',
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -132,8 +141,14 @@ class _AnimeListPageState extends State<AnimeListPage> {
         _total = data.total;
         _loadingMore = false;
       });
-    } catch (e) {
-      debugPrint('AnimeListPage loadMore error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_list_page.load_more',
+        ),
+      );
       if (mounted) {
         setState(() => _loadingMore = false);
       } else {

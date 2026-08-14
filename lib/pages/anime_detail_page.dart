@@ -12,6 +12,7 @@ import '../models/anime.dart';
 import '../routing/app_router.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/anime_playback_history.dart';
+import '../utils/app_logger.dart';
 import '../utils/chinese_converter.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/dandanplay_binding_store.dart';
@@ -249,8 +250,14 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
         _detailError = null;
       });
       await _saveDetailCache();
-    } catch (e) {
-      debugPrint('AnimeDetailPage load detail error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_detail_page.load_detail',
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _loadingDetail = false;
@@ -279,8 +286,14 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
       });
       unawaited(_loadLatestPlaybackRecord());
       _syncDandanplayBindingsAfterChaptersLoaded();
-    } catch (e) {
-      debugPrint('AnimeDetailPage load chapters error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_detail_page.load_chapters',
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _loadingChapters = false;
@@ -1030,8 +1043,14 @@ class _AnimeDetailPageState extends State<AnimeDetailPage>
             ? l10n.animeDetailCollected
             : l10n.animeDetailCollectCancelled,
       );
-    } catch (e) {
-      debugPrint('AnimeDetailPage toggleCollect error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_detail_page.toggle_collect',
+        ),
+      );
       if (!mounted) return;
       setState(() => _isCollected = !nextState);
       await _saveDetailCache();

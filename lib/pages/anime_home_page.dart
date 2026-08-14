@@ -13,6 +13,7 @@ import '../providers/app_providers.dart';
 import '../providers/repository_providers.dart';
 import '../repositories/anime_home_repository.dart';
 import '../routing/app_router.dart';
+import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/toast.dart';
 import 'anime_list_page.dart';
@@ -81,8 +82,14 @@ class _AnimeHomePageState extends ConsumerState<AnimeHomePage> {
         _loading = false;
         _refreshing = false;
       });
-    } catch (e) {
-      debugPrint('AnimeHomePage load error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_home_page.load',
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _loading = false;

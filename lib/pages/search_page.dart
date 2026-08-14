@@ -15,6 +15,7 @@ import '../models/user_manager.dart';
 import '../repositories/search_init_repository.dart';
 import '../routing/app_router.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
@@ -101,8 +102,14 @@ class _SearchPageState extends State<SearchPage> {
         _tags = data.tags;
         _refreshing = false;
       });
-    } catch (e) {
-      debugPrint('SearchPage loadInit error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'search_page.load_init',
+        ),
+      );
       if (mounted) {
         setState(() => _refreshing = false);
       }
@@ -144,8 +151,14 @@ class _SearchPageState extends State<SearchPage> {
           _searching = false;
         });
       }
-    } catch (e) {
-      debugPrint('SearchPage search error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'search_page.search',
+        ),
+      );
       if (mounted) setState(() => _searching = false);
     }
   }
@@ -179,8 +192,14 @@ class _SearchPageState extends State<SearchPage> {
         _offset = _comics.length;
         _searching = false;
       });
-    } catch (e) {
-      debugPrint('SearchPage loadComics error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'search_page.load_comics',
+        ),
+      );
       if (mounted) setState(() => _searching = false);
     }
   }
@@ -214,8 +233,14 @@ class _SearchPageState extends State<SearchPage> {
       } else if (!_isAnimeMode) {
         await _loadComics(reset: false);
       }
-    } catch (e) {
-      debugPrint('SearchPage loadMore error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'search_page.load_more',
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _loadingMore = false);

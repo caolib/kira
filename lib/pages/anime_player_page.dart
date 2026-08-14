@@ -322,8 +322,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       _publishFullscreenMeta();
       unawaited(_openMedia(videoUrl));
       unawaited(_loadSavedDanmakuOrSetupSearch(danmakuSerial));
-    } catch (e) {
-      debugPrint('AnimePlayerPage load error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_player_page.load',
+        ),
+      );
       if (!mounted) return;
       final requiresLogin = _isUnauthorized(e);
       if (requiresLogin) {
@@ -669,8 +675,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
         _rawError = null;
       });
       unawaited(_restorePlaybackProgress(serial));
-    } catch (e) {
-      debugPrint('AnimePlayerPage open media error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_player_page.open_media',
+        ),
+      );
       final rawMessage = e.toString();
       if (!mounted || serial != _openMediaSerial) return;
       final l10n = AppLocalizations.of(context)!;
@@ -822,8 +834,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
 
       try {
         await _player.seek(position);
-      } catch (e) {
-        debugPrint('Restore playback progress seek error: $e');
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'anime_player_page.restore_seek',
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 150));
         continue;
       }
@@ -852,8 +870,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       return mounted &&
           serial == _openMediaSerial &&
           _isNearOrAfterPlaybackProgress(_player.state.position, position);
-    } catch (e) {
-      debugPrint('Restore playback progress final seek error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_player_page.restore_seek_final',
+        ),
+      );
       return false;
     }
   }
@@ -1145,7 +1169,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
           _hasSearched = true;
         });
       }
-    } catch (e) {
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_player_page.inline_search',
+        ),
+      );
       if (mounted) {
         setState(() {
           _inlineSearching = false;
@@ -1244,8 +1275,14 @@ class _AnimePlayerPageState extends State<AnimePlayerPage>
       }
       // if (!silent) _showPlayerHint('Loaded ${items.length} danmaku items');
       return true;
-    } catch (e) {
-      debugPrint('LoadDanmaku error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'anime_player_page.load_danmaku',
+        ),
+      );
       final currentRequest = serial != null
           ? serial == _danmakuLoadSerial
           : targetChapterUuid == _currentChapterUuid;

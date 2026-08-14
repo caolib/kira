@@ -16,6 +16,7 @@ import '../repositories/manga_home_repository.dart';
 import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/settings_rebuild_guard.dart';
 import '../utils/time_format.dart';
@@ -148,8 +149,14 @@ class _HomePageState extends ConsumerState<HomePage>
         _loading = false;
         _refreshing = false;
       });
-    } catch (e) {
-      debugPrint('HomePage load error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'home_page.load',
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -177,8 +184,14 @@ class _HomePageState extends ConsumerState<HomePage>
         _loading = false;
         _refreshing = false;
       });
-    } catch (e) {
-      debugPrint('HomePage copy load error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'home_page.load_copy',
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _loading = false;

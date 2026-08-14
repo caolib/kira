@@ -270,7 +270,14 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       if (mounted && showRefreshNotice) {
         setState(() => _refreshingComic = false);
       }
-    } catch (_) {
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comic_detail.load',
+        ),
+      );
       if (mounted) {
         setState(() {
           _loadingComic = false;
@@ -358,7 +365,14 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       });
       await _saveCache();
       await _syncNextBrowseChapter();
-    } catch (_) {
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comic_detail.load_chapters',
+        ),
+      );
       if (mounted) {
         setState(() {
           _loadingChapters = false;
@@ -550,7 +564,14 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           _nextBrowseChapterListPage = null;
         });
       }
-    } catch (_) {
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comic_detail.next_browse_chapter',
+        ),
+      );
       if (mounted && _nextBrowseChapterSourceId == nextUuid) {
         setState(() {
           _nextBrowseChapter = null;

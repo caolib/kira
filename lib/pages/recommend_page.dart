@@ -42,7 +42,14 @@ class _RecommendPageState extends State<RecommendPage> {
         _offset = data.length;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'recommend_page.load',
+        ),
+      );
       if (mounted) setState(() => _loading = false);
     }
   }

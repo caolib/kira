@@ -18,6 +18,7 @@ import '../providers/repository_providers.dart';
 import '../repositories/bookshelf_repository.dart';
 import '../routing/app_router.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
@@ -292,8 +293,14 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
       if (!silent && mounted) {
         showToast(context, AppLocalizations.of(context)!.refreshSuccess);
       }
-    } catch (e) {
-      debugPrint('BookshelfPage load error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'bookshelf_page.load',
+        ),
+      );
       if (isInitial && mounted) setState(() => _loading = false);
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
@@ -358,8 +365,14 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
           _offset = data.list.length;
         });
       }
-    } catch (e) {
-      debugPrint('BookshelfPage refreshLoaded error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'bookshelf_page.refresh_loaded',
+        ),
+      );
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
       }
@@ -397,8 +410,14 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
           _offset = _animeItems.length;
         });
       }
-    } catch (e) {
-      debugPrint('BookshelfPage loadMore error: $e');
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'bookshelf_page.load_more',
+        ),
+      );
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
       }
@@ -574,10 +593,8 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverAppBar(
-                pinned: false,
                 floating: true,
                 snap: true,
-                primary: true,
                 automaticallyImplyLeading: false,
                 scrolledUnderElevation: 0,
                 backgroundColor: Theme.of(context).colorScheme.surface,

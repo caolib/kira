@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_logger.dart';
 import '../utils/app_update.dart';
 import '../utils/remote_notice_service.dart';
 import '../utils/toast.dart';
@@ -270,8 +273,14 @@ class _ProfilePageState extends State<ProfilePage> {
     if (confirm == true) {
       try {
         await ApiClient().user.logout();
-      } catch (e) {
-        debugPrint('ProfilePage logout error: $e');
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'profile_page.logout',
+          ),
+        );
       } finally {
         await _user.logout();
       }

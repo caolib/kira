@@ -28,10 +28,26 @@ class MediaKitDownloadCancelToken {
     _cancelled = true;
     try {
       _request?.abort();
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'media_kit_native.cancel',
+        ),
+      );
+    }
     try {
       _client?.close(force: true);
-    } catch (_) {}
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'media_kit_native.cancel',
+        ),
+      );
+    }
   }
 
   void _attach(HttpClient client, HttpClientRequest request) {
@@ -165,7 +181,15 @@ class MediaKitNativeLoader {
       fileCount += 1;
       try {
         sizeBytes += await entity.length();
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'media_kit_native.scan_size',
+          ),
+        );
+      }
     }
 
     String? version;
@@ -173,7 +197,15 @@ class MediaKitNativeLoader {
     if (await versionFile.exists()) {
       try {
         version = (await versionFile.readAsString()).trim();
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'media_kit_native.read_version',
+          ),
+        );
+      }
     }
 
     final installed =
@@ -341,7 +373,15 @@ class MediaKitNativeLoader {
       }
       try {
         if (partialFile.existsSync()) await partialFile.delete();
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'media_kit_native.cleanup_partial',
+          ),
+        );
+      }
       rethrow;
     }
 
@@ -381,7 +421,15 @@ class MediaKitNativeLoader {
     } catch (e) {
       try {
         if (jarFile.existsSync()) await jarFile.delete();
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'media_kit_native.cleanup_jar',
+          ),
+        );
+      }
       rethrow;
     }
     debugPrint('[media_kit_native] extract done');
@@ -550,10 +598,26 @@ class MediaKitNativeLoader {
     } finally {
       try {
         await sink?.close();
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'media_kit_native.close_sink',
+          ),
+        );
+      }
       try {
         client.close(force: true);
-      } catch (_) {}
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'media_kit_native.close_client',
+          ),
+        );
+      }
     }
   }
 
