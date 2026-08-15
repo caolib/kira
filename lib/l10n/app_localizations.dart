@@ -2682,6 +2682,114 @@ abstract class AppLocalizations {
   /// **'{count} 页'**
   String statsPagesOnDate(int count);
 
+  /// No description provided for @statsBarChartWeekdayMon.
+  ///
+  /// In zh, this message translates to:
+  /// **'一'**
+  String get statsBarChartWeekdayMon;
+
+  /// No description provided for @statsBarChartWeekdayTue.
+  ///
+  /// In zh, this message translates to:
+  /// **'二'**
+  String get statsBarChartWeekdayTue;
+
+  /// No description provided for @statsBarChartWeekdayWed.
+  ///
+  /// In zh, this message translates to:
+  /// **'三'**
+  String get statsBarChartWeekdayWed;
+
+  /// No description provided for @statsBarChartWeekdayThu.
+  ///
+  /// In zh, this message translates to:
+  /// **'四'**
+  String get statsBarChartWeekdayThu;
+
+  /// No description provided for @statsBarChartWeekdayFri.
+  ///
+  /// In zh, this message translates to:
+  /// **'五'**
+  String get statsBarChartWeekdayFri;
+
+  /// No description provided for @statsBarChartWeekdaySat.
+  ///
+  /// In zh, this message translates to:
+  /// **'六'**
+  String get statsBarChartWeekdaySat;
+
+  /// No description provided for @statsBarChartWeekdaySun.
+  ///
+  /// In zh, this message translates to:
+  /// **'日'**
+  String get statsBarChartWeekdaySun;
+
+  /// No description provided for @statsChartStyle.
+  ///
+  /// In zh, this message translates to:
+  /// **'图表样式'**
+  String get statsChartStyle;
+
+  /// No description provided for @statsChartStyleHeatmap.
+  ///
+  /// In zh, this message translates to:
+  /// **'热力图'**
+  String get statsChartStyleHeatmap;
+
+  /// No description provided for @statsChartStyleHeatmapDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'按周展示近一年阅读活跃度'**
+  String get statsChartStyleHeatmapDesc;
+
+  /// No description provided for @statsChartStyleBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'条形图'**
+  String get statsChartStyleBar;
+
+  /// No description provided for @statsChartStyleBarDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'按天展示两周阅读页数'**
+  String get statsChartStyleBarDesc;
+
+  /// No description provided for @statsShowSections.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示组件'**
+  String get statsShowSections;
+
+  /// No description provided for @statsDragToReorder.
+  ///
+  /// In zh, this message translates to:
+  /// **'长按拖动排序'**
+  String get statsDragToReorder;
+
+  /// No description provided for @statsSectionOverview.
+  ///
+  /// In zh, this message translates to:
+  /// **'概览'**
+  String get statsSectionOverview;
+
+  /// No description provided for @statsSectionTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'常看类型'**
+  String get statsSectionTags;
+
+  /// No description provided for @statsSectionActivity.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读活跃度'**
+  String get statsSectionActivity;
+
+  /// No description provided for @statsKeepAtLeastOne.
+  ///
+  /// In zh, this message translates to:
+  /// **'至少保留一个组件'**
+  String get statsKeepAtLeastOne;
+
   /// No description provided for @statsClearButton.
   ///
   /// In zh, this message translates to:

@@ -1458,6 +1458,60 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get statsBarChartWeekdayMon => '一';
+
+  @override
+  String get statsBarChartWeekdayTue => '二';
+
+  @override
+  String get statsBarChartWeekdayWed => '三';
+
+  @override
+  String get statsBarChartWeekdayThu => '四';
+
+  @override
+  String get statsBarChartWeekdayFri => '五';
+
+  @override
+  String get statsBarChartWeekdaySat => '六';
+
+  @override
+  String get statsBarChartWeekdaySun => '日';
+
+  @override
+  String get statsChartStyle => '图表样式';
+
+  @override
+  String get statsChartStyleHeatmap => '热力图';
+
+  @override
+  String get statsChartStyleHeatmapDesc => '按周展示近一年阅读活跃度';
+
+  @override
+  String get statsChartStyleBar => '条形图';
+
+  @override
+  String get statsChartStyleBarDesc => '按天展示两周阅读页数';
+
+  @override
+  String get statsShowSections => '显示组件';
+
+  @override
+  String get statsDragToReorder => '长按拖动排序';
+
+  @override
+  String get statsSectionOverview => '概览';
+
+  @override
+  String get statsSectionTags => '常看类型';
+
+  @override
+  String get statsSectionActivity => '阅读活跃度';
+
+  @override
+  String get statsKeepAtLeastOne => '至少保留一个组件';
+
+  @override
   String get statsClearButton => '清除';
 
   @override
@@ -5186,6 +5240,60 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String statsPagesOnDate(int count) {
     return '$count 頁';
   }
+
+  @override
+  String get statsBarChartWeekdayMon => '一';
+
+  @override
+  String get statsBarChartWeekdayTue => '二';
+
+  @override
+  String get statsBarChartWeekdayWed => '三';
+
+  @override
+  String get statsBarChartWeekdayThu => '四';
+
+  @override
+  String get statsBarChartWeekdayFri => '五';
+
+  @override
+  String get statsBarChartWeekdaySat => '六';
+
+  @override
+  String get statsBarChartWeekdaySun => '日';
+
+  @override
+  String get statsChartStyle => '圖表樣式';
+
+  @override
+  String get statsChartStyleHeatmap => '熱力圖';
+
+  @override
+  String get statsChartStyleHeatmapDesc => '按週展示近一年閱讀活躍度';
+
+  @override
+  String get statsChartStyleBar => '條形圖';
+
+  @override
+  String get statsChartStyleBarDesc => '按天展示兩週閱讀頁數';
+
+  @override
+  String get statsShowSections => '顯示元件';
+
+  @override
+  String get statsDragToReorder => '長按拖動排序';
+
+  @override
+  String get statsSectionOverview => '概覽';
+
+  @override
+  String get statsSectionTags => '常看類型';
+
+  @override
+  String get statsSectionActivity => '閱讀活躍度';
+
+  @override
+  String get statsKeepAtLeastOne => '至少保留一個元件';
 
   @override
   String get statsClearButton => '清除';

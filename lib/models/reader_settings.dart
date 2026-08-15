@@ -40,6 +40,21 @@ class ReaderSettings extends PrefsStore {
   static const _keyStatusOverlayFps = 'reader_status_overlay_fps';
   static const _keyStatusOverlayOrder = 'reader_status_overlay_order';
   static const _keyReadingStatsEnabled = 'reader_reading_stats_enabled';
+  static const _keyReadingStatsChartStyle = 'reader_reading_stats_chart_style';
+  static const _keyReadingStatsShowOverview =
+      'reader_reading_stats_show_overview';
+  static const _keyReadingStatsShowTags = 'reader_reading_stats_show_tags';
+  static const _keyReadingStatsShowActivityChart =
+      'reader_reading_stats_show_activity_chart';
+  static const _keyReadingStatsSectionOrder =
+      'reader_reading_stats_section_order';
+
+  /// 统计页三个组件的默认显示顺序（与开关独立）。
+  static const List<String> defaultReadingStatsSectionOrder = [
+    'overview',
+    'tags',
+    'activity',
+  ];
 
   /// 状态显示各段位的默认显示顺序（时间/网络/电量/页码/帧率）。
   static const List<String> defaultStatusOverlayOrder = [
@@ -79,6 +94,18 @@ class ReaderSettings extends PrefsStore {
   List<String> _statusOverlayOrder = List.of(defaultStatusOverlayOrder);
   bool _readingStatsEnabled = false;
 
+  /// 阅读活跃度图表样式：0=热力图（默认），1=条形图。
+  /// 见 [readingStatsChartStyle] / [setReadingStatsChartStyle]。
+  int _readingStatsChartStyle = 0;
+
+  /// 统计页三个组件是否显示，默认全开。至少保留一个由 UI 层强制。
+  bool _readingStatsShowOverview = true;
+  bool _readingStatsShowTags = true;
+  bool _readingStatsShowActivityChart = true;
+  List<String> _readingStatsSectionOrder = List.of(
+    defaultReadingStatsSectionOrder,
+  );
+
   // ── Getters ────────────────────────────────────────────────────────
 
   int get mode => _mode;
@@ -106,6 +133,17 @@ class ReaderSettings extends PrefsStore {
   bool get statusOverlayPage => _statusOverlayPage;
   bool get statusOverlayFps => _statusOverlayFps;
   bool get readingStatsEnabled => _readingStatsEnabled;
+
+  /// 阅读活跃度图表样式：0=热力图（默认），1=条形图。
+  int get readingStatsChartStyle => _readingStatsChartStyle;
+
+  bool get readingStatsShowOverview => _readingStatsShowOverview;
+  bool get readingStatsShowTags => _readingStatsShowTags;
+  bool get readingStatsShowActivityChart => _readingStatsShowActivityChart;
+
+  /// 统计组件显示顺序（未知 id 剔除、去重，缺失的按默认顺序补到末尾）。
+  List<String> get readingStatsSectionOrder =>
+      List.unmodifiable(_readingStatsSectionOrder);
 
   /// 状态显示段位顺序（未知 id 会被剔除，缺失的段位按默认顺序补到末尾）。
   List<String> get statusOverlayOrder => List.unmodifiable(_statusOverlayOrder);
@@ -147,6 +185,17 @@ class ReaderSettings extends PrefsStore {
     final savedOrder = prefs.getStringList(_keyStatusOverlayOrder) ?? const [];
     _statusOverlayOrder = _sanitizeStatusOverlayOrder(savedOrder);
     _readingStatsEnabled = prefs.getBool(_keyReadingStatsEnabled) ?? false;
+    _readingStatsChartStyle = prefs.getInt(_keyReadingStatsChartStyle) ?? 0;
+    _readingStatsShowOverview =
+        prefs.getBool(_keyReadingStatsShowOverview) ?? true;
+    _readingStatsShowTags = prefs.getBool(_keyReadingStatsShowTags) ?? true;
+    _readingStatsShowActivityChart =
+        prefs.getBool(_keyReadingStatsShowActivityChart) ?? true;
+    final savedSectionOrder =
+        prefs.getStringList(_keyReadingStatsSectionOrder) ?? const [];
+    _readingStatsSectionOrder = _sanitizeReadingStatsSectionOrder(
+      savedSectionOrder,
+    );
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -285,6 +334,33 @@ class ReaderSettings extends PrefsStore {
     _readingStatsEnabled = value;
     await setBool(_keyReadingStatsEnabled, value);
   }
+
+  Future<void> setReadingStatsChartStyle(int value) async {
+    _readingStatsChartStyle = value;
+    await setInt(_keyReadingStatsChartStyle, value);
+  }
+
+  Future<void> setReadingStatsShowOverview(bool value) async {
+    _readingStatsShowOverview = value;
+    await setBool(_keyReadingStatsShowOverview, value);
+  }
+
+  Future<void> setReadingStatsShowTags(bool value) async {
+    _readingStatsShowTags = value;
+    await setBool(_keyReadingStatsShowTags, value);
+  }
+
+  Future<void> setReadingStatsShowActivityChart(bool value) async {
+    _readingStatsShowActivityChart = value;
+    await setBool(_keyReadingStatsShowActivityChart, value);
+  }
+
+  Future<void> setReadingStatsSectionOrder(List<String> value) async {
+    final sanitized = _sanitizeReadingStatsSectionOrder(value);
+    if (_listEquals(_readingStatsSectionOrder, sanitized)) return;
+    _readingStatsSectionOrder = sanitized;
+    await setStringList(_keyReadingStatsSectionOrder, sanitized);
+  }
 }
 
 /// 保留输入顺序、剔除未知 id、去重，并把缺失的段位按默认顺序补到末尾。
@@ -307,4 +383,19 @@ bool _listEquals(List<String> a, List<String> b) {
     if (a[i] != b[i]) return false;
   }
   return true;
+}
+
+/// 保留输入顺序、剔除未知 id、去重，并把缺失的段位按默认顺序补到末尾。
+List<String> _sanitizeReadingStatsSectionOrder(List<String> input) {
+  final seen = <String>{};
+  final sanitized = [
+    for (final id in input)
+      if (ReaderSettings.defaultReadingStatsSectionOrder.contains(id) &&
+          seen.add(id))
+        id,
+    ...ReaderSettings.defaultReadingStatsSectionOrder.where(
+      (id) => !seen.contains(id),
+    ),
+  ];
+  return sanitized;
 }
