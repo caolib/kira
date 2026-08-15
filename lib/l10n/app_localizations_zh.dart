@@ -1647,6 +1647,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileLoginFailedProxyHint => '登录失败，建议开启代理后重试';
 
   @override
+  String get profileLoginIpBlockedHint => '当前 IP 被封禁，请更换网络环境或开启代理后重试';
+
+  @override
   String get profileTokenRequired => '请输入令牌';
 
   @override
@@ -1669,6 +1672,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileWebLoginButton => '官网登录';
+
+  @override
+  String get profileWebLoginRecommendedTag => '推荐';
 
   @override
   String get profileWebLoginPageTitle => '官网登录';
@@ -5431,6 +5437,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get profileLoginFailedProxyHint => '登入失敗，建議開啟代理後重試';
 
   @override
+  String get profileLoginIpBlockedHint => '目前 IP 已被封鎖，請更換網路環境或開啟代理後重試';
+
+  @override
   String get profileTokenRequired => '請輸入權杖';
 
   @override
@@ -5453,6 +5462,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get profileWebLoginButton => '官網登入';
+
+  @override
+  String get profileWebLoginRecommendedTag => '推薦';
 
   @override
   String get profileWebLoginPageTitle => '官網登入';

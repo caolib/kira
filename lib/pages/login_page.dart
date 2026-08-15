@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
+import '../api/user/user_api.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
@@ -375,7 +376,9 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _error = '${l10n.profileLoginFailedProxyHint}\n$e';
+        _error = isIpBlockedLoginError(e)
+            ? l10n.profileLoginIpBlockedHint
+            : '${l10n.profileLoginFailedProxyHint}\n$e';
         _loading = false;
       });
     }
@@ -555,19 +558,38 @@ class _LoginPageState extends State<LoginPage> {
                       style: const TextStyle(fontSize: 16),
                     ),
             ),
-            // Hotmanga register only for account-password + hot source.
-            if (!_useCopyLogin) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Center(
-                child: TextButton(
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildBottomBar(context, l10n),
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context, AppLocalizations l10n) {
+    final cs = Theme.of(context).colorScheme;
+    final viewInsets = MediaQuery.of(context).viewInsets.bottom;
+    return Material(
+      color: cs.surface,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            AppSpacing.sm,
+            24,
+            AppSpacing.sm + viewInsets,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!_useCopyLogin) ...[
+                TextButton(
                   onPressed: _loading ? null : _goRegister,
                   child: Text(l10n.profileRegisterButton),
                 ),
-              ),
-            ],
-            const SizedBox(height: AppSpacing.sm),
-            Center(
-              child: TextButton.icon(
+                const SizedBox(width: AppSpacing.sm),
+              ],
+              TextButton.icon(
                 key: ValueKey(
                   _useCopyLogin
                       ? 'official-register-copy'
@@ -581,8 +603,8 @@ class _LoginPageState extends State<LoginPage> {
                       : l10n.profileHotMangaLabel,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -621,6 +643,47 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: AppSpacing.lg),
       ],
+      if (_useCopyLogin) ...[
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _loading ? null : _goWebLogin,
+              icon: const Icon(Icons.language),
+              label: Text(l10n.profileWebLoginButton),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                minimumSize: const Size(double.infinity, 0),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
+              ),
+            ),
+            Positioned(
+              top: -6,
+              right: -6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: AppRadius.fullR,
+                  border: Border.all(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  l10n.profileWebLoginRecommendedTag,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
       TextField(
         controller: _usernameCtrl,
         decoration: InputDecoration(
@@ -654,18 +717,6 @@ class _LoginPageState extends State<LoginPage> {
         controlAffinity: ListTileControlAffinity.leading,
         contentPadding: EdgeInsets.zero,
       ),
-      if (_useCopyLogin) ...[
-        const SizedBox(height: AppSpacing.md),
-        OutlinedButton.icon(
-          onPressed: _loading ? null : _goWebLogin,
-          icon: const Icon(Icons.language),
-          label: Text(l10n.profileWebLoginButton),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
-          ),
-        ),
-      ],
     ];
   }
 }

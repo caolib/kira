@@ -3030,6 +3030,12 @@ abstract class AppLocalizations {
   /// **'登录失败，建议开启代理后重试'**
   String get profileLoginFailedProxyHint;
 
+  /// No description provided for @profileLoginIpBlockedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 IP 被封禁，请更换网络环境或开启代理后重试'**
+  String get profileLoginIpBlockedHint;
+
   /// No description provided for @profileTokenRequired.
   ///
   /// In zh, this message translates to:
@@ -3077,6 +3083,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'官网登录'**
   String get profileWebLoginButton;
+
+  /// No description provided for @profileWebLoginRecommendedTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get profileWebLoginRecommendedTag;
 
   /// No description provided for @profileWebLoginPageTitle.
   ///

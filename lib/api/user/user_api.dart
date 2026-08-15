@@ -8,6 +8,45 @@ import '../../utils/app_dio.dart';
 import '../../utils/network_error.dart';
 import '../api_transport.dart';
 
+/// 拷贝漫画在 IP 被风控时返回的固定服务端文案关键词。
+/// 该错误并非密码错误，而是当前出口 IP 被服务端封禁，需换网络/开代理后重试。
+const _ipBlockedKeywords = <String>[
+  '請到官網更新最新APP',
+  '請到官网更新最新APP',
+  '下載過破解版本',
+  '下载过破解版本',
+  '限制會自動解除',
+  '限制会自动解除',
+];
+
+/// 判断登录错误是否为 IP 风控封禁（拷贝官方对破解 IP 的拦截文案）。
+bool isIpBlockedLoginError(Object error) {
+  if (error is DioException) {
+    final data = error.response?.data;
+    final candidate = <String>[
+      if (error.message != null) error.message!,
+      NetworkError.message(error),
+      if (data is Map) ...[
+        if (data['message'] is String) data['message'] as String,
+        if (data['detail'] is String) data['detail'] as String,
+        if (data['results'] is Map) ...[
+          if ((data['results'] as Map)['detail'] is String)
+            (data['results'] as Map)['detail'] as String,
+          if ((data['results'] as Map)['message'] is String)
+            (data['results'] as Map)['message'] as String,
+        ],
+      ],
+    ];
+    for (final text in candidate) {
+      if (text.isEmpty) continue;
+      for (final keyword in _ipBlockedKeywords) {
+        if (text.contains(keyword)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 class UserApi {
   final ApiTransport _t;
 

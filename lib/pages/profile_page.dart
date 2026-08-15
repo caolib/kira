@@ -11,6 +11,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
+import '../api/user/user_api.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
@@ -1063,7 +1064,9 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '${l10n.profileLoginFailedProxyHint}\n$e';
+        _error = isIpBlockedLoginError(e)
+            ? l10n.profileLoginIpBlockedHint
+            : '${l10n.profileLoginFailedProxyHint}\n$e';
         _loading = false;
       });
     }
