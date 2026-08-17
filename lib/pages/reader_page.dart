@@ -1595,6 +1595,25 @@ class _ReaderPageState extends State<ReaderPage> {
     return screenWidth * 1.35;
   }
 
+  /// 在横向滚动模式下，为指定图片源返回占位符的预估宽度。
+  /// 高度由外层 SizedBox 约束为视口高度，但宽度无约束——占位符会
+  /// 塌缩成加载指示器的宽度，图片加载完成后宽度突变导致页面跳动。
+  /// 与竖向模式同理：优先用该图缓存尺寸，其次用最常见宽高比估算，
+  /// 兜底为视口高度 ÷ 1.35（典型竖图比例）。
+  double _estimatedPlaceholderWidth(String imageSource) {
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final cached = _imageNaturalSizes[imageSource];
+    if (cached != null && cached.height > 0) {
+      return viewportHeight * (cached.width / cached.height);
+    }
+    final typicalRatio = _typicalImageAspectRatio;
+    if (typicalRatio != null && typicalRatio > 0) {
+      return viewportHeight / typicalRatio;
+    }
+    // 兜底：典型竖图宽高比约 1.35
+    return viewportHeight / 1.35;
+  }
+
   void _scheduleImageRetry(int retryKey) {
     final attempts = _imageRetryCounts[retryKey] ?? 0;
     final retryLimit = _user.imageRetryCount;
@@ -1692,10 +1711,15 @@ class _ReaderPageState extends State<ReaderPage> {
         ? (screenSize.height * MediaQuery.devicePixelRatioOf(context)).round()
         : (screenSize.width * MediaQuery.devicePixelRatioOf(context)).round();
 
-    // 竖向滚动模式下，占位符使用预估高度以防页面跳动；
-    // 页面/水平滚动模式不需要——前者占满 viewport，后者高度由外层 SizedBox 约束。
+    // 竖向滚动模式下，占位符使用预估高度以防页面跳动；翻页模式占满
+    // viewport 不需要估算。横向滚动模式高度虽由外层 SizedBox 约束，
+    // 但宽度无约束，占位符会塌缩成加载指示器的宽度，图片加载完成后
+    // 宽度突变导致页面跳动，因此需要预估宽度。
     final estimatedPlaceholderH = !useFullViewport
         ? _estimatedPlaceholderHeight(imageSource)
+        : null;
+    final estimatedPlaceholderW = _isHorizontalScrollMode
+        ? _estimatedPlaceholderWidth(imageSource)
         : null;
 
     Widget image;
@@ -1721,6 +1745,7 @@ class _ReaderPageState extends State<ReaderPage> {
           return child;
         },
         errorBuilder: (_, _, _) => Container(
+          width: estimatedPlaceholderW,
           height: estimatedPlaceholderH ?? 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           child: Center(
@@ -1769,6 +1794,7 @@ class _ReaderPageState extends State<ReaderPage> {
           );
         },
         placeholder: (_, _) => Container(
+          width: estimatedPlaceholderW,
           height: estimatedPlaceholderH ?? 400,
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           child: const Center(child: ExpressiveLoadingIndicator()),
@@ -1785,6 +1811,7 @@ class _ReaderPageState extends State<ReaderPage> {
               '${AppLocalizations.of(context)!.loadingFailed}\n$pageLabel';
 
           return Container(
+            width: estimatedPlaceholderW,
             height: estimatedPlaceholderH ?? 400,
             color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
             child: Center(
