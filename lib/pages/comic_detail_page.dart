@@ -729,11 +729,15 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         .where(_isChapterSelectable)
         .map((chapter) => chapter.uuid)
         .toSet();
+    // 若当前已全选则全部取消选中（但保持选中态，便于重新手动选择）。
+    final allSelected =
+        selectableIds.isNotEmpty &&
+        selectableIds.every(_selectedChapterIds.contains);
     setState(() {
       _selectionMode = true;
       _selectedChapterIds
         ..clear()
-        ..addAll(selectableIds);
+        ..addAll(allSelected ? const <String>{} : selectableIds);
     });
   }
 
@@ -756,6 +760,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       pathWord: widget.pathWord,
       comic: _comic!,
       chapters: chapters,
+      group: _selectedGroup,
     );
     if (!mounted) return;
 
@@ -767,6 +772,15 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           : l10n.comicDetailSelectedAlreadyDownloadedOrQueued,
     );
     _exitSelectionMode();
+  }
+
+  Future<void> _showDownloadSettings() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => _DownloadSettingsSheet(downloads: _downloads),
+    );
   }
 
   void _openReader(Chapter chapter) {
@@ -860,13 +874,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           : Stack(
               children: [
                 _buildBody(cs, tt),
-                if (_canShowLastBrowseAction)
+                if (_canShowLastBrowseAction ||
+                    _downloads.downloadedChapterIds(widget.pathWord).isNotEmpty)
                   Positioned(
                     right: 16,
                     bottom: 16,
                     child: Wrap(
+                      direction: Axis.vertical,
                       spacing: 12,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.end,
                       alignment: WrapAlignment.end,
                       children: [
                         if (_nextBrowseChapter != null)
@@ -897,31 +914,48 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                               style: const TextStyle(fontSize: 13),
                             ),
                           ),
-                        FloatingActionButton.extended(
-                          heroTag: 'continue_reading',
-                          onPressed: () => context
-                              .pushNamed(
-                                AppRoutes.reader,
-                                pathParameters: {
-                                  'pathWord': widget.pathWord,
-                                  'chapterUuid': _lastBrowseId!,
-                                },
-                                extra: ReaderExtra(
-                                  comicName: _comic?.name,
-                                  group: _selectedGroup,
-                                  chapterName: _lastBrowseName ?? '',
-                                  chapterListPage:
-                                      _lastBrowseReaderChapterListPage,
-                                  initialPage: _lastBrowsePage,
-                                ),
-                              )
-                              .then((_) => _loadLocalHistory()),
-                          icon: const Icon(Icons.play_arrow, size: 20),
-                          label: Text(
-                            _continueReadingLabel(),
-                            style: const TextStyle(fontSize: 13),
+                        if (_downloads
+                            .downloadedChapterIds(widget.pathWord)
+                            .isNotEmpty)
+                          FloatingActionButton(
+                            heroTag: 'comic_download_center',
+                            tooltip: AppLocalizations.of(
+                              context,
+                            )!.downloadCenterTitle,
+                            onPressed: () => context
+                                .pushNamed(AppRoutes.downloadCenter)
+                                .then((_) => _handleDownloadChanged()),
+                            child: const Icon(
+                              Icons.download_for_offline,
+                              size: 24,
+                            ),
                           ),
-                        ),
+                        if (_canShowLastBrowseAction)
+                          FloatingActionButton.extended(
+                            heroTag: 'continue_reading',
+                            onPressed: () => context
+                                .pushNamed(
+                                  AppRoutes.reader,
+                                  pathParameters: {
+                                    'pathWord': widget.pathWord,
+                                    'chapterUuid': _lastBrowseId!,
+                                  },
+                                  extra: ReaderExtra(
+                                    comicName: _comic?.name,
+                                    group: _selectedGroup,
+                                    chapterName: _lastBrowseName ?? '',
+                                    chapterListPage:
+                                        _lastBrowseReaderChapterListPage,
+                                    initialPage: _lastBrowsePage,
+                                  ),
+                                )
+                                .then((_) => _loadLocalHistory()),
+                            icon: const Icon(Icons.play_arrow, size: 20),
+                            label: Text(
+                              _continueReadingLabel(),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -992,9 +1026,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
   Widget _buildDownloadToolbar(ColorScheme cs, TextTheme tt) {
     final pendingCount = _downloads.pendingCountForComic(widget.pathWord);
-    final downloadedCount = _downloads
-        .downloadedChapterIds(widget.pathWord)
-        .length;
 
     return SliverToBoxAdapter(
       child: Padding(
@@ -1005,26 +1036,33 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.comicDetailSelectedChapters(_selectedChapterIds.length),
-                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  OutlinedButton.icon(
+                  OutlinedButton(
                     onPressed: _displayChapters.any(_isChapterSelectable)
                         ? _selectAllVisibleDownloadable
                         : null,
-                    icon: const Icon(Icons.select_all, size: 18),
-                    label: Text(AppLocalizations.of(context)!.selectAll),
+                    child: Text(AppLocalizations.of(context)!.selectAll),
                   ),
-                  FilledButton.icon(
+                  FilledButton(
                     onPressed: _selectedChapterIds.isEmpty
                         ? null
                         : _downloadSelectedChapters,
-                    icon: const Icon(Icons.download_for_offline, size: 18),
-                    label: Text(
-                      AppLocalizations.of(context)!.animeDetailDownloadSelected,
+                    child: Text(
+                      AppLocalizations.of(
+                        context,
+                      )!.comicDetailDownloadSelectedCount(
+                        _selectedChapterIds.length,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _exitSelectionMode,
+                    child: Text(AppLocalizations.of(context)!.cancelButton),
+                  ),
+                  const Spacer(),
+                  OutlinedButton(
+                    onPressed: _showDownloadSettings,
+                    child: Text(
+                      AppLocalizations.of(context)!.downloadSettingsTitle,
                     ),
                   ),
                 ],
@@ -1035,7 +1073,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (pendingCount > 0)
-                    Chip(
+                    ActionChip(
                       avatar: SizedBox(
                         width: 14,
                         height: 14,
@@ -1049,19 +1087,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           context,
                         )!.comicDetailSequentialDownloading(pendingCount),
                       ),
-                    ),
-                  if (downloadedCount > 0)
-                    Chip(
-                      avatar: const Icon(
-                        Icons.check_circle,
-                        size: 18,
-                        color: Colors.green,
-                      ),
-                      label: Text(
-                        AppLocalizations.of(
-                          context,
-                        )!.downloadedChapterCount(downloadedCount),
-                      ),
+                      onPressed: () => context
+                          .pushNamed(AppRoutes.downloadCenter)
+                          .then((_) => _handleDownloadChanged()),
                     ),
                 ],
               ),
@@ -1783,6 +1811,102 @@ class _DownloadedBadge extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(2),
         child: Icon(Icons.check, size: 12, color: Colors.white),
+      ),
+    );
+  }
+}
+
+/// 漫画下载设置抽屉，从底部出现，用于配置单话图片并发下载数量等。
+class _DownloadSettingsSheet extends StatefulWidget {
+  final DownloadManager downloads;
+  const _DownloadSettingsSheet({required this.downloads});
+
+  @override
+  State<_DownloadSettingsSheet> createState() => _DownloadSettingsSheetState();
+}
+
+class _DownloadSettingsSheetState extends State<_DownloadSettingsSheet> {
+  late int _concurrency;
+  late bool _downloadComments;
+
+  @override
+  void initState() {
+    super.initState();
+    _concurrency = widget.downloads.imageDownloadConcurrency;
+    _downloadComments = widget.downloads.downloadCommentsEnabled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          0,
+          AppSpacing.lg,
+          AppSpacing.lg + bottomInset,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Text(
+                l10n.downloadSettingsTitle,
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Text(l10n.downloadImageConcurrency, style: tt.titleSmall),
+            Text(
+              l10n.downloadImageConcurrencyDesc,
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    value: _concurrency.toDouble(),
+                    label: '$_concurrency',
+                    onChanged: (v) => setState(() => _concurrency = v.round()),
+                    onChangeEnd: (v) => unawaited(
+                      widget.downloads.setImageDownloadConcurrency(v.round()),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    '$_concurrency',
+                    style: tt.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: AppSpacing.xl),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.downloadChapterComments),
+              subtitle: Text(
+                l10n.downloadChapterCommentsDesc,
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              value: _downloadComments,
+              onChanged: (v) {
+                setState(() => _downloadComments = v);
+                unawaited(widget.downloads.setDownloadCommentsEnabled(v));
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -158,6 +158,19 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
     setState(() => _loading = false);
   }
 
+  /// 全选/取消全选切换：若当前已全选则清空选中（保持选中态），否则全选。
+  void _toggleSelectAll(List<LocalContentEntry> items) {
+    final allIds = items.map((item) => item.pathWord).toSet();
+    final allSelected =
+        allIds.isNotEmpty && allIds.every(_selectedPathWords.contains);
+    setState(() {
+      _selectionMode = true;
+      _selectedPathWords
+        ..clear()
+        ..addAll(allSelected ? const <String>{} : allIds);
+    });
+  }
+
   Future<void> _openDownloadFolder() async {
     try {
       final docsDir = await getApplicationDocumentsDirectory();
@@ -293,6 +306,62 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
           );
 
     if (widget.embedded) {
+      final l10n = AppLocalizations.of(context)!;
+      // 选中态：叠加底部操作条（全选/删除/取消），并隐藏打开文件夹按钮。
+      if (_selectionMode) {
+        return Stack(
+          children: [
+            body,
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: Material(
+                elevation: 6,
+                borderRadius: AppRadius.lgR,
+                color: cs.surfaceContainerHigh,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        l10n.selectedItems(_selectedPathWords.length),
+                        style: tt.labelLarge,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: items.isEmpty
+                            ? null
+                            : () => _toggleSelectAll(items),
+                        icon: const Icon(Icons.select_all),
+                        tooltip: l10n.selectAll,
+                      ),
+                      IconButton(
+                        onPressed: _selectedPathWords.isEmpty
+                            ? null
+                            : _deleteSelected,
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: l10n.deleteButton,
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() {
+                          _selectionMode = false;
+                          _selectedPathWords.clear();
+                        }),
+                        icon: const Icon(Icons.close),
+                        tooltip: l10n.cancelButton,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }
       if (!_isDesktopPlatform) return body;
       return Stack(
         children: [
@@ -305,7 +374,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
               onPressed: _openDownloadFolder,
               icon: const Icon(Icons.folder_open, size: 20),
               label: Text(
-                AppLocalizations.of(context)!.openDownloadFolder,
+                l10n.openDownloadFolder,
                 style: const TextStyle(fontSize: 13),
               ),
             ),
@@ -334,11 +403,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
             IconButton(
               onPressed: items.isEmpty
                   ? null
-                  : () => setState(() {
-                      _selectedPathWords
-                        ..clear()
-                        ..addAll(items.map((item) => item.pathWord));
-                    }),
+                  : () => _toggleSelectAll(items),
               icon: const Icon(Icons.select_all),
               tooltip: l10n.selectAll,
             ),

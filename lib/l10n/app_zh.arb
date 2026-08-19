@@ -2067,7 +2067,7 @@
     }
   },
   "sharedLinkOpen": "打开",
-  "comicDetailAddedToDownloadQueue": "已加入下载队列：{count} 章（顺序下载）",
+  "comicDetailAddedToDownloadQueue": "已加入下载队列：{count} 章",
   "@comicDetailAddedToDownloadQueue": {
     "placeholders": {
       "count": {
@@ -2084,7 +2084,20 @@
       }
     }
   },
-  "comicDetailSequentialDownloading": "顺序下载中 {count} 章",
+  "comicDetailDownloadSelectedCount": "下载{count}话",
+  "@comicDetailDownloadSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadSettingsTitle": "设置",
+  "downloadImageConcurrency": "并发下载数量",
+  "downloadImageConcurrencyDesc": "单话内同时下载的图片数量（1-10）",
+  "downloadChapterComments": "下载章节评论",
+  "downloadChapterCommentsDesc": "下载章节时一并保存评论",
+  "comicDetailSequentialDownloading": "下载中 {count} 章",
   "@comicDetailSequentialDownloading": {
     "placeholders": {
       "count": {

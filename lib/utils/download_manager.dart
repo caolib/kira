@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
 import '../models/chapter.dart';
@@ -22,6 +23,25 @@ class DownloadManager extends ChangeNotifier {
   static const _comicMetaFileName = 'comic.json';
   static const _coverFileName = 'cover';
   static const Duration _timeout = Duration(seconds: 20);
+
+  /// 单张图片下载失败时的最大重试次数（不含首次）。
+  static const int _imageMaxRetries = 2;
+
+  /// 并发下载数量的持久化键。
+  static const _keyImageConcurrency = 'download_image_concurrency';
+
+  /// 并发下载数量默认值。
+  static const int _defaultImageConcurrency = 5;
+
+  /// 并发下载数量允许范围。
+  static const int _minImageConcurrency = 1;
+  static const int _maxImageConcurrency = 10;
+
+  /// 是否下载章节评论的持久化键。
+  static const _keyDownloadComments = 'download_chapter_comments';
+
+  int _imageDownloadConcurrency = _defaultImageConcurrency;
+  bool _downloadCommentsEnabled = true;
   static const Map<String, String> _imageExtensions = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
@@ -78,6 +98,46 @@ class DownloadManager extends ChangeNotifier {
     await _initFuture;
   }
 
+  /// 单章图片并发下载数量，范围 [_minImageConcurrency]~[_maxImageConcurrency]。
+  int get imageDownloadConcurrency => _imageDownloadConcurrency;
+
+  /// 加载持久化的并发下载数量（若未初始化则从 SharedPreferences 读取）。
+  Future<void> loadImageDownloadConcurrency() async {
+    final prefs = await SharedPreferences.getInstance();
+    _imageDownloadConcurrency = _clampConcurrency(
+      prefs.getInt(_keyImageConcurrency),
+    );
+  }
+
+  /// 是否在下载章节时一并下载评论，默认开启。
+  bool get downloadCommentsEnabled => _downloadCommentsEnabled;
+
+  /// 设置并持久化是否下载章节评论。
+  Future<void> setDownloadCommentsEnabled(bool value) async {
+    if (_downloadCommentsEnabled == value) return;
+    _downloadCommentsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDownloadComments, value);
+  }
+
+  /// 设置并持久化并发下载数量，返回归一化后的实际值。
+  Future<int> setImageDownloadConcurrency(int value) async {
+    final clamped = _clampConcurrency(value);
+    if (_imageDownloadConcurrency == clamped) return clamped;
+    _imageDownloadConcurrency = clamped;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyImageConcurrency, clamped);
+    return clamped;
+  }
+
+  static int _clampConcurrency(int? value) {
+    if (value == null || value < _minImageConcurrency) {
+      return _defaultImageConcurrency;
+    }
+    if (value > _maxImageConcurrency) return _maxImageConcurrency;
+    return value;
+  }
+
   Set<String> downloadedChapterIds(String pathWord) =>
       _manifest[pathWord]?.keys.toSet() ?? const <String>{};
 
@@ -126,6 +186,18 @@ class DownloadManager extends ChangeNotifier {
     return chapters;
   }
 
+  /// 按下载时记录的分组返回章节列表，用于本地详情页分区展示。
+  /// 每个元素是一组：`(group, chapters)`，组内排序同 [downloadedChapters]。
+  List<({String group, List<DownloadedChapterSummary> chapters})>
+  downloadedChaptersGrouped(String pathWord) {
+    final all = downloadedChapters(pathWord);
+    final grouped = <String, List<DownloadedChapterSummary>>{};
+    for (final chapter in all) {
+      grouped.putIfAbsent(chapter.chapterGroup, () => []).add(chapter);
+    }
+    return grouped.entries.map((e) => (group: e.key, chapters: e.value)).toList();
+  }
+
   bool isDownloaded(String pathWord, String chapterUuid) =>
       _manifest[pathWord]?.containsKey(chapterUuid) == true;
 
@@ -152,6 +224,7 @@ class DownloadManager extends ChangeNotifier {
     required String pathWord,
     required Comic comic,
     required Iterable<Chapter> chapters,
+    String group = 'default',
   }) async {
     await init();
 
@@ -166,7 +239,9 @@ class DownloadManager extends ChangeNotifier {
       final key = _taskKey(pathWord, chapter.uuid);
       if (_queuedKeys.contains(key)) continue;
 
-      _queue.add(_DownloadTask(pathWord: pathWord, chapter: chapter));
+      _queue.add(
+        _DownloadTask(pathWord: pathWord, group: group, chapter: chapter),
+      );
       _queuedKeys.add(key);
       added++;
     }
@@ -228,6 +303,11 @@ class DownloadManager extends ChangeNotifier {
     final docsDir = await getApplicationDocumentsDirectory();
     _rootDirectory = Directory(_joinPath([docsDir.path, _rootFolderName]));
     await _rootDirectory!.create(recursive: true);
+
+    await loadImageDownloadConcurrency();
+    final prefsForComments = await SharedPreferences.getInstance();
+    _downloadCommentsEnabled =
+        prefsForComments.getBool(_keyDownloadComments) ?? true;
 
     final manifestFile = _manifestFile;
     if (await manifestFile.exists()) {
@@ -293,7 +373,8 @@ class DownloadManager extends ChangeNotifier {
 
     try {
       while (_queue.isNotEmpty) {
-        final task = _queue.removeAt(0);
+        // 取队首任务但暂不移除，使其在下载期间仍显示在队列中。
+        final task = _queue.first;
         final key = _taskKey(task.pathWord, task.chapter.uuid);
         _activeKey = key;
         _activeProgress = null;
@@ -306,6 +387,7 @@ class DownloadManager extends ChangeNotifier {
             'Download chapter failed: ${task.pathWord}/${task.chapter.uuid} $e',
           );
         } finally {
+          _queue.remove(task);
           _queuedKeys.remove(key);
           _activeKey = null;
           _activeProgress = null;
@@ -332,7 +414,9 @@ class DownloadManager extends ChangeNotifier {
         throw const HttpException('Chapter has no images');
       }
 
-      final comments = await _downloadComments(task.chapter.uuid);
+      final comments = _downloadCommentsEnabled
+          ? await _downloadComments(task.chapter.uuid)
+          : (list: <ChapterComment>[], total: 0);
 
       _activeProgress = ChapterDownloadProgress(
         completed: 0,
@@ -340,20 +424,7 @@ class DownloadManager extends ChangeNotifier {
       );
       notifyListeners();
 
-      final localPaths = <String>[];
-      for (var i = 0; i < detail.contents.length; i++) {
-        final savedFile = await _downloadImage(
-          detail.contents[i],
-          chapterDir,
-          i + 1,
-        );
-        localPaths.add(savedFile.path);
-        _activeProgress = ChapterDownloadProgress(
-          completed: i + 1,
-          total: detail.contents.length,
-        );
-        notifyListeners();
-      }
+      final localPaths = await _downloadImages(detail.contents, chapterDir);
 
       final localDetail = detail.copyWith(
         contents: localPaths,
@@ -370,6 +441,7 @@ class DownloadManager extends ChangeNotifier {
       _manifest[task.pathWord]![task.chapter.uuid] = DownloadedChapterSummary(
         chapterUuid: task.chapter.uuid,
         chapterName: task.chapter.name,
+        chapterGroup: task.group,
         chapterIndex: task.chapter.index,
         chapterOrder: task.chapter.ordered,
         pageCount: localPaths.length,
@@ -387,31 +459,104 @@ class DownloadManager extends ChangeNotifier {
     }
   }
 
+  /// 下载章节评论：默认仅取第一页（避免整章评论下载量过大、耗时过长）。
   Future<({List<ChapterComment> list, int total})> _downloadComments(
     String chapterUuid,
   ) async {
-    final comments = <ChapterComment>[];
-    var offset = 0;
-    var total = 0;
+    final data = await _api.manga.getChapterComments(chapterUuid, limit: 100);
+    return (list: data.list, total: data.total);
+  }
 
-    while (true) {
-      final data = await _api.manga.getChapterComments(
-        chapterUuid,
-        limit: 100,
-        offset: offset,
-      );
-      comments.addAll(data.list);
-      total = data.total;
-      offset = comments.length;
-      if (data.list.isEmpty || offset >= total) {
-        break;
+  /// 并发下载一章内的所有图片，保留文件名顺序（001, 002, ...）。
+  ///
+  /// 最多 [_imageDownloadConcurrency] 张同时下载；任一图片失败则整章失败。
+  /// 进度通过 [_activeProgress] 实时上报。
+  Future<List<String>> _downloadImages(
+    List<String> imageUrls,
+    Directory chapterDir,
+  ) async {
+    final total = imageUrls.length;
+    final result = List<String?>.filled(total, null);
+
+    var completed = 0;
+    var next = 0; // 下一个待分配的图片索引
+
+    // worker 协程：循环领取并下载尚未处理的图片，直到全部派发完。
+    Future<void> worker() async {
+      while (true) {
+        final index = next;
+        next++;
+        if (index >= total) return;
+
+        final file = await _downloadImage(
+          imageUrls[index],
+          chapterDir,
+          index + 1,
+        );
+        result[index] = file.path;
+        completed++;
+        _activeProgress = ChapterDownloadProgress(
+          completed: completed,
+          total: total,
+        );
+        notifyListeners();
       }
     }
 
-    return (list: comments, total: total);
+    final workers = List.generate(
+      _imageDownloadConcurrency.clamp(1, total > 0 ? total : 1),
+      (_) => worker(),
+    );
+    await Future.wait(workers);
+
+    // 任一图片在重试耗尽后仍失败时 result 中会留 null，整章不完整则放弃。
+    if (result.any((e) => e == null)) {
+      throw const HttpException('Image download incomplete');
+    }
+    return result.cast<String>();
   }
 
   Future<File> _downloadImage(
+    String imageUrl,
+    Directory chapterDir,
+    int index,
+  ) async {
+    Object? lastError;
+    for (var attempt = 0; attempt <= _imageMaxRetries; attempt++) {
+      try {
+        return await _downloadImageOnce(imageUrl, chapterDir, index);
+      } catch (e) {
+        lastError = e;
+        // 写到一半的文件可能不完整，删除后重试。
+        final ext = _guessExtensionFromUrl(imageUrl);
+        final partial = File(
+          _joinPath([
+            chapterDir.path,
+            '${index.toString().padLeft(3, '0')}$ext',
+          ]),
+        );
+        try {
+          if (await partial.exists()) await partial.delete();
+        } catch (_) {}
+      }
+    }
+    throw HttpException('Image download failed after retries: $lastError');
+  }
+
+  String _guessExtensionFromUrl(String imageUrl) {
+    final uri = Uri.parse(imageUrl);
+    final lastSegment = uri.pathSegments.isNotEmpty
+        ? uri.pathSegments.last
+        : uri.path;
+    final dotIndex = lastSegment.lastIndexOf('.');
+    if (dotIndex > 0) {
+      final ext = lastSegment.substring(dotIndex).toLowerCase();
+      if (RegExp(r'^\.[a-z0-9]{1,5}$').hasMatch(ext)) return ext;
+    }
+    return '.jpg';
+  }
+
+  Future<File> _downloadImageOnce(
     String imageUrl,
     Directory chapterDir,
     int index,
@@ -682,6 +827,7 @@ class DownloadManager extends ChangeNotifier {
 class DownloadedChapterSummary {
   final String chapterUuid;
   final String chapterName;
+  final String chapterGroup;
   final int chapterIndex;
   final int chapterOrder;
   final int pageCount;
@@ -690,6 +836,7 @@ class DownloadedChapterSummary {
   const DownloadedChapterSummary({
     required this.chapterUuid,
     required this.chapterName,
+    this.chapterGroup = 'default',
     this.chapterIndex = 0,
     this.chapterOrder = 0,
     required this.pageCount,
@@ -702,6 +849,10 @@ class DownloadedChapterSummary {
       DownloadedChapterSummary(
         chapterUuid: json['chapter_uuid']?.toString() ?? '',
         chapterName: json['chapter_name']?.toString() ?? '',
+        chapterGroup:
+            json['chapter_group']?.toString().trim().isEmpty ?? true
+            ? 'default'
+            : json['chapter_group'].toString(),
         chapterIndex: json['chapter_index'] is int
             ? json['chapter_index'] as int
             : int.tryParse(json['chapter_index']?.toString() ?? '') ?? 0,
@@ -719,6 +870,7 @@ class DownloadedChapterSummary {
   Map<String, dynamic> toJson() => {
     'chapter_uuid': chapterUuid,
     'chapter_name': chapterName,
+    'chapter_group': chapterGroup,
     'chapter_index': chapterIndex,
     'chapter_order': chapterOrder,
     'page_count': pageCount,
@@ -737,9 +889,14 @@ class ChapterDownloadProgress {
 
 class _DownloadTask {
   final String pathWord;
+  final String group;
   final Chapter chapter;
 
-  const _DownloadTask({required this.pathWord, required this.chapter});
+  const _DownloadTask({
+    required this.pathWord,
+    required this.group,
+    required this.chapter,
+  });
 }
 
 class LocalComicInfo {

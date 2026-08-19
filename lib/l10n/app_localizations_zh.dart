@@ -3063,7 +3063,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String comicDetailAddedToDownloadQueue(int count) {
-    return '已加入下载队列：$count 章（顺序下载）';
+    return '已加入下载队列：$count 章';
   }
 
   @override
@@ -3075,8 +3075,28 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String comicDetailDownloadSelectedCount(int count) {
+    return '下载$count话';
+  }
+
+  @override
+  String get downloadSettingsTitle => '设置';
+
+  @override
+  String get downloadImageConcurrency => '并发下载数量';
+
+  @override
+  String get downloadImageConcurrencyDesc => '单话内同时下载的图片数量（1-10）';
+
+  @override
+  String get downloadChapterComments => '下载章节评论';
+
+  @override
+  String get downloadChapterCommentsDesc => '下载章节时一并保存评论';
+
+  @override
   String comicDetailSequentialDownloading(int count) {
-    return '顺序下载中 $count 章';
+    return '下载中 $count 章';
   }
 
   @override
@@ -6853,7 +6873,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String comicDetailAddedToDownloadQueue(int count) {
-    return '已加入下載佇列：$count 章（順序下載）';
+    return '已加入下載佇列：$count 章';
   }
 
   @override
@@ -6865,8 +6885,28 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String comicDetailDownloadSelectedCount(int count) {
+    return '下載$count話';
+  }
+
+  @override
+  String get downloadSettingsTitle => '設定';
+
+  @override
+  String get downloadImageConcurrency => '並行下載數量';
+
+  @override
+  String get downloadImageConcurrencyDesc => '單話內同時下載的圖片數量（1-10）';
+
+  @override
+  String get downloadChapterComments => '下載章節評論';
+
+  @override
+  String get downloadChapterCommentsDesc => '下載章節時一併儲存評論';
+
+  @override
   String comicDetailSequentialDownloading(int count) {
-    return '順序下載中 $count 章';
+    return '下載中 $count 章';
   }
 
   @override

@@ -2038,7 +2038,7 @@
     }
   },
   "sharedLinkOpen": "打開",
-  "comicDetailAddedToDownloadQueue": "已加入下載佇列：{count} 章（順序下載）",
+  "comicDetailAddedToDownloadQueue": "已加入下載佇列：{count} 章",
   "@comicDetailAddedToDownloadQueue": {
     "placeholders": {
       "count": {
@@ -2055,7 +2055,20 @@
       }
     }
   },
-  "comicDetailSequentialDownloading": "順序下載中 {count} 章",
+  "comicDetailDownloadSelectedCount": "下載{count}話",
+  "@comicDetailDownloadSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadSettingsTitle": "設定",
+  "downloadImageConcurrency": "並行下載數量",
+  "downloadImageConcurrencyDesc": "單話內同時下載的圖片數量（1-10）",
+  "downloadChapterComments": "下載章節評論",
+  "downloadChapterCommentsDesc": "下載章節時一併儲存評論",
+  "comicDetailSequentialDownloading": "下載中 {count} 章",
   "@comicDetailSequentialDownloading": {
     "placeholders": {
       "count": {

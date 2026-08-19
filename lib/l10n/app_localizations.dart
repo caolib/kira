@@ -5564,7 +5564,7 @@ abstract class AppLocalizations {
   /// No description provided for @comicDetailAddedToDownloadQueue.
   ///
   /// In zh, this message translates to:
-  /// **'已加入下载队列：{count} 章（顺序下载）'**
+  /// **'已加入下载队列：{count} 章'**
   String comicDetailAddedToDownloadQueue(int count);
 
   /// No description provided for @comicDetailSelectedAlreadyDownloadedOrQueued.
@@ -5579,10 +5579,46 @@ abstract class AppLocalizations {
   /// **'已选 {count} 章'**
   String comicDetailSelectedChapters(int count);
 
+  /// No description provided for @comicDetailDownloadSelectedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载{count}话'**
+  String comicDetailDownloadSelectedCount(int count);
+
+  /// No description provided for @downloadSettingsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get downloadSettingsTitle;
+
+  /// No description provided for @downloadImageConcurrency.
+  ///
+  /// In zh, this message translates to:
+  /// **'并发下载数量'**
+  String get downloadImageConcurrency;
+
+  /// No description provided for @downloadImageConcurrencyDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'单话内同时下载的图片数量（1-10）'**
+  String get downloadImageConcurrencyDesc;
+
+  /// No description provided for @downloadChapterComments.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载章节评论'**
+  String get downloadChapterComments;
+
+  /// No description provided for @downloadChapterCommentsDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载章节时一并保存评论'**
+  String get downloadChapterCommentsDesc;
+
   /// No description provided for @comicDetailSequentialDownloading.
   ///
   /// In zh, this message translates to:
-  /// **'顺序下载中 {count} 章'**
+  /// **'下载中 {count} 章'**
   String comicDetailSequentialDownloading(int count);
 
   /// No description provided for @downloadedStatus.
