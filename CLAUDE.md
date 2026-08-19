@@ -128,7 +128,7 @@ Emoji-prefixed Conventional Commit types with concise Chinese summaries:
 - `✨ feat: 添加检查更新功能`
 - `🐛 fix: 登录过期后提醒用户登录`
 
-Update `docs/CHANGELOG.md` if the change affects a release.
+don't update `docs/CHANGELOG.md`
 
 ## Security
 

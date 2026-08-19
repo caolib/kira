@@ -1388,6 +1388,20 @@
       }
     }
   },
+  "chapterCommentsCountWithBlocked": "{shown}/{total}|{blocked}",
+  "@chapterCommentsCountWithBlocked": {
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "blocked": {
+        "type": "int"
+      }
+    }
+  },
   "chapterCommentsComment": "評論",
   "chapterCommentsCatalog": "目錄",
   "chapterCommentsNext": "下一話",
@@ -2205,6 +2219,12 @@
   "commentSettingsClearBlacklist": "清空黑名單",
   "commentSettingsAnonymousUser": "匿名用戶",
   "commentSettingsRemoveFromBlacklist": "移出黑名單",
+  "commentSettingsBlockwordsSection": "屏蔽詞",
+  "commentSettingsBlockwordsDesc": "包含屏蔽詞的評論將被自動過濾，大小寫不敏感。",
+  "commentSettingsBlockwordsHint": "輸入屏蔽詞",
+  "commentSettingsClearBlockwords": "清空屏蔽詞",
+  "commentSettingsBlockGroupSpam": "屏蔽群號廣告",
+  "commentSettingsBlockGroupSpamDesc": "同時包含「群」和 8~12 位數字的評論將被自動過濾",
   "profileFallbackQuestionWife": "我的老婆叫什麼？",
   "profileFallbackQuestionFriend": "我的基友叫啥？",
   "profileFallbackQuestionBestFriendCount": "我的好麻吉有幾個？",

@@ -1417,6 +1417,20 @@
       }
     }
   },
+  "chapterCommentsCountWithBlocked": "{shown}/{total}|{blocked}",
+  "@chapterCommentsCountWithBlocked": {
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "blocked": {
+        "type": "int"
+      }
+    }
+  },
   "chapterCommentsComment": "评论",
   "chapterCommentsCatalog": "目录",
   "chapterCommentsNext": "下一话",
@@ -2234,6 +2248,12 @@
   "commentSettingsClearBlacklist": "清空黑名单",
   "commentSettingsAnonymousUser": "匿名用户",
   "commentSettingsRemoveFromBlacklist": "移出黑名单",
+  "commentSettingsBlockwordsSection": "屏蔽词",
+  "commentSettingsBlockwordsDesc": "包含屏蔽词的评论将被自动过滤，大小写不敏感。",
+  "commentSettingsBlockwordsHint": "输入屏蔽词",
+  "commentSettingsClearBlockwords": "清空屏蔽词",
+  "commentSettingsBlockGroupSpam": "屏蔽群号广告",
+  "commentSettingsBlockGroupSpamDesc": "同时包含「群」和 8~12 位数字的评论将被自动过滤",
   "profileFallbackQuestionWife": "我的老婆叫什麼？",
   "profileFallbackQuestionFriend": "我的基友叫啥？",
   "profileFallbackQuestionBestFriendCount": "我的好麻吉有幾個？",

@@ -3989,6 +3989,12 @@ abstract class AppLocalizations {
   /// **'{count} 条'**
   String chapterCommentsTotalCount(int count);
 
+  /// No description provided for @chapterCommentsCountWithBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'{shown}/{total}|{blocked}'**
+  String chapterCommentsCountWithBlocked(int shown, int total, int blocked);
+
   /// No description provided for @chapterCommentsComment.
   ///
   /// In zh, this message translates to:
@@ -5919,6 +5925,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'移出黑名单'**
   String get commentSettingsRemoveFromBlacklist;
+
+  /// No description provided for @commentSettingsBlockwordsSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'屏蔽词'**
+  String get commentSettingsBlockwordsSection;
+
+  /// No description provided for @commentSettingsBlockwordsDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含屏蔽词的评论将被自动过滤，大小写不敏感。'**
+  String get commentSettingsBlockwordsDesc;
+
+  /// No description provided for @commentSettingsBlockwordsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入屏蔽词'**
+  String get commentSettingsBlockwordsHint;
+
+  /// No description provided for @commentSettingsClearBlockwords.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空屏蔽词'**
+  String get commentSettingsClearBlockwords;
+
+  /// No description provided for @commentSettingsBlockGroupSpam.
+  ///
+  /// In zh, this message translates to:
+  /// **'屏蔽群号广告'**
+  String get commentSettingsBlockGroupSpam;
+
+  /// No description provided for @commentSettingsBlockGroupSpamDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'同时包含「群」和 8~12 位数字的评论将被自动过滤'**
+  String get commentSettingsBlockGroupSpamDesc;
 
   /// No description provided for @profileFallbackQuestionWife.
   ///

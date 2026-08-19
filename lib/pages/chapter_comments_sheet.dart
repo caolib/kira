@@ -20,6 +20,7 @@ import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/chapter_summary_cache.dart';
+import '../utils/chinese_converter.dart';
 import '../utils/comment_text.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
@@ -85,6 +86,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
   bool _loadingAll = false;
   String? _error;
   int _total = 0;
+  int _blockedCount = 0;
   bool _useCompactLayout = true;
   bool _showUserAvatar = true;
   bool _showUserName = true;
@@ -126,16 +128,26 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
   void _rebuildGroupedEntries() {
     if (_comments.isEmpty) {
       _groupedEntries = const [];
+      _blockedCount = 0;
       return;
     }
+    final blockwords = _user.commentBlockwords;
+    final hasBlockwords = blockwords.isNotEmpty || _user.commentBlockGroupSpam;
     final blocked = _user.commentBlockedUsers;
-    if (blocked.isEmpty) {
+    if (blocked.isEmpty && !hasBlockwords) {
       _groupedEntries = groupChapterComments(_comments);
+      _blockedCount = 0;
       return;
     }
     final filtered = _comments
-        .where((c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()))
+        .where(
+          (c) =>
+              !_user.isCommentUserBlocked(c.userId, c.userName.trim()) &&
+              !_user.isCommentBlockedByWord(c.comment) &&
+              !_user.isCommentGroupSpam(c.comment),
+        )
         .toList();
+    _blockedCount = _comments.length - filtered.length;
     _groupedEntries = groupChapterComments(filtered);
   }
 
@@ -1447,8 +1459,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     );
   }
 
-  void _showCommentSettings() {
-    showModalBottomSheet(
+  Future<void> _showCommentSettings() async {
+    await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -1515,6 +1527,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
         );
       },
     );
+    if (!mounted) return;
+    // 编辑屏蔽词/屏蔽用户后，重新过滤已加载的评论。
+    setState(_rebuildGroupedEntries);
   }
 
   @override
@@ -1642,13 +1657,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                                 icon: const Icon(Icons.tune),
                               ),
                               Text(
-                                _total > 0
-                                    ? (_allCommentsLoaded
-                                          ? l10n.chapterCommentsTotalCount(
-                                              _total,
-                                            )
-                                          : '${_comments.length}/$_total')
-                                    : '',
+                                _buildCountLabel(l10n),
                                 style: tt.bodySmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                 ),
@@ -1782,6 +1791,20 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
         ), // GestureDetector (inner)
       ), // Align
     ); // GestureDetector (outer)
+  }
+
+  /// 评论区计数文案：全部加载且无屏蔽时显示「N 条」；
+  /// 有屏蔽时为「显示数/总数|屏蔽数」，屏蔽为 0 则不显示 |屏蔽数。
+  String _buildCountLabel(AppLocalizations l10n) {
+    if (_total <= 0) return '';
+    if (_allCommentsLoaded && _blockedCount == 0) {
+      return l10n.chapterCommentsTotalCount(_total);
+    }
+    final shown = _comments.length - _blockedCount;
+    if (_blockedCount > 0) {
+      return l10n.chapterCommentsCountWithBlocked(shown, _total, _blockedCount);
+    }
+    return '$shown/$_total';
   }
 
   Widget _buildBody(BuildContext context, ColorScheme cs, TextTheme tt) {

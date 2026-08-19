@@ -200,6 +200,8 @@ class UserManager extends ChangeNotifier {
   static const _keyDanmakuFontFamily = 'danmaku_font_family';
   static const _keyCommentBlockedUsers = 'comment_blocked_users';
   static const _keyCommentBlockNoRemind = 'comment_block_no_remind';
+  static const _keyCommentBlockwords = 'comment_blockwords';
+  static const _keyCommentBlockGroupSpam = 'comment_block_group_spam';
   static const _keyLogoIndex = 'logo_index';
 
   String? _token;
@@ -288,6 +290,12 @@ class UserManager extends ChangeNotifier {
   /// 评论屏蔽用户黑名单，元素为 `userId|userName` 形式
   List<String> _commentBlockedUsers = [];
   bool _commentBlockNoRemind = false;
+
+  /// 评论屏蔽词列表，评论内容包含任一屏蔽词即被过滤
+  List<String> _commentBlockwords = [];
+
+  /// 群广告屏蔽预设：同时包含「群」与 8~12 位数字的评论将被过滤。默认关闭。
+  bool _commentBlockGroupSpam = false;
   int _logoIndex = 1;
 
   String? get token => _token;
@@ -404,6 +412,8 @@ class UserManager extends ChangeNotifier {
   List<String> get commentBlockedUsers =>
       List.unmodifiable(_commentBlockedUsers);
   bool get commentBlockNoRemind => _commentBlockNoRemind;
+  List<String> get commentBlockwords => List.unmodifiable(_commentBlockwords);
+  bool get commentBlockGroupSpam => _commentBlockGroupSpam;
   int get logoIndex => _logoIndex;
   String get appLogoPath =>
       appLogoPaths[_logoIndex.clamp(0, appLogoPaths.length - 1)];
@@ -630,6 +640,8 @@ class UserManager extends ChangeNotifier {
     _danmakuFontFamily = prefs.getString(_keyDanmakuFontFamily) ?? '';
     _commentBlockedUsers = prefs.getStringList(_keyCommentBlockedUsers) ?? [];
     _commentBlockNoRemind = prefs.getBool(_keyCommentBlockNoRemind) ?? false;
+    _commentBlockwords = prefs.getStringList(_keyCommentBlockwords) ?? [];
+    _commentBlockGroupSpam = prefs.getBool(_keyCommentBlockGroupSpam) ?? false;
     _logoIndex = (prefs.getInt(_keyLogoIndex) ?? 1).clamp(
       0,
       appLogoPaths.length - 1,
@@ -1515,6 +1527,65 @@ class UserManager extends ChangeNotifier {
     _commentBlockNoRemind = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyCommentBlockNoRemind, value);
+    notifyListeners();
+  }
+
+  Future<void> setCommentBlockwords(List<String> list) async {
+    _commentBlockwords = List.from(list);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCommentBlockwords, _commentBlockwords);
+    notifyListeners();
+  }
+
+  Future<void> addCommentBlockword(String word) async {
+    final trimmed = word.trim();
+    if (trimmed.isEmpty || _commentBlockwords.contains(trimmed)) return;
+    _commentBlockwords = [..._commentBlockwords, trimmed];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCommentBlockwords, _commentBlockwords);
+    notifyListeners();
+  }
+
+  Future<void> removeCommentBlockword(String word) async {
+    _commentBlockwords = _commentBlockwords
+        .where((e) => e != word)
+        .toList(growable: true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCommentBlockwords, _commentBlockwords);
+    notifyListeners();
+  }
+
+  Future<void> clearCommentBlockwords() async {
+    _commentBlockwords = const [];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyCommentBlockwords);
+    notifyListeners();
+  }
+
+  /// 评论内容是否命中任一屏蔽词（大小写不敏感）。
+  bool isCommentBlockedByWord(String content) {
+    if (_commentBlockwords.isEmpty || content.isEmpty) return false;
+    final lower = content.toLowerCase();
+    for (final word in _commentBlockwords) {
+      if (word.isEmpty) continue;
+      if (lower.contains(word.toLowerCase())) return true;
+    }
+    return false;
+  }
+
+  /// 群广告预设正则：内容含「群」且含 8~12 位连续数字。
+  static final _groupSpamRegex = RegExp(r'\d{8,12}');
+
+  bool isCommentGroupSpam(String content) {
+    if (!_commentBlockGroupSpam || content.isEmpty) return false;
+    if (!content.contains('群')) return false;
+    return _groupSpamRegex.hasMatch(content);
+  }
+
+  Future<void> setCommentBlockGroupSpam(bool value) async {
+    _commentBlockGroupSpam = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCommentBlockGroupSpam, value);
     notifyListeners();
   }
 

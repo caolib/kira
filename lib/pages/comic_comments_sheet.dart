@@ -49,6 +49,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
   bool _loadingMore = false;
   String? _error;
   int _total = 0;
+  int _blockedCount = 0;
   final Map<int, _ComicReplyState> _replyStates = {};
 
   @override
@@ -75,21 +76,26 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
       );
       if (!mounted) return;
 
-      final mergedComments =
-          (loadMore
-                  ? appendDedupedById(_comments, data.list, (c) => c.id)
-                  : data.list)
-              .where(
-                (item) => !_user.isCommentUserBlocked(
+      final deduped = loadMore
+          ? appendDedupedById(_comments, data.list, (c) => c.id)
+          : data.list;
+      final mergedComments = deduped
+          .where(
+            (item) =>
+                !_user.isCommentUserBlocked(
                   item.userId,
                   item.userName.trim(),
-                ),
-              )
-              .toList();
+                ) &&
+                !_user.isCommentBlockedByWord(item.comment) &&
+                !_user.isCommentGroupSpam(item.comment),
+          )
+          .toList();
+      final blockedCount = deduped.length - mergedComments.length;
 
       setState(() {
         _comments = mergedComments;
         _total = data.total;
+        _blockedCount = blockedCount;
         _loading = false;
         _loadingMore = false;
         _error = null;
@@ -188,10 +194,13 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
                     ]
                   : data.list)
               .where(
-                (item) => !_user.isCommentUserBlocked(
-                  item.userId,
-                  item.userName.trim(),
-                ),
+                (item) =>
+                    !_user.isCommentUserBlocked(
+                      item.userId,
+                      item.userName.trim(),
+                    ) &&
+                    !_user.isCommentBlockedByWord(item.comment) &&
+                    !_user.isCommentGroupSpam(item.comment),
               )
               .toList();
 
@@ -284,11 +293,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
                             ),
                           ),
                           Text(
-                            _total > 0
-                                ? (_comments.length >= _total
-                                      ? l10n.chapterCommentsTotalCount(_total)
-                                      : '${_comments.length}/$_total')
-                                : '',
+                            _buildCountLabel(l10n),
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -383,6 +388,24 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
         ),
       ),
     );
+  }
+
+  /// 评论区计数文案：全部加载且无屏蔽时显示「N 条」；
+  /// 有屏蔽时为「显示数/总数|屏蔽数」，屏蔽为 0 则不显示 |屏蔽数。
+  String _buildCountLabel(AppLocalizations l10n) {
+    if (_total <= 0) return '';
+    final allLoaded = _comments.length + _blockedCount >= _total;
+    if (allLoaded && _blockedCount == 0) {
+      return l10n.chapterCommentsTotalCount(_total);
+    }
+    if (_blockedCount > 0) {
+      return l10n.chapterCommentsCountWithBlocked(
+        _comments.length,
+        _total,
+        _blockedCount,
+      );
+    }
+    return '${_comments.length}/$_total';
   }
 
   Widget _buildBody(BuildContext context, ColorScheme cs, TextTheme tt) {
@@ -1032,18 +1055,27 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
 
   void _applyBlockedFilter() {
     setState(() {
+      final before = _comments.length;
       _comments = _comments
           .where(
-            (c) => !_user.isCommentUserBlocked(c.userId, c.userName.trim()),
+            (c) =>
+                !_user.isCommentUserBlocked(c.userId, c.userName.trim()) &&
+                !_user.isCommentBlockedByWord(c.comment) &&
+                !_user.isCommentGroupSpam(c.comment),
           )
           .toList();
+      // 新增屏蔽造成的减少累加到屏蔽数。
+      _blockedCount = _blockedCount + (before - _comments.length);
       // 已展开的回复也需过滤
       for (final id in _replyStates.keys.toList()) {
         final s = _replyStates[id]!;
         if (s.replies.isEmpty) continue;
         final filtered = s.replies
             .where(
-              (r) => !_user.isCommentUserBlocked(r.userId, r.userName.trim()),
+              (r) =>
+                  !_user.isCommentUserBlocked(r.userId, r.userName.trim()) &&
+                  !_user.isCommentBlockedByWord(r.comment) &&
+                  !_user.isCommentGroupSpam(r.comment),
             )
             .toList();
         if (filtered.length != s.replies.length) {
@@ -1053,8 +1085,8 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
     });
   }
 
-  void _showCommentSettings() {
-    showModalBottomSheet(
+  Future<void> _showCommentSettings() async {
+    await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -1107,6 +1139,9 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
         );
       },
     );
+    if (!mounted) return;
+    // 编辑屏蔽词/屏蔽用户后，重新过滤已加载的评论。
+    _applyBlockedFilter();
   }
 
   Future<void> _plusOneComment(String content) async {

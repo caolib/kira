@@ -697,12 +697,53 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                   },
                 ),
               const SizedBox(height: AppSpacing.sm),
+              _buildBlockwordsSection(cs, tt),
+              const SizedBox(height: AppSpacing.sm),
+              _buildBlockPresetsSection(cs, tt),
+              const SizedBox(height: AppSpacing.sm),
               _buildBlockedUsersSection(cs, tt),
               const SizedBox(height: AppSpacing.sm),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBlockwordsSection(ColorScheme cs, TextTheme tt) {
+    final user = UserManager();
+
+    return ListenableBuilder(
+      listenable: user,
+      builder: (context, _) {
+        final words = user.commentBlockwords;
+        return _BlockwordsEditor(
+          words: words,
+          onChanged: (list) => user.setCommentBlockwords(list),
+          onClear: () => user.clearCommentBlockwords(),
+        );
+      },
+    );
+  }
+
+  Widget _buildBlockPresetsSection(ColorScheme cs, TextTheme tt) {
+    final user = UserManager();
+    final l10n = AppLocalizations.of(context)!;
+
+    return ListenableBuilder(
+      listenable: user,
+      builder: (context, _) {
+        return SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.commentSettingsBlockGroupSpam),
+          subtitle: Text(
+            l10n.commentSettingsBlockGroupSpamDesc,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          value: user.commentBlockGroupSpam,
+          onChanged: (v) => user.setCommentBlockGroupSpam(v),
+        );
+      },
     );
   }
 
@@ -780,6 +821,154 @@ class _BlockedUserTile extends StatelessWidget {
         color: cs.error,
         onPressed: onRemove,
       ),
+    );
+  }
+}
+
+class _BlockwordsEditor extends StatefulWidget {
+  final List<String> words;
+  final ValueChanged<List<String>> onChanged;
+  final VoidCallback onClear;
+
+  const _BlockwordsEditor({
+    required this.words,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  @override
+  State<_BlockwordsEditor> createState() => _BlockwordsEditorState();
+}
+
+class _BlockwordsEditorState extends State<_BlockwordsEditor> {
+  late List<String> _words;
+  final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _words = List.from(widget.words);
+  }
+
+  @override
+  void didUpdateWidget(covariant _BlockwordsEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 外部清空或修改时同步本地编辑态，避免与持久化值脱节。
+    if (oldWidget.words != widget.words) {
+      _words = List.from(widget.words);
+    }
+  }
+
+  void _addWord() {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _words.contains(text)) return;
+    setState(() {
+      _words.add(text);
+      _controller.clear();
+    });
+    widget.onChanged(List.from(_words));
+  }
+
+  void _removeWord(int index) {
+    setState(() => _words.removeAt(index));
+    widget.onChanged(List.from(_words));
+  }
+
+  Future<void> _convertSimplifiedTraditional() async {
+    final text = _controller.text;
+    if (text.isEmpty) return;
+    try {
+      final converted = await ChineseConverter.convertToSimplifiedChinese(text);
+      if (converted == text) {
+        _controller.text = await ChineseConverter.convertToTraditionalChinese(
+          text,
+        );
+      } else {
+        _controller.text = converted;
+      }
+    } catch (e, stack) {
+      unawaited(
+        AppLogger().recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'comment_settings.convert_chinese',
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.commentSettingsBlockwordsSection,
+          style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.commentSettingsBlockwordsDesc,
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: l10n.commentSettingsBlockwordsHint,
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    onPressed: _convertSimplifiedTraditional,
+                    icon: const Icon(Icons.translate, size: 20),
+                    tooltip: l10n.playerSettingsChineseConvertTooltip,
+                  ),
+                ),
+                onSubmitted: (_) => _addWord(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(onPressed: _addWord, icon: const Icon(Icons.add)),
+          ],
+        ),
+        if (_words.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (var i = 0; i < _words.length; i++)
+                Chip(
+                  label: Text(_words[i]),
+                  onDeleted: () => _removeWord(i),
+                  visualDensity: VisualDensity.compact,
+                ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+              label: Text(l10n.commentSettingsClearBlockwords),
+              style: TextButton.styleFrom(foregroundColor: cs.error),
+              onPressed: widget.onClear,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

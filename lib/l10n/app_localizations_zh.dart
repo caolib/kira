@@ -2169,6 +2169,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String chapterCommentsCountWithBlocked(int shown, int total, int blocked) {
+    return '$shown/$total|$blocked';
+  }
+
+  @override
   String get chapterCommentsComment => '评论';
 
   @override
@@ -3266,6 +3271,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commentSettingsRemoveFromBlacklist => '移出黑名单';
+
+  @override
+  String get commentSettingsBlockwordsSection => '屏蔽词';
+
+  @override
+  String get commentSettingsBlockwordsDesc => '包含屏蔽词的评论将被自动过滤，大小写不敏感。';
+
+  @override
+  String get commentSettingsBlockwordsHint => '输入屏蔽词';
+
+  @override
+  String get commentSettingsClearBlockwords => '清空屏蔽词';
+
+  @override
+  String get commentSettingsBlockGroupSpam => '屏蔽群号广告';
+
+  @override
+  String get commentSettingsBlockGroupSpamDesc => '同时包含「群」和 8~12 位数字的评论将被自动过滤';
 
   @override
   String get profileFallbackQuestionWife => '我的老婆叫什麼？';
@@ -5997,6 +6020,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String chapterCommentsCountWithBlocked(int shown, int total, int blocked) {
+    return '$shown/$total|$blocked';
+  }
+
+  @override
   String get chapterCommentsComment => '評論';
 
   @override
@@ -7094,6 +7122,24 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get commentSettingsRemoveFromBlacklist => '移出黑名單';
+
+  @override
+  String get commentSettingsBlockwordsSection => '屏蔽詞';
+
+  @override
+  String get commentSettingsBlockwordsDesc => '包含屏蔽詞的評論將被自動過濾，大小寫不敏感。';
+
+  @override
+  String get commentSettingsBlockwordsHint => '輸入屏蔽詞';
+
+  @override
+  String get commentSettingsClearBlockwords => '清空屏蔽詞';
+
+  @override
+  String get commentSettingsBlockGroupSpam => '屏蔽群號廣告';
+
+  @override
+  String get commentSettingsBlockGroupSpamDesc => '同時包含「群」和 8~12 位數字的評論將被自動過濾';
 
   @override
   String get profileFallbackQuestionWife => '我的老婆叫什麼？';
