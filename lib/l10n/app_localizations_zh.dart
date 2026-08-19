@@ -3182,6 +3182,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commentSettingsAiSummarySection => 'AI 总结';
 
   @override
+  String downloadChapterPartialFailed(int count) {
+    return '缺 $count 页';
+  }
+
+  @override
+  String get downloadChapterRetryTooltip => '补全失败页';
+
+  @override
+  String downloadProgressPartial(
+    String percent,
+    int completed,
+    int total,
+    int failed,
+  ) {
+    return '$percent% ($completed/$total)，失败 $failed';
+  }
+
+  @override
   String get commentSettingsEnableAiSummary => '启用 AI 总结';
 
   @override
@@ -6990,6 +7008,24 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get commentSettingsAiSummarySection => 'AI 總結';
+
+  @override
+  String downloadChapterPartialFailed(int count) {
+    return '缺 $count 頁';
+  }
+
+  @override
+  String get downloadChapterRetryTooltip => '補全失敗頁';
+
+  @override
+  String downloadProgressPartial(
+    String percent,
+    int completed,
+    int total,
+    int failed,
+  ) {
+    return '$percent% ($completed/$total)，失敗 $failed';
+  }
 
   @override
   String get commentSettingsEnableAiSummary => '啟用 AI 總結';

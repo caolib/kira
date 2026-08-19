@@ -5765,6 +5765,29 @@ abstract class AppLocalizations {
   /// **'AI 总结'**
   String get commentSettingsAiSummarySection;
 
+  /// No description provided for @downloadChapterPartialFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'缺 {count} 页'**
+  String downloadChapterPartialFailed(int count);
+
+  /// No description provided for @downloadChapterRetryTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'补全失败页'**
+  String get downloadChapterRetryTooltip;
+
+  /// No description provided for @downloadProgressPartial.
+  ///
+  /// In zh, this message translates to:
+  /// **'{percent}% ({completed}/{total})，失败 {failed}'**
+  String downloadProgressPartial(
+    String percent,
+    int completed,
+    int total,
+    int failed,
+  );
+
   /// No description provided for @commentSettingsEnableAiSummary.
   ///
   /// In zh, this message translates to:

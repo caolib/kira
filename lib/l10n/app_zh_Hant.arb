@@ -2150,6 +2150,32 @@
     }
   },
   "commentSettingsAiSummarySection": "AI 總結",
+  "downloadChapterPartialFailed": "缺 {count} 頁",
+  "@downloadChapterPartialFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadChapterRetryTooltip": "補全失敗頁",
+  "downloadProgressPartial": "{percent}% ({completed}/{total})，失敗 {failed}",
+  "@downloadProgressPartial": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "commentSettingsEnableAiSummary": "啟用 AI 總結",
   "commentSettingsAiSummaryEnabledDesc": "評論頂部顯示 AI 總結按鈕",
   "commentSettingsAiSummaryDisabled": "未啟用",

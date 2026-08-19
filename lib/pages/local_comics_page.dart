@@ -205,6 +205,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
             isLastRead: isLastRead,
             isRead: isRead,
             selectionMode: _selectionMode,
+            onRetry: () => _retryChapter(chapter.chapterUuid),
             onTap: () {
               if (_selectionMode) {
                 setState(() {
@@ -283,6 +284,13 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
       _selectedChapterIds.clear();
       _selectionMode = false;
     });
+  }
+
+  Future<void> _retryChapter(String chapterUuid) async {
+    final l10n = AppLocalizations.of(context)!;
+    final queued = await _downloads.retryChapter(widget.pathWord, chapterUuid);
+    if (!mounted) return;
+    if (queued) showToast(context, l10n.retryButton);
   }
 
   @override
@@ -605,6 +613,7 @@ class _LocalChapterCard extends StatelessWidget {
   final bool selectionMode;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback? onRetry;
 
   const _LocalChapterCard({
     required this.summary,
@@ -614,6 +623,7 @@ class _LocalChapterCard extends StatelessWidget {
     required this.selectionMode,
     required this.onTap,
     required this.onLongPress,
+    this.onRetry,
   });
 
   @override
@@ -651,10 +661,17 @@ class _LocalChapterCard extends StatelessWidget {
           )
         : cs.onSurfaceVariant;
 
+    final isPartial = summary.isPartial;
     final statusText = '${summary.pageCount}P';
+    final partialText = isPartial
+        ? l10n.downloadChapterPartialFailed(summary.failedIndices.length)
+        : null;
     final subtitle = isRead && !isLastRead
-        ? l10n.comicDetailReadWithStatus(statusText)
-        : statusText;
+        ? l10n.comicDetailReadWithStatus(
+            partialText != null ? '$statusText · $partialText' : statusText,
+          )
+        : (partialText != null ? '$statusText · $partialText' : statusText);
+    final partialColor = cs.error;
 
     return Stack(
       children: [
@@ -714,8 +731,10 @@ class _LocalChapterCard extends StatelessWidget {
                       Text(
                         subtitle,
                         textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: tt.labelSmall?.copyWith(
-                          color: subtitleColor,
+                          color: isPartial ? partialColor : subtitleColor,
                           fontSize: 12,
                         ),
                       ),
@@ -734,6 +753,27 @@ class _LocalChapterCard extends StatelessWidget {
               selected ? Icons.check_circle : Icons.radio_button_unchecked,
               size: 18,
               color: selected ? cs.primary : cs.onSurfaceVariant,
+            ),
+          ),
+        if (isPartial && !selectionMode && onRetry != null)
+          Positioned(
+            top: 4,
+            left: 4,
+            child: InkWell(
+              onTap: onRetry,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.refresh,
+                  size: 14,
+                  color: cs.onErrorContainer,
+                ),
+              ),
             ),
           ),
       ],

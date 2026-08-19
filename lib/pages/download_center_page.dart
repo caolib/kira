@@ -605,12 +605,19 @@ class _ComicQueueTaskCard extends StatelessWidget {
     BuildContext context,
     ChapterDownloadProgress progress,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final percent = (progress.ratio * 100).toStringAsFixed(0);
     final completed = progress.completed;
     final total = progress.total;
-    return AppLocalizations.of(
-      context,
-    )!.downloadProgressCount(percent, completed, total);
+    if (progress.failed > 0) {
+      return l10n.downloadProgressPartial(
+        percent,
+        completed,
+        total,
+        progress.failed,
+      );
+    }
+    return l10n.downloadProgressCount(percent, completed, total);
   }
 
   Widget _buildStatusLabel(BuildContext context, ColorScheme cs, TextTheme tt) {

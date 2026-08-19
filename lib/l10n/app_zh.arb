@@ -2179,6 +2179,32 @@
     }
   },
   "commentSettingsAiSummarySection": "AI 总结",
+  "downloadChapterPartialFailed": "缺 {count} 页",
+  "@downloadChapterPartialFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadChapterRetryTooltip": "补全失败页",
+  "downloadProgressPartial": "{percent}% ({completed}/{total})，失败 {failed}",
+  "@downloadProgressPartial": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "commentSettingsEnableAiSummary": "启用 AI 总结",
   "commentSettingsAiSummaryEnabledDesc": "评论顶部显示 AI 总结按钮",
   "commentSettingsAiSummaryDisabled": "未启用",

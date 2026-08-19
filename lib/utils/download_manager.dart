@@ -10,6 +10,7 @@ import '../api/api_client.dart';
 import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/comic.dart';
+import 'app_logger.dart';
 
 class DownloadManager extends ChangeNotifier {
   static final DownloadManager _instance = DownloadManager._();
@@ -195,7 +196,9 @@ class DownloadManager extends ChangeNotifier {
     for (final chapter in all) {
       grouped.putIfAbsent(chapter.chapterGroup, () => []).add(chapter);
     }
-    return grouped.entries.map((e) => (group: e.key, chapters: e.value)).toList();
+    return grouped.entries
+        .map((e) => (group: e.key, chapters: e.value))
+        .toList();
   }
 
   bool isDownloaded(String pathWord, String chapterUuid) =>
@@ -209,6 +212,45 @@ class DownloadManager extends ChangeNotifier {
 
   ChapterDownloadProgress? progressOf(String pathWord, String chapterUuid) =>
       isDownloading(pathWord, chapterUuid) ? _activeProgress : null;
+
+  /// 该章节是否为部分下载（仍有未下载页，可重试补全）。
+  bool isPartial(String pathWord, String chapterUuid) =>
+      _manifest[pathWord]?[chapterUuid]?.isPartial ?? false;
+
+  /// 获取指定章节的部分失败页数；未下载或完整下载返回 0。
+  int failedCountOf(String pathWord, String chapterUuid) =>
+      _manifest[pathWord]?[chapterUuid]?.failedIndices.length ?? 0;
+
+  /// 重试补全已部分下载章节的失败页：仅下载失败的那几页，成功页直接复用。
+  ///
+  /// 返回 true 表示已入队；false 表示无记录、已是完整下载或在队列中。
+  Future<bool> retryChapter(String pathWord, String chapterUuid) async {
+    await init();
+    final summary = _manifest[pathWord]?[chapterUuid];
+    if (summary == null || !summary.isPartial) return false;
+
+    final key = _taskKey(pathWord, chapterUuid);
+    if (_queuedKeys.contains(key)) return false;
+
+    final chapter = Chapter(
+      uuid: summary.chapterUuid,
+      index: summary.chapterIndex,
+      name: summary.chapterName,
+      ordered: summary.chapterOrder,
+    );
+    _queue.add(
+      _DownloadTask(
+        pathWord: pathWord,
+        group: summary.chapterGroup,
+        chapter: chapter,
+        isRetry: true,
+      ),
+    );
+    _queuedKeys.add(key);
+    notifyListeners();
+    unawaited(_processQueue());
+    return true;
+  }
 
   int pendingCountForComic(String pathWord) {
     var count = 0;
@@ -282,14 +324,22 @@ class DownloadManager extends ChangeNotifier {
       final detail = ChapterDetail.fromDownloadedJson(
         Map<String, dynamic>.from(decoded),
       );
-      final allFilesExist = await _allFilesExist(detail.contents);
-      if (!allFilesExist) {
-        await _removeDownloadedChapter(
-          pathWord,
-          chapterUuid,
-          deleteFiles: true,
-        );
-        return null;
+      // 部分下载章节：失败页的 contents 为空串、文件不存在，属正常；
+      // 但 manifest 标记为已下载的页若文件丢失则视为损坏，清理。
+      final failed =
+          _manifest[pathWord]?[chapterUuid]?.failedIndices.toSet() ??
+          const <int>{};
+      for (var i = 0; i < detail.contents.length; i++) {
+        if (failed.contains(i)) continue;
+        final p = detail.contents[i];
+        if (p.isEmpty || !await File(p).exists()) {
+          await _removeDownloadedChapter(
+            pathWord,
+            chapterUuid,
+            deleteFiles: true,
+          );
+          return null;
+        }
       }
       return detail;
     } catch (e) {
@@ -381,7 +431,7 @@ class DownloadManager extends ChangeNotifier {
         notifyListeners();
 
         try {
-          await _downloadChapter(task);
+          await _downloadChapter(task, isRetry: task.isRetry);
         } catch (e) {
           debugPrint(
             'Download chapter failed: ${task.pathWord}/${task.chapter.uuid} $e',
@@ -400,11 +450,17 @@ class DownloadManager extends ChangeNotifier {
     }
   }
 
-  Future<void> _downloadChapter(_DownloadTask task) async {
+  Future<void> _downloadChapter(
+    _DownloadTask task, {
+    bool isRetry = false,
+  }) async {
     final chapterDir = _chapterDirectory(task.pathWord, task.chapter.uuid);
 
     try {
-      await _resetDirectory(chapterDir);
+      // 重试时保留已下载的文件，仅补全失败页；全新下载则清空目录。
+      if (!isRetry) {
+        await _resetDirectory(chapterDir);
+      }
 
       final detail = await _api.manga.getChapterDetail(
         task.pathWord,
@@ -414,20 +470,46 @@ class DownloadManager extends ChangeNotifier {
         throw const HttpException('Chapter has no images');
       }
 
-      final comments = _downloadCommentsEnabled
-          ? await _downloadComments(task.chapter.uuid)
-          : (list: <ChapterComment>[], total: 0);
+      final total = detail.contents.length;
+
+      // 复用已下载页的本地路径，避免重复下载成功页（重试或崩溃恢复）。
+      final existing = await _loadExistingPaths(
+        task.pathWord,
+        task.chapter.uuid,
+        total,
+      );
+      final completedStart = existing.where((e) => e != null).length;
+
+      // 重试时复用已保存的评论；全新下载且开关开启时才拉取评论。
+      final comments = (isRetry || !_downloadCommentsEnabled)
+          ? await _loadExistingComments(task.pathWord, task.chapter.uuid)
+          : await _downloadComments(task.chapter.uuid);
 
       _activeProgress = ChapterDownloadProgress(
-        completed: 0,
-        total: detail.contents.length,
+        completed: completedStart,
+        total: total,
       );
       notifyListeners();
 
-      final localPaths = await _downloadImages(detail.contents, chapterDir);
+      final result = await _downloadImages(
+        detail.contents,
+        chapterDir,
+        existing: existing,
+      );
+
+      // 处理结果：失败页记为空串，收集失败索引。
+      final failedIndices = <int>[];
+      final completedPaths = List<String>.filled(total, '');
+      for (var i = 0; i < total; i++) {
+        if (result[i] == null) {
+          failedIndices.add(i);
+        } else {
+          completedPaths[i] = result[i]!;
+        }
+      }
 
       final localDetail = detail.copyWith(
-        contents: localPaths,
+        contents: completedPaths,
         isDownloaded: true,
         comments: comments.list,
         commentTotal: comments.total,
@@ -444,18 +526,84 @@ class DownloadManager extends ChangeNotifier {
         chapterGroup: task.group,
         chapterIndex: task.chapter.index,
         chapterOrder: task.chapter.ordered,
-        pageCount: localPaths.length,
+        pageCount: completedPaths.length,
         savedAt: DateTime.now(),
+        failedIndices: failedIndices,
       );
       await _persistManifest();
       await _touchLocalComic(task.pathWord);
-    } catch (_) {
-      await _removeDownloadedChapter(
-        task.pathWord,
-        task.chapter.uuid,
-        deleteFiles: true,
-      );
+      // 注意：部分图片失败不抛错，章节以 partial 状态持久化，用户可重试补全。
+    } on Exception catch (_) {
+      // 仅整章级失败（如 API 错误）才清理。部分页失败已写入 manifest，保留。
+      if (!isRetry) {
+        await _removeDownloadedChapter(
+          task.pathWord,
+          task.chapter.uuid,
+          deleteFiles: true,
+        );
+      }
       rethrow;
+    }
+  }
+
+  /// 从已存在的 chapter.json 读取各页本地路径，未下载的页返回 null。
+  Future<List<String?>> _loadExistingPaths(
+    String pathWord,
+    String chapterUuid,
+    int total,
+  ) async {
+    final file = _chapterMetadataFile(pathWord, chapterUuid);
+    if (!await file.exists()) {
+      return List<String?>.filled(total, null);
+    }
+    try {
+      final raw = await file.readAsString();
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return List<String?>.filled(total, null);
+      final contents = (decoded['contents'] as List?)?.toList() ?? const [];
+      final result = List<String?>.filled(total, null);
+      for (var i = 0; i < total && i < contents.length; i++) {
+        final p = contents[i]?.toString() ?? '';
+        if (p.isNotEmpty && await File(p).exists()) {
+          result[i] = p;
+        }
+      }
+      return result;
+    } catch (e, st) {
+      AppLogger.instance.recordWarning(e, stackTrace: st);
+      return List<String?>.filled(total, null);
+    }
+  }
+
+  /// 从已存在的 chapter.json 读取评论（重试时复用，不重新拉取）。
+  Future<({List<ChapterComment> list, int total})> _loadExistingComments(
+    String pathWord,
+    String chapterUuid,
+  ) async {
+    final file = _chapterMetadataFile(pathWord, chapterUuid);
+    if (!await file.exists()) {
+      return (list: const <ChapterComment>[], total: 0);
+    }
+    try {
+      final raw = await file.readAsString();
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return (list: const <ChapterComment>[], total: 0);
+      }
+      final list =
+          (decoded['comments'] as List?)
+              ?.map(
+                (item) => ChapterComment.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .toList() ??
+          const <ChapterComment>[];
+      final total = (decoded['comment_total'] as num?)?.toInt() ?? list.length;
+      return (list: list, total: total);
+    } catch (e, st) {
+      AppLogger.instance.recordWarning(e, stackTrace: st);
+      return (list: const <ChapterComment>[], total: 0);
     }
   }
 
@@ -469,51 +617,73 @@ class DownloadManager extends ChangeNotifier {
 
   /// 并发下载一章内的所有图片，保留文件名顺序（001, 002, ...）。
   ///
-  /// 最多 [_imageDownloadConcurrency] 张同时下载；任一图片失败则整章失败。
+  /// [existing] 中非空的项视为已下载，直接复用其路径并跳过下载；为 null 的项
+  /// 才进入下载队列。任一图片重试耗尽后仍失败时记为 null（不抛错），整章以
+  /// partial 状态返回，由调用方决定是否持久化失败索引。
   /// 进度通过 [_activeProgress] 实时上报。
-  Future<List<String>> _downloadImages(
+  Future<List<String?>> _downloadImages(
     List<String> imageUrls,
-    Directory chapterDir,
-  ) async {
+    Directory chapterDir, {
+    List<String?> existing = const [],
+  }) async {
     final total = imageUrls.length;
     final result = List<String?>.filled(total, null);
 
     var completed = 0;
-    var next = 0; // 下一个待分配的图片索引
+    var failed = 0;
+    // 仅下载 existing 中为 null（未下载）的页。
+    final pending = <int>[];
+    for (var i = 0; i < total; i++) {
+      final existingPath = i < existing.length ? existing[i] : null;
+      if (existingPath != null && existingPath.isNotEmpty) {
+        result[i] = existingPath;
+        completed++;
+      } else {
+        pending.add(i);
+      }
+    }
+
+    var next = 0; // 下一个待分配的 pending 位置
 
     // worker 协程：循环领取并下载尚未处理的图片，直到全部派发完。
     Future<void> worker() async {
       while (true) {
-        final index = next;
+        final pos = next;
         next++;
-        if (index >= total) return;
-
-        final file = await _downloadImage(
-          imageUrls[index],
-          chapterDir,
-          index + 1,
-        );
-        result[index] = file.path;
-        completed++;
+        if (pos >= pending.length) return;
+        final index = pending[pos];
+        try {
+          final file = await _downloadImage(
+            imageUrls[index],
+            chapterDir,
+            index + 1,
+          );
+          result[index] = file.path;
+          completed++;
+        } catch (e, st) {
+          // 单张失败不中断整章；记为 null，由调用方收集为 failedIndices。
+          failed++;
+          AppLogger.instance.recordWarning(
+            'Image #$index download failed: $e',
+            stackTrace: st,
+          );
+        }
         _activeProgress = ChapterDownloadProgress(
           completed: completed,
           total: total,
+          failed: failed,
         );
         notifyListeners();
       }
     }
 
-    final workers = List.generate(
-      _imageDownloadConcurrency.clamp(1, total > 0 ? total : 1),
-      (_) => worker(),
+    final workerCount = _imageDownloadConcurrency.clamp(
+      1,
+      pending.isNotEmpty ? pending.length : 1,
     );
+    final workers = List.generate(workerCount, (_) => worker());
     await Future.wait(workers);
-
-    // 任一图片在重试耗尽后仍失败时 result 中会留 null，整章不完整则放弃。
-    if (result.any((e) => e == null)) {
-      throw const HttpException('Image download incomplete');
-    }
-    return result.cast<String>();
+    return result;
   }
 
   Future<File> _downloadImage(
@@ -537,7 +707,9 @@ class DownloadManager extends ChangeNotifier {
         );
         try {
           if (await partial.exists()) await partial.delete();
-        } catch (_) {}
+        } catch (e, st) {
+          AppLogger.instance.recordWarning(e, stackTrace: st);
+        }
       }
     }
     throw HttpException('Image download failed after retries: $lastError');
@@ -741,15 +913,6 @@ class DownloadManager extends ChangeNotifier {
     await dir.create(recursive: true);
   }
 
-  Future<bool> _allFilesExist(List<String> paths) async {
-    for (final path in paths) {
-      if (!await File(path).exists()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   File get _manifestFile =>
       File(_joinPath([_rootDirectory!.path, _manifestFileName]));
 
@@ -832,6 +995,8 @@ class DownloadedChapterSummary {
   final int chapterOrder;
   final int pageCount;
   final DateTime savedAt;
+  // 0-based 页索引：下载失败的页。空表示完整下载。
+  final List<int> failedIndices;
 
   const DownloadedChapterSummary({
     required this.chapterUuid,
@@ -841,16 +1006,19 @@ class DownloadedChapterSummary {
     this.chapterOrder = 0,
     required this.pageCount,
     required this.savedAt,
+    this.failedIndices = const [],
   });
 
   int get sortOrder => chapterOrder > 0 ? chapterOrder : chapterIndex;
+
+  /// 是否为部分失败（仍有未下载页）。
+  bool get isPartial => failedIndices.isNotEmpty;
 
   factory DownloadedChapterSummary.fromJson(Map<String, dynamic> json) =>
       DownloadedChapterSummary(
         chapterUuid: json['chapter_uuid']?.toString() ?? '',
         chapterName: json['chapter_name']?.toString() ?? '',
-        chapterGroup:
-            json['chapter_group']?.toString().trim().isEmpty ?? true
+        chapterGroup: json['chapter_group']?.toString().trim().isEmpty ?? true
             ? 'default'
             : json['chapter_group'].toString(),
         chapterIndex: json['chapter_index'] is int
@@ -865,6 +1033,12 @@ class DownloadedChapterSummary {
         savedAt:
             DateTime.tryParse(json['saved_at']?.toString() ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),
+        failedIndices:
+            (json['failed_indices'] as List?)
+                ?.map((e) => int.tryParse(e.toString()) ?? 0)
+                .where((v) => v >= 0)
+                .toList() ??
+            const [],
       );
 
   Map<String, dynamic> toJson() => {
@@ -875,14 +1049,20 @@ class DownloadedChapterSummary {
     'chapter_order': chapterOrder,
     'page_count': pageCount,
     'saved_at': savedAt.toIso8601String(),
+    'failed_indices': failedIndices,
   };
 }
 
 class ChapterDownloadProgress {
   final int completed;
   final int total;
+  final int failed;
 
-  const ChapterDownloadProgress({required this.completed, required this.total});
+  const ChapterDownloadProgress({
+    required this.completed,
+    required this.total,
+    this.failed = 0,
+  });
 
   double get ratio => total <= 0 ? 0 : completed / total;
 }
@@ -891,11 +1071,14 @@ class _DownloadTask {
   final String pathWord;
   final String group;
   final Chapter chapter;
+  // true 表示这是对已有部分下载的"补全重试"：不清空目录、不重复下载成功页。
+  final bool isRetry;
 
   const _DownloadTask({
     required this.pathWord,
     required this.group,
     required this.chapter,
+    this.isRetry = false,
   });
 }
 
