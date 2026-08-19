@@ -16,6 +16,7 @@ import '../utils/comment_text.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/text_controller_scope.dart';
 import 'chapter_comments/comment_paging.dart';
 import 'chapter_comments/comment_scroll_behavior.dart';
 import 'chapter_comments_sheet.dart'
@@ -1151,7 +1152,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
       return;
     }
 
-    final controller = TextEditingController();
     var submitting = false;
     String? errorText;
 
@@ -1166,6 +1166,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
     Future<void> submit(
       BuildContext dialogContext,
       StateSetter setLocal,
+      TextEditingController controller,
     ) async {
       final content = controller.text.trim();
       final length = CommentText.lengthOf(content);
@@ -1236,99 +1237,97 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
       }
     }
 
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (dialogContext, setLocal) {
-              final length = CommentText.lengthOf(controller.text);
-              final canSubmit =
-                  !submitting &&
-                  length >= CommentText.minLength &&
-                  length <= CommentText.maxLength;
-              return AlertDialog(
-                title: Text(title),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (isReply) ...[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerLow,
-                            borderRadius: AppRadius.mdR,
+    // 控制器交给 TextControllerScope 托管：弹窗退出动画期间子树仍会重建，
+    // 提前 dispose 会命中 “used after being disposed” 断言。
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return TextControllerScope(
+          builder: (dialogContext, controller) {
+            return StatefulBuilder(
+              builder: (dialogContext, setLocal) {
+                final length = CommentText.lengthOf(controller.text);
+                final canSubmit =
+                    !submitting &&
+                    length >= CommentText.minLength &&
+                    length <= CommentText.maxLength;
+                return AlertDialog(
+                  title: Text(title),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (isReply) ...[
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerLow,
+                              borderRadius: AppRadius.mdR,
+                            ),
+                            child: Text(
+                              replyTo.comment,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
-                          child: Text(
-                            replyTo.comment,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      TextField(
-                        controller: controller,
-                        autofocus: true,
-                        enabled: !submitting,
-                        minLines: 3,
-                        maxLines: 6,
-                        maxLength: CommentText.maxLength,
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(200),
+                          const SizedBox(height: AppSpacing.md),
                         ],
-                        textInputAction: TextInputAction.newline,
-                        decoration: InputDecoration(
-                          hintText: hintText,
-                          helperText: l10n.chapterCommentsLengthHelper,
-                          errorText: errorText,
-                          border: const OutlineInputBorder(),
-                        ),
-                        onChanged: (_) => setLocal(() => errorText = null),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: submitting
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: Text(l10n.cancelButton),
-                  ),
-                  FilledButton(
-                    onPressed: canSubmit
-                        ? () => submit(dialogContext, setLocal)
-                        : null,
-                    child: submitting
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            isReply
-                                ? l10n.comicCommentReplyButton
-                                : l10n.chapterCommentsPublish,
+                        TextField(
+                          controller: controller,
+                          autofocus: true,
+                          enabled: !submitting,
+                          minLines: 3,
+                          maxLines: 6,
+                          maxLength: CommentText.maxLength,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(200),
+                          ],
+                          textInputAction: TextInputAction.newline,
+                          decoration: InputDecoration(
+                            hintText: hintText,
+                            helperText: l10n.chapterCommentsLengthHelper,
+                            errorText: errorText,
+                            border: const OutlineInputBorder(),
                           ),
+                          onChanged: (_) => setLocal(() => errorText = null),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      // ponytail: 延后一帧 dispose，避免弹窗退出动画期间
-      // 还在读取 controller.text 导致 used-after-dispose
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.dispose();
-      });
-    }
+                  actions: [
+                    TextButton(
+                      onPressed: submitting
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                      child: Text(l10n.cancelButton),
+                    ),
+                    FilledButton(
+                      onPressed: canSubmit
+                          ? () => submit(dialogContext, setLocal, controller)
+                          : null,
+                      child: submitting
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              isReply
+                                  ? l10n.comicCommentReplyButton
+                                  : l10n.chapterCommentsPublish,
+                            ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildCommentText(

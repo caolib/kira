@@ -350,6 +350,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.4.2"
+  flutter_confetti:
+    dependency: "direct main"
+    description:
+      name: flutter_confetti
+      sha256: "6fd566dc7e99456814b8e5a820328ae5ba06f9ca41a85001a1c4baaa9e3e5773"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.9.2"
   flutter_displaymode:
     dependency: "direct main"
     description:

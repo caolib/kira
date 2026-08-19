@@ -24,6 +24,8 @@ import '../utils/comment_text.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/confetti_celebration.dart';
+import '../widgets/text_controller_scope.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments/comment_paging.dart';
 import 'chapter_comments/comment_scroll_behavior.dart';
@@ -65,6 +67,7 @@ class ChapterCommentsSheet extends StatefulWidget {
 class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     with CommentScrollBehavior<ChapterCommentsSheet> {
   static const _pageSize = 100;
+  bool _confettiShown = false;
   static const _commentRowSpacing = 8.0;
   static const _commentListBottomPadding = 124.0;
   static const _sheetMaxHeightFactor = 0.85;
@@ -222,6 +225,9 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       _total = widget.initialTotal ?? _comments.length;
       _loading = false;
       _rebuildGroupedEntries();
+      // 初始评论已达撒花条件时立即触发（此前仅 _loadAllComments 路径会检查，
+      // 导致已加载完成的评论区永远不触发）。
+      _maybeShowConfetti();
       if (_user.commentAutoLoadAll && _comments.length < _total) {
         _loadAllComments();
       }
@@ -360,6 +366,25 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       List<ChapterComment>.from(_comments),
       _total < _comments.length ? _comments.length : _total,
     );
+    _maybeShowConfetti();
+  }
+
+  /// 当评论含「完结撒花/散花」超过 10 条时触发全屏撒花动画。
+  ///
+  /// 使用 flutter_confetti 包的礼炮式实现，从屏幕左右下角向上发射。
+  void _maybeShowConfetti() {
+    if (_confettiShown) return;
+    final comments = _comments;
+    if (comments.length < 10) return;
+
+    final texts = comments.map((c) => c.comment).toList();
+    if (!hasCompletionCelebration(texts)) return;
+
+    _confettiShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showConfettiCelebration(context);
+    });
   }
 
   Future<void> _loadComments({
@@ -902,7 +927,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       return;
     }
 
-    final controller = TextEditingController();
     var submitting = false;
     String? errorText;
     String? errorLog;
@@ -910,6 +934,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     Future<void> submit(
       BuildContext dialogContext,
       StateSetter setLocal,
+      TextEditingController controller,
     ) async {
       final content = controller.text.trim();
       final length = CommentText.lengthOf(content);
@@ -945,95 +970,93 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       }
     }
 
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (dialogContext, setLocal) {
-              final length = CommentText.lengthOf(controller.text);
-              final canSubmit =
-                  !submitting &&
-                  length >= CommentText.minLength &&
-                  length <= CommentText.maxLength;
-              return AlertDialog(
-                title: Text(l10n.chapterCommentsPostTitle),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextField(
-                        controller: controller,
-                        autofocus: true,
-                        enabled: !submitting,
-                        minLines: 3,
-                        maxLines: 6,
-                        maxLength: CommentText.maxLength,
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(200),
+    // 控制器交给 TextControllerScope 托管：弹窗退出动画期间子树仍会重建，
+    // 提前 dispose 会命中 “used after being disposed” 断言。
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return TextControllerScope(
+          builder: (dialogContext, controller) {
+            return StatefulBuilder(
+              builder: (dialogContext, setLocal) {
+                final length = CommentText.lengthOf(controller.text);
+                final canSubmit =
+                    !submitting &&
+                    length >= CommentText.minLength &&
+                    length <= CommentText.maxLength;
+                return AlertDialog(
+                  title: Text(l10n.chapterCommentsPostTitle),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: controller,
+                          autofocus: true,
+                          enabled: !submitting,
+                          minLines: 3,
+                          maxLines: 6,
+                          maxLength: CommentText.maxLength,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(200),
+                          ],
+                          textInputAction: TextInputAction.newline,
+                          decoration: InputDecoration(
+                            hintText: l10n.chapterCommentsPostHint,
+                            helperText: l10n.chapterCommentsLengthHelper,
+                            errorText: errorText,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (_) => setLocal(() {
+                            errorText = null;
+                            errorLog = null;
+                          }),
+                        ),
+                        if (errorText != null && errorLog != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          _buildPostCommentErrorPanel(
+                            dialogContext,
+                            message: errorText!,
+                            log: errorLog!,
+                            onCopy: () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: errorLog!),
+                              );
+                              if (!mounted) return;
+                              showToast(context, l10n.chapterCommentsLogCopied);
+                            },
+                          ),
                         ],
-                        textInputAction: TextInputAction.newline,
-                        decoration: InputDecoration(
-                          hintText: l10n.chapterCommentsPostHint,
-                          helperText: l10n.chapterCommentsLengthHelper,
-                          errorText: errorText,
-                          border: const OutlineInputBorder(),
-                        ),
-                        onChanged: (_) => setLocal(() {
-                          errorText = null;
-                          errorLog = null;
-                        }),
-                      ),
-                      if (errorText != null && errorLog != null) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        _buildPostCommentErrorPanel(
-                          dialogContext,
-                          message: errorText!,
-                          log: errorLog!,
-                          onCopy: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: errorLog!),
-                            );
-                            if (!mounted) return;
-                            showToast(context, l10n.chapterCommentsLogCopied);
-                          },
-                        ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: submitting
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: Text(l10n.cancelButton),
-                  ),
-                  FilledButton(
-                    onPressed: canSubmit
-                        ? () => submit(dialogContext, setLocal)
-                        : null,
-                    child: submitting
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(l10n.chapterCommentsPublish),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      // ponytail: Dispose one frame later because the exit animation still reads
-      // controller.text.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.dispose();
-      });
-    }
+                  actions: [
+                    TextButton(
+                      onPressed: submitting
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                      child: Text(l10n.cancelButton),
+                    ),
+                    FilledButton(
+                      onPressed: canSubmit
+                          ? () => submit(dialogContext, setLocal, controller)
+                          : null,
+                      child: submitting
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(l10n.chapterCommentsPublish),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   /// 点击合并评论：弹窗展示所有发表该评论的用户，按时间从新到旧排列。

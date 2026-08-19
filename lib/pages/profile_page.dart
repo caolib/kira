@@ -22,6 +22,7 @@ import '../utils/app_logger.dart';
 import '../utils/app_update.dart';
 import '../utils/remote_notice_service.dart';
 import '../utils/toast.dart';
+import '../widgets/text_controller_scope.dart';
 import 'register_page.dart' show RegisterPrefill;
 
 List<String> _appDisclaimerItems(AppLocalizations l10n) => [
@@ -1838,18 +1839,20 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _editUpdateMirrorPrefix() async {
-    final controller = TextEditingController(text: _user.updateMirrorPrefix);
     final formKey = GlobalKey<FormState>();
     final l10n = AppLocalizations.of(context)!;
 
-    try {
-      final result = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          final cs = Theme.of(dialogContext).colorScheme;
-          final tt = Theme.of(dialogContext).textTheme;
+    // 控制器交给 TextControllerScope 托管：弹窗退出动画期间子树仍会重建，
+    // 提前 dispose 会命中 “used after being disposed” 断言。
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        final tt = Theme.of(dialogContext).textTheme;
 
-          return AlertDialog(
+        return TextControllerScope(
+          initialText: _user.updateMirrorPrefix,
+          builder: (dialogContext, controller) => AlertDialog(
             title: Text(l10n.aboutMirrorPrefixTitle),
             content: Form(
               key: formKey,
@@ -1908,17 +1911,15 @@ class _AboutPageState extends State<AboutPage> {
                 child: Text(l10n.aboutSaveButton),
               ),
             ],
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
 
-      if (result == null) return;
-      await _user.setUpdateMirrorPrefix(result);
-      if (!mounted) return;
-      showToast(context, l10n.aboutMirrorPrefixSavedToast);
-    } finally {
-      controller.dispose();
-    }
+    if (result == null) return;
+    await _user.setUpdateMirrorPrefix(result);
+    if (!mounted) return;
+    showToast(context, l10n.aboutMirrorPrefixSavedToast);
   }
 
   Widget _buildUpdateChannelChip(ColorScheme cs) {

@@ -15,6 +15,7 @@ import '../theme/app_spacing.dart';
 import '../utils/app_update.dart';
 import '../utils/toast.dart';
 import '../widgets/github_markdown.dart';
+import '../widgets/text_controller_scope.dart';
 
 class SettingIcon extends StatelessWidget {
   final IconData icon;
@@ -197,85 +198,83 @@ class _AboutPageState extends State<AboutPage> {
 
   Future<void> _editUpdateMirrorPrefix() async {
     final l10n = AppLocalizations.of(context)!;
-    final controller = TextEditingController(text: _user.updateMirrorPrefix);
     final formKey = GlobalKey<FormState>();
 
-    final result = await showDialog<String>(
+    // 控制器交给 TextControllerScope 托管：弹窗退出动画期间子树仍会重建，
+    // 提前 dispose 会命中 “used after being disposed” 断言。
+    final mirrorPrefix = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
         final tt = Theme.of(dialogContext).textTheme;
 
-        return AlertDialog(
-          title: Text(l10n.aboutMirrorPrefixTitle),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.aboutMirrorPrefixDesc,
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextFormField(
-                    controller: controller,
-                    autofocus: true,
-                    keyboardType: TextInputType.url,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: l10n.aboutMirrorPrefixLabel,
-                      hintText: UserManager.defaultUpdateMirrorPrefix,
-                      helperText: l10n.aboutMirrorPrefixHelper,
-                      border: const OutlineInputBorder(),
+        return TextControllerScope(
+          initialText: _user.updateMirrorPrefix,
+          builder: (dialogContext, controller) => AlertDialog(
+            title: Text(l10n.aboutMirrorPrefixTitle),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.aboutMirrorPrefixDesc,
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
-                    validator: (value) {
-                      final trimmed = value?.trim() ?? '';
-                      if (trimmed.isEmpty) return null;
-                      if (!_isValidUpdateMirrorPrefix(trimmed)) {
-                        return l10n.aboutInvalidMirrorPrefix;
-                      }
-                      return null;
-                    },
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      controller: controller,
+                      autofocus: true,
+                      keyboardType: TextInputType.url,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: l10n.aboutMirrorPrefixLabel,
+                        hintText: UserManager.defaultUpdateMirrorPrefix,
+                        helperText: l10n.aboutMirrorPrefixHelper,
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isEmpty) return null;
+                        if (!_isValidUpdateMirrorPrefix(trimmed)) {
+                          return l10n.aboutInvalidMirrorPrefix;
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(
+                  dialogContext,
+                  UserManager.defaultUpdateMirrorPrefix,
+                ),
+                child: Text(l10n.aboutRestoreDefaultButton),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(l10n.cancelButton),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.pop(dialogContext, controller.text);
+                  }
+                },
+                child: Text(l10n.aboutSaveButton),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(
-                dialogContext,
-                UserManager.defaultUpdateMirrorPrefix,
-              ),
-              child: Text(l10n.aboutRestoreDefaultButton),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.cancelButton),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(dialogContext, controller.text);
-                }
-              },
-              child: Text(l10n.aboutSaveButton),
-            ),
-          ],
         );
       },
     );
-
-    final mirrorPrefix = result;
-    // Dispose after the dialog route finishes unmounting its TextFormField.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.dispose();
-    });
 
     if (mirrorPrefix == null) return;
     await _user.setUpdateMirrorPrefix(mirrorPrefix);
@@ -1273,8 +1272,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            for (final a in assets)
-                              _buildAssetTile(a, cs, tt),
+                            for (final a in assets) _buildAssetTile(a, cs, tt),
                           ],
                         ),
                       ),

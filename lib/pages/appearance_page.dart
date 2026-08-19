@@ -17,6 +17,7 @@ import '../utils/display_mode_preference.dart';
 import '../utils/font_manager.dart';
 import '../utils/toast.dart';
 import '../widgets/settings_section.dart';
+import '../widgets/text_controller_scope.dart';
 
 class AppearancePage extends StatefulWidget {
   const AppearancePage({super.key});
@@ -1486,67 +1487,67 @@ class _AppFontCardState extends State<_AppFontCard> {
 
   Future<void> _showAddCustomFontDialog() async {
     final l10n = AppLocalizations.of(context)!;
-    final nameController = TextEditingController();
-    final urlController = TextEditingController();
 
-    final submitted = await showDialog<bool>(
+    // 控制器交给 TextControllerScope 托管：弹窗退出动画期间子树仍会重建，
+    // 提前 dispose 会命中 “used after being disposed” 断言。
+    final submitted = await showDialog<({String name, String url})>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.appearanceAddCustomFont),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: l10n.appearanceCustomFontNameLabel,
-                  hintText: l10n.appearanceCustomFontNameHint,
-                  border: const OutlineInputBorder(),
-                ),
-                textInputAction: TextInputAction.next,
-                autofocus: true,
+      builder: (ctx) => TextControllerScope(
+        builder: (ctx, nameController) => TextControllerScope(
+          builder: (ctx, urlController) => AlertDialog(
+            title: Text(l10n.appearanceAddCustomFont),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: l10n.appearanceCustomFontNameLabel,
+                      hintText: l10n.appearanceCustomFontNameHint,
+                      border: const OutlineInputBorder(),
+                    ),
+                    textInputAction: TextInputAction.next,
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: urlController,
+                    decoration: InputDecoration(
+                      labelText: l10n.appearanceCustomFontUrlLabel,
+                      hintText: l10n.appearanceCustomFontUrlHint,
+                      border: const OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.done,
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: urlController,
-                decoration: InputDecoration(
-                  labelText: l10n.appearanceCustomFontUrlLabel,
-                  hintText: l10n.appearanceCustomFontUrlHint,
-                  border: const OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.done,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.cancelButton),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, (
+                  name: nameController.text.trim(),
+                  url: urlController.text.trim(),
+                )),
+                child: Text(l10n.confirmButton),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancelButton),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.confirmButton),
-          ),
-        ],
       ),
     );
 
-    final fontName = nameController.text.trim();
-    final fontUrl = urlController.text.trim();
-    // Dispose after the dialog route finishes unmounting its TextFields.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      nameController.dispose();
-      urlController.dispose();
-    });
+    if (submitted == null || !mounted) return;
 
-    if (submitted != true || !mounted) return;
-
+    final fontName = submitted.name;
     final added = await _fontManager.addCustomFont(
       name: fontName,
-      url: fontUrl,
+      url: submitted.url,
     );
     if (!mounted) return;
 
