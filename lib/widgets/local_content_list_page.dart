@@ -401,9 +401,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
             ),
           if (_selectionMode) ...[
             IconButton(
-              onPressed: items.isEmpty
-                  ? null
-                  : () => _toggleSelectAll(items),
+              onPressed: items.isEmpty ? null : () => _toggleSelectAll(items),
               icon: const Icon(Icons.select_all),
               tooltip: l10n.selectAll,
             ),

@@ -226,11 +226,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
           await Gal.putImage(tempFile.path, album: 'kira');
         } finally {
           if (tempFile.existsSync()) {
-            unawaited(
-              tempFile.delete().catchError(
-                (_) => tempFile,
-              ),
-            );
+            unawaited(tempFile.delete().catchError((_) => tempFile));
           }
         }
       } else {
@@ -245,7 +241,9 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
           source: 'reader_image_viewer',
         ),
       );
-      if (mounted) showToast(context, l10n.readerSaveImageFailed, isError: true);
+      if (mounted) {
+        showToast(context, l10n.readerSaveImageFailed, isError: true);
+      }
     }
   }
 

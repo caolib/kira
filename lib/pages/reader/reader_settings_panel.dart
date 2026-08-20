@@ -283,9 +283,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     ),
                     Text(
                       l10n.readerHorizontalImageScaleDesc,
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
                   SwitchListTile(

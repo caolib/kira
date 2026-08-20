@@ -130,10 +130,7 @@ void main() {
         chapterUuid: 'c1-1',
         tags: const ['恋爱', '校园', '恋爱'],
       );
-      await ReadingStats.recordImageLoad(
-        pathWord: 'c1',
-        chapterUuid: 'c1-2',
-      );
+      await ReadingStats.recordImageLoad(pathWord: 'c1', chapterUuid: 'c1-2');
       // c2: 1 章 → 恋爱 +1
       await ReadingStats.recordImageLoad(
         pathWord: 'c2',
@@ -146,14 +143,8 @@ void main() {
         chapterUuid: 'c3-1',
         tags: const ['校园', '日常'],
       );
-      await ReadingStats.recordImageLoad(
-        pathWord: 'c3',
-        chapterUuid: 'c3-2',
-      );
-      await ReadingStats.recordImageLoad(
-        pathWord: 'c3',
-        chapterUuid: 'c3-3',
-      );
+      await ReadingStats.recordImageLoad(pathWord: 'c3', chapterUuid: 'c3-2');
+      await ReadingStats.recordImageLoad(pathWord: 'c3', chapterUuid: 'c3-3');
       final snap = await ReadingStats.load();
       final tags = topTags(snap);
 

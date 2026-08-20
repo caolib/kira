@@ -75,6 +75,7 @@ class AppUpdateInfo {
   final String releasePageUrl;
   final List<ReleaseAsset> assets;
   final bool isBetaChannel;
+
   /// True when [latestVersion] equals the installed version — i.e. there is
   /// no update, but the info still carries the current release's notes/page
   /// so the About page can show "what's in this version".
@@ -99,26 +100,24 @@ class AppUpdateInfo {
 class AppUpdateState {
   final AppUpdateStatus status;
   final AppUpdateInfo? info;
+
   /// Human-readable failure cause (already localized) for the
   /// [AppUpdateStatus.failed] state. Null when the failure reason is unknown
   /// or when the state is not a failure.
   final String? errorDetail;
-  const AppUpdateState._({
-    required this.status,
-    this.info,
-    this.errorDetail,
-  });
+  const AppUpdateState._({required this.status, this.info, this.errorDetail});
   const AppUpdateState.idle() : this._(status: AppUpdateStatus.idle);
   const AppUpdateState.checking() : this._(status: AppUpdateStatus.checking);
   const AppUpdateState.available(AppUpdateInfo info)
     : this._(status: AppUpdateStatus.available, info: info);
+
   /// "Already latest" — [info] optionally carries the current installed
   /// version's release notes so the About page can show them.
   const AppUpdateState.latest([AppUpdateInfo? info])
     : this._(status: AppUpdateStatus.latest, info: info);
   const AppUpdateState.failed([this.errorDetail])
-      : status = AppUpdateStatus.failed,
-        info = null;
+    : status = AppUpdateStatus.failed,
+      info = null;
 }
 
 enum AppUpdateStatus { idle, checking, available, latest, failed }
@@ -210,8 +209,7 @@ class AppUpdateService {
       return AppUpdateInfo(
         currentVersion: currentVersion,
         latestVersion: currentVersion,
-        releaseName:
-            releaseName.isNotEmpty ? releaseName : 'Current version',
+        releaseName: releaseName.isNotEmpty ? releaseName : 'Current version',
         releaseNotes: releaseNotes,
         releasePageUrl: releasePageUrl,
         assets: assets,

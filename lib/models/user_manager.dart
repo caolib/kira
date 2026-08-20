@@ -147,8 +147,7 @@ class UserManager extends ChangeNotifier {
       'reader_auto_scroll_resume_delay';
   static const _keyReaderAutoScrollDistance = 'reader_auto_scroll_distance';
   static const _keyReaderContinuousReading = 'reader_continuous_reading';
-  static const _keyReaderHorizontalImageScale =
-      'reader_horizontal_image_scale';
+  static const _keyReaderHorizontalImageScale = 'reader_horizontal_image_scale';
   static const _keyImageViewerAutoRotateLandscape =
       'image_viewer_auto_rotate_landscape';
   static const _keyImageViewerLandscapeRotation =
@@ -577,7 +576,10 @@ class UserManager extends ChangeNotifier {
     _readerContinuousReading =
         prefs.getBool(_keyReaderContinuousReading) ?? true;
     _readerHorizontalImageScale =
-        (prefs.getDouble(_keyReaderHorizontalImageScale) ?? 1.0).clamp(0.7, 1.0);
+        (prefs.getDouble(_keyReaderHorizontalImageScale) ?? 1.0).clamp(
+          0.7,
+          1.0,
+        );
     _imageViewerAutoRotateLandscape =
         prefs.getBool(_keyImageViewerAutoRotateLandscape) ?? false;
     final savedImageViewerLandscapeRotation =
@@ -1076,7 +1078,10 @@ class UserManager extends ChangeNotifier {
   Future<void> setReaderHorizontalImageScale(double scale) async {
     _readerHorizontalImageScale = scale.clamp(0.7, 1.0);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_keyReaderHorizontalImageScale, _readerHorizontalImageScale);
+    await prefs.setDouble(
+      _keyReaderHorizontalImageScale,
+      _readerHorizontalImageScale,
+    );
     notifyListeners();
   }
 

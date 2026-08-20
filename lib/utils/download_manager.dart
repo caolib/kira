@@ -570,7 +570,7 @@ class DownloadManager extends ChangeNotifier {
       }
       return result;
     } catch (e, st) {
-      AppLogger.instance.recordWarning(e, stackTrace: st);
+      unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
       return List<String?>.filled(total, null);
     }
   }
@@ -602,7 +602,7 @@ class DownloadManager extends ChangeNotifier {
       final total = (decoded['comment_total'] as num?)?.toInt() ?? list.length;
       return (list: list, total: total);
     } catch (e, st) {
-      AppLogger.instance.recordWarning(e, stackTrace: st);
+      unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
       return (list: const <ChapterComment>[], total: 0);
     }
   }
@@ -663,9 +663,11 @@ class DownloadManager extends ChangeNotifier {
         } catch (e, st) {
           // 单张失败不中断整章；记为 null，由调用方收集为 failedIndices。
           failed++;
-          AppLogger.instance.recordWarning(
-            'Image #$index download failed: $e',
-            stackTrace: st,
+          unawaited(
+            AppLogger.instance.recordWarning(
+              'Image #$index download failed: $e',
+              stackTrace: st,
+            ),
           );
         }
         _activeProgress = ChapterDownloadProgress(
@@ -708,7 +710,7 @@ class DownloadManager extends ChangeNotifier {
         try {
           if (await partial.exists()) await partial.delete();
         } catch (e, st) {
-          AppLogger.instance.recordWarning(e, stackTrace: st);
+          unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
         }
       }
     }

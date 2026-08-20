@@ -28,7 +28,7 @@ void main() {
         chapterUuid: 'u-2',
         chapterName: '第2话',
         pageCount: 10,
-        savedAt: DateTime(2024, 1, 1),
+        savedAt: DateTime(2024),
       );
       final restored = DownloadedChapterSummary.fromJson(original.toJson());
 
@@ -58,7 +58,7 @@ void main() {
         chapterUuid: 'u',
         chapterName: 'n',
         pageCount: 1,
-        savedAt: DateTime(2024, 1, 1),
+        savedAt: DateTime(2024),
         chapterIndex: 5,
         chapterOrder: 9,
       );
