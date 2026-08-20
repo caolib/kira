@@ -140,6 +140,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final isPageMode = _user.readerMode == 1;
+    final isHorizontalScroll = !isPageMode && _user.readerScrollDirection != 2;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnimatedOpacity(
@@ -252,6 +253,41 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       widget.onChanged();
                     },
                   ),
+                  if (isHorizontalScroll) ...[
+                    Row(
+                      children: [
+                        Text(
+                          l10n.readerHorizontalImageScale,
+                          style: tt.bodyMedium,
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${(_user.readerHorizontalImageScale * 100).round()}%',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _user.readerHorizontalImageScale,
+                      min: 0.7,
+                      divisions: 6,
+                      label:
+                          '${(_user.readerHorizontalImageScale * 100).round()}%',
+                      onChanged: (v) {
+                        _user.setReaderHorizontalImageScale(v);
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                    ),
+                    Text(
+                      l10n.readerHorizontalImageScaleDesc,
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(l10n.readerContinuousReading),

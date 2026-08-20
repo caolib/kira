@@ -2443,6 +2443,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerContinuousReadingDesc => '到末页后直接拼接下一话，不重新加载';
 
   @override
+  String get readerHorizontalImageScale => '横向图片大小';
+
+  @override
+  String get readerHorizontalImageScaleDesc =>
+      '调整横向滚动模式下图片相对屏幕高度的比例（仅横向滚动模式可用）';
+
+  @override
   String get readerAutoScroll => '自动滚动';
 
   @override
@@ -6292,6 +6299,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get readerContinuousReadingDesc => '到末頁後直接拼接下一話，不重新載入';
+
+  @override
+  String get readerHorizontalImageScale => '橫向圖片大小';
+
+  @override
+  String get readerHorizontalImageScaleDesc =>
+      '調整橫向捲動模式下圖片相對螢幕高度的比例（僅橫向捲動模式可用）';
 
   @override
   String get readerAutoScroll => '自動捲動';

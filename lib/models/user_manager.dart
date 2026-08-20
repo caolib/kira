@@ -147,6 +147,8 @@ class UserManager extends ChangeNotifier {
       'reader_auto_scroll_resume_delay';
   static const _keyReaderAutoScrollDistance = 'reader_auto_scroll_distance';
   static const _keyReaderContinuousReading = 'reader_continuous_reading';
+  static const _keyReaderHorizontalImageScale =
+      'reader_horizontal_image_scale';
   static const _keyImageViewerAutoRotateLandscape =
       'image_viewer_auto_rotate_landscape';
   static const _keyImageViewerLandscapeRotation =
@@ -236,6 +238,8 @@ class UserManager extends ChangeNotifier {
   double _readerAutoScrollResumeDelay = 2.0;
   double _readerAutoScrollDistance = 0.8;
   bool _readerContinuousReading = true;
+  // 横向滚动模式下图片相对视口高度的缩放档位，1.0 = 填满高度。
+  double _readerHorizontalImageScale = 1.0;
   bool _imageViewerAutoRotateLandscape = false;
   int _imageViewerLandscapeRotation = 1;
   int _imageLoadTimeout = 15; // 秒
@@ -353,6 +357,7 @@ class UserManager extends ChangeNotifier {
   double get readerAutoScrollResumeDelay => _readerAutoScrollResumeDelay;
   double get readerAutoScrollDistance => _readerAutoScrollDistance;
   bool get readerContinuousReading => _readerContinuousReading;
+  double get readerHorizontalImageScale => _readerHorizontalImageScale;
   bool get imageViewerAutoRotateLandscape => _imageViewerAutoRotateLandscape;
   int get imageViewerLandscapeRotation => _imageViewerLandscapeRotation;
   int get imageLoadTimeout => _imageLoadTimeout;
@@ -571,6 +576,8 @@ class UserManager extends ChangeNotifier {
         (prefs.getDouble(_keyReaderAutoScrollDistance) ?? 0.8).clamp(0.2, 1.0);
     _readerContinuousReading =
         prefs.getBool(_keyReaderContinuousReading) ?? true;
+    _readerHorizontalImageScale =
+        (prefs.getDouble(_keyReaderHorizontalImageScale) ?? 1.0).clamp(0.7, 1.0);
     _imageViewerAutoRotateLandscape =
         prefs.getBool(_keyImageViewerAutoRotateLandscape) ?? false;
     final savedImageViewerLandscapeRotation =
@@ -1063,6 +1070,13 @@ class UserManager extends ChangeNotifier {
     _readerContinuousReading = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyReaderContinuousReading, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setReaderHorizontalImageScale(double scale) async {
+    _readerHorizontalImageScale = scale.clamp(0.7, 1.0);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyReaderHorizontalImageScale, _readerHorizontalImageScale);
     notifyListeners();
   }
 

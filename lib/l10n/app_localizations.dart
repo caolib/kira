@@ -4481,6 +4481,18 @@ abstract class AppLocalizations {
   /// **'到末页后直接拼接下一话，不重新加载'**
   String get readerContinuousReadingDesc;
 
+  /// No description provided for @readerHorizontalImageScale.
+  ///
+  /// In zh, this message translates to:
+  /// **'横向图片大小'**
+  String get readerHorizontalImageScale;
+
+  /// No description provided for @readerHorizontalImageScaleDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整横向滚动模式下图片相对屏幕高度的比例（仅横向滚动模式可用）'**
+  String get readerHorizontalImageScaleDesc;
+
   /// No description provided for @readerAutoScroll.
   ///
   /// In zh, this message translates to:

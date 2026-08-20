@@ -1609,6 +1609,8 @@
   "readerImageGap": "图片间距",
   "readerContinuousReading": "连续阅读",
   "readerContinuousReadingDesc": "到末页后直接拼接下一话，不重新加载",
+  "readerHorizontalImageScale": "横向图片大小",
+  "readerHorizontalImageScaleDesc": "调整横向滚动模式下图片相对屏幕高度的比例（仅横向滚动模式可用）",
   "readerAutoScroll": "自动滚动",
   "readerAutoScrollDesc": "开启后在导航栏显示自动滚动按钮",
   "readerAutoScrollDistance": "滚动幅度",

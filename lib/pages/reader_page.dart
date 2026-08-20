@@ -2193,7 +2193,17 @@ class _ReaderPageState extends State<ReaderPage> {
                     retryKey: item.globalIndex,
                   );
                   if (_isHorizontalScrollMode) {
-                    return SizedBox(height: viewportSize.height, child: image);
+                    // 横向列表会把 item 高度紧约束为视口高度，无法靠外层
+                    // SizedBox 改变 item 高度。因此让图片自身以有限高度
+                    // （视口高度 × scale）渲染，在视口内垂直居中、上下留白，
+                    // 宽度按宽高比自适应。
+                    final scale = _user.readerHorizontalImageScale;
+                    return Align(
+                      child: SizedBox(
+                        height: viewportSize.height * scale,
+                        child: image,
+                      ),
+                    );
                   }
                   return image;
                 case _ScrollItemKind.tail:

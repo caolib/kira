@@ -1580,6 +1580,8 @@
   "readerImageGap": "圖片間距",
   "readerContinuousReading": "連續閱讀",
   "readerContinuousReadingDesc": "到末頁後直接拼接下一話，不重新載入",
+  "readerHorizontalImageScale": "橫向圖片大小",
+  "readerHorizontalImageScaleDesc": "調整橫向捲動模式下圖片相對螢幕高度的比例（僅橫向捲動模式可用）",
   "readerAutoScroll": "自動捲動",
   "readerAutoScrollDesc": "開啟後在導覽列顯示自動捲動按鈕",
   "readerAutoScrollDistance": "捲動幅度",
