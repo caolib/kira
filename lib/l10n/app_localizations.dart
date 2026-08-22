@@ -1921,6 +1921,24 @@ abstract class AppLocalizations {
   /// **'手动'**
   String get networkProxyManual;
 
+  /// No description provided for @networkProxyDirect.
+  ///
+  /// In zh, this message translates to:
+  /// **'直连'**
+  String get networkProxyDirect;
+
+  /// No description provided for @networkProxyDirectActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'直连（不使用代理）'**
+  String get networkProxyDirectActive;
+
+  /// No description provided for @networkProxyDirectHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'已忽略系统代理，所有请求直接连接'**
+  String get networkProxyDirectHint;
+
   /// No description provided for @networkCurrentProxy.
   ///
   /// In zh, this message translates to:

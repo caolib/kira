@@ -41,12 +41,32 @@ void main() {
     );
   });
 
-  test('legacy direct proxy mode falls back to system proxy mode', () async {
-    SharedPreferences.setMockInitialValues({'network_proxy_mode': 2});
+  test('direct proxy mode bypasses any proxy', () async {
+    SharedPreferences.setMockInitialValues({
+      'network_proxy_mode': NetworkProxyMode.direct.index,
+      'network_proxy_host': '127.0.0.1',
+      'network_proxy_port': 7890,
+    });
 
     final user = UserManager();
     await user.init();
 
-    expect(user.networkProxyMode, NetworkProxyMode.system);
+    expect(user.networkProxyMode, NetworkProxyMode.direct);
+    expect(
+      NetworkProxy.findProxy(Uri.parse('https://www.google.com/')),
+      'DIRECT',
+    );
   });
+
+  test(
+    'unknown persisted proxy mode falls back to system proxy mode',
+    () async {
+      SharedPreferences.setMockInitialValues({'network_proxy_mode': 99});
+
+      final user = UserManager();
+      await user.init();
+
+      expect(user.networkProxyMode, NetworkProxyMode.system);
+    },
+  );
 }

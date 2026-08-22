@@ -103,6 +103,7 @@ class NetworkSettings extends PrefsStore {
     if (_proxyMode == mode) return;
     _proxyMode = mode;
     await setInt(_keyProxyMode, mode.index);
+    notifyListeners();
   }
 
   Future<void> setManualProxy({

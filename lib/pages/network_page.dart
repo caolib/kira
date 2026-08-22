@@ -751,7 +751,8 @@ class _NetworkPageState extends State<NetworkPage>
   // ─────────────────────────────────────────────────────────────────────
 
   Widget _buildProxyCard(AppLocalizations l10n, TextTheme tt, ColorScheme cs) {
-    final isManual = _user.networkProxyMode == NetworkProxyMode.manual;
+    final mode = _user.networkProxyMode;
+    final isManual = mode == NetworkProxyMode.manual;
 
     return Card(
       color: cs.surfaceContainerLow,
@@ -795,8 +796,13 @@ class _NetworkPageState extends State<NetworkPage>
                     icon: const Icon(Icons.edit_rounded, size: 18),
                     label: Text(l10n.networkProxyManual),
                   ),
+                  ButtonSegment(
+                    value: NetworkProxyMode.direct,
+                    icon: const Icon(Icons.link_off_rounded, size: 18),
+                    label: Text(l10n.networkProxyDirect),
+                  ),
                 ],
-                selected: {_user.networkProxyMode},
+                selected: {mode},
                 onSelectionChanged: (v) => _setProxyMode(v.first),
               ),
             ),
@@ -854,6 +860,28 @@ class _NetworkPageState extends State<NetworkPage>
                       ],
                     ),
                   )
+                : mode == NetworkProxyMode.direct
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 18,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            l10n.networkProxyDirectHint,
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : const SizedBox.shrink(),
           ),
         ],
@@ -862,10 +890,14 @@ class _NetworkPageState extends State<NetworkPage>
   }
 
   bool get _hasActiveProxy {
-    if (_user.networkProxyMode == NetworkProxyMode.manual) {
-      return _user.hasManualProxy;
+    switch (_user.networkProxyMode) {
+      case NetworkProxyMode.manual:
+        return _user.hasManualProxy;
+      case NetworkProxyMode.system:
+        return NetworkProxy.systemProxy != null;
+      case NetworkProxyMode.direct:
+        return false;
     }
-    return NetworkProxy.systemProxy != null;
   }
 
   // ─────────────────────────────────────────────────────────────────────

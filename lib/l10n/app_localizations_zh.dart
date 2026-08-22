@@ -1026,6 +1026,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkProxyManual => '手动';
 
   @override
+  String get networkProxyDirect => '直连';
+
+  @override
+  String get networkProxyDirectActive => '直连（不使用代理）';
+
+  @override
+  String get networkProxyDirectHint => '已忽略系统代理，所有请求直接连接';
+
+  @override
   String get networkCurrentProxy => '当前代理';
 
   @override
@@ -4882,6 +4891,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkProxyManual => '手動';
+
+  @override
+  String get networkProxyDirect => '直連';
+
+  @override
+  String get networkProxyDirectActive => '直連（不使用代理）';
+
+  @override
+  String get networkProxyDirectHint => '已忽略系統代理，所有請求直接連線';
 
   @override
   String get networkCurrentProxy => '目前代理';

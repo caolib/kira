@@ -47,6 +47,8 @@ class NetworkProxy {
         return _systemProxy?.label ?? l10n.networkSystemProxyNotDetected;
       case NetworkProxyMode.manual:
         return _manualProxy?.label ?? l10n.networkManualProxyNotConfigured;
+      case NetworkProxyMode.direct:
+        return l10n.networkProxyDirectActive;
     }
   }
 
@@ -91,6 +93,8 @@ class NetworkProxy {
             'DIRECT';
       case NetworkProxyMode.manual:
         return _manualProxy?.findProxyRule ?? 'DIRECT';
+      case NetworkProxyMode.direct:
+        return 'DIRECT';
     }
   }
 

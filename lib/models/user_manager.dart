@@ -171,10 +171,6 @@ class UserManager extends ChangeNotifier {
   static const _keyDisclaimerAccepted = 'disclaimer_accepted';
   static const _keyLoginSource = 'login_source';
   static const _keyApiRoute = 'api_route';
-  static const _keyNetworkProxyMode = 'network_proxy_mode';
-  static const _keyNetworkProxyType = 'network_proxy_type';
-  static const _keyNetworkProxyHost = 'network_proxy_host';
-  static const _keyNetworkProxyPort = 'network_proxy_port';
   static const _keyAnimeFeatureEnabled = 'anime_feature_enabled';
   static const _keyRemoteNoticeEnabled = 'remote_notice_enabled';
   static const _keyLocale = 'locale';
@@ -260,10 +256,6 @@ class UserManager extends ChangeNotifier {
   bool _disclaimerAccepted = false;
   String _loginSource = 'hotmanga';
   int _apiRoute = 0; // 0=线路1(默认), 1=线路2
-  NetworkProxyMode _networkProxyMode = NetworkProxyMode.system;
-  NetworkProxyType _networkProxyType = NetworkProxyType.http;
-  String _networkProxyHost = '';
-  int _networkProxyPort = 0;
   bool _animeFeatureEnabled = false;
   bool _remoteNoticeEnabled = true;
 
@@ -381,12 +373,11 @@ class UserManager extends ChangeNotifier {
   int get apiRoute => _apiRoute;
   NetworkSelectionMode get networkSelectionMode => network.selectionMode;
   String? get fixedNodeHost => network.fixedNodeHost;
-  NetworkProxyMode get networkProxyMode => _networkProxyMode;
-  NetworkProxyType get networkProxyType => _networkProxyType;
-  String get networkProxyHost => _networkProxyHost;
-  int get networkProxyPort => _networkProxyPort;
-  bool get hasManualProxy =>
-      _networkProxyHost.isNotEmpty && _networkProxyPort > 0;
+  NetworkProxyMode get networkProxyMode => network.proxyMode;
+  NetworkProxyType get networkProxyType => network.proxyType;
+  String get networkProxyHost => network.proxyHost;
+  int get networkProxyPort => network.proxyPort;
+  bool get hasManualProxy => network.hasManualProxy;
   bool get animeFeatureEnabled => _animeFeatureEnabled;
   bool get remoteNoticeEnabled => _remoteNoticeEnabled;
 
@@ -610,14 +601,6 @@ class UserManager extends ChangeNotifier {
     _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
     _loginSource = prefs.getString(_keyLoginSource) ?? 'hotmanga';
     _apiRoute = prefs.getInt(_keyApiRoute) ?? 0;
-    _networkProxyMode = _normalizeNetworkProxyMode(
-      prefs.getInt(_keyNetworkProxyMode),
-    );
-    _networkProxyType = _normalizeNetworkProxyType(
-      prefs.getInt(_keyNetworkProxyType),
-    );
-    _networkProxyHost = prefs.getString(_keyNetworkProxyHost)?.trim() ?? '';
-    _networkProxyPort = _normalizeProxyPort(prefs.getInt(_keyNetworkProxyPort));
     _animeFeatureEnabled = prefs.getBool(_keyAnimeFeatureEnabled) ?? false;
     _remoteNoticeEnabled = prefs.getBool(_keyRemoteNoticeEnabled) ?? true;
     _locale = prefs.getString(_keyLocale) ?? '';
@@ -1259,48 +1242,20 @@ class UserManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setNetworkProxyMode(NetworkProxyMode mode) async {
-    if (_networkProxyMode == mode) return;
-
-    _networkProxyMode = mode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyNetworkProxyMode, mode.index);
-    notifyListeners();
-  }
+  Future<void> setNetworkProxyMode(NetworkProxyMode mode) =>
+      network.setProxyMode(mode);
 
   Future<void> setManualProxy({
     required String host,
     required int port,
     required NetworkProxyType type,
     bool enable = true,
-  }) async {
-    final nextHost = host.trim();
-    final nextPort = _normalizeProxyPort(port);
-    if (nextHost.isEmpty || nextPort == 0) return;
-
-    final shouldNotify =
-        _networkProxyHost != nextHost ||
-        _networkProxyPort != nextPort ||
-        _networkProxyType != type ||
-        (enable && _networkProxyMode != NetworkProxyMode.manual);
-
-    _networkProxyHost = nextHost;
-    _networkProxyPort = nextPort;
-    _networkProxyType = type;
-    if (enable) {
-      _networkProxyMode = NetworkProxyMode.manual;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyNetworkProxyHost, nextHost);
-    await prefs.setInt(_keyNetworkProxyPort, nextPort);
-    await prefs.setInt(_keyNetworkProxyType, type.index);
-    if (enable) {
-      await prefs.setInt(_keyNetworkProxyMode, NetworkProxyMode.manual.index);
-    }
-
-    if (shouldNotify) notifyListeners();
-  }
+  }) => network.setManualProxy(
+    host: host,
+    port: port,
+    type: type,
+    enable: enable,
+  );
 
   Future<void> setAnimeFeatureEnabled(bool enabled) async {
     if (_animeFeatureEnabled == enabled) return;
@@ -1680,24 +1635,6 @@ class UserManager extends ChangeNotifier {
       }
     }
     return normalized;
-  }
-
-  static NetworkProxyMode _normalizeNetworkProxyMode(int? index) {
-    if (index == null || index < 0 || index >= NetworkProxyMode.values.length) {
-      return NetworkProxyMode.system;
-    }
-    return NetworkProxyMode.values[index];
-  }
-
-  static NetworkProxyType _normalizeNetworkProxyType(int? index) {
-    if (index == null || index < 0 || index >= NetworkProxyType.values.length) {
-      return NetworkProxyType.http;
-    }
-    return NetworkProxyType.values[index];
-  }
-
-  static int _normalizeProxyPort(int? port) {
-    return isValidProxyPort(port) ? port! : 0;
   }
 
   static int _normalizeDisplayModeRefreshRate(int? refreshRate) {
