@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
@@ -6,6 +7,21 @@ import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/routing/main_shell.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// The platform-channel method Flutter uses to close the app.
+const popMethod = 'SystemNavigator.pop';
+
+/// Sends the same platform message the engine sends on an Android system back.
+Future<void> simulateSystemBack() {
+  return TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .handlePlatformMessage(
+        'flutter/navigation',
+        const JSONMessageCodec().encodeMessage(<String, dynamic>{
+          'method': 'popRoute',
+        }),
+        (ByteData? _) {},
+      );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -56,7 +72,18 @@ void main() {
   tearDown(() async {
     router.dispose();
     await UserManager().setBottomNavLabelMode(BottomNavLabelMode.selectedOnly);
+    await UserManager().theme.setNavSwipeEnabled(true);
+    await UserManager().theme.setBackExitConfirm(true);
   });
+
+  Widget buildApp() {
+    return MaterialApp.router(
+      locale: const Locale('zh'),
+      routerConfig: router,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    );
+  }
 
   testWidgets('dual-slides without intermediate pages and uses capsule nav', (
     tester,
@@ -117,5 +144,95 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(GNav), findsNothing);
+  });
+
+  testWidgets('horizontal drag does nothing when nav swipe is off', (
+    tester,
+  ) async {
+    await UserManager().theme.setNavSwipeEnabled(false);
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('comic page'), const Offset(-300, 0));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(find.text('comic page'), findsOneWidget);
+  });
+
+  testWidgets('first back hints, second back exits the app', (tester) async {
+    final platformCalls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        platformCalls.add(call);
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    final hint = AppLocalizations.of(
+      tester.element(find.byType(GNav)),
+    )!.backAgainToExitToast;
+
+    await simulateSystemBack();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text(hint), findsOneWidget);
+    expect(
+      platformCalls.map((call) => call.method),
+      isNot(contains(popMethod)),
+    );
+
+    await simulateSystemBack();
+    await tester.pump();
+
+    expect(platformCalls.map((call) => call.method), contains(popMethod));
+
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+  });
+
+  testWidgets('back exits immediately when the confirm setting is off', (
+    tester,
+  ) async {
+    await UserManager().theme.setBackExitConfirm(false);
+
+    final platformCalls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        platformCalls.add(call);
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    final hint = AppLocalizations.of(
+      tester.element(find.byType(GNav)),
+    )!.backAgainToExitToast;
+
+    await simulateSystemBack();
+    await tester.pump();
+
+    expect(find.text(hint), findsNothing);
+    expect(platformCalls.map((call) => call.method), contains(popMethod));
   });
 }

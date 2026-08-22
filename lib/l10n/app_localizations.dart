@@ -727,6 +727,12 @@ abstract class AppLocalizations {
   /// **'搜索{mode}...'**
   String searchHint(String mode);
 
+  /// No description provided for @searchClearTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空搜索内容'**
+  String get searchClearTooltip;
+
   /// No description provided for @hotSearchTitle.
   ///
   /// In zh, this message translates to:
@@ -870,6 +876,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'关闭后漫画和动漫主页顶部Banner不显示'**
   String get bannerVisibleDesc;
+
+  /// No description provided for @backExitConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回两次退出应用'**
+  String get backExitConfirmTitle;
+
+  /// No description provided for @backExitConfirmDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'在底部导航页面第一次返回只提示，再次返回才退出'**
+  String get backExitConfirmDesc;
+
+  /// No description provided for @backAgainToExitToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'再次返回退出应用'**
+  String get backAgainToExitToast;
 
   /// No description provided for @languageTitle.
   ///
@@ -1410,6 +1434,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'长按可拖放排序'**
   String get appearanceNavOrderDragHint;
+
+  /// No description provided for @appearanceNavSwipeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'左右滑动切换页面'**
+  String get appearanceNavSwipeTitle;
+
+  /// No description provided for @appearanceNavSwipeDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后只能点击底部导航按钮切换页面'**
+  String get appearanceNavSwipeDesc;
 
   /// No description provided for @appearanceAppIcon.
   ///

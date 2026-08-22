@@ -371,6 +371,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get searchClearTooltip => '清空搜索内容';
+
+  @override
   String get hotSearchTitle => '热门搜索';
 
   @override
@@ -447,6 +450,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get bannerVisibleDesc => '关闭后漫画和动漫主页顶部Banner不显示';
+
+  @override
+  String get backExitConfirmTitle => '返回两次退出应用';
+
+  @override
+  String get backExitConfirmDesc => '在底部导航页面第一次返回只提示，再次返回才退出';
+
+  @override
+  String get backAgainToExitToast => '再次返回退出应用';
 
   @override
   String get languageTitle => '语言';
@@ -737,6 +749,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appearanceNavOrderDragHint => '长按可拖放排序';
+
+  @override
+  String get appearanceNavSwipeTitle => '左右滑动切换页面';
+
+  @override
+  String get appearanceNavSwipeDesc => '关闭后只能点击底部导航按钮切换页面';
 
   @override
   String get appearanceAppIcon => '应用图标';
@@ -4238,6 +4256,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String get searchClearTooltip => '清空搜尋內容';
+
+  @override
   String get hotSearchTitle => '熱門搜尋';
 
   @override
@@ -4314,6 +4335,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get bannerVisibleDesc => '關閉後漫畫和動漫首頁頂部 Banner 不顯示';
+
+  @override
+  String get backExitConfirmTitle => '返回兩次退出應用';
+
+  @override
+  String get backExitConfirmDesc => '在底部導覽頁面第一次返回只提示，再次返回才退出';
+
+  @override
+  String get backAgainToExitToast => '再次返回退出應用';
 
   @override
   String get languageTitle => '語言';
@@ -4604,6 +4634,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get appearanceNavOrderDragHint => '長按可拖放排序';
+
+  @override
+  String get appearanceNavSwipeTitle => '左右滑動切換頁面';
+
+  @override
+  String get appearanceNavSwipeDesc => '關閉後只能點擊底部導覽按鈕切換頁面';
 
   @override
   String get appearanceAppIcon => '應用圖示';

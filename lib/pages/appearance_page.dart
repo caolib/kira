@@ -244,6 +244,21 @@ class _AppearancePageState extends State<AppearancePage> {
                   onTap: () => _showBottomNavLabelModeSheet(l10n),
                 ),
                 const Divider(height: 1),
+                SwitchListTile(
+                  secondary: Icon(
+                    Icons.swipe_outlined,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  title: Text(l10n.appearanceNavSwipeTitle),
+                  subtitle: Text(
+                    l10n.appearanceNavSwipeDesc,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  value: _user.theme.navSwipeEnabled,
+                  onChanged: (value) =>
+                      unawaited(_user.theme.setNavSwipeEnabled(value)),
+                ),
+                const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: Row(

@@ -27,6 +27,7 @@ import '../utils/app_logger.dart';
 import '../utils/bookmark_store.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/download_manager.dart';
+import '../utils/fling_brake_tap_guard.dart';
 import '../utils/image_load_stats.dart';
 import '../utils/network_error.dart';
 import '../utils/reading_history.dart';
@@ -135,6 +136,15 @@ class _ReaderPageState extends State<ReaderPage> {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
     setState(() {});
+  }
+
+  /// 猛滑后点一下只是给惯性刹车，这种点击不切换工具栏。
+  final _flingBrakeGuard = FlingBrakeTapGuard();
+
+  /// 阅读区域（图片、图片间空白）的单击入口。
+  void _handleReadingSurfaceTap() {
+    if (_flingBrakeGuard.consumeTap()) return;
+    _toggleToolbar();
   }
 
   late String _currentUuid;
@@ -1692,7 +1702,9 @@ class _ReaderPageState extends State<ReaderPage> {
     final key = retryKey ?? localIndex;
     return _ReaderImageGesture(
       key: ValueKey('reader-image-${chapter.uuid}-$localIndex'),
-      onSingleTap: _isPageMode ? _handlePageModeTapAt : (_) => _toggleToolbar(),
+      onSingleTap: _isPageMode
+          ? _handlePageModeTapAt
+          : (_) => _handleReadingSurfaceTap(),
       onDoubleTap: () => _openImageViewer(chapter, localIndex),
       child: _buildImage(chapter, localIndex, retryKey: key),
     );
@@ -2101,11 +2113,15 @@ class _ReaderPageState extends State<ReaderPage> {
         : -1;
 
     return Listener(
-      onPointerDown: (_) => _onAutoScrollTouchStart(),
+      onPointerDown: (_) {
+        // 按下的瞬间列表若还在惯性滚动，这次触摸只是刹车（见 FlingBrakeTapGuard）。
+        _flingBrakeGuard.onPointerDown(DateTime.now());
+        _onAutoScrollTouchStart();
+      },
       onPointerUp: (_) => _onAutoScrollTouchEnd(),
       onPointerCancel: (_) => _onAutoScrollTouchEnd(),
       child: GestureDetector(
-        onTap: () => _toggleToolbar(),
+        onTap: _handleReadingSurfaceTap,
         child: NotificationListener<ScrollNotification>(
           onNotification: (n) {
             // 鼠标滚轮等非触摸交互通过 UserScrollNotification 暂停
@@ -2113,6 +2129,13 @@ class _ReaderPageState extends State<ReaderPage> {
               _onAutoScrollWheel();
             }
             if (_isDraggingSlider) return false;
+            if (n is ScrollUpdateNotification && (n.scrollDelta ?? 0) != 0) {
+              // 区分「手指仍在拖」与「抬手后的惯性」，供点击刹车判定使用。
+              _flingBrakeGuard.recordScroll(
+                isDrag: n.dragDetails != null,
+                at: DateTime.now(),
+              );
+            }
             if (n is ScrollUpdateNotification &&
                 _showToolbar &&
                 (n.scrollDelta ?? 0).abs() > 0) {

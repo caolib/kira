@@ -7,7 +7,12 @@ import '../theme/app_spacing.dart';
 import 'adaptive_motion.dart';
 
 /// 顶部气泡式通知
-void showToast(BuildContext context, String message, {bool isError = false}) {
+void showToast(
+  BuildContext context,
+  String message, {
+  bool isError = false,
+  Duration? duration,
+}) {
   final overlay = Overlay.of(context);
   final cs = Theme.of(context).colorScheme;
 
@@ -18,6 +23,7 @@ void showToast(BuildContext context, String message, {bool isError = false}) {
     builder: (_) => _ToastWidget(
       message: message,
       isError: isError,
+      duration: duration,
       colorScheme: cs,
       controller: controller,
       onDismiss: () => entry.remove(),
@@ -34,6 +40,7 @@ class _ToastController {
 class _ToastWidget extends StatefulWidget {
   final String message;
   final bool isError;
+  final Duration? duration;
   final ColorScheme colorScheme;
   final _ToastController controller;
   final VoidCallback onDismiss;
@@ -41,6 +48,7 @@ class _ToastWidget extends StatefulWidget {
   const _ToastWidget({
     required this.message,
     required this.isError,
+    required this.duration,
     required this.colorScheme,
     required this.controller,
     required this.onDismiss,
@@ -59,7 +67,10 @@ class _ToastWidgetState extends State<_ToastWidget>
   bool _removed = false;
 
   Duration get _displayDuration =>
-      widget.isError ? const Duration(seconds: 4) : const Duration(seconds: 1);
+      widget.duration ??
+      (widget.isError
+          ? const Duration(seconds: 4)
+          : const Duration(seconds: 1));
 
   @override
   void initState() {

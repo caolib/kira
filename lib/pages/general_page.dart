@@ -276,6 +276,17 @@ class _GeneralPageState extends State<GeneralPage> {
                     onChanged: _user.setBannerVisible,
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.exit_to_app_rounded),
+                    title: Text(l10n.backExitConfirmTitle),
+                    subtitle: Text(
+                      l10n.backExitConfirmDesc,
+                      style: tt.bodySmall,
+                    ),
+                    value: _user.theme.backExitConfirm,
+                    onChanged: _user.theme.setBackExitConfirm,
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.language_rounded),
                     title: Text(l10n.languageTitle),

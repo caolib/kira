@@ -52,6 +52,8 @@ class ThemeSettings extends PrefsStore {
   static const _keyBottomNavShowLabels = 'bottom_nav_show_labels';
   static const _keyBottomNavLabelMode = 'bottom_nav_label_mode';
   static const _keyNavOrder = 'nav_order';
+  static const _keyNavSwipeEnabled = 'nav_swipe_enabled';
+  static const _keyBackExitConfirm = 'back_exit_confirm';
   static const _keyLastNavKey = 'last_nav_key';
   static const _keyDesktopFontFamily = 'desktop_font_family';
   static const _keyAppFontFamily = 'app_font_family';
@@ -70,6 +72,8 @@ class ThemeSettings extends PrefsStore {
   double _cardShadowElevation = defaultCardShadowElevation;
   BottomNavLabelMode _bottomNavLabelMode = BottomNavLabelMode.selectedOnly;
   List<String> _navOrder = defaultNavOrder;
+  bool _navSwipeEnabled = true;
+  bool _backExitConfirm = true;
   String _lastNavKey = defaultNavKey;
   String _desktopFontFamily = '';
   String _appFontFamily = '';
@@ -92,6 +96,12 @@ class ThemeSettings extends PrefsStore {
   bool get bottomNavShowLabels =>
       _bottomNavLabelMode != BottomNavLabelMode.hidden;
   List<String> get navOrder => _navOrder;
+
+  /// Whether a horizontal swipe on the main shell switches bottom-nav tabs.
+  bool get navSwipeEnabled => _navSwipeEnabled;
+
+  /// Whether back on a bottom-nav root asks for a second press before exiting.
+  bool get backExitConfirm => _backExitConfirm;
   String get lastNavKey => _lastNavKey;
   String get desktopFontFamily => _desktopFontFamily;
   String get appFontFamily => _appFontFamily;
@@ -144,6 +154,8 @@ class ThemeSettings extends PrefsStore {
         savedNavOrder.join('\u0000') != _navOrder.join('\u0000')) {
       await prefs.setStringList(_keyNavOrder, _navOrder);
     }
+    _navSwipeEnabled = prefs.getBool(_keyNavSwipeEnabled) ?? true;
+    _backExitConfirm = prefs.getBool(_keyBackExitConfirm) ?? true;
     final savedLastNavKey = prefs.getString(_keyLastNavKey);
     _lastNavKey = _normalizeNavKey(savedLastNavKey);
     if (savedLastNavKey != null && savedLastNavKey != _lastNavKey) {
@@ -250,6 +262,18 @@ class ThemeSettings extends PrefsStore {
   Future<void> setNavOrder(List<String> order) async {
     _navOrder = _normalizeNavOrder(order);
     await setStringList(_keyNavOrder, _navOrder);
+  }
+
+  Future<void> setNavSwipeEnabled(bool enabled) async {
+    if (_navSwipeEnabled == enabled) return;
+    _navSwipeEnabled = enabled;
+    await setBool(_keyNavSwipeEnabled, enabled);
+  }
+
+  Future<void> setBackExitConfirm(bool enabled) async {
+    if (_backExitConfirm == enabled) return;
+    _backExitConfirm = enabled;
+    await setBool(_keyBackExitConfirm, enabled);
   }
 
   Future<void> setLastNavKey(String key) async {

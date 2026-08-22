@@ -272,6 +272,7 @@
       }
     }
   },
+  "searchClearTooltip": "清空搜索内容",
   "hotSearchTitle": "热门搜索",
   "allTagsTitle": "全部标签",
   "tagCount": "{count} 个",
@@ -323,6 +324,9 @@
   "noticeSettingsTooltip": "通知设置",
   "bannerVisibleTitle": "显示Banner",
   "bannerVisibleDesc": "关闭后漫画和动漫主页顶部Banner不显示",
+  "backExitConfirmTitle": "返回两次退出应用",
+  "backExitConfirmDesc": "在底部导航页面第一次返回只提示，再次返回才退出",
+  "backAgainToExitToast": "再次返回退出应用",
   "languageTitle": "语言",
   "languageSystem": "跟随系统",
   "languageSimplified": "简体中文",
@@ -486,6 +490,8 @@
   "appearanceBottomNavLabelModeAlwaysDesc": "经典导航，文字显示在图标下方",
   "appearanceNavOrder": "导航栏顺序",
   "appearanceNavOrderDragHint": "长按可拖放排序",
+  "appearanceNavSwipeTitle": "左右滑动切换页面",
+  "appearanceNavSwipeDesc": "关闭后只能点击底部导航按钮切换页面",
   "appearanceAppIcon": "应用图标",
   "appearanceAppIconRestartHint": "更换后重启应用生效",
   "appearanceRefreshRateTitle": "屏幕刷新率",

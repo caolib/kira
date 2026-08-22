@@ -35,10 +35,12 @@ class SearchInitRepository extends CachedRepository<SearchInitData> {
 
   @override
   Future<SearchInitData> fetchFromApi() async {
-    final keywordsFuture = _api.manga.getHotKeywords();
-    final tagsFuture = _api.manga.getComicTags();
-    final keywords = await keywordsFuture;
-    final tags = await tagsFuture;
+    // 用记录版 wait 并行：任一请求失败时另一个的错误也会被消费，
+    // 否则先失败的那个会让另一个变成未捕获的异步错误。
+    final (keywords, tags) = await (
+      _api.manga.getHotKeywords(),
+      _api.manga.getComicTags(),
+    ).wait;
     return SearchInitData(keywords: keywords, tags: tags);
   }
 }

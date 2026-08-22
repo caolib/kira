@@ -61,6 +61,36 @@ void main() {
     expect(prefs.getBool('bottom_nav_show_labels'), isTrue);
   });
 
+  test('nav swipe defaults to enabled and persists when toggled', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await settings.initFromPrefs(prefs);
+
+    expect(settings.navSwipeEnabled, isTrue);
+
+    await settings.setNavSwipeEnabled(false);
+    expect(settings.navSwipeEnabled, isFalse);
+    expect(prefs.getBool('nav_swipe_enabled'), isFalse);
+
+    await settings.initFromPrefs(prefs);
+    expect(settings.navSwipeEnabled, isFalse);
+  });
+
+  test('back exit confirm defaults to enabled and persists', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await settings.initFromPrefs(prefs);
+
+    expect(settings.backExitConfirm, isTrue);
+
+    await settings.setBackExitConfirm(false);
+    expect(settings.backExitConfirm, isFalse);
+    expect(prefs.getBool('back_exit_confirm'), isFalse);
+
+    await settings.initFromPrefs(prefs);
+    expect(settings.backExitConfirm, isFalse);
+  });
+
   test('uses default appearance sizing preferences', () async {
     SharedPreferences.setMockInitialValues({});
     await settings.initFromPrefs(await SharedPreferences.getInstance());

@@ -272,6 +272,7 @@
       }
     }
   },
+  "searchClearTooltip": "清空搜尋內容",
   "hotSearchTitle": "熱門搜尋",
   "allTagsTitle": "全部標籤",
   "tagCount": "{count} 個",
@@ -323,6 +324,9 @@
   "noticeSettingsTooltip": "通知設定",
   "bannerVisibleTitle": "顯示 Banner",
   "bannerVisibleDesc": "關閉後漫畫和動漫首頁頂部 Banner 不顯示",
+  "backExitConfirmTitle": "返回兩次退出應用",
+  "backExitConfirmDesc": "在底部導覽頁面第一次返回只提示，再次返回才退出",
+  "backAgainToExitToast": "再次返回退出應用",
   "languageTitle": "語言",
   "languageSystem": "跟隨系統",
   "languageSimplified": "簡體中文",
@@ -486,6 +490,8 @@
   "appearanceBottomNavLabelModeAlwaysDesc": "經典導覽，文字顯示在圖示下方",
   "appearanceNavOrder": "導覽列順序",
   "appearanceNavOrderDragHint": "長按可拖放排序",
+  "appearanceNavSwipeTitle": "左右滑動切換頁面",
+  "appearanceNavSwipeDesc": "關閉後只能點擊底部導覽按鈕切換頁面",
   "appearanceAppIcon": "應用圖示",
   "appearanceAppIconRestartHint": "更換後重啟應用生效",
   "appearanceRefreshRateTitle": "螢幕重新整理率",
