@@ -11,9 +11,6 @@
   <img alt="GitHub License" src="https://img.shields.io/github/license/caolib/kira">
   <img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/caolib/kira">
   <img src="https://img.shields.io/github/stars/caolib/kira" alt="Stars"/>
-  <img src="https://img.shields.io/github/downloads/caolib/kira/latest/total" alt="Latest Downloads"/>
-  <a href="https://qm.qq.com/q/rezw7xWuK4"><img src="https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E7%BE%A4-white?logo=QQ" alt="QQ Group"/></a>
-
 </p>
 
 ## 简介
