@@ -535,6 +535,16 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
   @override
   void loadMoreComments() => _loadComments(loadMore: true);
 
+  void _scrollToTop() {
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   Future<void> _loadAllComments() async {
     if (_loadingAll) return;
     setState(() => _loadingAll = true);
@@ -1719,6 +1729,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
 
                                 return Row(
                                   mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     FilledButton.icon(
                                       style: buttonStyle,
@@ -1750,30 +1761,60 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                                       ),
                                     ],
                                     const SizedBox(width: AppSpacing.sm),
-                                    SizedBox.square(
-                                      dimension: 52,
-                                      child: FilledButton(
-                                        style: buttonStyle.copyWith(
-                                          padding: const WidgetStatePropertyAll(
-                                            EdgeInsets.zero,
-                                          ),
-                                          minimumSize:
-                                              const WidgetStatePropertyAll(
-                                                Size.square(52),
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox.square(
+                                          dimension: 52,
+                                          child: FilledButton(
+                                            style: buttonStyle.copyWith(
+                                              padding: const WidgetStatePropertyAll(
+                                                EdgeInsets.zero,
                                               ),
-                                          maximumSize:
-                                              const WidgetStatePropertyAll(
-                                                Size.square(52),
+                                              minimumSize:
+                                                  const WidgetStatePropertyAll(
+                                                    Size.square(52),
+                                                  ),
+                                              maximumSize:
+                                                  const WidgetStatePropertyAll(
+                                                    Size.square(52),
+                                                  ),
+                                            ),
+                                            onPressed: _scrollToTop,
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.arrow_upward_rounded,
                                               ),
-                                        ),
-                                        onPressed: () =>
-                                            Navigator.of(context).maybePop(),
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.keyboard_arrow_down_rounded,
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                        const SizedBox(height: AppSpacing.sm),
+                                        SizedBox.square(
+                                          dimension: 52,
+                                          child: FilledButton(
+                                            style: buttonStyle.copyWith(
+                                              padding: const WidgetStatePropertyAll(
+                                                EdgeInsets.zero,
+                                              ),
+                                              minimumSize:
+                                                  const WidgetStatePropertyAll(
+                                                    Size.square(52),
+                                                  ),
+                                              maximumSize:
+                                                  const WidgetStatePropertyAll(
+                                                    Size.square(52),
+                                                  ),
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.of(context).maybePop(),
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.keyboard_arrow_down_rounded,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 );
