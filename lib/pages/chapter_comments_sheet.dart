@@ -1768,9 +1768,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                                           dimension: 52,
                                           child: FilledButton(
                                             style: buttonStyle.copyWith(
-                                              padding: const WidgetStatePropertyAll(
-                                                EdgeInsets.zero,
-                                              ),
+                                              padding:
+                                                  const WidgetStatePropertyAll(
+                                                    EdgeInsets.zero,
+                                                  ),
                                               minimumSize:
                                                   const WidgetStatePropertyAll(
                                                     Size.square(52),
@@ -1793,9 +1794,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                                           dimension: 52,
                                           child: FilledButton(
                                             style: buttonStyle.copyWith(
-                                              padding: const WidgetStatePropertyAll(
-                                                EdgeInsets.zero,
-                                              ),
+                                              padding:
+                                                  const WidgetStatePropertyAll(
+                                                    EdgeInsets.zero,
+                                                  ),
                                               minimumSize:
                                                   const WidgetStatePropertyAll(
                                                     Size.square(52),
@@ -1805,11 +1807,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                                                     Size.square(52),
                                                   ),
                                             ),
-                                            onPressed: () =>
-                                                Navigator.of(context).maybePop(),
+                                            onPressed: () => Navigator.of(
+                                              context,
+                                            ).maybePop(),
                                             child: const Center(
                                               child: Icon(
-                                                Icons.keyboard_arrow_down_rounded,
+                                                Icons
+                                                    .keyboard_arrow_down_rounded,
                                               ),
                                             ),
                                           ),

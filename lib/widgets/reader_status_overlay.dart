@@ -218,21 +218,48 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay>
 
     // 真机上打孔/刘海状态栏高度可达 48+，组件用固定内边距保持轻薄，
     // 不随系统状态栏高度膨胀。
+    // 圆角朝向屏幕中心：依位置选择对应角，其余三角保持直角。
+    final pos = settings.statusOverlayPosition;
+    final corner = switch (pos) {
+      0 => BorderRadius.only(bottomRight: Radius.circular(AppRadius.md)), // 左上
+      1 => const BorderRadius.only(
+        bottomLeft: Radius.circular(AppRadius.md),
+        bottomRight: Radius.circular(AppRadius.md),
+      ), // 顶部中间
+      2 => const BorderRadius.only(
+        bottomLeft: Radius.circular(AppRadius.md),
+      ), // 右上（默认）
+      3 => BorderRadius.only(topLeft: Radius.circular(AppRadius.md)), // 右下
+      4 => const BorderRadius.only(
+        topLeft: Radius.circular(AppRadius.md),
+        topRight: Radius.circular(AppRadius.md),
+      ), // 底部中间
+      5 => BorderRadius.only(topRight: Radius.circular(AppRadius.md)), // 左下
+      _ => const BorderRadius.only(bottomLeft: Radius.circular(AppRadius.md)),
+    };
+    // 角落位：靠屏幕一侧给较大边距（lg=16），内侧给较小边距（10）。
+    // 中间位：紧凑居中浮动，左右对称给较大边距（lg=16）。
+    final isLeft = pos == 0 || pos == 5;
+    final isCenter = pos == 1 || pos == 4;
     return IgnorePointer(
       child: Container(
-        padding: const EdgeInsets.only(
+        padding: EdgeInsets.only(
           top: 2,
-          right: AppSpacing.lg,
+          right: isCenter ? AppSpacing.lg : (isLeft ? 10 : AppSpacing.lg),
           bottom: AppSpacing.xs,
-          left: 10,
+          left: isCenter ? AppSpacing.lg : (isLeft ? AppSpacing.lg : 10),
         ),
-        decoration: const BoxDecoration(
-          color: Color(0xB3000000), // 黑 70% 半透明底
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(AppRadius.md),
-          ),
+        decoration: BoxDecoration(
+          // 黑底，不透明度由设置控制（0=透明，1=全黑）
+          color: Color(
+            0xFF000000,
+          ).withValues(alpha: settings.statusOverlayOpacity),
+          borderRadius: corner,
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: segments),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: segments,
+        ),
       ),
     );
   }

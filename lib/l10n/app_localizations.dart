@@ -4661,6 +4661,54 @@ abstract class AppLocalizations {
   /// **'帧率'**
   String get readerStatusFps;
 
+  /// No description provided for @readerStatusOverlayPosition.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示位置'**
+  String get readerStatusOverlayPosition;
+
+  /// No description provided for @readerStatusOverlayTopLeft.
+  ///
+  /// In zh, this message translates to:
+  /// **'左上'**
+  String get readerStatusOverlayTopLeft;
+
+  /// No description provided for @readerStatusOverlayTopCenter.
+  ///
+  /// In zh, this message translates to:
+  /// **'顶部中间'**
+  String get readerStatusOverlayTopCenter;
+
+  /// No description provided for @readerStatusOverlayTopRight.
+  ///
+  /// In zh, this message translates to:
+  /// **'右上'**
+  String get readerStatusOverlayTopRight;
+
+  /// No description provided for @readerStatusOverlayBottomRight.
+  ///
+  /// In zh, this message translates to:
+  /// **'右下'**
+  String get readerStatusOverlayBottomRight;
+
+  /// No description provided for @readerStatusOverlayBottomCenter.
+  ///
+  /// In zh, this message translates to:
+  /// **'底部中间'**
+  String get readerStatusOverlayBottomCenter;
+
+  /// No description provided for @readerStatusOverlayBottomLeft.
+  ///
+  /// In zh, this message translates to:
+  /// **'左下'**
+  String get readerStatusOverlayBottomLeft;
+
+  /// No description provided for @readerStatusOverlayOpacity.
+  ///
+  /// In zh, this message translates to:
+  /// **'背景不透明度'**
+  String get readerStatusOverlayOpacity;
+
   /// No description provided for @readerDimming.
   ///
   /// In zh, this message translates to:

@@ -39,6 +39,8 @@ class ReaderSettings extends PrefsStore {
   static const _keyStatusOverlayPage = 'reader_status_overlay_page';
   static const _keyStatusOverlayFps = 'reader_status_overlay_fps';
   static const _keyStatusOverlayOrder = 'reader_status_overlay_order';
+  static const _keyStatusOverlayPosition = 'reader_status_overlay_position';
+  static const _keyStatusOverlayOpacity = 'reader_status_overlay_opacity';
   static const _keyReadingStatsEnabled = 'reader_reading_stats_enabled';
   static const _keyReadingStatsChartStyle = 'reader_reading_stats_chart_style';
   static const _keyReadingStatsShowOverview =
@@ -92,6 +94,10 @@ class ReaderSettings extends PrefsStore {
   bool _statusOverlayPage = false;
   bool _statusOverlayFps = false;
   List<String> _statusOverlayOrder = List.of(defaultStatusOverlayOrder);
+  // 0=左上 1=顶部中间 2=右上(默认) 3=右下 4=底部中间 5=左下
+  int _statusOverlayPosition = 2;
+  // 0.0(透明)~1.0(全黑)，默认即原 Color(0xB3000000) 的 alpha≈0.7
+  double _statusOverlayOpacity = 0.7;
   bool _readingStatsEnabled = false;
 
   /// 阅读活跃度图表样式：0=热力图（默认），1=条形图。
@@ -132,6 +138,8 @@ class ReaderSettings extends PrefsStore {
   bool get statusOverlayNetwork => _statusOverlayNetwork;
   bool get statusOverlayPage => _statusOverlayPage;
   bool get statusOverlayFps => _statusOverlayFps;
+  int get statusOverlayPosition => _statusOverlayPosition;
+  double get statusOverlayOpacity => _statusOverlayOpacity;
   bool get readingStatsEnabled => _readingStatsEnabled;
 
   /// 阅读活跃度图表样式：0=热力图（默认），1=条形图。
@@ -182,6 +190,10 @@ class ReaderSettings extends PrefsStore {
     _statusOverlayNetwork = prefs.getBool(_keyStatusOverlayNetwork) ?? true;
     _statusOverlayPage = prefs.getBool(_keyStatusOverlayPage) ?? false;
     _statusOverlayFps = prefs.getBool(_keyStatusOverlayFps) ?? false;
+    _statusOverlayPosition = (prefs.getInt(_keyStatusOverlayPosition) ?? 2)
+        .clamp(0, 5);
+    _statusOverlayOpacity = (prefs.getDouble(_keyStatusOverlayOpacity) ?? 0.7)
+        .clamp(0.0, 1.0);
     final savedOrder = prefs.getStringList(_keyStatusOverlayOrder) ?? const [];
     _statusOverlayOrder = _sanitizeStatusOverlayOrder(savedOrder);
     _readingStatsEnabled = prefs.getBool(_keyReadingStatsEnabled) ?? false;
@@ -328,6 +340,18 @@ class ReaderSettings extends PrefsStore {
     if (_listEquals(_statusOverlayOrder, sanitized)) return;
     _statusOverlayOrder = sanitized;
     await setStringList(_keyStatusOverlayOrder, sanitized);
+  }
+
+  Future<void> setStatusOverlayPosition(int value) async {
+    final clamped = value.clamp(0, 5);
+    _statusOverlayPosition = clamped;
+    await setInt(_keyStatusOverlayPosition, clamped);
+  }
+
+  Future<void> setStatusOverlayOpacity(double value) async {
+    final clamped = value.clamp(0.0, 1.0);
+    _statusOverlayOpacity = clamped;
+    await setDouble(_keyStatusOverlayOpacity, clamped);
   }
 
   Future<void> setReadingStatsEnabled(bool value) async {

@@ -200,6 +200,19 @@ class _ReaderPageState extends State<ReaderPage> {
   bool get _isPageMode => _user.readerMode == 1;
   bool get _isVerticalPageMode =>
       _isPageMode && _user.readerScrollDirection == 2;
+  // 状态组件位置：0左上 1顶中 2右上 3右下 4底中 5左下
+  bool get _statusOverlayIsTop => _user.reader.statusOverlayPosition < 3;
+  bool get _statusOverlayIsLeft => {
+    0: true,
+    5: true,
+    2: false,
+    3: false,
+  }[_user.reader.statusOverlayPosition] ??
+      false;
+  // 顶中/底中时水平铺满（left+right 都为 0）。
+  bool get _statusOverlayIsCenter =>
+      _user.reader.statusOverlayPosition == 1 ||
+      _user.reader.statusOverlayPosition == 4;
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
   bool get _isHorizontalScrollMode =>
       !_isPageMode && _user.readerScrollDirection != 2;
@@ -1266,7 +1279,7 @@ class _ReaderPageState extends State<ReaderPage> {
       barrierColor: Colors.transparent,
       isScrollControlled: true,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+        maxHeight: MediaQuery.sizeOf(context).height * 0.7,
       ),
       builder: (_) => _ReaderSettingsPanel(onChanged: _onSettingsChanged),
     ).whenComplete(() {
@@ -2600,15 +2613,30 @@ class _ReaderPageState extends State<ReaderPage> {
                   ),
                 ),
               ),
-            // 状态显示（时间/电量/网络/页码/帧率）：默认关闭，开启后右上角低调展示
+            // 状态显示（时间/电量/网络/页码/帧率）：默认关闭，开启后按设置停在六位之一
             if (_user.reader.statusOverlay)
               Positioned(
-                top: 0,
-                right: 0,
-                child: ReaderStatusOverlay(
-                  currentPage: _currentPage,
-                  totalPages: _detail?.contents.length ?? 0,
-                ),
+                top: _statusOverlayIsTop ? 0 : null,
+                bottom: _statusOverlayIsTop ? null : 0,
+                left: _statusOverlayIsCenter || _statusOverlayIsLeft ? 0 : null,
+                right:
+                    _statusOverlayIsCenter || !_statusOverlayIsLeft
+                    ? 0
+                    : null,
+                child: _statusOverlayIsCenter
+                    ? Align(
+                        alignment: _statusOverlayIsTop
+                            ? Alignment.topCenter
+                            : Alignment.bottomCenter,
+                        child: ReaderStatusOverlay(
+                          currentPage: _currentPage,
+                          totalPages: _detail?.contents.length ?? 0,
+                        ),
+                      )
+                    : ReaderStatusOverlay(
+                        currentPage: _currentPage,
+                        totalPages: _detail?.contents.length ?? 0,
+                      ),
               ),
             _ReaderTopBar(
               showToolbar: _showToolbar,

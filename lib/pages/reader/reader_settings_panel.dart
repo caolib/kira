@@ -457,6 +457,83 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 if (_user.reader.statusOverlay) ...[
                   Padding(
                     padding: const EdgeInsets.only(left: AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        Text(l10n.readerStatusOverlayPosition),
+                        const Spacer(),
+                        Text(
+                          switch (_user.reader.statusOverlayPosition) {
+                            0 => l10n.readerStatusOverlayTopLeft,
+                            1 => l10n.readerStatusOverlayTopCenter,
+                            2 => l10n.readerStatusOverlayTopRight,
+                            3 => l10n.readerStatusOverlayBottomRight,
+                            4 => l10n.readerStatusOverlayBottomCenter,
+                            5 => l10n.readerStatusOverlayBottomLeft,
+                            _ => l10n.readerStatusOverlayTopRight,
+                          },
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.lg),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<int>(
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(value: 0, icon: Icon(Icons.north_west)),
+                          ButtonSegment(value: 1, icon: Icon(Icons.north)),
+                          ButtonSegment(value: 2, icon: Icon(Icons.north_east)),
+                          ButtonSegment(value: 3, icon: Icon(Icons.south_east)),
+                          ButtonSegment(value: 4, icon: Icon(Icons.south)),
+                          ButtonSegment(value: 5, icon: Icon(Icons.south_west)),
+                        ],
+                        selected: {_user.reader.statusOverlayPosition},
+                        onSelectionChanged: (v) {
+                          _user.reader.setStatusOverlayPosition(v.first);
+                          setState(() {});
+                          widget.onChanged();
+                        },
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        Text(l10n.readerStatusOverlayOpacity),
+                        const Spacer(),
+                        Text(
+                          '${(_user.reader.statusOverlayOpacity * 100).round()}%',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.lg),
+                    child: Slider(
+                      value: _user.reader.statusOverlayOpacity,
+                      min: 0.0,
+                      max: 1.0,
+                      divisions: 10,
+                      label:
+                          '${(_user.reader.statusOverlayOpacity * 100).round()}%',
+                      onChanged: (v) {
+                        _user.reader.setStatusOverlayOpacity(v);
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.lg),
                     child: ReorderableListView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),

@@ -2536,6 +2536,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerStatusFps => '帧率';
 
   @override
+  String get readerStatusOverlayPosition => '显示位置';
+
+  @override
+  String get readerStatusOverlayTopLeft => '左上';
+
+  @override
+  String get readerStatusOverlayTopCenter => '顶部中间';
+
+  @override
+  String get readerStatusOverlayTopRight => '右上';
+
+  @override
+  String get readerStatusOverlayBottomRight => '右下';
+
+  @override
+  String get readerStatusOverlayBottomCenter => '底部中间';
+
+  @override
+  String get readerStatusOverlayBottomLeft => '左下';
+
+  @override
+  String get readerStatusOverlayOpacity => '背景不透明度';
+
+  @override
   String get readerDimming => '降低亮度';
 
   @override
@@ -6419,6 +6443,30 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get readerStatusFps => '幀率';
+
+  @override
+  String get readerStatusOverlayPosition => '顯示位置';
+
+  @override
+  String get readerStatusOverlayTopLeft => '左上';
+
+  @override
+  String get readerStatusOverlayTopCenter => '頂部中間';
+
+  @override
+  String get readerStatusOverlayTopRight => '右上';
+
+  @override
+  String get readerStatusOverlayBottomRight => '右下';
+
+  @override
+  String get readerStatusOverlayBottomCenter => '底部中間';
+
+  @override
+  String get readerStatusOverlayBottomLeft => '左下';
+
+  @override
+  String get readerStatusOverlayOpacity => '背景不透明度';
 
   @override
   String get readerDimming => '降低亮度';
