@@ -796,20 +796,6 @@ class _SearchPageState extends State<SearchPage> {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );
 
-    // 方形按钮（回到顶部）。
-    final squareStyle = FilledButton.styleFrom(
-      backgroundColor: cs.primaryContainer,
-      foregroundColor: cs.onPrimaryContainer,
-      elevation: 6,
-      shadowColor: AppShadows.floatingTint(0.22),
-      minimumSize: const Size.square(48),
-      maximumSize: const Size.square(48),
-      fixedSize: const Size.square(48),
-      padding: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-
     return SafeArea(
       top: false,
       child: AnimatedSlide(
@@ -824,15 +810,13 @@ class _SearchPageState extends State<SearchPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // 回到顶部：任何可滚动列表都出现，不依赖 tag。
+              // 回到顶部：任何可滚动列表都出现，不依赖 tag。样式与书架一致（FAB）。
               if (_canScrollUp)
-                SizedBox.square(
-                  dimension: 48,
-                  child: FilledButton(
-                    style: squareStyle,
-                    onPressed: _scrollToTop,
-                    child: const Icon(Icons.arrow_upward_rounded),
-                  ),
+                FloatingActionButton.small(
+                  heroTag: 'search_back_to_top',
+                  onPressed: _scrollToTop,
+                  tooltip: l10n.backToTop,
+                  child: const Icon(Icons.arrow_upward_rounded),
                 ),
               // 回到顶部与 tag 工具条同时存在时的间距。
               if (_canScrollUp && _selectedTag != null)
