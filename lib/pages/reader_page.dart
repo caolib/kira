@@ -202,12 +202,13 @@ class _ReaderPageState extends State<ReaderPage> {
       _isPageMode && _user.readerScrollDirection == 2;
   // 状态组件位置：0左上 1顶中 2右上 3右下 4底中 5左下
   bool get _statusOverlayIsTop => _user.reader.statusOverlayPosition < 3;
-  bool get _statusOverlayIsLeft => {
-    0: true,
-    5: true,
-    2: false,
-    3: false,
-  }[_user.reader.statusOverlayPosition] ??
+  bool get _statusOverlayIsLeft =>
+      {
+        0: true,
+        5: true,
+        2: false,
+        3: false,
+      }[_user.reader.statusOverlayPosition] ??
       false;
   // 顶中/底中时水平铺满（left+right 都为 0）。
   bool get _statusOverlayIsCenter =>
@@ -2619,8 +2620,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 top: _statusOverlayIsTop ? 0 : null,
                 bottom: _statusOverlayIsTop ? null : 0,
                 left: _statusOverlayIsCenter || _statusOverlayIsLeft ? 0 : null,
-                right:
-                    _statusOverlayIsCenter || !_statusOverlayIsLeft
+                right: _statusOverlayIsCenter || !_statusOverlayIsLeft
                     ? 0
                     : null,
                 child: _statusOverlayIsCenter

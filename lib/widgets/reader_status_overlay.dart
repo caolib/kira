@@ -221,7 +221,7 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay>
     // 圆角朝向屏幕中心：依位置选择对应角，其余三角保持直角。
     final pos = settings.statusOverlayPosition;
     final corner = switch (pos) {
-      0 => BorderRadius.only(bottomRight: Radius.circular(AppRadius.md)), // 左上
+      0 => const BorderRadius.only(bottomRight: Radius.circular(AppRadius.md)), // 左上
       1 => const BorderRadius.only(
         bottomLeft: Radius.circular(AppRadius.md),
         bottomRight: Radius.circular(AppRadius.md),
@@ -229,12 +229,12 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay>
       2 => const BorderRadius.only(
         bottomLeft: Radius.circular(AppRadius.md),
       ), // 右上（默认）
-      3 => BorderRadius.only(topLeft: Radius.circular(AppRadius.md)), // 右下
+      3 => const BorderRadius.only(topLeft: Radius.circular(AppRadius.md)), // 右下
       4 => const BorderRadius.only(
         topLeft: Radius.circular(AppRadius.md),
         topRight: Radius.circular(AppRadius.md),
       ), // 底部中间
-      5 => BorderRadius.only(topRight: Radius.circular(AppRadius.md)), // 左下
+      5 => const BorderRadius.only(topRight: Radius.circular(AppRadius.md)), // 左下
       _ => const BorderRadius.only(bottomLeft: Radius.circular(AppRadius.md)),
     };
     // 角落位：靠屏幕一侧给较大边距（lg=16），内侧给较小边距（10）。
@@ -251,15 +251,12 @@ class _ReaderStatusOverlayState extends State<ReaderStatusOverlay>
         ),
         decoration: BoxDecoration(
           // 黑底，不透明度由设置控制（0=透明，1=全黑）
-          color: Color(
+          color: const Color(
             0xFF000000,
           ).withValues(alpha: settings.statusOverlayOpacity),
           borderRadius: corner,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: segments,
-        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: segments),
       ),
     );
   }

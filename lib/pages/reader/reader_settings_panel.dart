@@ -484,7 +484,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                       width: double.infinity,
                       child: SegmentedButton<int>(
                         showSelectedIcon: false,
-                        segments: [
+                        segments: const [
                           ButtonSegment(value: 0, icon: Icon(Icons.north_west)),
                           ButtonSegment(value: 1, icon: Icon(Icons.north)),
                           ButtonSegment(value: 2, icon: Icon(Icons.north_east)),
@@ -520,8 +520,6 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                     padding: const EdgeInsets.only(left: AppSpacing.lg),
                     child: Slider(
                       value: _user.reader.statusOverlayOpacity,
-                      min: 0.0,
-                      max: 1.0,
                       divisions: 10,
                       label:
                           '${(_user.reader.statusOverlayOpacity * 100).round()}%',
