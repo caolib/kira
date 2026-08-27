@@ -133,10 +133,12 @@ class _SearchPageState extends State<SearchPage> {
       }
     });
     final prefs = SharedPreferences.getInstance();
-    prefs.then((p) => p.setBool(
-          isHotSearch ? _kHotSearchExpanded : _kAllTagsExpanded,
-          next,
-        ));
+    prefs.then(
+      (p) => p.setBool(
+        isHotSearch ? _kHotSearchExpanded : _kAllTagsExpanded,
+        next,
+      ),
+    );
   }
 
   @override
@@ -310,7 +312,8 @@ class _SearchPageState extends State<SearchPage> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           final c = _scrollController;
-          if (!c.hasClients || c.position.pixels <= c.position.minScrollExtent) {
+          if (!c.hasClients ||
+              c.position.pixels <= c.position.minScrollExtent) {
             _setHeaderVisible(true);
           }
         });
@@ -460,7 +463,8 @@ class _SearchPageState extends State<SearchPage> {
             child: NotificationListener<ScrollNotification>(
               onNotification: (n) {
                 if (n.metrics.axis == Axis.vertical) {
-                  final canScrollUp = n.metrics.pixels > n.metrics.minScrollExtent &&
+                  final canScrollUp =
+                      n.metrics.pixels > n.metrics.minScrollExtent &&
                       n.metrics.maxScrollExtent > n.metrics.minScrollExtent;
                   if (canScrollUp != _canScrollUp) {
                     setState(() => _canScrollUp = canScrollUp);
@@ -589,8 +593,7 @@ class _SearchPageState extends State<SearchPage> {
                                             : t.name,
                                       ),
                                       showCheckmark: false,
-                                      onSelected: (_) =>
-                                          _selectTag(t.pathWord),
+                                      onSelected: (_) => _selectTag(t.pathWord),
                                     ),
                                 ],
                               ),
@@ -781,20 +784,35 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildFloatingToolbar(BuildContext context, ColorScheme cs) {
     final l10n = AppLocalizations.of(context)!;
 
-    // 胶囊（tag / 排序）：选中态用 primary，未选中用 surfaceContainerHighest。
+    // 胶囊（tag / 排序）：选中态用 primaryContainer，未选中用 surfaceContainerHighest。
     ButtonStyle chipStyle(bool selected) => FilledButton.styleFrom(
-          backgroundColor:
-              selected ? cs.primary : cs.surfaceContainerHighest,
-          foregroundColor: selected ? cs.onPrimary : cs.onSurfaceVariant,
-          elevation: selected ? 4 : 0,
-          shadowColor: AppShadows.floatingTint(0.22),
-          minimumSize: const Size(0, 44),
-          maximumSize: const Size.fromHeight(44),
-          fixedSize: const Size.fromHeight(44),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        );
+      backgroundColor: selected
+          ? cs.primaryContainer
+          : cs.surfaceContainerHighest,
+      foregroundColor: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+      elevation: selected ? 4 : 0,
+      shadowColor: AppShadows.floatingTint(0.22),
+      minimumSize: const Size(0, 44),
+      maximumSize: const Size.fromHeight(44),
+      fixedSize: const Size.fromHeight(44),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+
+    // 方形按钮（回到顶部）。
+    final squareStyle = FilledButton.styleFrom(
+      backgroundColor: cs.primaryContainer,
+      foregroundColor: cs.onPrimaryContainer,
+      elevation: 6,
+      shadowColor: AppShadows.floatingTint(0.22),
+      minimumSize: const Size.square(48),
+      maximumSize: const Size.square(48),
+      fixedSize: const Size.square(48),
+      padding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
 
     return SafeArea(
       top: false,
@@ -810,13 +828,15 @@ class _SearchPageState extends State<SearchPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // 回到顶部：任何可滚动列表都出现，不依赖 tag。样式与书架一致（FAB）。
+              // 回到顶部：任何可滚动列表都出现，不依赖 tag。
               if (_canScrollUp)
-                FloatingActionButton.small(
-                  heroTag: 'search_back_to_top',
-                  onPressed: _scrollToTop,
-                  tooltip: l10n.backToTop,
-                  child: const Icon(Icons.arrow_upward_rounded),
+                SizedBox.square(
+                  dimension: 48,
+                  child: FilledButton(
+                    style: squareStyle,
+                    onPressed: _scrollToTop,
+                    child: const Icon(Icons.arrow_upward_rounded),
+                  ),
                 ),
               // 回到顶部与 tag 工具条同时存在时的间距。
               if (_canScrollUp && _selectedTag != null)
@@ -876,9 +896,9 @@ class _SearchPageState extends State<SearchPage> {
             const SizedBox(width: 6),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             if (trailing != null) ...[
               const SizedBox(width: AppSpacing.sm),

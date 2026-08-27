@@ -17,6 +17,8 @@ import '../providers/app_providers.dart';
 import '../providers/repository_providers.dart';
 import '../repositories/bookshelf_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -563,12 +565,31 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
     final hp = (screenWidth - contentWidth) / 2 + 16;
 
     return Scaffold(
+      // 右下角悬浮回到顶部按钮：方形 FilledButton，与搜索页工具条同款
+      // （primaryContainer 底 + 零内边距固定 48px，保证正方形且图标居中）。
       floatingActionButton: _showBackToTop
-          ? FloatingActionButton.small(
-              heroTag: 'bookshelf_back_to_top',
-              onPressed: _scrollToTop,
-              tooltip: AppLocalizations.of(context)!.backToTop,
-              child: const Icon(Icons.arrow_upward_rounded),
+          ? SizedBox.square(
+              dimension: 48,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onPrimaryContainer,
+                  elevation: 6,
+                  shadowColor: AppShadows.floatingTint(0.22),
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size.square(48),
+                  maximumSize: const Size.square(48),
+                  fixedSize: const Size.square(48),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: _scrollToTop,
+                child: const Icon(Icons.arrow_upward_rounded),
+              ),
             )
           : null,
       body: RefreshIndicator(

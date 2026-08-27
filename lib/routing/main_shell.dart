@@ -451,9 +451,14 @@ class _MainShellState extends State<MainShell>
 ///
 /// Hidden tabs stay mounted offstage so branch state is preserved.
 ///
-/// 视觉模型：单一连续滚动位置 [_AnimatedBranchContainerState._scrollPos]（单位：页宽），
-/// 页 i 的平移量 = 可见序(i) − _S。三种来源写入 _scrollPos —— 跟手拖动、松手收尾补间、
-/// 标准切换补间。仅参与滚动的相邻两页保持可见，其余照旧 offstage 保活。
+/// Branch container: two slide models sharing one AnimationController.
+///
+/// Hidden tabs stay mounted offstage so branch state is preserved.
+///
+/// - 点按导航：双页联动直滑（旧行为），目标与当前页互为进出，不扫过中间页。
+/// - 拖动跟手：连续滚动位置 [_AnimatedBranchContainerState._scrollPos]
+///   （单位：页宽），页 i 平移量 = 可见序(i) − _scrollPos；松手收尾向相邻页
+///   补间到位后由父级 goBranch 确认。
 class _AnimatedBranchContainer extends StatefulWidget {
   const _AnimatedBranchContainer({
     super.key,
@@ -475,6 +480,9 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
 
   /// 与旧行为一致的甩动翻页速度阈值（px/s）。
   static const _flingVelocity = 400.0;
+
+  /// 慢拖翻页的位移阈值（页宽比例，≈1/20 屏宽；对齐旧行为的 48px/800px）。
+  static const _pageFlingThreshold = 0.06;
 
   late final AnimationController _controller;
   Animation<double>? _tween;
@@ -502,21 +510,35 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
   /// didUpdateWidget 收到同分支变化时只认领逻辑页，不重放动画。
   int? _pendingBranch;
 
+  /// 双页直滑（点按导航）的出场页与方向；[._outgoingIndex] 为 null 即无此动画。
+  int? _outgoingIndex;
+  double _direction = 1;
+
+  /// 当前补间的几何模型：true=双页直滑（点按），false=连续位置（拖动收尾），
+  /// null=无补间进行中。
+  bool? _dualTween;
+
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: _duration);
-    _controller.addListener(() {
-      final tween = _tween;
-      if (tween == null) return;
-      setState(() => _scrollPos = tween.value);
-    });
+    _controller.addListener(_onTick);
     _controller.addStatusListener((status) {
       if (status != AnimationStatus.completed) return;
       _tween = null;
-      setState(() {});
+      _dualTween = null;
+      setState(() => _outgoingIndex = null);
     });
     _logicalBranch = widget.currentIndex;
+  }
+
+  void _onTick() {
+    final tween = _tween;
+    if (tween == null) return;
+    // 双页直滑的进度由 build 直接读 tween，不占用 _scrollPos（那是
+    // 连续位置模型的状态；误写会让动画结束时页面停在错误的页位上）。
+    if (_dualTween == true) return;
+    setState(() => _scrollPos = tween.value);
   }
 
   @override
@@ -525,7 +547,7 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     _orderedKeys = _visibleNavKeys(UserManager());
     _reduceMotion = prefersReducedMotion(context);
     _controller.duration = _reduceMotion ? Duration.zero : _duration;
-    if (!_dragging && _pendingBranch == null) {
+    if (!_dragging && _pendingBranch == null && _outgoingIndex == null) {
       _scrollPos = _visiblePos(widget.currentIndex);
     }
   }
@@ -539,11 +561,12 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
 
     final newPos = _visiblePos(widget.currentIndex);
 
-    // 松手收尾的目标被父级确认：视觉已经在路上，只认领逻辑分支。
+    // 松手收尾的目标被父级确认：连续位置动画已经在路上，只认领逻辑分支。
     if (_pendingBranch == widget.currentIndex && !_dragging) {
       setState(() {
         _logicalBranch = widget.currentIndex;
         _pendingBranch = null;
+        _outgoingIndex = null;
       });
       return;
     }
@@ -551,14 +574,20 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     if (_dragging) _abortDrag();
     _pendingBranch = null;
 
+    // 点按导航：恢复旧行为——目标页与当前页双页联动直滑，不扫过中间页。
     setState(() {
       _logicalBranch = widget.currentIndex;
+      _outgoingIndex = oldWidget.currentIndex;
+      _direction = newPos >= _visiblePos(oldWidget.currentIndex) ? 1 : -1;
       if (_reduceMotion) {
         _tween = null;
+        _dualTween = null;
         _controller.stop();
         _scrollPos = newPos;
+        _outgoingIndex = null;
       } else {
-        _startTween(_scrollPos, newPos, _duration);
+        _scrollPos = newPos;
+        _startDualTween();
       }
     });
   }
@@ -582,7 +611,9 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     return visibleIndex < 0 ? branchIndex.toDouble() : visibleIndex.toDouble();
   }
 
+  /// 启动「连续位置」补间：_scrollPos 从 from 滑到 to（拖动收尾用）。
   void _startTween(double from, double to, Duration duration) {
+    _dualTween = false;
     _tween = Tween<double>(
       begin: from,
       end: to,
@@ -591,13 +622,31 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     _controller.forward(from: 0);
   }
 
+  /// 启动「双页直滑」补间：0→1 进度驱动 _outgoingIndex 两页互滑（点按导航）。
+  void _startDualTween() {
+    _dualTween = true;
+    _tween = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).chain(CurveTween(curve: Curves.easeOut)).animate(_controller);
+    _controller.duration = _reduceMotion ? Duration.zero : _duration;
+    if (_reduceMotion) {
+      _controller.value = 1;
+    } else {
+      _controller.forward(from: 0);
+    }
+  }
+
   // ---- 跟手拖动（由 MainShell 转发手势回调） ----
 
   void dragBegin(DragStartDetails details) {
     if (_dragging) return;
-    // 打断进行中的收尾/切换补间，从当前位置无缝接管。
+    // 打断进行中的收尾/切换动画。点按的双页直滑没有连续位置语义，
+    // 直接终止跳到终态（动画仅 ~300ms，中途被打断感知不到）。
     _controller.stop();
     _tween = null;
+    _dualTween = null;
+    _outgoingIndex = null;
     _pendingBranch = null;
     _dragging = true;
     _dragAccumPx = 0;
@@ -636,14 +685,15 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     final velocity = details.primaryVelocity ?? 0;
 
     var target = 0;
-    // 拖动进度 p = _S − cur：向左滑为正（朝下一页）。位移过半或沿该方向的
-    // 甩动速度足够快即翻页；两者冲突时以甩动为准（PageView 行为）。
+    // 拖动进度 p = _S − cur：向左滑为正（朝下一页）。
+    // 翻页条件对齐旧行为：慢拖超过 ~1/20 屏宽即翻（同 PageView 的宽容度，
+    // 也让 widget 测试里 tester.drag 的无速度拖动能触发），快速甩动看速度方向。
     final progress = _dragProgress;
     if (velocity.abs() >= _flingVelocity) {
       target = velocity.sign < 0 ? 1 : -1;
-    } else if (progress >= 0.5) {
+    } else if (progress >= _pageFlingThreshold) {
       target = 1;
-    } else if (progress <= -0.5) {
+    } else if (progress <= -_pageFlingThreshold) {
       target = -1;
     }
 
@@ -736,11 +786,45 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
   }
 
   Widget _buildBranch(int index) {
+    final isLogical = index == _uiBranch;
+    final isOutgoing = index == _outgoingIndex;
+
+    // 双页直滑（点按导航）：目标页自 ±1 滑到 0，出场页自 0 滑到 ∓1。
+    if (_dualTween == true && _tween != null) {
+      final t = _tween!.value;
+      final double dx;
+      if (isLogical) {
+        dx = (1 - t) * _direction;
+      } else if (isOutgoing) {
+        dx = -t * _direction;
+      } else {
+        return Offstage(
+          child: TickerMode(
+            enabled: false,
+            child: IgnorePointer(child: widget.children[index]),
+          ),
+        );
+      }
+      return Offstage(
+        offstage: false,
+        child: TickerMode(
+          enabled: isLogical,
+          child: IgnorePointer(
+            ignoring: !isLogical,
+            child: FractionalTranslation(
+              translation: Offset(dx, 0),
+              child: widget.children[index],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 连续位置模型（拖动 / 收尾补间）。
     final pos = _scrollPos;
     final v = _visiblePos(index);
     // 只有两端参与滚动（floor/ceil 各占其一）；区间判定容忍浮点误差。
     final participates = v >= pos.floorToDouble() && v <= pos.ceilToDouble();
-    final isLogical = index == _uiBranch;
 
     if (!participates) {
       return Offstage(
