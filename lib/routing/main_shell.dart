@@ -35,6 +35,9 @@ List<String> _visibleNavKeys(UserManager user) {
   return keys.isEmpty ? const [UserManager.defaultNavKey] : keys;
 }
 
+/// 底部导航分支容器的 GlobalKey：MainShell 通过它把拖动手势转发给容器做跟手滑动。
+final _branchContainerKey = GlobalKey<_AnimatedBranchContainerState>();
+
 /// Keeps every StatefulShellRoute branch alive while animating branch changes.
 Widget buildMainShellNavigatorContainer(
   BuildContext context,
@@ -42,6 +45,7 @@ Widget buildMainShellNavigatorContainer(
   List<Widget> children,
 ) {
   return _AnimatedBranchContainer(
+    key: _branchContainerKey,
     currentIndex: navigationShell.currentIndex,
     children: children,
   );
@@ -67,7 +71,6 @@ class _MainShellState extends State<MainShell>
   bool _didAutoCheckUpdate = false;
   bool _didCheckDisclaimer = false;
   bool _didCheckRemoteNotice = false;
-  double _horizontalDragDistance = 0;
   DateTime? _lastBackAttemptAt;
 
   @override
@@ -243,17 +246,11 @@ class _MainShellState extends State<MainShell>
   }
 
   void _onHorizontalDragEnd(DragEndDetails details, List<String> orderedKeys) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (_horizontalDragDistance.abs() < 48 && velocity.abs() < 400) return;
-
-    final selectedIndex = _selectedIndex(orderedKeys);
-    final direction = velocity.abs() >= 400
-        ? velocity.sign
-        : _horizontalDragDistance.sign;
-    final nextIndex = selectedIndex + (direction < 0 ? 1 : -1);
-    if (nextIndex >= 0 && nextIndex < orderedKeys.length) {
-      _goToDestination(orderedKeys, nextIndex);
-    }
+    // 容器负责收尾动画并返回落点；这里把结果提交给路由（同步 lastNavKey）。
+    final state = _branchContainerKey.currentState;
+    final destIndex = state?.settleFromPointer(details);
+    if (destIndex == null) return;
+    _goToDestination(orderedKeys, destIndex);
   }
 
   /// 双击返回退出：第一次返回只提示，窗口期内再返回才真正退出。
@@ -293,15 +290,15 @@ class _MainShellState extends State<MainShell>
         body: _user.theme.navSwipeEnabled
             ? GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
-                onHorizontalDragUpdate: (details) {
-                  _horizontalDragDistance += details.primaryDelta ?? 0;
-                },
+                onHorizontalDragStart: (details) =>
+                    _branchContainerKey.currentState?.dragBegin(details),
+                onHorizontalDragUpdate: (details) =>
+                    _branchContainerKey.currentState?.dragUpdate(details),
                 onHorizontalDragEnd: (details) {
                   _onHorizontalDragEnd(details, orderedKeys);
-                  _horizontalDragDistance = 0;
                 },
-                onHorizontalDragCancel: () => _horizontalDragDistance = 0,
+                onHorizontalDragCancel: () =>
+                    _branchContainerKey.currentState?.dragCancel(),
                 child: widget.navigationShell,
               )
             : widget.navigationShell,
@@ -453,8 +450,13 @@ class _MainShellState extends State<MainShell>
 /// Dual-page linked slide between shell branches (no intermediate-page sweep).
 ///
 /// Hidden tabs stay mounted offstage so branch state is preserved.
+///
+/// 视觉模型：单一连续滚动位置 [_AnimatedBranchContainerState._scrollPos]（单位：页宽），
+/// 页 i 的平移量 = 可见序(i) − _S。三种来源写入 _scrollPos —— 跟手拖动、松手收尾补间、
+/// 标准切换补间。仅参与滚动的相邻两页保持可见，其余照旧 offstage 保活。
 class _AnimatedBranchContainer extends StatefulWidget {
   const _AnimatedBranchContainer({
+    super.key,
     required this.currentIndex,
     required this.children,
   });
@@ -471,49 +473,94 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     with SingleTickerProviderStateMixin {
   static const _duration = kTabScrollDuration;
 
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
+  /// 与旧行为一致的甩动翻页速度阈值（px/s）。
+  static const _flingVelocity = 400.0;
 
-  int? _outgoingIndex;
-  double _direction = 1;
+  late final AnimationController _controller;
+  Animation<double>? _tween;
+
+  late List<String> _orderedKeys;
   bool _reduceMotion = false;
+
+  /// 连续滚动位置（可见页单位），静止时恒为整数页位。
+  double _scrollPos = 0;
+
+  /// 手势交互期间接收指针的真实分支。滑动未确认前保持旧值，避免指针中途
+  /// 落到尚未到达的新页上。
+  int _logicalBranch = 0;
+
+  /// 跟手拖动中。
+  bool _dragging = false;
+
+  /// 本次手势累计位移（px，右滑为正）。
+  double _dragAccumPx = 0;
+
+  /// 拖动开始时相对逻辑页位的既有偏移（上次收尾被打断时的残余），保证连续。
+  double _dragBaseProgress = 0;
+
+  /// 松手收尾后等待父级 goBranch 确认的目标分支；确认前 UI 视觉已到位，
+  /// didUpdateWidget 收到同分支变化时只认领逻辑页，不重放动画。
+  int? _pendingBranch;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: _duration)
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed && _outgoingIndex != null) {
-          setState(() => _outgoingIndex = null);
-        }
-      });
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _controller.value = 1;
+    _controller = AnimationController(vsync: this, duration: _duration);
+    _controller.addListener(() {
+      final tween = _tween;
+      if (tween == null) return;
+      setState(() => _scrollPos = tween.value);
+    });
+    _controller.addStatusListener((status) {
+      if (status != AnimationStatus.completed) return;
+      _tween = null;
+      setState(() {});
+    });
+    _logicalBranch = widget.currentIndex;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _orderedKeys = _visibleNavKeys(UserManager());
     _reduceMotion = prefersReducedMotion(context);
     _controller.duration = _reduceMotion ? Duration.zero : _duration;
+    if (!_dragging && _pendingBranch == null) {
+      _scrollPos = _visiblePos(widget.currentIndex);
+    }
   }
 
   @override
   void didUpdateWidget(covariant _AnimatedBranchContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _orderedKeys = _visibleNavKeys(UserManager());
+
     if (oldWidget.currentIndex == widget.currentIndex) return;
 
-    final orderedKeys = _visibleNavKeys(UserManager());
-    final oldPosition = _branchPosition(oldWidget.currentIndex, orderedKeys);
-    final newPosition = _branchPosition(widget.currentIndex, orderedKeys);
-    _outgoingIndex = oldWidget.currentIndex;
-    _direction = newPosition >= oldPosition ? 1 : -1;
-    if (_reduceMotion) {
-      _controller.value = 1;
-      _outgoingIndex = null;
+    final newPos = _visiblePos(widget.currentIndex);
+
+    // 松手收尾的目标被父级确认：视觉已经在路上，只认领逻辑分支。
+    if (_pendingBranch == widget.currentIndex && !_dragging) {
+      setState(() {
+        _logicalBranch = widget.currentIndex;
+        _pendingBranch = null;
+      });
       return;
     }
-    _controller.forward(from: 0);
+
+    if (_dragging) _abortDrag();
+    _pendingBranch = null;
+
+    setState(() {
+      _logicalBranch = widget.currentIndex;
+      if (_reduceMotion) {
+        _tween = null;
+        _controller.stop();
+        _scrollPos = newPos;
+      } else {
+        _startTween(_scrollPos, newPos, _duration);
+      }
+    });
   }
 
   @override
@@ -522,19 +569,160 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     super.dispose();
   }
 
-  double _branchPosition(int branchIndex, List<String> orderedKeys) {
+  int get _uiBranch => (_dragging || _pendingBranch != null)
+      ? _logicalBranch
+      : widget.currentIndex;
+
+  double _visiblePos(int branchIndex) {
     final navKey = _navKeyToBranchIndex.entries
         .where((entry) => entry.value == branchIndex)
         .map((entry) => entry.key)
         .firstOrNull;
-    final visibleIndex = navKey == null ? -1 : orderedKeys.indexOf(navKey);
+    final visibleIndex = navKey == null ? -1 : _orderedKeys.indexOf(navKey);
     return visibleIndex < 0 ? branchIndex.toDouble() : visibleIndex.toDouble();
+  }
+
+  void _startTween(double from, double to, Duration duration) {
+    _tween = Tween<double>(
+      begin: from,
+      end: to,
+    ).chain(CurveTween(curve: Curves.easeOutCubic)).animate(_controller);
+    _controller.duration = duration;
+    _controller.forward(from: 0);
+  }
+
+  // ---- 跟手拖动（由 MainShell 转发手势回调） ----
+
+  void dragBegin(DragStartDetails details) {
+    if (_dragging) return;
+    // 打断进行中的收尾/切换补间，从当前位置无缝接管。
+    _controller.stop();
+    _tween = null;
+    _pendingBranch = null;
+    _dragging = true;
+    _dragAccumPx = 0;
+    _dragBaseProgress = _scrollPos - _visiblePos(_uiBranch);
+  }
+
+  void dragUpdate(DragUpdateDetails details) {
+    if (!_dragging) return;
+    final width = context.size?.width ?? 0;
+    if (width <= 0) return;
+    _dragAccumPx += details.primaryDelta ?? 0;
+    var progress = _dragBaseProgress - _dragAccumPx / width;
+
+    // 边界钳制：progress<0 是往上一页方向——首页没有上一页，钳住；
+    // 末页没有下一页同理（PageView 行为）。
+    final cur = _visiblePos(_uiBranch);
+    if (cur <= 0 && progress < 0) progress = 0;
+    if (cur >= _orderedKeys.length - 1 && progress > 0) progress = 0;
+    progress = progress.clamp(-1.0, 1.0);
+
+    setState(() => _scrollPos = cur + progress);
+  }
+
+  /// 当前拖动进度（负值表示朝下一页方向）。
+  double get _dragProgress {
+    final width = context.size?.width ?? 0;
+    if (width <= 0 || !_dragging) return 0;
+    return (_scrollPos - _visiblePos(_uiBranch)).clamp(-1.0, 1.0);
+  }
+
+  /// 松手收尾：按位移过半或甩动方向决定落到相邻页还是弹回，
+  /// 返回应提交的可见序（无切换时返回 null）。调用方随后 goBranch 确认。
+  int? settleFromPointer(DragEndDetails details) {
+    if (!_dragging) return null;
+    final cur = _visiblePos(_uiBranch);
+    final velocity = details.primaryVelocity ?? 0;
+
+    var target = 0;
+    // 拖动进度 p = _S − cur：向左滑为正（朝下一页）。位移过半或沿该方向的
+    // 甩动速度足够快即翻页；两者冲突时以甩动为准（PageView 行为）。
+    final progress = _dragProgress;
+    if (velocity.abs() >= _flingVelocity) {
+      target = velocity.sign < 0 ? 1 : -1;
+    } else if (progress >= 0.5) {
+      target = 1;
+    } else if (progress <= -0.5) {
+      target = -1;
+    }
+
+    // 目标页越界则原地弹回。
+    final destIndex = (cur.round() + target).clamp(0, _orderedKeys.length - 1);
+    target = destIndex - cur.round();
+
+    _dragging = false;
+    _dragAccumPx = 0;
+    _dragBaseProgress = 0;
+
+    final dest = cur + target.toDouble();
+    if ((dest - _scrollPos).abs() < 0.0005) {
+      _scrollPos = dest;
+      setState(() {});
+      return target == 0 ? null : destIndex;
+    }
+    if (target != 0) _pendingBranch = _branchAtVisiblePos(destIndex);
+    setState(() {});
+    if (_reduceMotion) {
+      _tween = null;
+      _controller.stop();
+      _scrollPos = dest;
+      setState(() {});
+    } else {
+      // 快速轻甩时距离短，收尾节奏随剩余距离缩短，避免「一甩等半秒」。
+      final remaining = (dest - _scrollPos).abs();
+      _startTween(
+        _scrollPos,
+        dest,
+        Duration(milliseconds: (120 + 180 * remaining).round()),
+      );
+    }
+    return target == 0 ? null : destIndex;
+  }
+
+  int _branchAtVisiblePos(int visibleIndex) {
+    for (final entry in _navKeyToBranchIndex.entries) {
+      if (_orderedKeys.indexOf(entry.key) == visibleIndex) return entry.value;
+    }
+    return visibleIndex;
+  }
+
+  void dragCancel() {
+    if (!_dragging) return;
+    _dragging = false;
+    _dragAccumPx = 0;
+    _dragBaseProgress = 0;
+    final dest = _visiblePos(_uiBranch);
+    if ((dest - _scrollPos).abs() < 0.0005) {
+      _scrollPos = dest;
+      setState(() {});
+      return;
+    }
+    if (_reduceMotion) {
+      _tween = null;
+      _controller.stop();
+      _scrollPos = dest;
+      setState(() {});
+    } else {
+      _startTween(
+        _scrollPos,
+        dest,
+        Duration(milliseconds: (120 + 180 * (dest - _scrollPos).abs()).round()),
+      );
+    }
+  }
+
+  /// 不播放收尾动画地终止拖动状态（例如父级在拖动中切换了分支）。
+  void _abortDrag() {
+    _dragging = false;
+    _dragAccumPx = 0;
+    _dragBaseProgress = 0;
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _animation,
+      animation: _controller,
       builder: (context, _) {
         return Stack(
           fit: StackFit.expand,
@@ -548,30 +736,28 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
   }
 
   Widget _buildBranch(int index) {
-    final isCurrent = index == widget.currentIndex;
-    final isOutgoing = index == _outgoingIndex;
-    final isActive = isCurrent || isOutgoing;
+    final pos = _scrollPos;
+    final v = _visiblePos(index);
+    // 只有两端参与滚动（floor/ceil 各占其一）；区间判定容忍浮点误差。
+    final participates = v >= pos.floorToDouble() && v <= pos.ceilToDouble();
+    final isLogical = index == _uiBranch;
 
-    // Linked PageView-style offsets, but only between the two endpoints:
-    // - incoming starts at +direction and settles at 0
-    // - outgoing starts at 0 and exits to -direction
-    final double dx;
-    if (_reduceMotion) {
-      dx = 0;
-    } else if (isCurrent) {
-      dx = (1 - _animation.value) * _direction;
-    } else if (isOutgoing) {
-      dx = -_animation.value * _direction;
-    } else {
-      dx = 0;
+    if (!participates) {
+      return Offstage(
+        child: TickerMode(
+          enabled: false,
+          child: IgnorePointer(child: widget.children[index]),
+        ),
+      );
     }
 
+    final dx = v - pos;
     return Offstage(
-      offstage: !isActive,
+      offstage: dx.abs() >= 1,
       child: TickerMode(
-        enabled: isCurrent,
+        enabled: isLogical,
         child: IgnorePointer(
-          ignoring: !isCurrent,
+          ignoring: !isLogical,
           child: FractionalTranslation(
             translation: Offset(dx, 0),
             child: widget.children[index],
