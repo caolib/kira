@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:go_router/go_router.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
@@ -15,6 +16,8 @@ import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../repositories/search_init_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -33,6 +36,9 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   static const _tagSpacing = 8.0;
+  // 折叠状态持久化 key（仅本地记忆，无导入导出）。
+  static const _kHotSearchExpanded = 'search_hot_search_expanded';
+  static const _kAllTagsExpanded = 'search_all_tags_expanded';
   bool _refreshing = false;
 
   final _api = ApiClient();
@@ -53,8 +59,12 @@ class _SearchPageState extends State<SearchPage> {
   bool _loadingMore = false;
   bool _searching = false;
   bool _hasSearchText = false;
-  bool _showBackToTop = false;
   bool _headerVisible = true;
+  // 列表是否可向上滚回顶部（内容超出视口且当前不在顶部）。回到顶部按钮据此显隐。
+  bool _canScrollUp = false;
+  // 热门搜索 / 全部标签 两个区块的展开状态（持久化记忆，无需导入导出）。
+  bool _hotSearchExpanded = true;
+  bool _allTagsExpanded = true;
   int _offset = 0;
   int _total = 0;
   String? _searchQuery;
@@ -66,6 +76,31 @@ class _SearchPageState extends State<SearchPage> {
   bool get _hasResults => _comics.isNotEmpty || _animes.isNotEmpty;
   bool get _canClearSearch => _hasSearchText || _searchQuery != null;
 
+  /// 当前选中 tag 的显示名（从初始化拿到的 tag 列表里按 pathWord 反查）。
+  String get _selectedTagName {
+    final tag = _selectedTag;
+    if (tag == null) return '';
+    final match = _tags.where((t) => t.pathWord == tag).firstOrNull;
+    return match?.name ?? '';
+  }
+
+  /// 切换排序并重新加载，同时滚回顶部，方便用户从头看新排序的结果。
+  void _setOrdering(String value) {
+    if (_ordering == value) return;
+    setState(() => _ordering = value);
+    _loadComics();
+    _scrollToTop();
+  }
+
+  /// 在热度 / 更新之间来回切换（右下角单按钮）。
+  void _toggleOrdering() {
+    _setOrdering(
+      _ordering == ApiOrdering.popular
+          ? ApiOrdering.datetimeUpdated
+          : ApiOrdering.popular,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +109,34 @@ class _SearchPageState extends State<SearchPage> {
     _searchFocus.addListener(_onSearchFocusChanged);
     _loadFromCache();
     _loadInit();
+    _restoreCollapseStates();
+  }
+
+  /// 读取两个区块的折叠状态（仅本地记忆，无需导入导出）。
+  Future<void> _restoreCollapseStates() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _hotSearchExpanded = prefs.getBool(_kHotSearchExpanded) ?? true;
+      _allTagsExpanded = prefs.getBool(_kAllTagsExpanded) ?? true;
+    });
+  }
+
+  /// 切换某区块折叠状态并落盘（[isHotSearch] 区分热门搜索 / 全部标签）。
+  void _toggleCollapse({required bool isHotSearch}) {
+    final next = !(isHotSearch ? _hotSearchExpanded : _allTagsExpanded);
+    setState(() {
+      if (isHotSearch) {
+        _hotSearchExpanded = next;
+      } else {
+        _allTagsExpanded = next;
+      }
+    });
+    final prefs = SharedPreferences.getInstance();
+    prefs.then((p) => p.setBool(
+          isHotSearch ? _kHotSearchExpanded : _kAllTagsExpanded,
+          next,
+        ));
   }
 
   @override
@@ -192,6 +255,14 @@ class _SearchPageState extends State<SearchPage> {
           _searching = false;
         });
       }
+      // 搜索结果太少不可滚动时，确保搜索框/悬浮按钮不会被卡在收起态。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final c = _scrollController;
+        if (!c.hasClients || c.position.pixels <= c.position.minScrollExtent) {
+          _setHeaderVisible(true);
+        }
+      });
     } catch (e, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
@@ -233,6 +304,17 @@ class _SearchPageState extends State<SearchPage> {
         _offset = _comics.length;
         _searching = false;
       });
+      // 切到新结果列表后，若当前停在顶部（结果太少不可滚动的情况），
+      // 主动把搜索框与悬浮按钮带回来，否则它们会卡在收起态回不来。
+      if (reset) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final c = _scrollController;
+          if (!c.hasClients || c.position.pixels <= c.position.minScrollExtent) {
+            _setHeaderVisible(true);
+          }
+        });
+      }
     } catch (e, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
@@ -370,14 +452,6 @@ class _SearchPageState extends State<SearchPage> {
     final headerHeight = topInset + _headerContentHeight();
 
     return Scaffold(
-      floatingActionButton: _showBackToTop
-          ? FloatingActionButton.small(
-              heroTag: 'search_back_to_top',
-              onPressed: _scrollToTop,
-              tooltip: l10n.backToTop,
-              child: const Icon(Icons.arrow_upward_rounded),
-            )
-          : null,
       body: Stack(
         children: [
           RefreshIndicator(
@@ -386,9 +460,10 @@ class _SearchPageState extends State<SearchPage> {
             child: NotificationListener<ScrollNotification>(
               onNotification: (n) {
                 if (n.metrics.axis == Axis.vertical) {
-                  final shouldShow = n.metrics.pixels > 400;
-                  if (shouldShow != _showBackToTop) {
-                    setState(() => _showBackToTop = shouldShow);
+                  final canScrollUp = n.metrics.pixels > n.metrics.minScrollExtent &&
+                      n.metrics.maxScrollExtent > n.metrics.minScrollExtent;
+                  if (canScrollUp != _canScrollUp) {
+                    setState(() => _canScrollUp = canScrollUp);
                   }
                   _updateHeaderVisibility(n);
                   if (_hasResults &&
@@ -440,130 +515,87 @@ class _SearchPageState extends State<SearchPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.local_fire_department,
-                                  size: 20,
-                                  color: cs.primary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  l10n.hotSearchTitle,
-                                  style: tt.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            _buildSectionHeader(
+                              icon: Icons.local_fire_department,
+                              color: cs.primary,
+                              title: l10n.hotSearchTitle,
+                              expanded: _hotSearchExpanded,
+                              onTap: () => setState(
+                                () => _toggleCollapse(isHotSearch: true),
+                              ),
                             ),
-                            const SizedBox(height: AppSpacing.md),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _keywords
-                                  .map(
-                                    (k) => ActionChip(
-                                      label: Text(k),
-                                      onPressed: () => _onKeywordTap(k),
-                                      avatar: Icon(
-                                        Icons.trending_up,
-                                        size: 16,
-                                        color: cs.primary,
+                            if (_hotSearchExpanded) ...[
+                              const SizedBox(height: AppSpacing.md),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _keywords
+                                    .map(
+                                      (k) => ActionChip(
+                                        label: Text(k),
+                                        onPressed: () => _onKeywordTap(k),
+                                        avatar: Icon(
+                                          Icons.trending_up,
+                                          size: 16,
+                                          color: cs.primary,
+                                        ),
                                       ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                            const SizedBox(height: AppSpacing.xl),
+                                    )
+                                    .toList(),
+                              ),
+                              const SizedBox(height: AppSpacing.xl),
+                            ],
                           ],
                         ),
                       ),
                     ),
                   if (!_isAnimeMode &&
                       _tags.isNotEmpty &&
+                      _selectedTag == null &&
                       _searchQuery == null &&
-                      (_selectedTag != null || !_searching))
+                      !_searching)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.category,
-                                  size: 20,
-                                  color: cs.primary,
+                            _buildSectionHeader(
+                              icon: Icons.category,
+                              color: cs.primary,
+                              title: l10n.allTagsTitle,
+                              expanded: _allTagsExpanded,
+                              trailing: Text(
+                                l10n.tagCount(_tags.length),
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  l10n.allTagsTitle,
-                                  style: tt.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Text(
-                                  l10n.tagCount(_tags.length),
-                                  style: tt.bodySmall?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                              ),
+                              onTap: () => setState(
+                                () => _toggleCollapse(isHotSearch: false),
+                              ),
                             ),
-                            const SizedBox(height: AppSpacing.md),
-                            Wrap(
-                              spacing: _tagSpacing,
-                              runSpacing: _tagSpacing,
-                              children: [
-                                for (final t in _tags)
-                                  if (_selectedTag == null ||
-                                      _selectedTag == t.pathWord)
+                            if (_allTagsExpanded) ...[
+                              const SizedBox(height: AppSpacing.md),
+                              Wrap(
+                                spacing: _tagSpacing,
+                                runSpacing: _tagSpacing,
+                                children: [
+                                  for (final t in _tags)
                                     FilterChip(
                                       label: Text(
                                         t.count > 0
                                             ? '${t.name} ${t.count}'
                                             : t.name,
                                       ),
-                                      selected: _selectedTag == t.pathWord,
                                       showCheckmark: false,
-                                      onSelected: (_) => _selectTag(t.pathWord),
+                                      onSelected: (_) =>
+                                          _selectTag(t.pathWord),
                                     ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (!_isAnimeMode && _selectedTag != null)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(hp, 0, hp, 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SegmentedButton<String>(
-                              segments: [
-                                ButtonSegment(
-                                  value: ApiOrdering.popular,
-                                  label: Text(l10n.popularOrder),
-                                  icon: const Icon(Icons.whatshot),
-                                ),
-                                ButtonSegment(
-                                  value: ApiOrdering.datetimeUpdated,
-                                  label: Text(l10n.updateOrder),
-                                  icon: const Icon(Icons.schedule),
-                                ),
-                              ],
-                              selected: {_ordering},
-                              onSelectionChanged: (v) {
-                                setState(() => _ordering = v.first);
-                                _loadComics();
-                              },
-                            ),
-                            const SizedBox(height: AppSpacing.md),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                            ],
                           ],
                         ),
                       ),
@@ -622,7 +654,13 @@ class _SearchPageState extends State<SearchPage> {
                       loadingMore: _loadingMore,
                       onOpen: _openAnime,
                     ),
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+                  // 底部留白：选了 tag 时为悬浮按钮组留出避让空间，
+                  // 同时保证结果太少时列表仍可滚动（搜索框/按钮不会卡在收起态）。
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: _selectedTag != null && !_isAnimeMode ? 140 : 16,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -647,18 +685,29 @@ class _SearchPageState extends State<SearchPage> {
               ),
             ),
           ),
+          // 右下角悬浮层：上一行回到顶部（任何可滚列表都出现），
+          // 下一行 tag 胶囊 + 排序（仅 tag 浏览态）。两者都跟随搜索框收显。
+          if ((_canScrollUp || (_selectedTag != null && !_isAnimeMode)) &&
+              !_isAnimeMode)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: _buildFloatingToolbar(context, cs),
+            ),
         ],
       ),
     );
   }
 
   /// 下滑浏览时把搜索框收起，上滑或回到顶部再放出来；输入过程中不收。
+  /// 顶部判断对所有滚动通知生效（结果太少、不可滚动时不发 UserScroll，
+  /// 否则切到短结果列表后搜索框会卡在收起态再也回不来）。
   void _updateHeaderVisibility(ScrollNotification n) {
-    if (n is! UserScrollNotification) return;
     if (n.metrics.pixels <= n.metrics.minScrollExtent) {
       _setHeaderVisible(true);
       return;
     }
+    if (n is! UserScrollNotification) return;
     switch (n.direction) {
       case ScrollDirection.forward:
         _setHeaderVisible(true);
@@ -723,6 +772,147 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// 选中 tag 后右下角浮出的工具条：上一行回到顶部，下一行 tag 胶囊 + 热度/更新排序。
+  /// 样式参照章节评论区右下角悬浮按钮（chapter_comments_sheet）。
+  Widget _buildFloatingToolbar(BuildContext context, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
+
+    // 胶囊（tag / 排序）：选中态用 primary，未选中用 surfaceContainerHighest。
+    ButtonStyle chipStyle(bool selected) => FilledButton.styleFrom(
+          backgroundColor:
+              selected ? cs.primary : cs.surfaceContainerHighest,
+          foregroundColor: selected ? cs.onPrimary : cs.onSurfaceVariant,
+          elevation: selected ? 4 : 0,
+          shadowColor: AppShadows.floatingTint(0.22),
+          minimumSize: const Size(0, 44),
+          maximumSize: const Size.fromHeight(44),
+          fixedSize: const Size.fromHeight(44),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        );
+
+    // 方形按钮（回到顶部）。
+    final squareStyle = FilledButton.styleFrom(
+      backgroundColor: cs.primaryContainer,
+      foregroundColor: cs.onPrimaryContainer,
+      elevation: 6,
+      shadowColor: AppShadows.floatingTint(0.22),
+      minimumSize: const Size.square(48),
+      maximumSize: const Size.square(48),
+      fixedSize: const Size.square(48),
+      padding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+
+    return SafeArea(
+      top: false,
+      child: AnimatedSlide(
+        offset: _headerVisible ? Offset.zero : const Offset(0, 1.2),
+        curve: Curves.easeInOutCubic,
+        duration: const Duration(milliseconds: 200),
+        child: AnimatedOpacity(
+          opacity: _headerVisible ? 1.0 : 0.0,
+          curve: Curves.easeInOutCubic,
+          duration: const Duration(milliseconds: 200),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // 回到顶部：任何可滚动列表都出现，不依赖 tag。
+              if (_canScrollUp)
+                SizedBox.square(
+                  dimension: 48,
+                  child: FilledButton(
+                    style: squareStyle,
+                    onPressed: _scrollToTop,
+                    child: const Icon(Icons.arrow_upward_rounded),
+                  ),
+                ),
+              // 回到顶部与 tag 工具条同时存在时的间距。
+              if (_canScrollUp && _selectedTag != null)
+                const SizedBox(height: AppSpacing.sm),
+              // tag 胶囊 + 排序：仅 tag 浏览态。
+              if (_selectedTag != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton.icon(
+                      style: chipStyle(true),
+                      onPressed: () => _selectTag(null),
+                      icon: const Icon(Icons.label_outline),
+                      label: Text(_selectedTagName),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    FilledButton.icon(
+                      style: chipStyle(true),
+                      onPressed: _toggleOrdering,
+                      icon: Icon(
+                        _ordering == ApiOrdering.popular
+                            ? Icons.whatshot
+                            : Icons.schedule,
+                      ),
+                      label: Text(
+                        _ordering == ApiOrdering.popular
+                            ? l10n.popularOrder
+                            : l10n.updateOrder,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 可折叠区块的标题行：左侧图标 + 标题（+ 可选 trailing），右侧旋转箭头随展开/收起翻转。
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required bool expanded,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.xsR,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              trailing,
+            ],
+            const Spacer(),
+            AnimatedRotation(
+              turns: expanded ? 0.0 : 0.5,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeInOutCubic,
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
