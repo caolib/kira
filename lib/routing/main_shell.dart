@@ -449,11 +449,11 @@ class _MainShellState extends State<MainShell>
 
 /// Dual-page linked slide between shell branches (no intermediate-page sweep).
 ///
-/// Hidden tabs stay mounted offstage so branch state is preserved.
+/// Hidden tabs stay mounted offstage so branch state is preserved, and get
+/// pre-warmed (painted once) shortly after startup so the first swipe onto
+/// them doesn't hitch on first-time paint/raster cost.
 ///
 /// Branch container: two slide models sharing one AnimationController.
-///
-/// Hidden tabs stay mounted offstage so branch state is preserved.
 ///
 /// - 点按导航：双页联动直滑（旧行为），目标与当前页互为进出，不扫过中间页。
 /// - 拖动跟手：连续滚动位置 [_AnimatedBranchContainerState._scrollPos]
@@ -518,6 +518,14 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
   /// null=无补间进行中。
   bool? _dualTween;
 
+  /// 正在预热的分支。启动稳定后让隐藏分支各绘制一帧（画在栈底、被当前页
+  /// 盖住），把首次显示才发生的整页绘制+光栅化成本从滑动过程里挪走。
+  int? _warmBranch;
+  final Set<int> _warmedBranches = {};
+
+  /// 预热被滑动/切换打断后的重试次数（避免无限重试）。
+  int _warmUpRetries = 0;
+
   @override
   void initState() {
     super.initState();
@@ -530,6 +538,7 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
       setState(() => _outgoingIndex = null);
     });
     _logicalBranch = widget.currentIndex;
+    _scheduleWarmUp();
   }
 
   void _onTick() {
@@ -613,6 +622,7 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
 
   /// 启动「连续位置」补间：_scrollPos 从 from 滑到 to（拖动收尾用）。
   void _startTween(double from, double to, Duration duration) {
+    _warmBranch = null;
     _dualTween = false;
     _tween = Tween<double>(
       begin: from,
@@ -624,6 +634,7 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
 
   /// 启动「双页直滑」补间：0→1 进度驱动 _outgoingIndex 两页互滑（点按导航）。
   void _startDualTween() {
+    _warmBranch = null;
     _dualTween = true;
     _tween = Tween<double>(
       begin: 0,
@@ -648,6 +659,7 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     _dualTween = null;
     _outgoingIndex = null;
     _pendingBranch = null;
+    _warmBranch = null;
     _dragging = true;
     _dragAccumPx = 0;
     _dragBaseProgress = _scrollPos - _visiblePos(_uiBranch);
@@ -769,17 +781,74 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
     _dragBaseProgress = 0;
   }
 
+  // ---- 隐藏分支预热 ----
+
+  /// 有拖动或切换动画进行中（此时当前页不在原位，盖不住预热页）。
+  bool get _transitionBusy =>
+      _dragging ||
+      _pendingBranch != null ||
+      _outgoingIndex != null ||
+      _tween != null;
+
+  void _scheduleWarmUp() {
+    // 等首帧画完、启动流程跑起来一小段再开始，避免和启动抢帧。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1200), _warmNextBranch);
+    });
+  }
+
+  void _warmNextBranch() {
+    if (!mounted) return;
+    // 预热页画在栈底、依赖当前页原位盖住它，所以忙碌时延后再试。
+    if (_transitionBusy) {
+      if (_warmUpRetries >= 10) return;
+      _warmUpRetries++;
+      Future.delayed(const Duration(milliseconds: 400), _warmNextBranch);
+      return;
+    }
+    var next = -1;
+    for (var i = 0; i < widget.children.length; i++) {
+      if (i == _uiBranch || _warmedBranches.contains(i)) continue;
+      if (!_isBranchReachable(i)) continue;
+      next = i;
+      break;
+    }
+    if (next < 0) return;
+    _warmUpRetries = 0;
+    setState(() => _warmBranch = next);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _warmedBranches.add(next);
+      if (_warmBranch == next) _warmBranch = null;
+      setState(() {});
+      Future.delayed(const Duration(milliseconds: 60), _warmNextBranch);
+    });
+  }
+
+  /// 分支是否出现在可见导航序里（被设置隐藏的分支用户到不了，不用预热）。
+  bool _isBranchReachable(int branchIndex) {
+    for (final entry in _navKeyToBranchIndex.entries) {
+      if (entry.value == branchIndex) return _orderedKeys.contains(entry.key);
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
+        final order = List<int>.generate(widget.children.length, (i) => i);
+        final warm = _warmBranch;
+        if (warm != null) {
+          // 预热页挪到栈底：完整绘制、被当前页盖住，用户无感。
+          order
+            ..remove(warm)
+            ..insert(0, warm);
+        }
         return Stack(
           fit: StackFit.expand,
-          children: [
-            for (var index = 0; index < widget.children.length; index++)
-              _buildBranch(index),
-          ],
+          children: [for (final index in order) _buildBranch(index)],
         );
       },
     );
@@ -788,63 +857,41 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
   Widget _buildBranch(int index) {
     final isLogical = index == _uiBranch;
     final isOutgoing = index == _outgoingIndex;
+    final isWarming = index == _warmBranch;
 
-    // 双页直滑（点按导航）：目标页自 ±1 滑到 0，出场页自 0 滑到 ∓1。
-    if (_dualTween == true && _tween != null) {
+    // 所有分支共用同一套 widget 结构，只在属性值上区分状态：
+    // Offstage > TickerMode > IgnorePointer > FractionalTranslation > RepaintBoundary。
+    // 结构若随「是否参与滑动」分叉，Flutter 调和会把整棵分支子树销毁重建
+    // （只靠分支 Navigator 的 GlobalKey 补挂回来保状态），切页那一帧就得
+    // 付出整页重排 + 重绘，首次显示还要叠加首次光栅化，表现成滑动卡顿。
+    var offstage = false;
+    var dx = 0.0;
+
+    if (_dualTween == true && _tween != null && !isLogical && !isOutgoing) {
+      // 点按直滑时，无关分支保持隐藏。
+      offstage = true;
+      dx = _visiblePos(index) - _scrollPos;
+    } else if (_dualTween == true && _tween != null) {
+      // 双页直滑（点按导航）：目标页自 ±1 滑到 0，出场页自 0 滑到 ∓1。
       final t = _tween!.value;
-      final double dx;
-      if (isLogical) {
-        dx = (1 - t) * _direction;
-      } else if (isOutgoing) {
-        dx = -t * _direction;
-      } else {
-        return Offstage(
-          child: TickerMode(
-            enabled: false,
-            child: IgnorePointer(child: widget.children[index]),
-          ),
-        );
-      }
-      return Offstage(
-        offstage: false,
-        child: TickerMode(
-          enabled: isLogical,
-          child: IgnorePointer(
-            ignoring: !isLogical,
-            child: FractionalTranslation(
-              translation: Offset(dx, 0),
-              child: widget.children[index],
-            ),
-          ),
-        ),
-      );
+      dx = isLogical ? (1 - t) * _direction : -t * _direction;
+    } else {
+      // 连续位置模型（拖动 / 收尾补间 / 静止）：页 i 平移量 = 可见序(i) − _scrollPos。
+      // 静止时相邻页 |dx| 恰为 1，靠 offstage 挡住不画；预热页强制画在原位。
+      dx = isWarming ? 0.0 : _visiblePos(index) - _scrollPos;
+      offstage = !isWarming && dx.abs() >= 1;
     }
 
-    // 连续位置模型（拖动 / 收尾补间）。
-    final pos = _scrollPos;
-    final v = _visiblePos(index);
-    // 只有两端参与滚动（floor/ceil 各占其一）；区间判定容忍浮点误差。
-    final participates = v >= pos.floorToDouble() && v <= pos.ceilToDouble();
-
-    if (!participates) {
-      return Offstage(
-        child: TickerMode(
-          enabled: false,
-          child: IgnorePointer(child: widget.children[index]),
-        ),
-      );
-    }
-
-    final dx = v - pos;
     return Offstage(
-      offstage: dx.abs() >= 1,
+      key: ValueKey(index),
+      offstage: offstage,
       child: TickerMode(
         enabled: isLogical,
         child: IgnorePointer(
           ignoring: !isLogical,
           child: FractionalTranslation(
             translation: Offset(dx, 0),
-            child: widget.children[index],
+            child: RepaintBoundary(child: widget.children[index]),
           ),
         ),
       ),

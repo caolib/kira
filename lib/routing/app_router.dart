@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../models/anime.dart';
 import '../models/comic.dart' hide Theme;
+import '../models/user_manager.dart';
 import '../pages/about_page.dart' show AboutPage;
 import '../pages/acknowledgement_page.dart';
 import '../pages/ai_config_page.dart';
@@ -166,7 +167,10 @@ GoRouter createAppRouter() {
           return MainShell(navigationShell: navigationShell);
         },
         branches: [
+          // preload 让各分支页面在启动时就挂载（隐藏但活着），首次滑动切入
+          // 不必现场 build + 拉数据；首次绘制由 MainShell 的预热负责。
           StatefulShellBranch(
+            preload: true,
             routes: [
               GoRoute(
                 path: '/',
@@ -176,6 +180,9 @@ GoRouter createAppRouter() {
             ],
           ),
           StatefulShellBranch(
+            // anime 页面 initState 不看功能开关就拉数据，关闭时预热只会
+            // 白白发请求，这里按创建路由时的开关决定。
+            preload: UserManager().animeFeatureEnabled,
             routes: [
               GoRoute(
                 path: '/anime',
@@ -185,6 +192,7 @@ GoRouter createAppRouter() {
             ],
           ),
           StatefulShellBranch(
+            preload: true,
             routes: [
               GoRoute(
                 path: '/search',
@@ -194,6 +202,7 @@ GoRouter createAppRouter() {
             ],
           ),
           StatefulShellBranch(
+            preload: true,
             routes: [
               GoRoute(
                 path: '/bookshelf',
@@ -203,6 +212,7 @@ GoRouter createAppRouter() {
             ],
           ),
           StatefulShellBranch(
+            preload: true,
             routes: [
               GoRoute(
                 path: '/profile',
