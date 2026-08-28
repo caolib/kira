@@ -742,6 +742,20 @@ class _UpdateCardState extends State<_UpdateCard> {
     );
   }
 
+  /// In-app download+install is wired for Android APKs only; every other
+  /// platform falls back to the asset tile's browser download links.
+  bool _canInstallInApp(ReleaseAsset asset) =>
+      Platform.isAndroid && asset.platform == AssetPlatform.android;
+
+  /// Beta / single-asset releases render their newest (or only) asset inline:
+  /// install buttons for an Android APK, the regular asset tile (with
+  /// GitHub/mirror browser-download buttons) otherwise.
+  Widget _buildInlineAsset(ReleaseAsset asset, ColorScheme cs, TextTheme tt) {
+    return _canInstallInApp(asset)
+        ? _buildInstallButtons(asset, cs, tt)
+        : _buildAssetTile(asset, cs, tt);
+  }
+
   Future<void> _skipVersion() async {
     final info = AppUpdateService.state.value.info;
     if (info == null) return;
@@ -972,8 +986,7 @@ class _UpdateCardState extends State<_UpdateCard> {
   }) {
     final subtitleParts = <String>[asset.platform.label];
     if (asset.sizeLabel.isNotEmpty) subtitleParts.add(asset.sizeLabel);
-    final isAndroidApk =
-        Platform.isAndroid && asset.platform == AssetPlatform.android;
+    final canInstallInApp = _canInstallInApp(asset);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1044,7 +1057,7 @@ class _UpdateCardState extends State<_UpdateCard> {
               ),
             ],
           ),
-          if (isAndroidApk) ...[
+          if (canInstallInApp) ...[
             const SizedBox(height: 10),
             _buildInstallButtons(asset, cs, tt),
           ] else ...[
@@ -1248,14 +1261,14 @@ class _UpdateCardState extends State<_UpdateCard> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   // Beta channel: don't list packages — just offer the newest
-                  // build via the same install/download buttons stable uses
-                  // for a single-asset release.
+                  // build via the same install buttons stable uses for a
+                  // single-asset release (browser links on non-Android).
                   if (isBeta) ...[
                     if (assets.isNotEmpty)
-                      _buildInstallButtons(assets.first, cs, tt),
+                      _buildInlineAsset(assets.first, cs, tt),
                   ] else if (assets.length <= 1) ...[
                     if (assets.isNotEmpty)
-                      _buildInstallButtons(assets.first, cs, tt),
+                      _buildInlineAsset(assets.first, cs, tt),
                   ] else ...[
                     Text(
                       l10n.updatePackages,

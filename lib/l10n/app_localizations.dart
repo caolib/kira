@@ -6424,6 +6424,12 @@ abstract class AppLocalizations {
   /// **'当前已是最新版本'**
   String get updateAlreadyLatest;
 
+  /// No description provided for @updateNoPackageForPlatform.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前平台暂无安装包'**
+  String get updateNoPackageForPlatform;
+
   /// No description provided for @updateCheckFailedRetryLater.
   ///
   /// In zh, this message translates to:

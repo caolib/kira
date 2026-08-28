@@ -81,6 +81,11 @@ class AppUpdateInfo {
   /// so the About page can show "what's in this version".
   final bool isCurrentVersion;
 
+  /// True when a newer release exists but ships no installable asset for the
+  /// running platform (e.g. an APK-only release checked from Windows).
+  /// Callers must not prompt an update; [checkAndPrompt] stays silent.
+  final bool noAssetForPlatform;
+
   const AppUpdateInfo({
     required this.currentVersion,
     required this.latestVersion,
@@ -90,6 +95,7 @@ class AppUpdateInfo {
     required this.assets,
     this.isBetaChannel = false,
     this.isCurrentVersion = false,
+    this.noAssetForPlatform = false,
   });
 }
 
@@ -185,8 +191,9 @@ class AppUpdateService {
     final currentPlatform = _currentPlatform();
 
     if (isBeta) {
-      return _buildBetaUpdateInfo(
-        user: user,
+      // Manual checks (respectSkippedVersion == false) must not dedupe
+      // against the last-seen build, hence the null when auto.
+      return buildBetaUpdateInfo(
         currentVersion: currentVersion,
         currentBuildNumber: packageInfo.buildNumber,
         tagName: tagName,
@@ -195,10 +202,40 @@ class AppUpdateService {
         releasePageUrl: releasePageUrl,
         assets: assets,
         currentPlatform: currentPlatform,
-        autoCheck: respectSkippedVersion,
+        lastBetaAssetName: respectSkippedVersion
+            ? user.lastBetaAssetName
+            : null,
       );
     }
 
+    return buildStableUpdateInfo(
+      currentVersion: currentVersion,
+      tagName: tagName,
+      releaseName: releaseName,
+      releaseNotes: releaseNotes,
+      releasePageUrl: releasePageUrl,
+      assets: assets,
+      currentPlatform: currentPlatform,
+      skippedVersion: respectSkippedVersion ? user.skippedUpdateVersion : null,
+    );
+  }
+
+  /// Stable channel: releases are tagged `vX.Y.Z` and compared against the
+  /// installed version. An update only counts when the release ships an
+  /// asset for [currentPlatform] — otherwise the returned info carries
+  /// [AppUpdateInfo.noAssetForPlatform] so callers stay quiet instead of
+  /// offering another platform's package.
+  @visibleForTesting
+  static AppUpdateInfo? buildStableUpdateInfo({
+    required String currentVersion,
+    required String tagName,
+    required String releaseName,
+    required String releaseNotes,
+    required String releasePageUrl,
+    required List<ReleaseAsset> assets,
+    required AssetPlatform currentPlatform,
+    String? skippedVersion,
+  }) {
     final latestVersion = _normalizeVersion(tagName);
     if (latestVersion.isEmpty) return null;
 
@@ -217,9 +254,23 @@ class AppUpdateService {
       );
     }
 
-    if (respectSkippedVersion && user.skippedUpdateVersion == latestVersion) {
-      return null;
+    // Newer release, but nothing installable here (APK-only checked from
+    // Windows, etc.) — never prompt an update for another platform's package.
+    final hasPlatformAsset = assets.any(
+      (asset) => asset.platform == currentPlatform,
+    );
+    if (!hasPlatformAsset) {
+      return _noAssetForPlatformInfo(
+        currentVersion: currentVersion,
+        latestVersion: latestVersion,
+        releaseName: releaseName,
+        releaseNotes: releaseNotes,
+        releasePageUrl: releasePageUrl,
+        assets: assets,
+      );
     }
+
+    if (skippedVersion == latestVersion) return null;
 
     assets.sort((a, b) {
       final aMatch = a.platform == currentPlatform ? 0 : 1;
@@ -242,9 +293,13 @@ class AppUpdateService {
 
   /// Beta channel points to the CI tag. New CI runs append assets.
   /// Assets are sorted by internal build number descending, falling back to time.
-  /// Update checks compare build numbers and use latest asset name to dedupe auto prompts.
-  static AppUpdateInfo? _buildBetaUpdateInfo({
-    required UserManager user,
+  /// Update checks compare build numbers and use the latest platform asset
+  /// name ([lastBetaAssetName], null on manual checks) to dedupe auto prompts.
+  ///
+  /// Only assets matching [currentPlatform] decide "is there an update" — a
+  /// Windows install must not be prompted because a newer APK CI build landed.
+  @visibleForTesting
+  static AppUpdateInfo? buildBetaUpdateInfo({
     required String currentVersion,
     required String currentBuildNumber,
     required String tagName,
@@ -253,10 +308,25 @@ class AppUpdateService {
     required String releasePageUrl,
     required List<ReleaseAsset> assets,
     required AssetPlatform currentPlatform,
-    required bool autoCheck,
+    String? lastBetaAssetName,
   }) {
+    final platformAssets = assets
+        .where((asset) => asset.platform == currentPlatform)
+        .toList();
+    if (platformAssets.isEmpty) {
+      return _noAssetForPlatformInfo(
+        currentVersion: currentVersion,
+        latestVersion: tagName.isNotEmpty ? tagName : 'CI',
+        releaseName: releaseName,
+        releaseNotes: releaseNotes,
+        releasePageUrl: releasePageUrl,
+        assets: assets,
+        isBetaChannel: true,
+      );
+    }
+
     // Highest version is the latest build for comparison and auto-check dedupe.
-    final newest = _maxByVersion(assets);
+    final newest = _maxByVersion(platformAssets);
 
     // Compare internal build number: current >= latest means no update.
     // Still surface the current CI build's notes for the About page.
@@ -277,7 +347,7 @@ class AppUpdateService {
       }
     }
 
-    if (autoCheck && user.lastBetaAssetName == newest.name) {
+    if (lastBetaAssetName == newest.name) {
       return null;
     }
 
@@ -296,6 +366,29 @@ class AppUpdateService {
       releasePageUrl: releasePageUrl,
       assets: assets,
       isBetaChannel: true,
+    );
+  }
+
+  /// Shared shape for "newer release exists, but no package for this
+  /// platform" — never rendered as an update card.
+  static AppUpdateInfo _noAssetForPlatformInfo({
+    required String currentVersion,
+    required String latestVersion,
+    required String releaseName,
+    required String releaseNotes,
+    required String releasePageUrl,
+    required List<ReleaseAsset> assets,
+    bool isBetaChannel = false,
+  }) {
+    return AppUpdateInfo(
+      currentVersion: currentVersion,
+      latestVersion: latestVersion,
+      releaseName: releaseName.isNotEmpty ? releaseName : 'New version',
+      releaseNotes: releaseNotes,
+      releasePageUrl: releasePageUrl,
+      assets: assets,
+      isBetaChannel: isBetaChannel,
+      noAssetForPlatform: true,
     );
   }
 
@@ -378,6 +471,20 @@ class AppUpdateService {
         hasUnseenUpdate.value = false;
         if (!auto && context.mounted) {
           showToast(context, AppLocalizations.of(context)!.updateAlreadyLatest);
+        }
+        return;
+      }
+
+      // A newer release exists but ships nothing installable on this
+      // platform (e.g. APK-only release checked from Windows). Never prompt.
+      if (updateInfo.noAssetForPlatform) {
+        state.value = const AppUpdateState.latest();
+        hasUnseenUpdate.value = false;
+        if (!auto && context.mounted) {
+          showToast(
+            context,
+            AppLocalizations.of(context)!.updateNoPackageForPlatform,
+          );
         }
         return;
       }
@@ -619,7 +726,15 @@ class InAppInstaller {
     bool useMirror = false,
   }) async {
     if (_busy) return;
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid) {
+      // Unreachable through the update card (the install button is gated to
+      // Android APKs); log instead of silently swallowing a stray call.
+      await AppLogger.instance.recordWarning(
+        'in-app update install requested on non-Android platform, ignored',
+        source: 'app_update',
+      );
+      return;
+    }
     _busy = true;
     state.value = InstallState.preparing(asset.name);
     try {

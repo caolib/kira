@@ -3533,6 +3533,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateAlreadyLatest => '当前已是最新版本';
 
   @override
+  String get updateNoPackageForPlatform => '当前平台暂无安装包';
+
+  @override
   String get updateCheckFailedRetryLater => '检查更新失败，请稍后重试';
 
   @override
@@ -7440,6 +7443,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get updateAlreadyLatest => '目前已是最新版本';
+
+  @override
+  String get updateNoPackageForPlatform => '目前平台暫無安裝包';
 
   @override
   String get updateCheckFailedRetryLater => '檢查更新失敗，請稍後重試';

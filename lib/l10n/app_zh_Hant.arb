@@ -2340,6 +2340,7 @@
   "readerSaveImageFailed": "圖片儲存失敗",
   "readerSaveImagePermissionDenied": "沒有相簿寫入權限，儲存失敗",
   "updateAlreadyLatest": "目前已是最新版本",
+  "updateNoPackageForPlatform": "目前平台暫無安裝包",
   "updateCheckFailedRetryLater": "檢查更新失敗，請稍後重試",
   "updateOpenDownloadFailed": "無法開啟下載連結",
   "updateNoReleaseNotes": "暫無更新說明",
