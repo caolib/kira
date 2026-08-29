@@ -1768,6 +1768,21 @@ class _ReaderPageState extends State<ReaderPage> {
               imageSource,
             );
           }
+          // 解码是异步的：首帧前 Image.file 尺寸为 0，而 0 尺寸 item 不会
+          // 消耗列表的缓存预算，整章 item 会被一次性构建并解码，滚动位置的
+          // 估算随之失真，快速滑动时被连续修正推到远超手势距离的页码。
+          // 与网络图占位同理，首帧前用预估尺寸占位。
+          if (frame == null) {
+            return Container(
+              width: _isHorizontalScrollMode
+                  ? estimatedPlaceholderW
+                  : double.infinity,
+              height: useFullViewport
+                  ? double.infinity
+                  : (estimatedPlaceholderH ?? 400),
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+            );
+          }
           return child;
         },
         errorBuilder: (_, _, _) => Container(
