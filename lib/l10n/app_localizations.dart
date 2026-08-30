@@ -6322,12 +6322,6 @@ abstract class AppLocalizations {
   /// **'正在加载下一话…'**
   String get readerLoadingNextChapter;
 
-  /// No description provided for @readerContinueScrollLoadNext.
-  ///
-  /// In zh, this message translates to:
-  /// **'继续滚动加载下一话'**
-  String get readerContinueScrollLoadNext;
-
   /// No description provided for @readerAlreadyFirstChapter.
   ///
   /// In zh, this message translates to:

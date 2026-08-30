@@ -2342,7 +2342,6 @@
   "readerAutoScrollWillResume": "自动滚动即将恢复",
   "readerEnableAutoScroll": "开启自动滚动",
   "readerLoadingNextChapter": "正在加载下一话…",
-  "readerContinueScrollLoadNext": "继续滚动加载下一话",
   "readerAlreadyFirstChapter": "已经是第一章",
   "readerContinuePageNextChapter": "继续翻页进入下一话",
   "readerAlreadyLastChapter": "已经是最后一话",

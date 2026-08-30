@@ -2097,12 +2097,26 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   /// 滚动模式：最后一话时，"已经是最后一话"组件滚动到屏幕约 3/5 位置则返回目录。
+  /// 横向滚动的末尾空白页较窄（不足视口 3/5），改为完全进入视口后仍继续
+  /// 向前滑（含到头后的 overscroll）才返回目录。
   bool _shouldScrollToCatalog(ScrollNotification notification) {
     if (_scrollTailIndex < 0 || _loading || _autoAdvancingChapter) return false;
 
     final positions = _itemPositionsListener.itemPositions.value;
     for (final p in positions) {
       if (p.index != _scrollTailIndex) continue;
+      if (_isHorizontalScrollMode) {
+        final fullyVisible =
+            p.itemLeadingEdge >= -0.05 && p.itemTrailingEdge <= 1.05;
+        if (!fullyVisible) return false;
+        if (notification is ScrollUpdateNotification) {
+          return (notification.scrollDelta ?? 0) > 0;
+        }
+        if (notification is OverscrollNotification) {
+          return notification.overscroll > 0;
+        }
+        return false;
+      }
       // 尾部组件滚动到屏幕约 3/5 高度位置时触发跳转
       if (p.itemLeadingEdge <= 0.4) {
         return true;
@@ -2311,11 +2325,13 @@ class _ReaderPageState extends State<ReaderPage> {
                         : null,
                   );
                 case _ScrollItemKind.loadMore:
-                  return _LoadMoreTail(
-                    isLoading: _loadingNextChainChapter,
+                  // 「加载下一话」位置与章间分隔条渲染完全一致（仅按钮行，
+                  // 不显示"继续滚动"提示），追加下一话完成替换时无视觉变化，
+                  // 避免条内按钮跳位。
+                  return _ChapterDivider(
+                    commentCount: _commentCountFor(_chain.last),
                     isHorizontalScroll: _isHorizontalScrollMode,
                     tailExtent: _scrollModeTailExtent(context),
-                    commentCount: _commentCountFor(_chain.last),
                     onCatalog: () => Navigator.pop(context),
                     onComments: () =>
                         _showChapterComments(chapter: _chain.last),

@@ -3480,9 +3480,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerLoadingNextChapter => '正在加载下一话…';
 
   @override
-  String get readerContinueScrollLoadNext => '继续滚动加载下一话';
-
-  @override
   String get readerAlreadyFirstChapter => '已经是第一章';
 
   @override
@@ -7390,9 +7387,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get readerLoadingNextChapter => '正在載入下一話…';
-
-  @override
-  String get readerContinueScrollLoadNext => '繼續滾動載入下一話';
 
   @override
   String get readerAlreadyFirstChapter => '已經是第一章';

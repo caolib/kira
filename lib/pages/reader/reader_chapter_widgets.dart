@@ -45,8 +45,9 @@ class _ChapterDividerActions extends StatelessWidget {
   }
 }
 
-/// 连续阅读中「章间目录/评论条」与「加载下一话」共用同一紧凑高度，
-/// 避免 loadMore 替换为 divider 时高度突变导致跳动。
+/// 连续阅读中章间「目录/评论条」在竖向滚动模式下的紧凑高度。
+/// 最后一话的「加载下一话」位置同样渲染本条（仅按钮行），
+/// 追加下一话完成替换时内容不变，不会产生跳动。
 const double _chapterBridgeStripHeight = 80;
 
 /// Divider shown between chained chapters in continuous scroll mode.
@@ -67,86 +68,43 @@ class _ChapterDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: _ChapterDividerActions(
-          commentCount: commentCount,
-          onCatalog: onCatalog,
-          onComments: onComments,
-        ),
-      ),
+    final actions = _ChapterDividerActions(
+      commentCount: commentCount,
+      onCatalog: onCatalog,
+      onComments: onComments,
     );
+
+    if (isHorizontalScroll) {
+      // 与末尾空白页一致：横向滚动时随内容收缩，不占满整屏宽；
+      // item 高度被列表紧约束为视口高，内容保持竖直居中。
+      // 不能套 Align/Center：宽度有界时它们会撑满约束，退回整屏宽。
+      return ColoredBox(
+        color: ReaderChrome.surface,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: tailExtent),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: actions,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ColoredBox(
       color: ReaderChrome.surface,
       child: SizedBox(
-        width: isHorizontalScroll ? tailExtent : null,
-        height: isHorizontalScroll ? null : _chapterBridgeStripHeight,
-        child: content,
-      ),
-    );
-  }
-}
-
-/// "Load more" tail shown at the end of continuous scroll when next chapter exists.
-class _LoadMoreTail extends StatelessWidget {
-  final bool isLoading;
-  final bool isHorizontalScroll;
-  final double tailExtent;
-  final int commentCount;
-  final VoidCallback onCatalog;
-  final VoidCallback onComments;
-
-  const _LoadMoreTail({
-    required this.isLoading,
-    required this.isHorizontalScroll,
-    required this.tailExtent,
-    required this.commentCount,
-    required this.onCatalog,
-    required this.onComments,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final content = Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _ChapterDividerActions(
-              commentCount: commentCount,
-              onCatalog: onCatalog,
-              onComments: onComments,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            if (isLoading)
-              const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              Icon(Icons.expand_more, color: cs.onSurfaceVariant, size: 18),
-            Text(
-              isLoading
-                  ? l10n.readerLoadingNextChapter
-                  : l10n.readerContinueScrollLoadNext,
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
-            ),
-          ],
+        height: _chapterBridgeStripHeight,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: actions,
+          ),
         ),
-      ),
-    );
-    return ColoredBox(
-      color: ReaderChrome.surface,
-      child: SizedBox(
-        width: isHorizontalScroll ? tailExtent : null,
-        // 与 _ChapterDivider 同高，追加下一话时不产生高度差跳动。
-        height: isHorizontalScroll ? null : _chapterBridgeStripHeight,
-        child: content,
       ),
     );
   }
@@ -345,11 +303,24 @@ class _NextChapterTail extends StatelessWidget {
       ),
     );
 
+    if (isHorizontalScroll) {
+      // 横向滚动时各图片按自身宽高比依次排列，末尾空白页同样随内容收缩，
+      // 占满整屏宽会显得过宽；最多不超过视口宽，超出时文字换行、按钮换行。
+      // 不能套 Align/Center：宽度有界时它们会撑满约束，退回整屏宽；
+      // content 自带上内边距，紧约束高度下 Column 默认顶对齐，无需再包一层。
+      return ColoredBox(
+        color: ReaderChrome.surface,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: tailExtent),
+          child: content,
+        ),
+      );
+    }
+
     return ColoredBox(
       color: ReaderChrome.surface,
       child: SizedBox(
-        width: isHorizontalScroll ? tailExtent : null,
-        height: isHorizontalScroll ? null : tailExtent,
+        height: tailExtent,
         child: Align(alignment: Alignment.topCenter, child: content),
       ),
     );
