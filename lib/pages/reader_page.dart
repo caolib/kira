@@ -33,6 +33,7 @@ import '../utils/network_error.dart';
 import '../utils/reading_history.dart';
 import '../utils/reading_stats.dart';
 import '../utils/toast.dart';
+import '../widgets/image_reveal_hold.dart';
 import '../widgets/reader_status_overlay.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
@@ -219,6 +220,23 @@ class _ReaderPageState extends State<ReaderPage> {
       !_isPageMode && _user.readerScrollDirection != 2;
   bool get _isReversedScrollMode =>
       !_isPageMode && _user.readerScrollDirection == 1;
+
+  /// 过渡撑块的保持时长，与 CachedNetworkImage 默认的占位符淡出时长
+  /// （1000ms）保持一致：撑块负责在淡出期间把 item 尺寸稳定在预估值，
+  /// 并在淡出结束的同一时刻移除，item 尺寸只回落一次。
+  static const _imageRevealHoldDuration = Duration(milliseconds: 1000);
+
+  /// 淡出过渡期间真图的对齐方向：贴住已读侧边缘（RTL 横向=右缘，
+  /// LTR 横向=左缘，竖向=顶缘）。占位尺寸估算失误时，真图与占位区域
+  /// 的差值全部落在未读侧，列表跳动只影响尚未阅读的内容。
+  Alignment get _imageRevealAlignment {
+    if (_isHorizontalScrollMode) {
+      return _isReversedScrollMode
+          ? Alignment.centerRight
+          : Alignment.centerLeft;
+    }
+    return Alignment.topCenter;
+  }
 
   bool get _continuousReading => _isPageMode || _user.readerContinuousReading;
 
@@ -1827,11 +1845,22 @@ class _ReaderPageState extends State<ReaderPage> {
           _clearImageRetryState(key);
           // 图片加载成功后，异步解析其原始尺寸并缓存。
           _resolveAndCacheImageSize(imageProvider, imageSource);
-          return Image(
+          final loadedImage = Image(
             image: imageProvider,
             fit: imageFit,
             width: _isHorizontalScrollMode ? null : double.infinity,
             height: useFullViewport ? double.infinity : null,
+          );
+          // 翻页模式图片占满视口、尺寸恒定，无需过渡撑块。
+          if (estimatedPlaceholderW == null && estimatedPlaceholderH == null) {
+            return loadedImage;
+          }
+          return ImageRevealHold(
+            alignment: _imageRevealAlignment,
+            holdWidth: estimatedPlaceholderW,
+            holdHeight: estimatedPlaceholderH,
+            holdDuration: _imageRevealHoldDuration,
+            child: loadedImage,
           );
         },
         placeholder: (_, _) => Container(
