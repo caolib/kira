@@ -2130,6 +2130,44 @@
   "downloadImageConcurrencyDesc": "单话内同时下载的图片数量（1-10）",
   "downloadChapterComments": "下载章节评论",
   "downloadChapterCommentsDesc": "下载章节时一并保存评论",
+  "downloadSaveLocation": "保存位置",
+  "downloadSaveLocationDefault": "应用内部目录（默认）",
+  "downloadSaveLocationDesc": "选择手机上的公共目录，方便直接访问和导出已下载漫画",
+  "downloadSaveLocationPickerTitle": "选择下载保存目录",
+  "downloadSaveLocationPermissionDenied": "未授予存储权限，无法自定义保存目录",
+  "downloadSaveLocationNotWritable": "所选目录不可写，请更换其他目录",
+  "downloadSaveLocationReset": "恢复默认目录",
+  "downloadSaveLocationChanged": "保存目录已更新",
+  "downloadMigrateConfirmTitle": "迁移已有下载？",
+  "downloadMigrateConfirmContent": "将把已下载的 {count} 部漫画移动到新目录，迁移期间请勿退出应用。",
+  "@downloadMigrateConfirmContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadMigratingTitle": "正在迁移下载内容",
+  "downloadMigratingProgress": "{current} / {total}",
+  "@downloadMigratingProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueBusy": "有下载任务进行中，请等待完成后再更改保存目录",
+  "downloadSaveLocationFailed": "更改保存目录失败：{reason}",
+  "@downloadSaveLocationFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
   "comicDetailSequentialDownloading": "下载中 {count} 章",
   "@comicDetailSequentialDownloading": {
     "placeholders": {

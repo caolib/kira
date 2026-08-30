@@ -37,6 +37,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
       emptyTitle: l10n.noLocalComicsTitle,
       emptySubtitle: l10n.noLocalComicsSubtitle,
       downloadFolderName: 'comic_downloads',
+      downloadFolderPath: () => _downloads.rootPath,
       deleteDialogTitle: l10n.deleteLocalComicsTitle,
       deleteDialogContent: l10n.deleteLocalComicsContent,
       deleteToastPrefix: l10n.deleteToastPrefix,

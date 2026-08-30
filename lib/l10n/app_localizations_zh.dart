@@ -3158,6 +3158,54 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadChapterCommentsDesc => '下载章节时一并保存评论';
 
   @override
+  String get downloadSaveLocation => '保存位置';
+
+  @override
+  String get downloadSaveLocationDefault => '应用内部目录（默认）';
+
+  @override
+  String get downloadSaveLocationDesc => '选择手机上的公共目录，方便直接访问和导出已下载漫画';
+
+  @override
+  String get downloadSaveLocationPickerTitle => '选择下载保存目录';
+
+  @override
+  String get downloadSaveLocationPermissionDenied => '未授予存储权限，无法自定义保存目录';
+
+  @override
+  String get downloadSaveLocationNotWritable => '所选目录不可写，请更换其他目录';
+
+  @override
+  String get downloadSaveLocationReset => '恢复默认目录';
+
+  @override
+  String get downloadSaveLocationChanged => '保存目录已更新';
+
+  @override
+  String get downloadMigrateConfirmTitle => '迁移已有下载？';
+
+  @override
+  String downloadMigrateConfirmContent(int count) {
+    return '将把已下载的 $count 部漫画移动到新目录，迁移期间请勿退出应用。';
+  }
+
+  @override
+  String get downloadMigratingTitle => '正在迁移下载内容';
+
+  @override
+  String downloadMigratingProgress(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String get downloadQueueBusy => '有下载任务进行中，请等待完成后再更改保存目录';
+
+  @override
+  String downloadSaveLocationFailed(String reason) {
+    return '更改保存目录失败：$reason';
+  }
+
+  @override
   String comicDetailSequentialDownloading(int count) {
     return '下载中 $count 章';
   }
@@ -7065,6 +7113,54 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get downloadChapterCommentsDesc => '下載章節時一併儲存評論';
+
+  @override
+  String get downloadSaveLocation => '儲存位置';
+
+  @override
+  String get downloadSaveLocationDefault => '應用內部目錄（預設）';
+
+  @override
+  String get downloadSaveLocationDesc => '選擇手機上的公共目錄，方便直接存取和匯出已下載漫畫';
+
+  @override
+  String get downloadSaveLocationPickerTitle => '選擇下載儲存目錄';
+
+  @override
+  String get downloadSaveLocationPermissionDenied => '未授予儲存權限，無法自訂儲存目錄';
+
+  @override
+  String get downloadSaveLocationNotWritable => '所選目錄不可寫入，請更換其他目錄';
+
+  @override
+  String get downloadSaveLocationReset => '恢復預設目錄';
+
+  @override
+  String get downloadSaveLocationChanged => '儲存目錄已更新';
+
+  @override
+  String get downloadMigrateConfirmTitle => '遷移已有下載？';
+
+  @override
+  String downloadMigrateConfirmContent(int count) {
+    return '將把已下載的 $count 部漫畫移動到新目錄，遷移期間請勿退出應用。';
+  }
+
+  @override
+  String get downloadMigratingTitle => '正在遷移下載內容';
+
+  @override
+  String downloadMigratingProgress(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String get downloadQueueBusy => '有下載任務進行中，請等待完成後再更改儲存目錄';
+
+  @override
+  String downloadSaveLocationFailed(String reason) {
+    return '更改儲存目錄失敗：$reason';
+  }
 
   @override
   String comicDetailSequentialDownloading(int count) {

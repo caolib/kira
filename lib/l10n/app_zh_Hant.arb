@@ -2101,6 +2101,44 @@
   "downloadImageConcurrencyDesc": "單話內同時下載的圖片數量（1-10）",
   "downloadChapterComments": "下載章節評論",
   "downloadChapterCommentsDesc": "下載章節時一併儲存評論",
+  "downloadSaveLocation": "儲存位置",
+  "downloadSaveLocationDefault": "應用內部目錄（預設）",
+  "downloadSaveLocationDesc": "選擇手機上的公共目錄，方便直接存取和匯出已下載漫畫",
+  "downloadSaveLocationPickerTitle": "選擇下載儲存目錄",
+  "downloadSaveLocationPermissionDenied": "未授予儲存權限，無法自訂儲存目錄",
+  "downloadSaveLocationNotWritable": "所選目錄不可寫入，請更換其他目錄",
+  "downloadSaveLocationReset": "恢復預設目錄",
+  "downloadSaveLocationChanged": "儲存目錄已更新",
+  "downloadMigrateConfirmTitle": "遷移已有下載？",
+  "downloadMigrateConfirmContent": "將把已下載的 {count} 部漫畫移動到新目錄，遷移期間請勿退出應用。",
+  "@downloadMigrateConfirmContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadMigratingTitle": "正在遷移下載內容",
+  "downloadMigratingProgress": "{current} / {total}",
+  "@downloadMigratingProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueBusy": "有下載任務進行中，請等待完成後再更改儲存目錄",
+  "downloadSaveLocationFailed": "更改儲存目錄失敗：{reason}",
+  "@downloadSaveLocationFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
   "comicDetailSequentialDownloading": "下載中 {count} 章",
   "@comicDetailSequentialDownloading": {
     "placeholders": {

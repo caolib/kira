@@ -5735,6 +5735,90 @@ abstract class AppLocalizations {
   /// **'下载章节时一并保存评论'**
   String get downloadChapterCommentsDesc;
 
+  /// No description provided for @downloadSaveLocation.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存位置'**
+  String get downloadSaveLocation;
+
+  /// No description provided for @downloadSaveLocationDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用内部目录（默认）'**
+  String get downloadSaveLocationDefault;
+
+  /// No description provided for @downloadSaveLocationDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择手机上的公共目录，方便直接访问和导出已下载漫画'**
+  String get downloadSaveLocationDesc;
+
+  /// No description provided for @downloadSaveLocationPickerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择下载保存目录'**
+  String get downloadSaveLocationPickerTitle;
+
+  /// No description provided for @downloadSaveLocationPermissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未授予存储权限，无法自定义保存目录'**
+  String get downloadSaveLocationPermissionDenied;
+
+  /// No description provided for @downloadSaveLocationNotWritable.
+  ///
+  /// In zh, this message translates to:
+  /// **'所选目录不可写，请更换其他目录'**
+  String get downloadSaveLocationNotWritable;
+
+  /// No description provided for @downloadSaveLocationReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认目录'**
+  String get downloadSaveLocationReset;
+
+  /// No description provided for @downloadSaveLocationChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存目录已更新'**
+  String get downloadSaveLocationChanged;
+
+  /// No description provided for @downloadMigrateConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'迁移已有下载？'**
+  String get downloadMigrateConfirmTitle;
+
+  /// No description provided for @downloadMigrateConfirmContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'将把已下载的 {count} 部漫画移动到新目录，迁移期间请勿退出应用。'**
+  String downloadMigrateConfirmContent(int count);
+
+  /// No description provided for @downloadMigratingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在迁移下载内容'**
+  String get downloadMigratingTitle;
+
+  /// No description provided for @downloadMigratingProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'{current} / {total}'**
+  String downloadMigratingProgress(int current, int total);
+
+  /// No description provided for @downloadQueueBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'有下载任务进行中，请等待完成后再更改保存目录'**
+  String get downloadQueueBusy;
+
+  /// No description provided for @downloadSaveLocationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'更改保存目录失败：{reason}'**
+  String downloadSaveLocationFailed(String reason);
+
   /// No description provided for @comicDetailSequentialDownloading.
   ///
   /// In zh, this message translates to:

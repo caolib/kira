@@ -41,8 +41,12 @@ class DownloadManager extends ChangeNotifier {
   /// 是否下载章节评论的持久化键。
   static const _keyDownloadComments = 'download_chapter_comments';
 
+  /// 自定义下载根目录的持久化键；缺省/置空表示使用应用内部默认目录。
+  static const _keySaveDirectory = 'download_save_directory';
+
   int _imageDownloadConcurrency = _defaultImageConcurrency;
   bool _downloadCommentsEnabled = true;
+  String? _customSaveDirectory;
   static const Map<String, String> _imageExtensions = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
@@ -138,6 +142,12 @@ class DownloadManager extends ChangeNotifier {
     if (value > _maxImageConcurrency) return _maxImageConcurrency;
     return value;
   }
+
+  /// 用户自定义的下载根目录；null 表示使用应用内部默认目录。
+  String? get customSaveDirectory => _customSaveDirectory;
+
+  /// 当前生效的下载根目录路径；初始化完成前为 null。
+  String? get rootPath => _rootDirectory?.path;
 
   Set<String> downloadedChapterIds(String pathWord) =>
       _manifest[pathWord]?.keys.toSet() ?? const <String>{};
@@ -350,8 +360,14 @@ class DownloadManager extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    final docsDir = await getApplicationDocumentsDirectory();
-    _rootDirectory = Directory(_joinPath([docsDir.path, _rootFolderName]));
+    final prefs = await SharedPreferences.getInstance();
+    _customSaveDirectory = normalizeDirectoryPath(
+      prefs.getString(_keySaveDirectory),
+    );
+    _rootDirectory = await resolveRootDirectory(
+      customPath: _customSaveDirectory,
+      defaultParentPath: (await getApplicationDocumentsDirectory()).path,
+    );
     await _rootDirectory!.create(recursive: true);
 
     await loadImageDownloadConcurrency();
@@ -415,6 +431,155 @@ class DownloadManager extends ChangeNotifier {
     }
     await _persistManifest();
     notifyListeners();
+  }
+
+  /// 变更下载根目录，并把已下载内容迁移过去。
+  ///
+  /// [path] 传 null 表示恢复默认内部目录。要求队列为空（无下载任务进行中）；
+  /// 迁移逐漫画进行并通过 [onProgress] 上报。任一漫画迁移失败会尽力回滚
+  /// 已迁移的部分并保持原设置不变（抛出原异常）。
+  Future<void> setSaveDirectory(
+    String? path, {
+    void Function(DownloadMigrationProgress progress)? onProgress,
+  }) async {
+    await init();
+    if (isBusy) {
+      throw StateError('Download queue is busy');
+    }
+    final newCustom = normalizeDirectoryPath(path);
+    if ((newCustom ?? '') == (_customSaveDirectory ?? '')) return;
+
+    final oldRoot = _rootDirectory;
+    if (oldRoot == null) throw StateError('DownloadManager not initialized');
+
+    final newRoot = await resolveRootDirectory(
+      customPath: newCustom,
+      defaultParentPath: (await getApplicationDocumentsDirectory()).path,
+    );
+    final oldPath = normalizeDirectoryPath(oldRoot.path)!;
+    final newPath = normalizeDirectoryPath(newRoot.path)!;
+    if (newPath == oldPath) {
+      // 目标与当前实际目录一致，仅更新设置（含清理失效的旧自定义值）。
+      await _persistSaveDirectory(newCustom);
+      notifyListeners();
+      return;
+    }
+    // 互为父子会导致目录搬进自身，直接拒绝。
+    if (newPath.startsWith('$oldPath/') ||
+        newPath.startsWith('$oldPath\\') ||
+        oldPath.startsWith('$newPath/') ||
+        oldPath.startsWith('$newPath\\')) {
+      throw ArgumentError('New download directory overlaps the current one');
+    }
+
+    try {
+      await _migrateRoot(oldRoot, newRoot, onProgress: onProgress);
+    } catch (_) {
+      // 失败时不落盘新设置，目录解析在下次启动仍会回到旧根。
+      rethrow;
+    }
+    await _persistSaveDirectory(newCustom);
+    _rootDirectory = newRoot;
+    notifyListeners();
+    // 最后清理旧根的 manifest（尽力而为）：此时新设置已生效，中途崩溃
+    // 最坏情况是旧根残留一个不再被读取的 manifest.json。
+    final oldManifest = File(_joinPath([oldRoot.path, _manifestFileName]));
+    try {
+      if (await oldManifest.exists()) await oldManifest.delete();
+    } catch (e, st) {
+      unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+    }
+  }
+
+  Future<void> _migrateRoot(
+    Directory oldRoot,
+    Directory newRoot, {
+    void Function(DownloadMigrationProgress progress)? onProgress,
+  }) async {
+    await newRoot.create(recursive: true);
+
+    final pathWords = _manifest.keys.toList();
+    final total = pathWords.length;
+    var moved = 0;
+
+    for (final pathWord in pathWords) {
+      final fromDir = Directory(
+        _joinPath([oldRoot.path, _safePathSegment(pathWord)]),
+      );
+      final toDir = Directory(
+        _joinPath([newRoot.path, _safePathSegment(pathWord)]),
+      );
+      try {
+        await moveDirectory(fromDir, toDir);
+        await rewriteStoredPaths(
+          toDir,
+          fromRoot: oldRoot.path,
+          toRoot: newRoot.path,
+        );
+      } catch (e, st) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            'Download migration failed at $pathWord: $e',
+            stackTrace: st,
+          ),
+        );
+        await _rollbackMigration(oldRoot, newRoot, pathWords.take(moved));
+        rethrow;
+      }
+      moved++;
+      onProgress?.call(
+        DownloadMigrationProgress(
+          current: moved,
+          total: total,
+          pathWord: pathWord,
+        ),
+      );
+    }
+
+    // manifest 只含相对标识（pathWord/uuid），整体写入新根即可。
+    await File(
+      _joinPath([newRoot.path, _manifestFileName]),
+    ).writeAsString(jsonEncode(_manifestPayload()));
+  }
+
+  Future<void> _rollbackMigration(
+    Directory oldRoot,
+    Directory newRoot,
+    Iterable<String> pathWords,
+  ) async {
+    for (final pathWord in pathWords) {
+      try {
+        final fromDir = Directory(
+          _joinPath([newRoot.path, _safePathSegment(pathWord)]),
+        );
+        final toDir = Directory(
+          _joinPath([oldRoot.path, _safePathSegment(pathWord)]),
+        );
+        await moveDirectory(fromDir, toDir);
+        await rewriteStoredPaths(
+          toDir,
+          fromRoot: newRoot.path,
+          toRoot: oldRoot.path,
+        );
+      } catch (e, st) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            'Download migration rollback failed at $pathWord: $e',
+            stackTrace: st,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _persistSaveDirectory(String? value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value == null) {
+      await prefs.remove(_keySaveDirectory);
+    } else {
+      await prefs.setString(_keySaveDirectory, value);
+    }
+    _customSaveDirectory = value;
   }
 
   Future<void> _processQueue() async {
@@ -762,20 +927,20 @@ class DownloadManager extends ChangeNotifier {
     return file;
   }
 
-  Future<void> _persistManifest() async {
-    final payload = <String, dynamic>{
-      'version': _manifestVersion,
-      'comics': _manifest.map(
-        (pathWord, chapters) => MapEntry(
-          pathWord,
-          chapters.map(
-            (chapterUuid, summary) => MapEntry(chapterUuid, summary.toJson()),
-          ),
+  Map<String, dynamic> _manifestPayload() => {
+    'version': _manifestVersion,
+    'comics': _manifest.map(
+      (pathWord, chapters) => MapEntry(
+        pathWord,
+        chapters.map(
+          (chapterUuid, summary) => MapEntry(chapterUuid, summary.toJson()),
         ),
       ),
-    };
+    ),
+  };
 
-    await _manifestFile.writeAsString(jsonEncode(payload));
+  Future<void> _persistManifest() async {
+    await _manifestFile.writeAsString(jsonEncode(_manifestPayload()));
   }
 
   Future<void> _removeDownloadedChapter(
@@ -968,13 +1133,225 @@ class DownloadManager extends ChangeNotifier {
     return '.jpg';
   }
 
-  String _joinPath(List<String> segments) => segments
+  static String _joinPath(List<String> segments) => segments
       .where((segment) => segment.isNotEmpty)
       .join(Platform.pathSeparator);
 
-  String _safePathSegment(String segment) {
+  static String _safePathSegment(String segment) {
     final sanitized = segment.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').trim();
     return sanitized.isEmpty ? 'unknown' : sanitized;
+  }
+
+  /// 规范化目录路径：去首尾空白与末尾分隔符；空串返回 null。
+  static String? normalizeDirectoryPath(String? path) {
+    if (path == null) return null;
+    final p = _stripTrailingSeparators(path);
+    return p.isEmpty ? null : p;
+  }
+
+  static String _stripTrailingSeparators(String path) {
+    var p = path.trim();
+    while (p.length > 1 && (p.endsWith('/') || p.endsWith('\\'))) {
+      p = p.substring(0, p.length - 1);
+    }
+    return p;
+  }
+
+  /// 可写探测：在 [dir] 内创建并删除一个临时探针文件。
+  static Future<bool> isDirectoryWritable(Directory dir) async {
+    final probe = File(_joinPath([dir.path, '.kira_write_probe']));
+    try {
+      await probe.writeAsString('');
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      try {
+        if (await probe.exists()) await probe.delete();
+      } catch (e, st) {
+        unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+      }
+    }
+  }
+
+  /// 解析下载根目录：自定义目录存在/可创建且可写时使用之，否则回退
+  /// `defaultParentPath` 下的默认目录并记录警告。
+  static Future<Directory> resolveRootDirectory({
+    required String? customPath,
+    required String defaultParentPath,
+  }) async {
+    final defaultDir = Directory(
+      _joinPath([defaultParentPath, _rootFolderName]),
+    );
+    if (customPath == null || customPath.isEmpty) return defaultDir;
+
+    final dir = Directory(customPath);
+    try {
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      if (await isDirectoryWritable(dir)) return dir;
+      unawaited(
+        AppLogger.instance.recordWarning(
+          'Custom download directory not writable: $customPath',
+        ),
+      );
+    } catch (e, st) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          'Custom download directory unavailable: $customPath ($e)',
+          stackTrace: st,
+        ),
+      );
+    }
+    return defaultDir;
+  }
+
+  /// 将 [from] 目录整体搬到 [to]。同卷直接 rename；跨卷退化为复制+删除。
+  /// [from] 不存在时静默返回（manifest 记录可能已被外部清理）。
+  static Future<void> moveDirectory(Directory from, Directory to) async {
+    if (!await from.exists()) return;
+    if (await to.exists()) {
+      await to.delete(recursive: true);
+    }
+    try {
+      await from.rename(to.path);
+    } on FileSystemException {
+      await to.create(recursive: true);
+      try {
+        await _copyDirectoryContents(from, to);
+      } catch (e) {
+        // 清理复制到一半的目标目录，避免残留半成品。
+        try {
+          if (await to.exists()) await to.delete(recursive: true);
+        } catch (cleanupError, cleanupSt) {
+          unawaited(
+            AppLogger.instance.recordWarning(
+              cleanupError,
+              stackTrace: cleanupSt,
+            ),
+          );
+        }
+        rethrow;
+      }
+      await from.delete(recursive: true);
+    }
+  }
+
+  static Future<void> _copyDirectoryContents(
+    Directory from,
+    Directory to,
+  ) async {
+    await for (final entity in from.list()) {
+      final name = entity.path.split(Platform.pathSeparator).last;
+      final targetPath = _joinPath([to.path, name]);
+      if (entity is Directory) {
+        final target = Directory(targetPath);
+        await target.create(recursive: true);
+        await _copyDirectoryContents(entity, target);
+      } else if (entity is File) {
+        await entity.copy(targetPath);
+      }
+    }
+  }
+
+  /// 重写 [comicDir] 内持久化元数据中的绝对路径前缀：chapter.json 的
+  /// `contents` 与 comic.json 的 `cover_path`/`comic.cover`，从 [fromRoot]
+  /// 改写到 [toRoot]。仅处理确实位于旧根下的路径；comicDir 不存在时跳过。
+  static Future<void> rewriteStoredPaths(
+    Directory comicDir, {
+    required String fromRoot,
+    required String toRoot,
+  }) async {
+    if (!await comicDir.exists()) return;
+
+    final comicFile = File(_joinPath([comicDir.path, _comicMetaFileName]));
+    if (await comicFile.exists()) {
+      try {
+        final decoded = jsonDecode(await comicFile.readAsString());
+        if (decoded is Map) {
+          final map = Map<String, dynamic>.from(decoded);
+          var changed = false;
+
+          final coverPath = map['cover_path'];
+          if (coverPath is String) {
+            final rewritten = rewritePathPrefix(coverPath, fromRoot, toRoot);
+            if (rewritten != null) {
+              map['cover_path'] = rewritten;
+              changed = true;
+            }
+          }
+          final comic = map['comic'];
+          if (comic is Map) {
+            final comicMap = Map<String, dynamic>.from(comic);
+            final cover = comicMap['cover'];
+            if (cover is String) {
+              final rewritten = rewritePathPrefix(cover, fromRoot, toRoot);
+              if (rewritten != null) {
+                comicMap['cover'] = rewritten;
+                changed = true;
+              }
+            }
+            map['comic'] = comicMap;
+          }
+          if (changed) {
+            await comicFile.writeAsString(jsonEncode(map));
+          }
+        }
+      } catch (e, st) {
+        unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+      }
+    }
+
+    await for (final entity in comicDir.list()) {
+      if (entity is! Directory) continue;
+      final chapterFile = File(_joinPath([entity.path, _chapterMetaFileName]));
+      if (!await chapterFile.exists()) continue;
+      try {
+        final decoded = jsonDecode(await chapterFile.readAsString());
+        if (decoded is! Map) continue;
+        final contents = decoded['contents'];
+        if (contents is! List) continue;
+        var changed = false;
+        final rewrittenContents = <String>[];
+        for (final item in contents) {
+          var value = item?.toString() ?? '';
+          final rewritten = rewritePathPrefix(value, fromRoot, toRoot);
+          if (rewritten != null) {
+            value = rewritten;
+            changed = true;
+          }
+          rewrittenContents.add(value);
+        }
+        if (changed) {
+          final map = Map<String, dynamic>.from(decoded);
+          map['contents'] = rewrittenContents;
+          await chapterFile.writeAsString(jsonEncode(map));
+        }
+      } catch (e, st) {
+        unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+      }
+    }
+  }
+
+  /// 若 [path] 位于 [fromRoot] 之下，把前缀替换为 [toRoot] 后返回新路径；
+  /// 否则返回 null。路径不存在于旧根下（如空串、外部路径）时不改写。
+  static String? rewritePathPrefix(
+    String path,
+    String fromRoot,
+    String toRoot,
+  ) {
+    if (path.isEmpty || fromRoot.isEmpty || toRoot.isEmpty) return null;
+    final root = _stripTrailingSeparators(fromRoot);
+    final p = _stripTrailingSeparators(path);
+    if (p == root) return null;
+    if (!p.startsWith('$root/') && !p.startsWith('$root\\')) return null;
+    // 历史数据可能混用两种分隔符，统一改为当前平台的分隔符。
+    final rest = p
+        .substring(root.length + 1)
+        .replaceAll('/', Platform.pathSeparator)
+        .replaceAll('\\', Platform.pathSeparator);
+    return _joinPath([_stripTrailingSeparators(toRoot), rest]);
   }
 
   String _taskKey(String pathWord, String chapterUuid) =>
@@ -1067,6 +1444,23 @@ class ChapterDownloadProgress {
   });
 
   double get ratio => total <= 0 ? 0 : completed / total;
+}
+
+/// 下载目录迁移进度：已迁移 [current] / 共 [total] 部漫画。
+class DownloadMigrationProgress {
+  final int current;
+  final int total;
+
+  /// 刚完成迁移的漫画 pathWord。
+  final String pathWord;
+
+  const DownloadMigrationProgress({
+    required this.current,
+    required this.total,
+    required this.pathWord,
+  });
+
+  double get ratio => total <= 0 ? 0 : current / total;
 }
 
 class _DownloadTask {

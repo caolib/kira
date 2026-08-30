@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/download_directory.dart';
 import '../utils/download_manager.dart';
 import '../utils/kira_links.dart';
 import '../utils/reading_history.dart';
@@ -1911,9 +1913,163 @@ class _DownloadSettingsSheetState extends State<_DownloadSettingsSheet> {
                 unawaited(widget.downloads.setDownloadCommentsEnabled(v));
               },
             ),
+            if (Platform.isAndroid) ...[
+              const Divider(height: AppSpacing.xl),
+              Text(l10n.downloadSaveLocation, style: tt.titleSmall),
+              Text(
+                l10n.downloadSaveLocationDesc,
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: const Icon(Icons.folder_open_outlined),
+                title: Text(
+                  widget.downloads.customSaveDirectory ??
+                      l10n.downloadSaveLocationDefault,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: widget.downloads.customSaveDirectory == null
+                    ? const Icon(Icons.chevron_right)
+                    : PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'reset') {
+                            unawaited(_resetSaveLocation(l10n));
+                          }
+                        },
+                        itemBuilder: (ctx) => [
+                          PopupMenuItem(
+                            value: 'reset',
+                            child: Text(l10n.downloadSaveLocationReset),
+                          ),
+                        ],
+                      ),
+                onTap: _changeSaveLocation,
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// 保存位置条目点击：选目录 →（有下载时）确认迁移 → 进度弹窗 → 结果提示。
+  Future<void> _changeSaveLocation() async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final path = await pickDownloadDirectory(
+        dialogTitle: l10n.downloadSaveLocationPickerTitle,
+      );
+      if (path == null || !mounted) return;
+      await _applySaveDirectory(path, l10n);
+    } on DownloadDirectoryException catch (e) {
+      if (!mounted) return;
+      showToast(context, switch (e.reason) {
+        DownloadDirectoryError.permissionDenied =>
+          l10n.downloadSaveLocationPermissionDenied,
+        DownloadDirectoryError.notWritable =>
+          l10n.downloadSaveLocationNotWritable,
+      }, isError: true);
+    } on StateError {
+      if (!mounted) return;
+      showToast(context, l10n.downloadQueueBusy, isError: true);
+    } catch (e) {
+      if (!mounted) return;
+      showToast(
+        context,
+        l10n.downloadSaveLocationFailed(e.toString()),
+        isError: true,
+      );
+    }
+  }
+
+  /// 恢复默认内部目录（trailing 菜单触发），同样走确认迁移流程。
+  Future<void> _resetSaveLocation(AppLocalizations l10n) async {
+    try {
+      await _applySaveDirectory(null, l10n);
+    } on StateError {
+      if (!mounted) return;
+      showToast(context, l10n.downloadQueueBusy, isError: true);
+    } catch (e) {
+      if (!mounted) return;
+      showToast(
+        context,
+        l10n.downloadSaveLocationFailed(e.toString()),
+        isError: true,
+      );
+    }
+  }
+
+  /// 切换保存目录的共用流程：（有下载时）确认迁移 → 进度弹窗 → 结果提示。
+  Future<void> _applySaveDirectory(String? path, AppLocalizations l10n) async {
+    final downloads = widget.downloads;
+    await downloads.init();
+    final existingCount = downloads.localComics().length;
+    if (existingCount > 0 && mounted) {
+      final migrate = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.downloadMigrateConfirmTitle),
+          content: Text(l10n.downloadMigrateConfirmContent(existingCount)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancelButton),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.confirmButton),
+            ),
+          ],
+        ),
+      );
+      if (migrate != true) return;
+    }
+    if (!mounted) return;
+
+    final progress = ValueNotifier<DownloadMigrationProgress?>(null);
+    var dialogPopped = false;
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => ValueListenableBuilder<DownloadMigrationProgress?>(
+          valueListenable: progress,
+          builder: (ctx, value, _) {
+            final total = value?.total ?? 0;
+            final current = value?.current ?? 0;
+            return AlertDialog(
+              title: Text(l10n.downloadMigratingTitle),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LinearProgressIndicator(
+                    value: total > 0 ? current / total : null,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(l10n.downloadMigratingProgress(current, total)),
+                ],
+              ),
+            );
+          },
+        ),
+      ).then((_) => dialogPopped = true),
+    );
+    try {
+      await downloads.setSaveDirectory(
+        path,
+        onProgress: (p) => progress.value = p,
+      );
+    } finally {
+      progress.dispose();
+      if (!dialogPopped && mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }
+    if (!mounted) return;
+    setState(() {});
+    showToast(context, l10n.downloadSaveLocationChanged);
   }
 }

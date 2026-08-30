@@ -81,6 +81,11 @@ class LocalContentListPage extends StatefulWidget {
   final String emptyTitle;
   final String emptySubtitle;
   final String downloadFolderName;
+
+  /// 可选：返回实际下载根目录（如漫画侧用 DownloadManager.rootPath，
+  /// 以支持自定义保存目录）；null 时回退到 `downloadFolderName` 拼接。
+  final String? Function()? downloadFolderPath;
+
   final String deleteDialogTitle;
   final String Function(int) deleteDialogContent;
   final String deleteToastPrefix;
@@ -103,6 +108,7 @@ class LocalContentListPage extends StatefulWidget {
     required this.emptyTitle,
     required this.emptySubtitle,
     required this.downloadFolderName,
+    this.downloadFolderPath,
     required this.deleteDialogTitle,
     required this.deleteDialogContent,
     required this.deleteToastPrefix,
@@ -173,9 +179,10 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
 
   Future<void> _openDownloadFolder() async {
     try {
-      final docsDir = await getApplicationDocumentsDirectory();
+      final customPath = widget.downloadFolderPath?.call();
       final folder = Directory(
-        '${docsDir.path}${Platform.pathSeparator}${widget.downloadFolderName}',
+        customPath ??
+            '${(await getApplicationDocumentsDirectory()).path}${Platform.pathSeparator}${widget.downloadFolderName}',
       );
       if (!await folder.exists()) {
         await folder.create(recursive: true);

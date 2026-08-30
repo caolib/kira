@@ -130,7 +130,7 @@ Future<T> load() async {
 `AiSettings`（`lib/api/ai_api.dart:141`）独立，键名混用 `zhipu_` / `ai_` 前缀，**`zhipu_api_key` 明文存于 prefs，未走 secure storage**（注释自述）。
 
 ### 键名前缀族（缓存管理页 `_looksLikeSettingKey` 用以区分设置 vs 缓存）
-`theme_` `custom_theme_` `dark_mode_` `bottom_nav_` `nav_` `last_nav_` `desktop_font_` `bookshelf_` `reader_` `image_` `comment_` `auto_check_` `skipped_update_` `disclaimer_` `api_route` `anime_feature_` `banner_` `anime_home_` `anime_skip_` `anime_playback_progress_` `danmaku_` `local_bookshelf_`（见 `cache_management_page.dart:702`）。
+`theme_` `custom_theme_` `dark_mode_` `bottom_nav_` `nav_` `last_nav_` `desktop_font_` `bookshelf_` `reader_` `image_` `comment_` `auto_check_` `skipped_update_` `disclaimer_` `api_route` `anime_feature_` `banner_` `anime_home_` `anime_skip_` `anime_playback_progress_` `download_` `danmaku_` `local_bookshelf_`（见 `cache_management_page.dart:702`）。
 
 新增用户偏好 key 时，归入上述某一前缀族，否则可能被缓存清理误判或备份遗漏。
 
@@ -173,8 +173,14 @@ Future<void> deleteAll();
 | ---- | ---------- | ---- |
 | 阅读器图片 | `CacheManager(Config('readerImageCache', ...))`（`reader_page.dart:68`） | 缓存管理页可清 |
 | 封面/头像图片 | `DefaultCacheManager`（默认 key `libCachedNetworkImageData`） | 缓存管理页可清 |
-| 漫画下载 | `getApplicationDocumentsDirectory()/comic_downloads/`，清单 `manifest.json` | `DownloadManager` |
+| 漫画下载 | 默认 `getApplicationDocumentsDirectory()/comic_downloads/`，清单 `manifest.json`；可通过 `download_save_directory` 自定义为公共目录（Android，见下） | `DownloadManager` |
 | 字体 / 原生库 | 各自目录 | 缓存管理页可清 |
+
+**自定义下载保存目录**（`DownloadManager.setSaveDirectory`，`download_manager.dart`）：
+- 偏好键 `download_save_directory`（`download_` 前缀族），存绝对路径；缺省/置空 = 应用内部默认目录。
+- 启动解析：自定义目录存在、可创建且可写探测通过才使用，否则回退默认（如换机恢复备份后路径失效）。
+- 切换目录时逐漫画迁移（同卷 rename / 跨卷 copy+delete），并重写 `chapter.json` 的 `contents` 与 `comic.json` 的 `cover_path`/`comic.cover` 绝对路径前缀；manifest 只含相对标识无需改写。
+- Android 侧授权：API 30+ 为 `MANAGE_EXTERNAL_STORAGE`（"所有文件访问"开关页），API ≤29 为 `WRITE_EXTERNAL_STORAGE`；选目录用 `file_picker`（`lib/utils/download_directory.dart`）。
 
 `_ReaderImageFileService`（`reader_image_cache.dart:3`）按响应 `Cache-Control: max-age` 解析有效期，默认 7 天，`no-cache` 立即过期。
 

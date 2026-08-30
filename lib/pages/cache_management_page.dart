@@ -737,6 +737,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       'anime_home_',
       'anime_skip_',
       'anime_playback_progress_',
+      'download_',
       'danmaku_',
       'local_bookshelf_',
     ];
