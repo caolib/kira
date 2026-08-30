@@ -80,24 +80,67 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  test('comment body style applies configured font scale', () {
+  test('comment body style uses theme body size as base', () {
     const textTheme = TextTheme(
       bodyLarge: TextStyle(fontSize: 16),
       bodyMedium: TextStyle(fontSize: 14),
     );
 
-    expect(
-      buildCommentBodyStyle(
-        textTheme,
-        compact: false,
-        fontScale: 1.5,
-      )?.fontSize,
-      24,
+    // 正文字号不再手动乘缩放，由 CommentFontScaler 统一套用。
+    expect(buildCommentBodyStyle(textTheme, compact: false)?.fontSize, 16);
+    expect(buildCommentBodyStyle(textTheme, compact: true)?.fontSize, 16);
+  });
+
+  testWidgets('CommentFontScaler scales every text in subtree', (tester) async {
+    double? baseScaled;
+    double? scaled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            Builder(
+              builder: (context) {
+                baseScaled = MediaQuery.textScalerOf(context).scale(16);
+                return const SizedBox.shrink();
+              },
+            ),
+            CommentFontScaler(
+              scale: 1.5,
+              child: Builder(
+                builder: (context) {
+                  scaled = MediaQuery.textScalerOf(context).scale(16);
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    expect(
-      buildCommentBodyStyle(textTheme, compact: true, fontScale: 1.5)?.fontSize,
-      24,
+
+    expect(baseScaled, 16);
+    expect(scaled, 24);
+  });
+
+  testWidgets('CommentFontScaler keeps ambient scaler at scale 1', (
+    tester,
+  ) async {
+    double? scaled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CommentFontScaler(
+          scale: 1,
+          child: Builder(
+            builder: (context) {
+              scaled = MediaQuery.textScalerOf(context).scale(16);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
     );
+
+    expect(scaled, 16);
   });
 
   testWidgets('merged compact comments keep one line when avatars are hidden', (

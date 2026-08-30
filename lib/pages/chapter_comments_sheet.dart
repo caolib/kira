@@ -18,6 +18,7 @@ import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/chinese_converter.dart';
@@ -1678,7 +1679,10 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                         Divider(height: 1, color: cs.outlineVariant),
                         Expanded(
                           child: ExcludeSemantics(
-                            child: _buildBody(context, cs, tt),
+                            child: CommentFontScaler(
+                              scale: _commentFontScale,
+                              child: _buildBody(context, cs, tt),
+                            ),
                           ),
                         ),
                       ],
@@ -1962,7 +1966,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
               showAvatar: _showUserAvatar,
               showUserName: _showUserName,
               showCommentTime: _showCommentTime,
-              fontScale: _commentFontScale,
               spoilerIds: _aiSettings.spoilerAnalysis ? _spoilerIds : const {},
               onLongPress: (entry, position) =>
                   _showCommentActionMenu(entry, position),
@@ -2024,7 +2027,6 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
                           showAvatar: _showUserAvatar,
                           showUserName: _showUserName,
                           showCommentTime: _showCommentTime,
-                          fontScale: _commentFontScale,
                           spoilerIds: _aiSettings.spoilerAnalysis
                               ? _spoilerIds
                               : const {},
@@ -2281,11 +2283,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     final preferredMaxWidth = maxWidth * 0.8;
 
     final estimatedWidths = entries.map((entry) {
-      final compactBodyStyle = buildCommentBodyStyle(
-        textTheme,
-        compact: true,
-        fontScale: _commentFontScale,
-      );
+      final compactBodyStyle = buildCommentBodyStyle(textTheme, compact: true);
       final bodyWidth = _measureTextWidth(
         entry.content,
         compactBodyStyle,

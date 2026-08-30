@@ -103,7 +103,6 @@ class _CommentCard extends StatefulWidget {
   final bool showAvatar;
   final bool showUserName;
   final bool showCommentTime;
-  final double fontScale;
   final Set<int> spoilerIds;
 
   /// 长按 / 右键评论时触发（携带触发位置，用于弹出上下文菜单）。
@@ -120,7 +119,6 @@ class _CommentCard extends StatefulWidget {
     this.showAvatar = true,
     this.showUserName = true,
     this.showCommentTime = true,
-    this.fontScale = 1.0,
     this.spoilerIds = const {},
     this.onLongPress,
     this.onTapMerged,
@@ -256,7 +254,6 @@ class _CommentCardState extends State<_CommentCard> {
     final showAvatar = widget.showAvatar;
     final showUserName = widget.showUserName;
     final showCommentTime = widget.showCommentTime;
-    final fontScale = widget.fontScale;
     final relativeTime = widget.relativeTime;
     final horizontalPadding = compact ? 10.0 : 12.0;
     final topPadding = compact ? 8.0 : 12.0;
@@ -271,7 +268,6 @@ class _CommentCardState extends State<_CommentCard> {
     final bodyStyle = buildCommentBodyStyle(
       tt,
       compact: compact,
-      fontScale: fontScale,
     )?.copyWith(color: isHotMergedComment ? _hotCommentAccentColor : null);
     // 仅合并评论响应点击：弹出所有发表该评论的用户列表。
     final tapMerged = entry.isMerged && widget.onTapMerged != null

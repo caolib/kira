@@ -158,7 +158,6 @@ class UserManager extends ChangeNotifier {
   static const _keyCommentShowAvatar = 'comment_show_avatar';
   static const _keyCommentShowUserName = 'comment_show_user_name';
   static const _keyCommentShowTime = 'comment_show_time';
-  static const _keyCommentFontScale = 'comment_font_scale';
   static const _keyCommentPreload = 'comment_preload';
   static const _keyCommentAutoLoadAll = 'comment_auto_load_all';
   static const _keyAutoCheckUpdate = 'auto_check_update';
@@ -243,7 +242,6 @@ class UserManager extends ChangeNotifier {
   bool _commentShowAvatar = true;
   bool _commentShowUserName = true;
   bool _commentShowTime = true;
-  double _commentFontScale = 1.0;
   bool _commentPreload = true;
   bool _commentAutoLoadAll = false;
   bool _autoCheckUpdate = true;
@@ -357,7 +355,10 @@ class UserManager extends ChangeNotifier {
   bool get commentShowAvatar => _commentShowAvatar;
   bool get commentShowUserName => _commentShowUserName;
   bool get commentShowTime => _commentShowTime;
-  double get commentFontScale => _commentFontScale;
+
+  /// 委托给 [comment]。子 store 的 notifyListeners 会经
+  /// _onSubStoreChanged 转发到本 facade 的监听者。
+  double get commentFontScale => comment.fontScale;
   bool get commentPreload => _commentPreload;
   bool get commentAutoLoadAll => _commentAutoLoadAll;
   bool get autoCheckUpdate => _autoCheckUpdate;
@@ -584,7 +585,6 @@ class UserManager extends ChangeNotifier {
     _commentShowAvatar = prefs.getBool(_keyCommentShowAvatar) ?? true;
     _commentShowUserName = prefs.getBool(_keyCommentShowUserName) ?? true;
     _commentShowTime = prefs.getBool(_keyCommentShowTime) ?? true;
-    _commentFontScale = prefs.getDouble(_keyCommentFontScale) ?? 1.0;
     _commentPreload = prefs.getBool(_keyCommentPreload) ?? true;
     _commentAutoLoadAll = prefs.getBool(_keyCommentAutoLoadAll) ?? false;
     _autoCheckUpdate = prefs.getBool(_keyAutoCheckUpdate) ?? true;
@@ -1127,12 +1127,9 @@ class UserManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setCommentFontScale(double scale) async {
-    _commentFontScale = scale;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_keyCommentFontScale, scale);
-    notifyListeners();
-  }
+  /// 委托给 [comment]。子 store 的 notifyListeners 会经
+  /// _onSubStoreChanged 转发到本 facade 的监听者。
+  Future<void> setCommentFontScale(double scale) => comment.setFontScale(scale);
 
   Future<void> setCommentPreload(bool enabled) async {
     _commentPreload = enabled;

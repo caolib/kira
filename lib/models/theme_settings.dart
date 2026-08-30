@@ -33,8 +33,8 @@ class ThemeSettings extends PrefsStore {
   static const double minDarkModeCoverBrightness = 0.10;
   static const double maxDarkModeCoverBrightness = 1.0;
   static const double defaultDarkModeCoverBrightness = 0.85;
-  static const double minDefaultFontSize = 12.0;
-  static const double maxDefaultFontSize = 20.0;
+  static const double minDefaultFontSize = 8.0;
+  static const double maxDefaultFontSize = 26.0;
   static const double defaultAppFontSize = 14.0;
   static const double minCardShadowElevation = 0.0;
   static const double maxCardShadowElevation = 4.0;

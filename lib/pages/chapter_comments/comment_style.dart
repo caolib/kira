@@ -184,11 +184,7 @@ TextStyle? _buildCommentTimeStyle(
   );
 }
 
-TextStyle? buildCommentBodyStyle(
-  TextTheme textTheme, {
-  required bool compact,
-  required double fontScale,
-}) {
+TextStyle? buildCommentBodyStyle(TextTheme textTheme, {required bool compact}) {
   final baseStyle = compact
       ? textTheme.bodyMedium
       : (textTheme.bodyLarge ?? textTheme.bodyMedium);
@@ -198,12 +194,12 @@ TextStyle? buildCommentBodyStyle(
   );
 
   return baseStyle?.copyWith(
-        fontSize: defaultFontSize * fontScale,
+        fontSize: defaultFontSize,
         height: compact ? 1.35 : 1.55,
         fontWeight: FontWeight.w500,
       ) ??
       TextStyle(
-        fontSize: defaultFontSize * fontScale,
+        fontSize: defaultFontSize,
         height: compact ? 1.35 : 1.55,
         fontWeight: FontWeight.w500,
       );
@@ -240,3 +236,32 @@ double _avatarStackWidth(
 }
 
 double _avatarInset(double avatarSize) => avatarSize <= 22 ? 1.5 : 2;
+
+/// 评论字体缩放作用域：把评论字体设置套到子树 [MediaQuery] 的文字缩放上，
+/// 使用户名、时间、AI 总结等所有评论内容文本跟随设置缩放，
+/// 而不只是评论正文样式。
+class CommentFontScaler extends StatelessWidget {
+  final double scale;
+  final Widget child;
+
+  const CommentFontScaler({
+    super.key,
+    required this.scale,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (scale == 1) return child;
+    final mediaQuery = MediaQuery.of(context);
+    return MediaQuery(
+      data: mediaQuery.copyWith(
+        textScaler: AppTypography.composeTextScaler(
+          mediaQuery.textScaler,
+          scale,
+        ),
+      ),
+      child: child,
+    );
+  }
+}

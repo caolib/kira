@@ -1593,88 +1593,10 @@ class _AppFontCardState extends State<_AppFontCard> {
 
     return Card(
       color: cs.surfaceContainerLow,
-      child: ExpansionTile(
-        shape: const Border(),
-        collapsedShape: const Border(),
-        leading: Icon(Icons.text_fields, color: cs.onSurfaceVariant),
-        title: Text(l10n.appearanceAppFont),
-        subtitle: Text(
-          currentLabel,
-          style: tt.bodySmall?.copyWith(
-            fontFamily: currentFont.isEmpty ? null : currentFont,
-          ),
-        ),
-        trailing: SizedBox(
-          height: 40,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: l10n.appearanceAddCustomFont,
-                onPressed: _showAddCustomFontDialog,
-                icon: Icon(Icons.add_rounded, color: cs.primary),
-                iconSize: 22,
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints.tightFor(
-                  width: 40,
-                  height: 40,
-                ),
-                style: IconButton.styleFrom(
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              if (_loading)
-                const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Center(
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                )
-              else
-                IconButton(
-                  tooltip: l10n.refreshButton,
-                  onPressed: () => _loadFonts(force: true),
-                  icon: Icon(Icons.refresh_rounded, color: cs.onSurfaceVariant),
-                  iconSize: 22,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 40,
-                    height: 40,
-                  ),
-                  style: IconButton.styleFrom(
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              const SizedBox(width: AppSpacing.xs),
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: Center(
-                  child: Icon(
-                    Icons.expand_more,
-                    size: 22,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        onExpansionChanged: (expanded) {
-          if (expanded && !_fontCatalogLoaded && !_loading) {
-            _loadFonts();
-          }
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Divider(height: 1),
+          // 字体大小设置常驻显示，不随字体列表折叠。
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: _AppearanceSliderControl(
@@ -1699,43 +1621,130 @@ class _AppFontCardState extends State<_AppFontCard> {
             ),
           ),
           const Divider(height: 1),
-          if (_loading && _fonts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.5),
-                ),
+          ExpansionTile(
+            shape: const Border(),
+            collapsedShape: const Border(),
+            leading: Icon(Icons.text_fields, color: cs.onSurfaceVariant),
+            title: Text(l10n.appearanceAppFont),
+            subtitle: Text(
+              currentLabel,
+              style: tt.bodySmall?.copyWith(
+                fontFamily: currentFont.isEmpty ? null : currentFont,
               ),
-            )
-          else ...[
-            RadioGroup<String>(
-              groupValue: currentFont.isEmpty
-                  ? FontManager.defaultFontId
-                  : currentFont,
-              onChanged: (value) {
-                if (value != null) _selectFont(value);
-              },
-              child: Column(
+            ),
+            trailing: SizedBox(
+              height: 40,
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  RadioListTile<String>(
-                    value: FontManager.defaultFontId,
-                    title: Text(l10n.appearanceSystemDefault),
-                  ),
-                  for (final font in _fonts)
-                    RadioListTile<String>(
-                      value: font.name,
-                      title: Text(font.name),
-                      subtitle: _buildFontSubtitle(font, l10n, cs),
-                      secondary: _buildFontActions(font, l10n, cs),
+                  IconButton(
+                    tooltip: l10n.appearanceAddCustomFont,
+                    onPressed: _showAddCustomFontDialog,
+                    icon: Icon(Icons.add_rounded, color: cs.primary),
+                    iconSize: 22,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 40,
                     ),
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  if (_loading)
+                    const SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else
+                    IconButton(
+                      tooltip: l10n.refreshButton,
+                      onPressed: () => _loadFonts(force: true),
+                      icon: Icon(
+                        Icons.refresh_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
+                      iconSize: 22,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 40,
+                        height: 40,
+                      ),
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  const SizedBox(width: AppSpacing.xs),
+                  SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Center(
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 22,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
+            onExpansionChanged: (expanded) {
+              if (expanded && !_fontCatalogLoaded && !_loading) {
+                _loadFonts();
+              }
+            },
+            children: [
+              const Divider(height: 1),
+              if (_loading && _fonts.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
+                  ),
+                )
+              else ...[
+                RadioGroup<String>(
+                  groupValue: currentFont.isEmpty
+                      ? FontManager.defaultFontId
+                      : currentFont,
+                  onChanged: (value) {
+                    if (value != null) _selectFont(value);
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      RadioListTile<String>(
+                        value: FontManager.defaultFontId,
+                        title: Text(l10n.appearanceSystemDefault),
+                      ),
+                      for (final font in _fonts)
+                        RadioListTile<String>(
+                          value: font.name,
+                          title: Text(font.name),
+                          subtitle: _buildFontSubtitle(font, l10n, cs),
+                          secondary: _buildFontActions(font, l10n, cs),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );

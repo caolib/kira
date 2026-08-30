@@ -20,7 +20,7 @@ import '../widgets/text_controller_scope.dart';
 import 'chapter_comments/comment_paging.dart';
 import 'chapter_comments/comment_scroll_behavior.dart';
 import 'chapter_comments_sheet.dart'
-    show CommentSettingsPanel, buildCommentBodyStyle;
+    show CommentFontScaler, CommentSettingsPanel, buildCommentBodyStyle;
 import 'comic_comment_display.dart';
 
 class ComicCommentsSheet extends StatefulWidget {
@@ -334,7 +334,12 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
                       ),
                     ),
                     Divider(height: 1, color: cs.outlineVariant),
-                    Expanded(child: _buildBody(context, cs, tt)),
+                    Expanded(
+                      child: CommentFontScaler(
+                        scale: _user.commentFontScale,
+                        child: _buildBody(context, cs, tt),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -564,7 +569,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
     final bodyStyle = buildCommentBodyStyle(
       tt,
       compact: false,
-      fontScale: user.commentFontScale,
     )?.copyWith(color: isHotMerged ? _hotMergedCommentColor : null);
     final userStyle = _buildMergedCommentUserStyle(tt, cs, compact: false);
     final timeStyle = tt.labelSmall?.copyWith(
@@ -854,7 +858,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
     final bodyStyle = buildCommentBodyStyle(
       tt,
       compact: true,
-      fontScale: user.commentFontScale,
     )?.copyWith(height: 1.45);
 
     return GestureDetector(
