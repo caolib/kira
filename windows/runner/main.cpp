@@ -4,6 +4,7 @@
 
 #include "flutter_window.h"
 #include "utils.h"
+#include "window_state.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
@@ -30,6 +31,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!window.Create(L"kira", origin, size)) {
     return EXIT_FAILURE;
   }
+
+  RECT saved_bounds;
+  if (window_state::Load(saved_bounds)) {
+    if (const HWND handle = window.GetHandle()) {
+      SetWindowPos(handle, nullptr, saved_bounds.left, saved_bounds.top,
+                   saved_bounds.right - saved_bounds.left,
+                   saved_bounds.bottom - saved_bounds.top,
+                   SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+  }
+
   window.SetQuitOnClose(true);
 
   ::MSG msg;
@@ -39,5 +51,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
 
   ::CoUninitialize();
+
+  // Terminate directly instead of returning: the CRT exit path runs DLL
+  // detach code, where flutter_inappwebview_windows releases a static
+  // Compositor after its DispatcherQueue is gone and crashes ("kira.exe -
+  // Unknown Hard Error" popup when Windows Error Reporting is disabled;
+  // flutter_inappwebview #2419/#2512). The window and Flutter engine are
+  // already torn down at this point, so there is nothing left to clean up.
+  ::TerminateProcess(::GetCurrentProcess(), EXIT_SUCCESS);
   return EXIT_SUCCESS;
 }
