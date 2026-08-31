@@ -9,8 +9,10 @@ import '../models/api_ordering.dart';
 import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
 import '../utils/app_logger.dart';
+import '../utils/screen_layout.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/load_more_footer.dart';
 import 'home_page.dart';
 
 /// 漫画排行完整列表页，支持排序切换
@@ -153,11 +155,12 @@ class _RankingPageState extends State<RankingPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    const hp = 16.0;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    final cardExtent = ScreenLayout.cardExtent(screenWidth);
 
-    // 卡片最大宽度随屏幕增大（宽屏 150），与首页网格规则一致。
     final gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: MediaQuery.sizeOf(context).width >= 720 ? 150 : 130,
+      maxCrossAxisExtent: cardExtent,
       childAspectRatio: 0.55,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
@@ -197,14 +200,17 @@ class _RankingPageState extends State<RankingPage> {
       ),
       body: _loading
           ? GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: hp, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: hp, vertical: 12),
               itemCount: 21,
               gridDelegate: gridDelegate,
               itemBuilder: (_, _) => const ComicCardSkeleton(),
             )
           : NotificationListener<ScrollNotification>(
               onNotification: (n) {
-                if (n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
+                // pixels > 0：只在用户确实滚动过后才自动翻页，
+                // 否则宽屏首屏不满一页时会立刻连发第二页。
+                if (n.metrics.pixels > 0 &&
+                    n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
                   _loadMore();
                 }
                 return false;
@@ -218,7 +224,7 @@ class _RankingPageState extends State<RankingPage> {
                     )
                   else
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(hp, 12, hp, 0),
+                      padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
                       sliver: SliverGrid(
                         gridDelegate: gridDelegate,
                         delegate: SliverChildBuilderDelegate((_, i) {
@@ -244,6 +250,15 @@ class _RankingPageState extends State<RankingPage> {
                             ),
                           );
                         }, childCount: _comics.length + (_loadingMore ? 6 : 0)),
+                      ),
+                    ),
+                  if (_comics.isNotEmpty && _offset < _total)
+                    SliverToBoxAdapter(
+                      child: LoadMoreFooter(
+                        loading: _loadingMore,
+                        onPressed: _loadMore,
+                        label: l10n.loadMoreProgress(_offset, _total),
+                        horizontalPadding: hp,
                       ),
                     ),
                   const SliverPadding(padding: EdgeInsets.only(bottom: 16)),

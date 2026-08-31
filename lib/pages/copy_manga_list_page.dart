@@ -8,10 +8,12 @@ import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
 import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/load_more_footer.dart';
 
 enum CopyMangaListKind { recommendations, ranking, newest, finished }
 
@@ -185,11 +187,11 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    final cardExtent = ScreenLayout.cardExtent(screenWidth);
 
-    const gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: 130,
+    final gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
+      maxCrossAxisExtent: cardExtent,
       childAspectRatio: 0.55,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
@@ -212,7 +214,10 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
           if (shouldShow != _showBackToTop) {
             setState(() => _showBackToTop = shouldShow);
           }
-          if (notification.metrics.extentAfter < 300) {
+          // pixels > 0：只在用户确实滚动过后才自动翻页，
+          // 否则宽屏首屏不满一页时会立刻连发第二页。
+          if (notification.metrics.pixels > 0 &&
+              notification.metrics.extentAfter < 300) {
             _loadMore();
           }
           return false;
@@ -269,6 +274,17 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
                   }, childCount: _comics.length + (_loadingMore ? 6 : 0)),
                 ),
               ),
+              if (_comics.isNotEmpty && _offset < _total)
+                SliverToBoxAdapter(
+                  child: LoadMoreFooter(
+                    loading: _loadingMore,
+                    onPressed: _loadMore,
+                    label: AppLocalizations.of(
+                      context,
+                    )!.loadMoreProgress(_offset, _total),
+                    horizontalPadding: hp,
+                  ),
+                ),
               const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
             ],
           ],

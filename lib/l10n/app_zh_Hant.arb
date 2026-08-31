@@ -285,8 +285,9 @@
   },
   "popularOrder": "熱度",
   "updateOrder": "更新",
-  "searchLoadMore": "載入更多（{loaded}/{total}）",
-  "@searchLoadMore": {
+  "loadMore": "載入更多",
+  "loadMoreProgress": "載入更多（{loaded}/{total}）",
+  "@loadMoreProgress": {
     "placeholders": {
       "loaded": {
         "type": "int"

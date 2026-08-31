@@ -16,9 +16,11 @@ import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/network_error.dart';
+import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/load_more_footer.dart';
 
 enum _HistoryMode { comic, anime }
 
@@ -196,7 +198,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
   Future<void> _loadMore() async {
     if (_loadingMore || _refreshing || _offset >= _total) return;
     final mode = _mode;
-    _loadingMore = true;
+    setState(() => _loadingMore = true);
     try {
       if (mode == _HistoryMode.anime) {
         final data = await _api.anime.getAnimeBrowseHistory(offset: _offset);
@@ -225,7 +227,11 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
         await _handleUnauthorized();
       }
     } finally {
-      _loadingMore = false;
+      if (mounted) {
+        setState(() => _loadingMore = false);
+      } else {
+        _loadingMore = false;
+      }
     }
   }
 
@@ -315,8 +321,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
 
     return Scaffold(
       appBar: AppBar(
@@ -409,7 +414,10 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
               onRefresh: _load,
               child: NotificationListener<ScrollNotification>(
                 onNotification: (n) {
+                  // pixels > 0：只在用户确实滚动过后才自动翻页，
+                  // 否则宽屏首屏不满一页时会立刻连发第二页。
                   if (!_currentItemsEmpty &&
+                      n.metrics.pixels > 0 &&
                       n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
                     _loadMore();
                   }
@@ -515,6 +523,15 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                           },
                         ),
                       ),
+                      if (_offset < _total)
+                        SliverToBoxAdapter(
+                          child: LoadMoreFooter(
+                            loading: _loadingMore,
+                            onPressed: _loadMore,
+                            label: l10n.loadMoreProgress(_offset, _total),
+                            horizontalPadding: hp,
+                          ),
+                        ),
                     ],
                   ],
                 ),

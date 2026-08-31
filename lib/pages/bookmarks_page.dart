@@ -9,6 +9,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/bookmark_store.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 
 /// 书签列表页：展示用户在阅读器中手动标记的书签，点击直达对应章节页码。
@@ -219,8 +220,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
     final tt = Theme.of(context).textTheme;
     final groups = _grouped();
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
 
     return Scaffold(
       appBar: AppBar(

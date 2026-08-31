@@ -23,10 +23,12 @@ import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/reading_history.dart';
+import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/load_more_footer.dart';
 import 'home_page.dart';
 
 enum _BookshelfType { comic, anime }
@@ -561,8 +563,8 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    final cardExtent = ScreenLayout.cardExtent(screenWidth);
 
     return Scaffold(
       // 右下角悬浮回到顶部按钮：方形 FilledButton，与搜索页工具条同款
@@ -603,6 +605,7 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
                 setState(() => _showBackToTop = shouldShow);
               }
               if (!_loading &&
+                  n.metrics.pixels > 0 &&
                   n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
                 _loadMore();
               }
@@ -636,13 +639,12 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
                       (_, _) => const ComicCardSkeleton(),
                       childCount: _type == _BookshelfType.comic ? 12 : 30,
                     ),
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 130,
-                          childAspectRatio: 0.55,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                        ),
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: cardExtent,
+                      childAspectRatio: 0.55,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                    ),
                   ),
                 )
               else if (_currentItemsEmpty)
@@ -655,6 +657,17 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
                 _buildComicGrid(context, hp)
               else
                 _buildAnimeGrid(context, hp),
+              if (!_loading && !_currentItemsEmpty && _offset < _total)
+                SliverToBoxAdapter(
+                  child: LoadMoreFooter(
+                    loading: _loadingMore,
+                    onPressed: _loadMore,
+                    label: AppLocalizations.of(
+                      context,
+                    )!.loadMoreProgress(_offset, _total),
+                    horizontalPadding: hp,
+                  ),
+                ),
               const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
             ],
           ),
@@ -862,8 +875,10 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
             ],
           );
         }, childCount: totalCount),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 130,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: ScreenLayout.cardExtent(
+            MediaQuery.sizeOf(context).width,
+          ),
           childAspectRatio: 0.55,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
@@ -967,8 +982,10 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
                 .then((_) => _refreshLoaded()),
           );
         }, childCount: totalCount),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 130,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: ScreenLayout.cardExtent(
+            MediaQuery.sizeOf(context).width,
+          ),
           childAspectRatio: 0.55,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,

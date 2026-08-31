@@ -763,11 +763,17 @@ abstract class AppLocalizations {
   /// **'更新'**
   String get updateOrder;
 
-  /// No description provided for @searchLoadMore.
+  /// No description provided for @loadMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多'**
+  String get loadMore;
+
+  /// No description provided for @loadMoreProgress.
   ///
   /// In zh, this message translates to:
   /// **'加载更多（{loaded}/{total}）'**
-  String searchLoadMore(int loaded, int total);
+  String loadMoreProgress(int loaded, int total);
 
   /// No description provided for @searchResultSummary.
   ///

@@ -8,8 +8,10 @@ import '../l10n/app_localizations.dart';
 import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
 import '../utils/app_logger.dart';
+import '../utils/screen_layout.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/load_more_footer.dart';
 import 'home_page.dart';
 
 /// 推荐漫画完整列表页
@@ -26,6 +28,8 @@ class _RecommendPageState extends State<RecommendPage> {
   bool _loading = true;
   int _offset = 0;
   bool _loadingMore = false;
+  // 推荐接口不返回 total：以「某页返回空列表」作为到底标志。
+  bool _hasMore = true;
 
   @override
   void initState() {
@@ -40,6 +44,7 @@ class _RecommendPageState extends State<RecommendPage> {
       setState(() {
         _comics = data;
         _offset = data.length;
+        _hasMore = data.isNotEmpty;
         _loading = false;
       });
     } catch (e, stack) {
@@ -55,7 +60,7 @@ class _RecommendPageState extends State<RecommendPage> {
   }
 
   Future<void> _loadMore() async {
-    if (_loadingMore) return;
+    if (_loadingMore || !_hasMore) return;
     setState(() => _loadingMore = true);
     try {
       final data = await _api.manga.getRecommendations(
@@ -66,6 +71,7 @@ class _RecommendPageState extends State<RecommendPage> {
       setState(() {
         _comics.addAll(data);
         _offset = _comics.length;
+        _hasMore = data.isNotEmpty;
       });
     } catch (e, stack) {
       unawaited(
@@ -87,11 +93,11 @@ class _RecommendPageState extends State<RecommendPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    final cardExtent = ScreenLayout.cardExtent(screenWidth);
 
-    const gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: 130,
+    final gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
+      maxCrossAxisExtent: cardExtent,
       childAspectRatio: 0.55,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
@@ -108,7 +114,10 @@ class _RecommendPageState extends State<RecommendPage> {
             )
           : NotificationListener<ScrollNotification>(
               onNotification: (n) {
-                if (n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
+                // pixels > 0：只在用户确实滚动过后才自动翻页，
+                // 否则宽屏首屏不满一页时会立刻连发第二页。
+                if (n.metrics.pixels > 0 &&
+                    n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
                   _loadMore();
                 }
                 return false;
@@ -144,6 +153,15 @@ class _RecommendPageState extends State<RecommendPage> {
                       }, childCount: _comics.length + (_loadingMore ? 6 : 0)),
                     ),
                   ),
+                  if (!_loading && _hasMore)
+                    SliverToBoxAdapter(
+                      child: LoadMoreFooter(
+                        loading: _loadingMore,
+                        onPressed: _loadMore,
+                        label: l10n.loadMore,
+                        horizontalPadding: hp,
+                      ),
+                    ),
                   const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
                 ],
               ),

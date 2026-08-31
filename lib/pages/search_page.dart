@@ -21,8 +21,10 @@ import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/screen_layout.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/load_more_footer.dart';
 import 'home_page.dart' show ComicCard;
 
 enum _SearchMode { comic, anime }
@@ -448,9 +450,8 @@ class _SearchPageState extends State<SearchPage> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 1200.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
-    final cardExtent = contentWidth >= 720 ? 150.0 : 130.0;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    final cardExtent = ScreenLayout.cardExtent(screenWidth);
 
     final topInset = MediaQuery.of(context).padding.top;
     final headerHeight = topInset + _headerContentHeight();
@@ -667,22 +668,11 @@ class _SearchPageState extends State<SearchPage> {
                   // 近底自动加载永远等不到触发，这里是兜底入口。
                   if (_hasResults && _offset < _total)
                     SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(hp, 4, hp, 8),
-                        child: Center(
-                          child: _loadingMore
-                              ? const SizedBox.square(
-                                  dimension: 28,
-                                  child: ExpressiveLoadingIndicator(),
-                                )
-                              : OutlinedButton.icon(
-                                  onPressed: _loadMore,
-                                  icon: const Icon(Icons.expand_more_rounded),
-                                  label: Text(
-                                    l10n.searchLoadMore(_offset, _total),
-                                  ),
-                                ),
-                        ),
+                      child: LoadMoreFooter(
+                        loading: _loadingMore,
+                        onPressed: _loadMore,
+                        label: l10n.loadMoreProgress(_offset, _total),
+                        horizontalPadding: hp,
                       ),
                     ),
                   // 底部留白：选了 tag 时为悬浮按钮组留出避让空间，
