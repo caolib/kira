@@ -60,8 +60,6 @@ ref/
 .agents
 
 .vscode/settings.json
-# Added by code-review-graph
-.code-review-graph/
 
 .cursor
 .cursorrules
