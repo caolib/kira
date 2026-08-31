@@ -42,6 +42,12 @@ add_definitions(-DUNICODE -D_UNICODE)
 add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
 add_compile_options("$<$<COMPILE_LANGUAGE:C>:/utf-8>")
 
+# Silence the hard STL1011 static assertion that MSVC 14.51+ raises for
+# third-party plugin sources still using <experimental/coroutine> with /await
+# (flutter_inappwebview_windows, permission_handler_windows). Applies to all
+# plugin targets created below via generated_plugins.cmake.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
