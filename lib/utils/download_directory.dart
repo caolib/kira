@@ -24,14 +24,11 @@ class DownloadDirectoryException implements Exception {
   String toString() => 'DownloadDirectoryException($reason)';
 }
 
-/// 自定义下载目录的完整流程（仅 Android）：授权 → 系统目录选择器 → 可写探测。
+/// 自定义下载目录的完整流程：授权（仅 Android 需要）→ 系统目录选择器 → 可写探测。
 ///
 /// 返回用户所选目录路径（已规范化）；用户取消返回 null；失败抛出
 /// [DownloadDirectoryException]。
 Future<String?> pickDownloadDirectory({String? dialogTitle}) async {
-  if (!Platform.isAndroid) {
-    throw const DownloadDirectoryException(DownloadDirectoryError.notWritable);
-  }
   if (!await ensureDownloadStoragePermission()) {
     throw const DownloadDirectoryException(
       DownloadDirectoryError.permissionDenied,

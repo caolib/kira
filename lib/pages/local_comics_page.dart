@@ -20,8 +20,13 @@ import 'comic_detail_page.dart'
 
 class LocalComicsPage extends StatefulWidget {
   final bool embedded;
+  final Widget? trailingAction;
 
-  const LocalComicsPage({super.key, this.embedded = false});
+  const LocalComicsPage({
+    super.key,
+    this.embedded = false,
+    this.trailingAction,
+  });
 
   @override
   State<LocalComicsPage> createState() => _LocalComicsPageState();
@@ -35,6 +40,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
     final l10n = AppLocalizations.of(context)!;
     return LocalContentListPage(
       embedded: widget.embedded,
+      trailingAction: widget.trailingAction,
       title: l10n.localComicsTitle,
       emptyTitle: l10n.noLocalComicsTitle,
       emptySubtitle: l10n.noLocalComicsSubtitle,

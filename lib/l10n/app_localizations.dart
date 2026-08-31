@@ -5759,12 +5759,6 @@ abstract class AppLocalizations {
   /// **'应用内部目录（默认）'**
   String get downloadSaveLocationDefault;
 
-  /// No description provided for @downloadSaveLocationDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'选择手机上的公共目录，方便直接访问和导出已下载漫画'**
-  String get downloadSaveLocationDesc;
-
   /// No description provided for @downloadSaveLocationPickerTitle.
   ///
   /// In zh, this message translates to:

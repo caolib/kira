@@ -2115,7 +2115,6 @@
   "downloadChapterCommentsDesc": "下載章節時一併儲存評論",
   "downloadSaveLocation": "儲存位置",
   "downloadSaveLocationDefault": "應用內部目錄（預設）",
-  "downloadSaveLocationDesc": "選擇手機上的公共目錄，方便直接存取和匯出已下載漫畫",
   "downloadSaveLocationPickerTitle": "選擇下載儲存目錄",
   "downloadSaveLocationPermissionDenied": "未授予儲存權限，無法自訂儲存目錄",
   "downloadSaveLocationNotWritable": "所選目錄不可寫入，請更換其他目錄",

@@ -77,6 +77,10 @@ class AnimeLocalContentEntry implements LocalContentEntry {
 
 class LocalContentListPage extends StatefulWidget {
   final bool embedded;
+
+  /// 内嵌于下载中心时的尾部悬浮按钮（如下载设置），与"打开下载位置"
+  /// 按钮同行排布、位于其右侧。
+  final Widget? trailingAction;
   final String title;
   final String emptyTitle;
   final String emptySubtitle;
@@ -104,6 +108,7 @@ class LocalContentListPage extends StatefulWidget {
   const LocalContentListPage({
     super.key,
     this.embedded = false,
+    this.trailingAction,
     required this.title,
     required this.emptyTitle,
     required this.emptySubtitle,
@@ -314,7 +319,7 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
 
     if (widget.embedded) {
       final l10n = AppLocalizations.of(context)!;
-      // 选中态：叠加底部操作条（全选/删除/取消），并隐藏打开文件夹按钮。
+      // 选中态：叠加底部操作条（全选/删除/取消），并隐藏右下角悬浮按钮。
       if (_selectionMode) {
         return Stack(
           children: [
@@ -369,21 +374,40 @@ class _LocalContentListPageState extends State<LocalContentListPage> {
           ],
         );
       }
-      if (!_isDesktopPlatform) return body;
+      // 移动端没有"打开下载位置"按钮，尾部按钮单独悬浮于右下角。
+      final trailing = widget.trailingAction;
+      if (!_isDesktopPlatform) {
+        if (trailing == null) return body;
+        return Stack(
+          children: [
+            body,
+            Positioned(right: 16, bottom: 16, child: trailing),
+          ],
+        );
+      }
       return Stack(
         children: [
           body,
           Positioned(
             right: 16,
             bottom: 16,
-            child: FloatingActionButton.extended(
-              heroTag: '${widget.heroTagPrefix}_open_folder',
-              onPressed: _openDownloadFolder,
-              icon: const Icon(Icons.folder_open, size: 20),
-              label: Text(
-                l10n.openDownloadFolder,
-                style: const TextStyle(fontSize: 13),
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: '${widget.heroTagPrefix}_open_folder',
+                  onPressed: _openDownloadFolder,
+                  icon: const Icon(Icons.folder_open, size: 20),
+                  label: Text(
+                    l10n.openDownloadFolder,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  trailing,
+                ],
+              ],
             ),
           ),
         ],
@@ -515,33 +539,6 @@ class _LocalContentCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                    Positioned(
-                      left: 8,
-                      right: 8,
-                      bottom: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          AppLocalizations.of(context)!.downloadedCountUnit(
-                            entry.downloadedCount,
-                            unitLabel,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -555,6 +552,15 @@ class _LocalContentCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 entry.subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                AppLocalizations.of(
+                  context,
+                )!.downloadedCountUnit(entry.downloadedCount, unitLabel),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),

@@ -7,6 +7,7 @@ import '../theme/app_spacing.dart';
 import '../utils/anime_download_manager.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
+import '../widgets/download_settings_sheet.dart';
 import 'local_anime_page.dart';
 import 'local_comics_page.dart';
 
@@ -89,7 +90,6 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final controller = _tabController!;
-
     if (_user.animeFeatureEnabled) {
       final animeTasks = _animeDownloads.tasks;
       final animeQueueCount = animeTasks.length;
@@ -125,9 +125,18 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
         body: TabBarView(
           controller: controller,
           children: [
-            const LocalComicsPage(embedded: true),
-            const LocalAnimePage(embedded: true),
-            _CombinedDownloadQueueView(),
+            LocalComicsPage(
+              embedded: true,
+              trailingAction: _settingsFab('download_settings_comic'),
+            ),
+            LocalAnimePage(
+              embedded: true,
+              trailingAction: _settingsFab('download_settings_anime'),
+            ),
+            _withSettingsFab(
+              _CombinedDownloadQueueView(),
+              'download_settings_queue',
+            ),
           ],
         ),
       );
@@ -161,10 +170,38 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
       body: TabBarView(
         controller: controller,
         children: [
-          const LocalComicsPage(embedded: true),
-          _ComicDownloadQueueView(),
+          LocalComicsPage(
+            embedded: true,
+            trailingAction: _settingsFab('download_settings_comic'),
+          ),
+          _withSettingsFab(
+            _ComicDownloadQueueView(),
+            'download_settings_queue',
+          ),
         ],
       ),
+    );
+  }
+
+  /// 下载设置悬浮按钮：与列表页的"打开下载位置"按钮同行、位于最右。
+  /// 每个挂载点用独立 heroTag，避免多 tab 同时存活时 Hero 标签冲突。
+  Widget _settingsFab(String heroTag) {
+    return FloatingActionButton(
+      heroTag: heroTag,
+      tooltip: AppLocalizations.of(context)!.downloadSettingsTitle,
+      onPressed: () =>
+          showDownloadSettingsSheet(context, downloads: _comicDownloads),
+      child: const Icon(Icons.settings_outlined),
+    );
+  }
+
+  /// 队列页没有内嵌列表，单独把设置按钮叠加到右下角。
+  Widget _withSettingsFab(Widget child, String heroTag) {
+    return Stack(
+      children: [
+        Positioned.fill(child: child),
+        Positioned(right: 16, bottom: 16, child: _settingsFab(heroTag)),
+      ],
     );
   }
 }

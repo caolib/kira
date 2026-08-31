@@ -3172,9 +3172,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadSaveLocationDefault => '应用内部目录（默认）';
 
   @override
-  String get downloadSaveLocationDesc => '选择手机上的公共目录，方便直接访问和导出已下载漫画';
-
-  @override
   String get downloadSaveLocationPickerTitle => '选择下载保存目录';
 
   @override
@@ -7130,9 +7127,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get downloadSaveLocationDefault => '應用內部目錄（預設）';
-
-  @override
-  String get downloadSaveLocationDesc => '選擇手機上的公共目錄，方便直接存取和匯出已下載漫畫';
 
   @override
   String get downloadSaveLocationPickerTitle => '選擇下載儲存目錄';

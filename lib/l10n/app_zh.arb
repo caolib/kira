@@ -2144,7 +2144,6 @@
   "downloadChapterCommentsDesc": "下载章节时一并保存评论",
   "downloadSaveLocation": "保存位置",
   "downloadSaveLocationDefault": "应用内部目录（默认）",
-  "downloadSaveLocationDesc": "选择手机上的公共目录，方便直接访问和导出已下载漫画",
   "downloadSaveLocationPickerTitle": "选择下载保存目录",
   "downloadSaveLocationPermissionDenied": "未授予存储权限，无法自定义保存目录",
   "downloadSaveLocationNotWritable": "所选目录不可写，请更换其他目录",

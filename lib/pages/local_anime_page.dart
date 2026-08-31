@@ -15,8 +15,9 @@ import '../widgets/media_kit_download_dialog.dart';
 
 class LocalAnimePage extends StatefulWidget {
   final bool embedded;
+  final Widget? trailingAction;
 
-  const LocalAnimePage({super.key, this.embedded = false});
+  const LocalAnimePage({super.key, this.embedded = false, this.trailingAction});
 
   @override
   State<LocalAnimePage> createState() => _LocalAnimePageState();
@@ -30,6 +31,7 @@ class _LocalAnimePageState extends State<LocalAnimePage> {
     final l10n = AppLocalizations.of(context)!;
     return LocalContentListPage(
       embedded: widget.embedded,
+      trailingAction: widget.trailingAction,
       title: l10n.localAnimeTitle,
       emptyTitle: l10n.noLocalAnimeTitle,
       emptySubtitle: l10n.noLocalAnimeSubtitle,
