@@ -448,8 +448,9 @@ class _SearchPageState extends State<SearchPage> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
+    final contentWidth = screenWidth.clamp(0.0, 1200.0);
     final hp = (screenWidth - contentWidth) / 2 + 16;
+    final cardExtent = contentWidth >= 720 ? 150.0 : 130.0;
 
     final topInset = MediaQuery.of(context).padding.top;
     final headerHeight = topInset + _headerContentHeight();
@@ -470,7 +471,12 @@ class _SearchPageState extends State<SearchPage> {
                     setState(() => _canScrollUp = canScrollUp);
                   }
                   _updateHeaderVisibility(n);
+                  // 近底自动翻页只在用户确实滚动过后才触发（pixels > 0）。
+                  // 否则首屏结果不满一屏时（宽屏），布局期通知的
+                  // pixels=0 > maxScrollExtent-300 恒成立，一搜索就连发两页；
+                  // 不满屏的场景交给显式「加载更多」按钮兜底。
                   if (_hasResults &&
+                      n.metrics.pixels > 0 &&
                       n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
                     _loadMore();
                   }
@@ -494,19 +500,18 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   if (_searching && _selectedTag == null)
                     SliverPadding(
-                      padding: EdgeInsets.symmetric(horizontal: hp),
+                      padding: EdgeInsets.fromLTRB(hp, 8, hp, 0),
                       sliver: SliverGrid(
                         delegate: SliverChildBuilderDelegate(
                           (_, _) => const ComicCardSkeleton(),
                           childCount: 20,
                         ),
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 130,
-                              childAspectRatio: 0.55,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                            ),
+                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: cardExtent,
+                          childAspectRatio: 0.55,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                        ),
                       ),
                     ),
                   if (_keywords.isNotEmpty &&
@@ -605,25 +610,24 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   if (_searching && _selectedTag != null)
                     SliverPadding(
-                      padding: EdgeInsets.symmetric(horizontal: hp),
+                      padding: EdgeInsets.fromLTRB(hp, 8, hp, 0),
                       sliver: SliverGrid(
                         delegate: SliverChildBuilderDelegate(
                           (_, _) => const ComicCardSkeleton(),
                           childCount: 21,
                         ),
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 130,
-                              childAspectRatio: 0.55,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                            ),
+                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: cardExtent,
+                          childAspectRatio: 0.55,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                        ),
                       ),
                     ),
                   if (_searchQuery != null && _hasResults)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(hp, 4, hp, 12),
+                        padding: EdgeInsets.fromLTRB(hp, 8, hp, 12),
                         child: Text(
                           l10n.searchResultSummary(
                             _searchQuery!,
@@ -640,6 +644,7 @@ class _SearchPageState extends State<SearchPage> {
                     _ComicGrid(
                       comics: _comics,
                       hp: hp,
+                      cardExtent: cardExtent,
                       loadingMore: _loadingMore,
                       onOpen: (comic, heroTagBase) => context.pushNamed(
                         AppRoutes.comicDetail,
@@ -654,8 +659,31 @@ class _SearchPageState extends State<SearchPage> {
                     _AnimeGrid(
                       animes: _animes,
                       hp: hp,
+                      cardExtent: cardExtent,
                       loadingMore: _loadingMore,
                       onOpen: _openAnime,
+                    ),
+                  // 显式加载更多按钮：宽屏下一页结果不满屏、列表不可滚动时，
+                  // 近底自动加载永远等不到触发，这里是兜底入口。
+                  if (_hasResults && _offset < _total)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(hp, 4, hp, 8),
+                        child: Center(
+                          child: _loadingMore
+                              ? const SizedBox.square(
+                                  dimension: 28,
+                                  child: ExpressiveLoadingIndicator(),
+                                )
+                              : OutlinedButton.icon(
+                                  onPressed: _loadMore,
+                                  icon: const Icon(Icons.expand_more_rounded),
+                                  label: Text(
+                                    l10n.searchLoadMore(_offset, _total),
+                                  ),
+                                ),
+                        ),
+                      ),
                     ),
                   // 底部留白：选了 tag 时为悬浮按钮组留出避让空间，
                   // 同时保证结果太少时列表仍可滚动（搜索框/按钮不会卡在收起态）。
@@ -723,7 +751,7 @@ class _SearchPageState extends State<SearchPage> {
 
   /// 悬浮头占位高度：上下内边距 + SearchBar（M3 默认 56）+ 可选的类型切换行。
   double _headerContentHeight() {
-    const searchRow = 12.0 + 56.0 + AppSpacing.sm;
+    const searchRow = 12.0 + 56.0 + AppSpacing.lg;
     if (!_animeFeatureEnabled) return searchRow;
     return searchRow + 48.0 + AppSpacing.sm;
   }
@@ -732,7 +760,7 @@ class _SearchPageState extends State<SearchPage> {
     final l10n = AppLocalizations.of(context)!;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(hp, 12, hp, AppSpacing.sm),
+      padding: EdgeInsets.fromLTRB(hp, 12, hp, AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -925,12 +953,14 @@ class _SearchPageState extends State<SearchPage> {
 class _ComicGrid extends StatelessWidget {
   final List<Comic> comics;
   final double hp;
+  final double cardExtent;
   final bool loadingMore;
   final void Function(Comic comic, String heroTagBase) onOpen;
 
   const _ComicGrid({
     required this.comics,
     required this.hp,
+    required this.cardExtent,
     required this.loadingMore,
     required this.onOpen,
   });
@@ -938,7 +968,7 @@ class _ComicGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverPadding(
-      padding: EdgeInsets.symmetric(horizontal: hp),
+      padding: EdgeInsets.fromLTRB(hp, 8, hp, 0),
       sliver: SliverGrid(
         delegate: SliverChildBuilderDelegate((_, i) {
           if (i >= comics.length) {
@@ -956,8 +986,8 @@ class _ComicGrid extends StatelessWidget {
             onTap: () => onOpen(comic, heroTagBase),
           );
         }, childCount: comics.length + (loadingMore ? 6 : 0)),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 130,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: cardExtent,
           childAspectRatio: 0.55,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
@@ -970,12 +1000,14 @@ class _ComicGrid extends StatelessWidget {
 class _AnimeGrid extends StatelessWidget {
   final List<Anime> animes;
   final double hp;
+  final double cardExtent;
   final bool loadingMore;
   final ValueChanged<Anime> onOpen;
 
   const _AnimeGrid({
     required this.animes,
     required this.hp,
+    required this.cardExtent,
     required this.loadingMore,
     required this.onOpen,
   });
@@ -992,8 +1024,8 @@ class _AnimeGrid extends StatelessWidget {
           final anime = animes[i];
           return _AnimeGridItem(anime: anime, onTap: () => onOpen(anime));
         }, childCount: animes.length + (loadingMore ? 6 : 0)),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 130,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: cardExtent,
           childAspectRatio: 0.55,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,

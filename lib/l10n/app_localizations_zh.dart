@@ -391,6 +391,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateOrder => '更新';
 
   @override
+  String searchLoadMore(int loaded, int total) {
+    return '加载更多（$loaded/$total）';
+  }
+
+  @override
   String searchResultSummary(String query, int total, String mode) {
     return '搜索 \"$query\" 找到 $total 个$mode结果';
   }
@@ -4341,6 +4346,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get updateOrder => '更新';
+
+  @override
+  String searchLoadMore(int loaded, int total) {
+    return '載入更多（$loaded/$total）';
+  }
 
   @override
   String searchResultSummary(String query, int total, String mode) {

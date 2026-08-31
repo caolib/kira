@@ -285,6 +285,17 @@
   },
   "popularOrder": "热度",
   "updateOrder": "更新",
+  "searchLoadMore": "加载更多（{loaded}/{total}）",
+  "@searchLoadMore": {
+    "placeholders": {
+      "loaded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "searchResultSummary": "搜索 \"{query}\" 找到 {total} 个{mode}结果",
   "@searchResultSummary": {
     "placeholders": {
