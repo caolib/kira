@@ -1,5 +1,10 @@
 name: Build & Release
 
+# 推送 v* tag 触发（scripts/release.ps1 完成推送后自动接手），也支持手动 dispatch：
+# 1. 四个 ABI 的 APK 并行构建（arm / arm64 / x86 / x86_64），复用 scripts/build_apk.ps1
+# 2. Windows x64 安装包（Inno Setup），复用 scripts/build_windows.ps1
+# 3. 创建 GitHub Release 起草版本（标题 "App vX.Y.Z"，正文取 docs/CHANGELOG.md），
+#    上传全部产物，人工核对后再发布
 on:
   push:
     tags:
@@ -16,8 +21,20 @@ env:
 
 jobs:
   build-android:
-    name: Build Android Split APKs
+    name: Build APK (${{ matrix.abi }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target-platform: android-arm
+            abi: armeabi-v7a
+          - target-platform: android-arm64
+            abi: arm64-v8a
+          - target-platform: android-x86
+            abi: x86
+          - target-platform: android-x64
+            abi: x86_64
     steps:
       - uses: actions/checkout@v6
 
@@ -75,38 +92,102 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          flutter-version: "3.44.0"
+          flutter-version: "3.44.2"
           cache: true
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build APK (arm64-v8a)
+      - name: Create .env
+        shell: bash
         env:
           DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
           DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
-        run: >
-          flutter build apk --release --target-platform android-arm64
-          --dart-define=DANDANPLAY_APP_ID="${DANDANPLAY_APP_ID}"
-          --dart-define=DANDANPLAY_APP_SECRET="${DANDANPLAY_APP_SECRET}"
-
-      - name: Rename APK
-        shell: bash
         run: |
           set -euo pipefail
-          cd build/app/outputs/flutter-apk
-          mv app-release.apk "kira-${RELEASE_TAG}-arm64-v8a.apk"
-          ls -lh kira-*.apk
+
+          test -n "$DANDANPLAY_APP_ID"
+          test -n "$DANDANPLAY_APP_SECRET"
+
+          cat > .env <<EOF
+          DANDANPLAY_APP_ID=$DANDANPLAY_APP_ID
+          DANDANPLAY_APP_SECRET=$DANDANPLAY_APP_SECRET
+          EOF
+
+      - name: Build APK
+        shell: pwsh
+        run: scripts/build_apk.ps1 -TargetPlatform ${{ matrix.target-platform }} -Abi ${{ matrix.abi }}
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: android-split-apks
+          name: apk-${{ matrix.abi }}
           path: build/app/outputs/flutter-apk/kira-*.apk
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          flutter-version: "3.44.2"
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Create .env
+        shell: pwsh
+        env:
+          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
+          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DANDANPLAY_APP_ID)) { throw 'DANDANPLAY_APP_ID secret 未配置' }
+          if ([string]::IsNullOrWhiteSpace($env:DANDANPLAY_APP_SECRET)) { throw 'DANDANPLAY_APP_SECRET secret 未配置' }
+          Set-Content -Path .env -Value @(
+            "DANDANPLAY_APP_ID=$env:DANDANPLAY_APP_ID"
+            "DANDANPLAY_APP_SECRET=$env:DANDANPLAY_APP_SECRET"
+          )
+
+      - name: Setup Inno Setup
+        shell: pwsh
+        run: |
+          # runner 预装 Inno Setup 6；不在 PATH 时补上（写入 GITHUB_PATH 供后续步骤使用）
+          $isccCmd = Get-Command iscc.exe -ErrorAction SilentlyContinue
+          $isccDir = if ($isccCmd) { Split-Path $isccCmd.Source -Parent } else { 'C:\Program Files (x86)\Inno Setup 6' }
+          if (-not $isccCmd) { Add-Content $env:GITHUB_PATH $isccDir }
+          # 安装中文语言包（失败仅降级为英文安装界面）
+          $zhIsl = Join-Path $isccDir 'Languages\ChineseSimplified.isl'
+          if ((Test-Path (Join-Path $isccDir 'iscc.exe')) -and -not (Test-Path $zhIsl)) {
+            try {
+              Invoke-WebRequest `
+                -Uri 'https://jrsoftware.org/files/istrans/ChineseSimplified.isl' `
+                -OutFile $zhIsl -ErrorAction Stop
+              Write-Host '已下载 ChineseSimplified.isl'
+            } catch {
+              Write-Host '提示: 下载 ChineseSimplified.isl 失败，安装界面将使用英文' -ForegroundColor DarkYellow
+            }
+          }
+
+      - name: Build installer
+        shell: pwsh
+        run: scripts/build_windows.ps1
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-installer
+          path: build/windows/installer/kira-*-setup.exe
+          if-no-files-found: error
 
   release:
     name: Create Release
-    needs: build-android
+    needs: [build-android, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -116,17 +197,23 @@ jobs:
           sparse-checkout: docs/CHANGELOG.md
           sparse-checkout-cone-mode: false
 
-      - name: Download APKs
+      - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
-          name: android-split-apks
           path: artifacts/
+          merge-multiple: true
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$RELEASE_TAG" artifacts/*.apk \
+          set -euo pipefail
+
+          ls -lh artifacts/
+
+          # --draft: 仅创建起草版本，人工核对产物后再发布
+          gh release create "$RELEASE_TAG" artifacts/* \
             --repo="$GITHUB_REPOSITORY" \
             --title="App $RELEASE_TAG" \
-            --notes-file docs/CHANGELOG.md
+            --notes-file docs/CHANGELOG.md \
+            --draft

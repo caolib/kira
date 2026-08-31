@@ -51,24 +51,14 @@ android {
 
     buildTypes {
         release {
-            ndk {
-                abiFilters.add("arm64-v8a")
-            }
-
+            // ABI 组成由 `flutter build apk --target-platform` 控制，
+            // 不在此处限制（发布流水线需按 arm/arm64/x86/x86_64 分架构出包）。
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
             }
         }
-    }
-}
-
-androidComponents {
-    onVariants(selector().withBuildType("release")) { variant ->
-        variant.packaging.jniLibs.excludes.add("**/armeabi-v7a/*.so")
-        variant.packaging.jniLibs.excludes.add("**/x86/*.so")
-        variant.packaging.jniLibs.excludes.add("**/x86_64/*.so")
     }
 }
 

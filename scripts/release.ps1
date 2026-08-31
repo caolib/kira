@@ -281,7 +281,9 @@ try {
     Write-Host "`n=== 发布完成 ===" -ForegroundColor Green
     Write-Host "版本: $newTag" -ForegroundColor Green
     if ($repoPath) {
-        Write-Host "GitHub Actions: https://github.com/$repoPath/actions" -ForegroundColor Yellow
+        Write-Host "`nGitHub Actions 将自动构建各架构 APK (arm/arm64/x86/x86_64) 与 Windows 安装包，" -ForegroundColor Yellow
+        Write-Host "并创建 Release 上传全部产物。" -ForegroundColor Yellow
+        Write-Host "进度查看: https://github.com/$repoPath/actions" -ForegroundColor Yellow
     }
 }
 catch {
