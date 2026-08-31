@@ -1,7 +1,8 @@
 name: Build & Release
 
 # 推送 v* tag 触发（scripts/release.ps1 完成推送后自动接手），也支持手动 dispatch：
-# 1. 四个 ABI 的 APK 并行构建（arm / arm64 / x86 / x86_64），复用 scripts/build_apk.ps1
+# 1. 三个 ABI 的 APK 并行构建（arm / arm64 / x86_64，flutter build apk 不支持 32 位 x86），
+#    复用 scripts/build_apk.ps1
 # 2. Windows x64 安装包（Inno Setup），复用 scripts/build_windows.ps1
 # 3. 创建 GitHub Release 起草版本（标题 "App vX.Y.Z"，正文取 docs/CHANGELOG.md），
 #    上传全部产物，人工核对后再发布
@@ -31,8 +32,6 @@ jobs:
             abi: armeabi-v7a
           - target-platform: android-arm64
             abi: arm64-v8a
-          - target-platform: android-x86
-            abi: x86
           - target-platform: android-x64
             abi: x86_64
     steps:
