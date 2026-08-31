@@ -221,12 +221,12 @@ class _ReaderPageState extends State<ReaderPage> {
   bool get _isReversedScrollMode =>
       !_isPageMode && _user.readerScrollDirection == 1;
 
-  /// 过渡撑块的保持时长，与 CachedNetworkImage 默认的占位符淡出时长
-  /// （1000ms）保持一致：撑块负责在淡出期间把 item 尺寸稳定在预估值，
-  /// 并在淡出结束的同一时刻移除，item 尺寸只回落一次。
-  static const _imageRevealHoldDuration = Duration(milliseconds: 1000);
+  /// 图片加载过渡时长：fadeIn/fadeOut 与过渡撑块的保持时长共用同一个
+  /// 值，撑块在占位符淡出结束的同一时刻移除，item 尺寸只回落一次。
+  /// 250ms 在保留柔和淡入的同时缩短灰罩停留，尺寸纠正也更及时。
+  static const _imageTransitionDuration = Duration(milliseconds: 250);
 
-  /// 淡出过渡期间真图的对齐方向：贴住已读侧边缘（RTL 横向=右缘，
+  /// 过渡期间真图的对齐方向：贴住已读侧边缘（RTL 横向=右缘，
   /// LTR 横向=左缘，竖向=顶缘）。占位尺寸估算失误时，真图与占位区域
   /// 的差值全部落在未读侧，列表跳动只影响尚未阅读的内容。
   Alignment get _imageRevealAlignment {
@@ -1798,7 +1798,9 @@ class _ReaderPageState extends State<ReaderPage> {
               height: useFullViewport
                   ? double.infinity
                   : (estimatedPlaceholderH ?? 400),
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+              // 与背景同色即视觉隐形；保留 ColoredBox 是为了让加载区域
+              // 维持点击热区（透明时点击会穿透到列表手势）。
+              color: ReaderChrome.surface,
             );
           }
           return child;
@@ -1841,6 +1843,12 @@ class _ReaderPageState extends State<ReaderPage> {
         memCacheWidth: memCacheWidth,
         width: _isHorizontalScrollMode ? null : double.infinity,
         height: useFullViewport ? double.infinity : null,
+        // 交叉淡出期间 octo_image 会把真图居中叠在占位区域上，占位尺寸
+        // 估算偏大时已读侧留缝、淡出结束尺寸骤变引发跳动。过渡缩短到
+        // 250ms 减少灰罩停留，并配合过渡撑块让真图贴住已读侧边缘，
+        // 尺寸纠正只落在未读侧（见 _imageRevealAlignment）。
+        fadeInDuration: _imageTransitionDuration,
+        fadeOutDuration: _imageTransitionDuration,
         imageBuilder: (_, imageProvider) {
           _clearImageRetryState(key);
           // 图片加载成功后，异步解析其原始尺寸并缓存。
@@ -1859,14 +1867,16 @@ class _ReaderPageState extends State<ReaderPage> {
             alignment: _imageRevealAlignment,
             holdWidth: estimatedPlaceholderW,
             holdHeight: estimatedPlaceholderH,
-            holdDuration: _imageRevealHoldDuration,
+            holdDuration: _imageTransitionDuration,
             child: loadedImage,
           );
         },
         placeholder: (_, _) => Container(
           width: estimatedPlaceholderW,
           height: estimatedPlaceholderH ?? 400,
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          // 与背景同色即视觉隐形；保留 ColoredBox 是为了让加载区域
+          // 维持点击热区（透明时点击会穿透到列表手势）。
+          color: ReaderChrome.surface,
           child: const Center(child: ExpressiveLoadingIndicator()),
         ),
         errorWidget: (_, _, _) {
