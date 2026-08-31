@@ -5,6 +5,7 @@ import '../models/reader_settings.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/reading_stats.dart';
+import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
 import '../widgets/bar_chart_grid.dart';
 import '../widgets/error_retry_view.dart';
@@ -429,9 +430,8 @@ class _StatsPageState extends State<StatsPage> {
     final pagesCount = snap == null ? 0 : pagesReadCount(snap);
     final tags = snap == null ? const <TagCount>[] : topTags(snap);
     final daily = snap?.daily ?? const <String, int>{};
-    // 按显示开关收集可见卡片，卡片之间留 md 间距。
-    // 按持久化顺序 + 显示开关收集可见卡片，卡片之间留 md 间距。
-    final cards = <Widget>[];
+    // 按持久化顺序 + 显示开关收集可见卡片（带 id，便于宽屏配对）。
+    final entries = <(String, Widget)>[];
     for (final id in _reader.readingStatsSectionOrder) {
       final visible = switch (id) {
         'overview' => _reader.readingStatsShowOverview,
@@ -451,18 +451,53 @@ class _StatsPageState extends State<StatsPage> {
         _ => null,
       };
       if (card == null) continue;
-      if (cards.isNotEmpty) cards.add(const SizedBox(height: AppSpacing.md));
-      cards.add(card);
+      entries.add((id, card));
     }
     // 至少保留一个由设置抽屉层强制；此处防御性兜底。
-    if (cards.isEmpty) {
-      cards.add(
+    if (entries.isEmpty) {
+      entries.add((
+        'overview',
         _OverviewCard(
           comics: comicsCount,
           chapters: chaptersCount,
           pages: pagesCount,
         ),
-      );
+      ));
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    // 宽屏：常看类型与活跃度两卡并排双列（两者都可见时），
+    // 在两者中先出现的位置合并为一行，概览卡仍占满整行。
+    if (ScreenLayout.contentWidth(screenWidth) >= ScreenLayout.wideBreakpoint) {
+      final tagsIndex = entries.indexWhere((e) => e.$1 == 'tags');
+      final activityIndex = entries.indexWhere((e) => e.$1 == 'activity');
+      if (tagsIndex >= 0 && activityIndex >= 0) {
+        final later = tagsIndex > activityIndex ? tagsIndex : activityIndex;
+        final earlier = tagsIndex > activityIndex ? activityIndex : tagsIndex;
+        final laterCard = entries.removeAt(later).$2;
+        final earlierCard = entries.removeAt(earlier).$2;
+        entries.insert(earlier, (
+          'pair',
+          // 注意不能用 IntrinsicHeight + stretch：活跃度卡里的热力图/
+          // 条形图内部有 LayoutBuilder，不支持固有尺寸计算，会直接
+          // 布局失败（整页空白）。两卡顶部对齐、各自按内容高度渲染。
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: earlierCard),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: laterCard),
+            ],
+          ),
+        ));
+      }
+    }
+
+    final cards = <Widget>[];
+    for (final (i, entry) in entries.indexed) {
+      if (i > 0) cards.add(const SizedBox(height: AppSpacing.md));
+      cards.add(entry.$2);
     }
     cards.add(const SizedBox(height: AppSpacing.xxl));
     // 刷新时顶部进度条
@@ -475,12 +510,7 @@ class _StatsPageState extends State<StatsPage> {
               child: LinearProgressIndicator(minHeight: 2),
             ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-            ),
+            padding: EdgeInsets.fromLTRB(hp, AppSpacing.lg, hp, AppSpacing.lg),
             sliver: SliverList(delegate: SliverChildListDelegate(cards)),
           ),
         ],

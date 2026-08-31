@@ -13,6 +13,7 @@ import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_update.dart';
+import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
 import '../widgets/github_markdown.dart';
 import '../widgets/text_controller_scope.dart';
@@ -523,93 +524,101 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Card(
-                color: cs.surfaceContainerLow,
-                child: Column(
+              // 宽屏：更新设置与法律/致谢两卡双列并排；窄屏纵向堆叠。
+              if (ScreenLayout.contentWidth(MediaQuery.sizeOf(context).width) >=
+                  ScreenLayout.wideBreakpoint)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.system_update_alt),
-                      title: Text(l10n.aboutCheckUpdateTitle),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildUpdateChannelChip(cs, l10n),
-                          const SizedBox(width: AppSpacing.xs),
-                          const Icon(Icons.chevron_right),
-                        ],
-                      ),
-                      onTap: () => AppUpdateService.checkAndPrompt(context),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.autorenew),
-                      title: Text(l10n.aboutAutoCheckUpdateTitle),
-                      value: _user.autoCheckUpdate,
-                      onChanged: _user.setAutoCheckUpdate,
-                    ),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.public),
-                      title: Text(l10n.aboutMirrorPrefixTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: _editUpdateMirrorPrefix,
-                    ),
+                    Expanded(child: _buildUpdateSettingsCard(cs, l10n)),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(child: _buildLegalCard(cs, l10n)),
                   ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Card(
-                color: cs.surfaceContainerLow,
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.gavel_outlined),
-                      title: Text(l10n.disclaimerTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.pushNamed(AppRoutes.disclaimer),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.bug_report_outlined),
-                      title: Text(l10n.aboutLogTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.pushNamed(AppRoutes.appLog),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.favorite_outline),
-                      title: Text(l10n.aboutAcknowledgementTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.pushNamed(AppRoutes.acknowledgement),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.copyright_outlined),
-                      title: Text(l10n.aboutLicenseTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.pushNamed(AppRoutes.license),
-                    ),
-                  ],
-                ),
-              ),
+                )
+              else ...[
+                _buildUpdateSettingsCard(cs, l10n),
+                const SizedBox(height: AppSpacing.lg),
+                _buildLegalCard(cs, l10n),
+              ],
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// 更新设置卡：检查更新 / 自动检查 / 更新镜像。
+  Widget _buildUpdateSettingsCard(ColorScheme cs, AppLocalizations l10n) {
+    return Card(
+      color: cs.surfaceContainerLow,
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.system_update_alt),
+            title: Text(l10n.aboutCheckUpdateTitle),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildUpdateChannelChip(cs, l10n),
+                const SizedBox(width: AppSpacing.xs),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+            onTap: () => AppUpdateService.checkAndPrompt(context),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+          SwitchListTile(
+            secondary: const Icon(Icons.autorenew),
+            title: Text(l10n.aboutAutoCheckUpdateTitle),
+            value: _user.autoCheckUpdate,
+            onChanged: _user.setAutoCheckUpdate,
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ListTile(
+            leading: const Icon(Icons.public),
+            title: Text(l10n.aboutMirrorPrefixTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _editUpdateMirrorPrefix,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 法律/致谢卡：免责声明 / 日志 / 鸣谢 / 许可证。
+  Widget _buildLegalCard(ColorScheme cs, AppLocalizations l10n) {
+    return Card(
+      color: cs.surfaceContainerLow,
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.gavel_outlined),
+            title: Text(l10n.disclaimerTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.pushNamed(AppRoutes.disclaimer),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: Text(l10n.aboutLogTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.pushNamed(AppRoutes.appLog),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ListTile(
+            leading: const Icon(Icons.favorite_outline),
+            title: Text(l10n.aboutAcknowledgementTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.pushNamed(AppRoutes.acknowledgement),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ListTile(
+            leading: const Icon(Icons.copyright_outlined),
+            title: Text(l10n.aboutLicenseTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.pushNamed(AppRoutes.license),
+          ),
+        ],
       ),
     );
   }

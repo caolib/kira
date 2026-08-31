@@ -13,6 +13,7 @@ import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/network_proxy.dart';
+import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 
@@ -115,6 +116,11 @@ class _NetworkPageState extends State<NetworkPage>
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    final isWide =
+        ScreenLayout.contentWidth(screenWidth) >= ScreenLayout.wideBreakpoint;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.networkTitle),
@@ -137,7 +143,7 @@ class _NetworkPageState extends State<NetworkPage>
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: EdgeInsets.fromLTRB(hp, 8, hp, 32),
         children: [
           _buildStatusBar(l10n, tt, cs),
           const SizedBox(height: AppSpacing.lg),
@@ -145,9 +151,21 @@ class _NetworkPageState extends State<NetworkPage>
           const SizedBox(height: AppSpacing.lg),
           _buildNodeGrid(l10n, tt, cs),
           const SizedBox(height: AppSpacing.lg),
-          _buildProxyCard(l10n, tt, cs),
-          const SizedBox(height: AppSpacing.lg),
-          _buildAdvancedCard(l10n, tt, cs),
+          // 宽屏：代理设置与高级设置双列并排；窄屏纵向堆叠。
+          if (isWide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildProxyCard(l10n, tt, cs)),
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(child: _buildAdvancedCard(l10n, tt, cs)),
+              ],
+            )
+          else ...[
+            _buildProxyCard(l10n, tt, cs),
+            const SizedBox(height: AppSpacing.lg),
+            _buildAdvancedCard(l10n, tt, cs),
+          ],
         ],
       ),
     );
@@ -351,6 +369,31 @@ class _NetworkPageState extends State<NetworkPage>
     }
 
     final showHint = _latencyResults.isEmpty && !_testingLatency;
+    final isWide =
+        ScreenLayout.contentWidth(MediaQuery.sizeOf(context).width) >=
+        ScreenLayout.wideBreakpoint;
+
+    // 各线路分组（线路 1/2/… + 其他）：窄屏纵向堆叠、宽屏横向并排成列。
+    final groups = <Widget>[
+      for (final entry in routeEntries)
+        _buildRouteGroup(
+          routeIndex: entry.key,
+          hosts: entry.value,
+          isFixed: isFixed,
+          wide: isWide,
+          l10n: l10n,
+          tt: tt,
+          cs: cs,
+        ),
+      if (extraEntries.isNotEmpty)
+        _buildExtraGroup(
+          extraEntries,
+          wide: isWide,
+          l10n: l10n,
+          tt: tt,
+          cs: cs,
+        ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,12 +414,21 @@ class _NetworkPageState extends State<NetworkPage>
         const SizedBox(height: AppSpacing.md),
         if (showHint)
           _buildEmptyHint(l10n, tt, cs)
+        else if (isWide)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < groups.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpacing.md),
+                Expanded(child: groups[i]),
+              ],
+            ],
+          )
         else
-          ..._buildRouteGroups(routeEntries, isFixed, l10n, tt, cs),
-        if (extraEntries.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          _buildExtraGroup(extraEntries, l10n, tt, cs),
-        ],
+          for (var i = 0; i < groups.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.sm),
+            groups[i],
+          ],
       ],
     );
   }
@@ -432,29 +484,31 @@ class _NetworkPageState extends State<NetworkPage>
     );
   }
 
-  List<Widget> _buildRouteGroups(
-    Iterable<MapEntry<int, Map<String, int?>>> entries,
-    bool isFixed,
-    AppLocalizations l10n,
-    TextTheme tt,
-    ColorScheme cs,
-  ) {
-    final widgets = <Widget>[];
-    for (final entry in entries) {
-      final routeIndex = entry.key;
-      final routeHosts = routes[routeIndex];
-      final hosts = entry.value;
-      // route 模式下可能尚无延迟结果,需用 routes 的完整 host 列表补齐,
-      // 以便整条线路都能点选/展示为「未测」。
-      final orderedHosts = isFixed
-          ? hosts.entries.toList()
-          : routeHosts.map((h) => MapEntry(h, hosts[h])).toList();
-      final average = _averageLatency(hosts);
-      final hasPending = orderedHosts.any(
-        (e) => _isLatencyPending(routeIndex, e.key),
-      );
+  /// 单条线路分组：标签行（线路名 + 平均延迟）+ 节点卡片。
+  /// 窄屏节点横排 3 列；宽屏（作为并排列时）纵向堆叠为横向卡片。
+  Widget _buildRouteGroup({
+    required int routeIndex,
+    required Map<String, int?> hosts,
+    required bool isFixed,
+    required bool wide,
+    required AppLocalizations l10n,
+    required TextTheme tt,
+    required ColorScheme cs,
+  }) {
+    final routeHosts = routes[routeIndex];
+    // route 模式下可能尚无延迟结果,需用 routes 的完整 host 列表补齐,
+    // 以便整条线路都能点选/展示为「未测」。
+    final orderedHosts = isFixed
+        ? hosts.entries.toList()
+        : routeHosts.map((h) => MapEntry(h, hosts[h])).toList();
+    final average = _averageLatency(hosts);
+    final hasPending = orderedHosts.any(
+      (e) => _isLatencyPending(routeIndex, e.key),
+    );
 
-      widgets.add(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 8),
           child: Row(
@@ -491,37 +545,56 @@ class _NetworkPageState extends State<NetworkPage>
             ],
           ),
         ),
-      );
-      widgets.add(
-        LayoutBuilder(
-          builder: (context, constraints) {
-            const spacing = 10.0;
-            final width = (constraints.maxWidth - spacing * 2) / 3;
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              children: List.generate(orderedHosts.length, (i) {
-                return SizedBox(
-                  width: width,
+        if (wide)
+          Column(
+            children: [
+              for (var i = 0; i < orderedHosts.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(
+                    bottom: i == orderedHosts.length - 1 ? 0 : 10,
+                  ),
                   child: _buildNodeCard(
                     routeIndex: routeIndex,
                     localIndex: i,
                     host: orderedHosts[i].key,
                     latency: orderedHosts[i].value,
                     isFixedMode: isFixed,
+                    horizontal: true,
                     l10n: l10n,
                     tt: tt,
                     cs: cs,
                   ),
-                );
-              }),
-            );
-          },
-        ),
-      );
-      widgets.add(const SizedBox(height: AppSpacing.sm));
-    }
-    return widgets;
+                ),
+            ],
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 10.0;
+              final width = (constraints.maxWidth - spacing * 2) / 3;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: List.generate(orderedHosts.length, (i) {
+                  return SizedBox(
+                    width: width,
+                    child: _buildNodeCard(
+                      routeIndex: routeIndex,
+                      localIndex: i,
+                      host: orderedHosts[i].key,
+                      latency: orderedHosts[i].value,
+                      isFixedMode: isFixed,
+                      l10n: l10n,
+                      tt: tt,
+                      cs: cs,
+                    ),
+                  );
+                }),
+              );
+            },
+          ),
+      ],
+    );
   }
 
   Widget _buildNodeCard({
@@ -533,6 +606,7 @@ class _NetworkPageState extends State<NetworkPage>
     required AppLocalizations l10n,
     required TextTheme tt,
     required ColorScheme cs,
+    bool horizontal = false,
   }) {
     final isPending = _isLatencyPending(routeIndex, host);
     // route 模式下,选中状态对齐当前 apiRoute(整条线路高亮);
@@ -586,53 +660,82 @@ class _NetworkPageState extends State<NetworkPage>
                 : cs.surface,
             borderRadius: AppRadius.lgR,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.labelMedium?.copyWith(
-                        fontWeight: isSelected
-                            ? FontWeight.w800
-                            : FontWeight.w700,
-                        color: isSelected ? cs.primary : cs.onSurface,
+          child: horizontal
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.labelMedium?.copyWith(
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w700,
+                          color: isSelected ? cs.primary : cs.onSurface,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  valueText,
-                  style: tt.labelLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    height: 1,
-                  ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      valueText,
+                      style: tt.labelLarge?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.labelMedium?.copyWith(
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
+                              color: isSelected ? cs.primary : cs.onSurface,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        valueText,
+                        style: tt.labelLarge?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
 
   Widget _buildExtraGroup(
-    Map<String, int?> extra,
-    AppLocalizations l10n,
-    TextTheme tt,
-    ColorScheme cs,
-  ) {
+    Map<String, int?> extra, {
+    bool wide = false,
+    required AppLocalizations l10n,
+    required TextTheme tt,
+    required ColorScheme cs,
+  }) {
     final entries = extra.entries.toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,30 +761,50 @@ class _NetworkPageState extends State<NetworkPage>
             ],
           ),
         ),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            const spacing = 10.0;
-            const columns = 3;
-            final width =
-                (constraints.maxWidth - spacing * (columns - 1)) / columns;
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              children: List.generate(entries.length, (i) {
-                return SizedBox(
-                  width: width,
+        if (wide)
+          Column(
+            children: [
+              for (var i = 0; i < entries.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(
+                    bottom: i == entries.length - 1 ? 0 : 10,
+                  ),
                   child: _buildExtraCard(
                     host: entries[i].key,
                     latency: entries[i].value,
+                    horizontal: true,
                     l10n: l10n,
                     tt: tt,
                     cs: cs,
                   ),
-                );
-              }),
-            );
-          },
-        ),
+                ),
+            ],
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 10.0;
+              const columns = 3;
+              final width =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: List.generate(entries.length, (i) {
+                  return SizedBox(
+                    width: width,
+                    child: _buildExtraCard(
+                      host: entries[i].key,
+                      latency: entries[i].value,
+                      l10n: l10n,
+                      tt: tt,
+                      cs: cs,
+                    ),
+                  );
+                }),
+              );
+            },
+          ),
       ],
     );
   }
@@ -692,6 +815,7 @@ class _NetworkPageState extends State<NetworkPage>
     required AppLocalizations l10n,
     required TextTheme tt,
     required ColorScheme cs,
+    bool horizontal = false,
   }) {
     final isPending = _isLatencyPending(-1, host);
     final tone = isPending
@@ -709,39 +833,63 @@ class _NetworkPageState extends State<NetworkPage>
         ? l10n.networkTesting
         : (latency == null ? l10n.networkTimeout : '$latency ms');
 
+    final valueChild = _testingLatency && isPending
+        ? SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2, color: color),
+          )
+        : Text(
+            valueText,
+            style: tt.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              height: 1,
+            ),
+          );
+
     return Card(
       color: Color.alphaBlend(
         cs.surfaceContainerHighest.withValues(alpha: 0.35),
         cs.surface,
       ),
+      // 宽屏横向布局与线路节点卡同款内边距（fromLTRB(12,10,12,12)），
+      // 同列高度保持一致。
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: tt.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            if (_testingLatency && isPending)
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+        padding: horizontal
+            ? const EdgeInsets.fromLTRB(12, 10, 12, 12)
+            : const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        child: horizontal
+            ? Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  valueChild,
+                ],
               )
-            else
-              Text(
-                valueText,
-                style: tt.labelLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w800,
-                ),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  valueChild,
+                ],
               ),
-          ],
-        ),
       ),
     );
   }

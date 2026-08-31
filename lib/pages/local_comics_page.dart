@@ -15,6 +15,8 @@ import '../utils/reading_history.dart';
 import '../utils/toast.dart';
 import '../widgets/detail_chip.dart';
 import '../widgets/local_content_list_page.dart';
+import 'comic_detail_page.dart'
+    show comicDetailUsesTwoPane, comicDetailInfoPaneWidth, chapterTileExtent;
 
 class LocalComicsPage extends StatefulWidget {
   final bool embedded;
@@ -241,9 +243,11 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
             }),
           );
         }, childCount: displayChapters.length),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 120,
-          mainAxisExtent: 52,
+          mainAxisExtent: chapterTileExtent(
+            MediaQuery.textScalerOf(context).scale(1),
+          ),
           mainAxisSpacing: 6,
           crossAxisSpacing: 6,
         ),
@@ -338,6 +342,177 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
         .chapters;
 
     final l10n = AppLocalizations.of(context)!;
+    // 宽屏（横屏/宽窗口）与漫画详情页同款双栏：左侧封面信息 + 简介，
+    // 右侧章节标题/分组/网格，避免宽屏下内容被整行拉满。
+    final size = MediaQuery.sizeOf(context);
+    final isWide = comicDetailUsesTwoPane(size);
+
+    final infoSlivers = <Widget>[
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: AppRadius.mdR,
+                child: SizedBox(
+                  width: 110,
+                  height: 150,
+                  child:
+                      info.coverPath != null &&
+                          File(info.coverPath!).existsSync()
+                      ? CoverBrightnessFilter(
+                          child: Image.file(
+                            File(info.coverPath!),
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : ColoredBox(
+                          color: cs.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.image_not_supported_outlined,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (comic.authors.isNotEmpty)
+                      Text(
+                        comic.authors.map((item) => item.name).join(' / '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.bodyMedium,
+                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (comic.status != null)
+                          DetailChip(
+                            label: comic.status!['display']?.toString() ?? '',
+                          ),
+                        if (comic.region != null)
+                          DetailChip(
+                            label: comic.region!['display']?.toString() ?? '',
+                          ),
+                        ...comic.themes.map(
+                          (item) => DetailChip(label: item.name),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      l10n.downloadedChapterCount(chapters.length),
+                      style: tt.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      if (comic.brief != null && comic.brief!.isNotEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            // 宽屏左栏空间充裕，简介直接展开；窄屏维持原样。
+            child: Text(
+              comic.brief!,
+              style: tt.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ),
+    ];
+
+    final chapterSlivers = <Widget>[
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              Text(
+                l10n.localChaptersTitle(chapters.length),
+                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => setState(() => _reversed = !_reversed),
+                icon: Icon(
+                  _reversed ? Icons.arrow_downward : Icons.arrow_upward,
+                  size: 20,
+                ),
+                tooltip: _reversed ? l10n.sortReverse : l10n.sortNormal,
+              ),
+            ],
+          ),
+        ),
+      ),
+      if (grouped.length > 1)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: grouped
+                  .map(
+                    (e) => ButtonSegment(
+                      value: e.group,
+                      label: Text(
+                        '${_groupDisplayName(comic, e.group)}(${e.chapters.length})',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              selected: {_selectedGroup!},
+              onSelectionChanged: (v) =>
+                  setState(() => _selectedGroup = v.first),
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+        ),
+      _buildSelectedGroupChapterSliver(selectedGroupChapters, comic, cs, tt),
+    ];
+
+    final Widget bodyContent;
+    if (isWide) {
+      final leftWidth = comicDetailInfoPaneWidth(size);
+      bodyContent = Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: leftWidth,
+            child: CustomScrollView(slivers: infoSlivers),
+          ),
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.6),
+          ),
+          Expanded(child: CustomScrollView(slivers: chapterSlivers)),
+        ],
+      );
+    } else {
+      bodyContent = CustomScrollView(
+        slivers: [...infoSlivers, ...chapterSlivers],
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -391,159 +566,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
       ),
       body: Stack(
         children: [
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: AppRadius.mdR,
-                        child: SizedBox(
-                          width: 110,
-                          height: 150,
-                          child:
-                              info.coverPath != null &&
-                                  File(info.coverPath!).existsSync()
-                              ? CoverBrightnessFilter(
-                                  child: Image.file(
-                                    File(info.coverPath!),
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : ColoredBox(
-                                  color: cs.surfaceContainerHighest,
-                                  child: Icon(
-                                    Icons.image_not_supported_outlined,
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (comic.authors.isNotEmpty)
-                              Text(
-                                comic.authors
-                                    .map((item) => item.name)
-                                    .join(' / '),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: tt.bodyMedium,
-                              ),
-                            const SizedBox(height: AppSpacing.sm),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                if (comic.status != null)
-                                  DetailChip(
-                                    label:
-                                        comic.status!['display']?.toString() ??
-                                        '',
-                                  ),
-                                if (comic.region != null)
-                                  DetailChip(
-                                    label:
-                                        comic.region!['display']?.toString() ??
-                                        '',
-                                  ),
-                                ...comic.themes.map(
-                                  (item) => DetailChip(label: item.name),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              l10n.downloadedChapterCount(chapters.length),
-                              style: tt.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (comic.brief != null && comic.brief!.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Text(
-                      comic.brief!,
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Row(
-                    children: [
-                      Text(
-                        l10n.localChaptersTitle(chapters.length),
-                        style: tt.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () => setState(() => _reversed = !_reversed),
-                        icon: Icon(
-                          _reversed ? Icons.arrow_downward : Icons.arrow_upward,
-                          size: 20,
-                        ),
-                        tooltip: _reversed ? l10n.sortReverse : l10n.sortNormal,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (grouped.length > 1)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: SegmentedButton<String>(
-                      showSelectedIcon: false,
-                      segments: grouped
-                          .map(
-                            (e) => ButtonSegment(
-                              value: e.group,
-                              label: Text(
-                                '${_groupDisplayName(comic, e.group)}(${e.chapters.length})',
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      selected: {_selectedGroup!},
-                      onSelectionChanged: (v) =>
-                          setState(() => _selectedGroup = v.first),
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ),
-                ),
-              _buildSelectedGroupChapterSliver(
-                selectedGroupChapters,
-                comic,
-                cs,
-                tt,
-              ),
-            ],
-          ),
+          bodyContent,
           if (_lastBrowseId != null)
             Positioned(
               right: 16,

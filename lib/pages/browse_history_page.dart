@@ -506,19 +506,57 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                       ),
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(hp, 0, hp, 24),
-                        sliver: SliverList.builder(
-                          itemCount: _currentLength,
-                          itemBuilder: (_, i) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _isAnimeMode
-                                  ? _AnimeBrowseHistoryCard(
-                                      item: _animeItems[i],
-                                      onTap: () => _openAnime(_animeItems[i]),
-                                    )
-                                  : _ComicBrowseHistoryCard(
-                                      item: _comicItems[i],
-                                    ),
+                        // 宽屏双列：历史卡片为横向行卡，两列并排容纳更多条目。
+                        // 用「一行两卡」的 SliverList 而非 SliverGrid——
+                        // 卡片高度由内容撑起，网格的固定宽高比会拉伸变形。
+                        sliver: SliverLayoutBuilder(
+                          builder: (context, constraints) {
+                            final wide =
+                                constraints.crossAxisExtent >=
+                                ScreenLayout.wideBreakpoint;
+                            final rowCount = wide
+                                ? (_currentLength + 1) ~/ 2
+                                : _currentLength;
+                            return SliverList.builder(
+                              itemCount: rowCount,
+                              itemBuilder: (_, row) {
+                                final i = row * 2;
+                                final j = i + 1;
+                                final first = _isAnimeMode
+                                    ? _AnimeBrowseHistoryCard(
+                                        item: _animeItems[i],
+                                        onTap: () => _openAnime(_animeItems[i]),
+                                      )
+                                    : _ComicBrowseHistoryCard(
+                                        item: _comicItems[i],
+                                      );
+                                final second = wide && j < _currentLength
+                                    ? (_isAnimeMode
+                                          ? _AnimeBrowseHistoryCard(
+                                              item: _animeItems[j],
+                                              onTap: () =>
+                                                  _openAnime(_animeItems[j]),
+                                            )
+                                          : _ComicBrowseHistoryCard(
+                                              item: _comicItems[j],
+                                            ))
+                                    : null;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(child: first),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child:
+                                            second ?? const SizedBox.shrink(),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),
