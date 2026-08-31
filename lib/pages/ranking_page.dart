@@ -153,12 +153,11 @@ class _RankingPageState extends State<RankingPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
+    const hp = 16.0;
 
-    const gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: 130,
+    // 卡片最大宽度随屏幕增大（宽屏 150），与首页网格规则一致。
+    final gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
+      maxCrossAxisExtent: MediaQuery.sizeOf(context).width >= 720 ? 150 : 130,
       childAspectRatio: 0.55,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
@@ -198,7 +197,7 @@ class _RankingPageState extends State<RankingPage> {
       ),
       body: _loading
           ? GridView.builder(
-              padding: EdgeInsets.symmetric(horizontal: hp, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: hp, vertical: 12),
               itemCount: 21,
               gridDelegate: gridDelegate,
               itemBuilder: (_, _) => const ComicCardSkeleton(),
@@ -219,7 +218,7 @@ class _RankingPageState extends State<RankingPage> {
                     )
                   else
                     SliverPadding(
-                      padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
+                      padding: const EdgeInsets.fromLTRB(hp, 12, hp, 0),
                       sliver: SliverGrid(
                         gridDelegate: gridDelegate,
                         delegate: SliverChildBuilderDelegate((_, i) {

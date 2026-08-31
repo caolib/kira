@@ -34,15 +34,21 @@ const _mangaHomeCardWidth = 112.0;
 const _mangaHomeCardAspectRatio = 0.55;
 const _mangaHomeCardSpacing = 12.0;
 
-int _mangaHomeGridColumnCount(double crossAxisExtent) {
-  return math.max(
-    1,
-    (crossAxisExtent / (_mangaHomeCardWidth + _mangaHomeCardSpacing)).ceil(),
-  );
-}
+/// 卡片最大宽度随可用宽度增大：手机保持 112，宽屏（横屏/桌面窗口）
+/// 提到 150，避免大屏幕上一排挤十几张小卡片。
+double _mangaHomeCardMaxExtent(double availableWidth) =>
+    availableWidth >= 720 ? 150.0 : _mangaHomeCardWidth;
 
-double _mangaHomeGridCardWidth(double crossAxisExtent) {
-  final crossAxisCount = _mangaHomeGridColumnCount(crossAxisExtent);
+double _mangaHomeGridCardWidth(
+  double crossAxisExtent, {
+  double? maxCardExtent,
+}) {
+  final extent = maxCardExtent ?? _mangaHomeCardWidth;
+  // 列数向上取整后再均分，与 maxCrossAxisExtent 网格的铺排一致。
+  final crossAxisCount = math.max(
+    1,
+    (crossAxisExtent / (extent + _mangaHomeCardSpacing)).ceil(),
+  );
   final usableCrossAxisExtent = math.max(
     0.0,
     crossAxisExtent - _mangaHomeCardSpacing * (crossAxisCount - 1),
@@ -214,8 +220,8 @@ class _HomePageState extends ConsumerState<HomePage>
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth.clamp(0.0, 900.0);
-    final hp = (screenWidth - contentWidth) / 2 + 16;
+    // 不再 clamp 到 900：横屏双栏 + 卡片上限 150 自适应铺满，宽屏不留大空白。
+    const hp = 16.0;
     final home = _home;
     final copyHome = _copyHome;
     final isCopy = _isCopySource;
@@ -267,10 +273,9 @@ class _HomePageState extends ConsumerState<HomePage>
           .map(_MangaBannerItem.fromBanner)
           .where((item) => item.cover.isNotEmpty)
           .toList();
-      if (bannerItems.isNotEmpty && _user.bannerVisible) {
-        slivers.add(
-          SliverToBoxAdapter(
-            child: _MangaBannerCarousel(
+      final Widget? bannerCarousel =
+          bannerItems.isNotEmpty && _user.bannerVisible
+          ? _MangaBannerCarousel(
               items: bannerItems,
               hp: hp,
               onTap: (comic) => _openComic(
@@ -281,11 +286,87 @@ class _HomePageState extends ConsumerState<HomePage>
                   index: 0,
                 ),
               ),
+            )
+          : null;
+      // 宽屏：推荐（左）与排行榜（右）并排，避免纵向叠加留大片空白。
+      final twoPane =
+          screenWidth >= 720 &&
+          home.recommendations.isNotEmpty &&
+          _rankingPreview.isNotEmpty;
+      if (twoPane) {
+        slivers.add(
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            sliver: SliverLayoutBuilder(
+              builder: (context, constraints) {
+                final halfWidth =
+                    (constraints.crossAxisExtent - _mangaHomeCardSpacing) / 2;
+                return SliverToBoxAdapter(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 宽屏下 banner 与推荐同栏同宽（半栏 16:9），不再整行居中。
+                            if (bannerCarousel != null) ...[
+                              _PaneScope(
+                                width: halfWidth,
+                                child: bannerCarousel,
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            _SectionHeader(
+                              title: AppLocalizations.of(context)!.hotRecommend,
+                              icon: Icons.auto_awesome,
+                              onMore: () =>
+                                  context.pushNamed(AppRoutes.recommend),
+                            ),
+                            const SizedBox(height: 6),
+                            _PaneScope(
+                              width: halfWidth,
+                              child: _MangaHorizontalList(
+                                items: home.recommendations,
+                                onTap: _openComic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: _mangaHomeCardSpacing),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SectionHeader(
+                              title: AppLocalizations.of(context)!.comicRanking,
+                              icon: Icons.leaderboard,
+                              onMore: () =>
+                                  context.pushNamed(AppRoutes.ranking),
+                            ),
+                            const SizedBox(height: 6),
+                            _PaneScope(
+                              width: halfWidth,
+                              child: _RankingPaneGrid(
+                                items: _rankingPreview,
+                                onTap: _openComic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         );
-      }
-      if (home.recommendations.isNotEmpty) {
+      } else if (home.recommendations.isNotEmpty) {
+        if (!twoPane && bannerCarousel != null) {
+          slivers.add(SliverToBoxAdapter(child: bannerCarousel));
+        }
         slivers.add(
           _MangaSection(
             title: AppLocalizations.of(context)!.hotRecommend,
@@ -299,7 +380,10 @@ class _HomePageState extends ConsumerState<HomePage>
           ),
         );
       }
-      if (_rankingPreview.isNotEmpty) {
+      if (!twoPane && bannerCarousel != null && home.recommendations.isEmpty) {
+        slivers.add(SliverToBoxAdapter(child: bannerCarousel));
+      }
+      if (!twoPane && _rankingPreview.isNotEmpty) {
         slivers.add(
           _SectionTitle(
             title: AppLocalizations.of(context)!.comicRanking,
@@ -310,27 +394,34 @@ class _HomePageState extends ConsumerState<HomePage>
         );
         slivers.add(
           SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: hp),
-            sliver: SliverGrid(
-              delegate: SliverChildBuilderDelegate((_, i) {
-                final comic = _rankingPreview[i];
-                final heroTagBase = ComicHeroTags.base(
-                  scope: 'home-ranking',
-                  pathWord: comic.pathWord,
-                  index: i,
+            padding: const EdgeInsets.symmetric(horizontal: hp),
+            sliver: SliverLayoutBuilder(
+              builder: (context, constraints) {
+                final cardExtent = _mangaHomeCardMaxExtent(
+                  constraints.crossAxisExtent,
                 );
-                return ComicCard(
-                  comic: comic,
-                  heroTagBase: heroTagBase,
-                  onTap: () => _openComic(comic, heroTagBase),
+                return SliverGrid(
+                  delegate: SliverChildBuilderDelegate((_, i) {
+                    final comic = _rankingPreview[i];
+                    final heroTagBase = ComicHeroTags.base(
+                      scope: 'home-ranking',
+                      pathWord: comic.pathWord,
+                      index: i,
+                    );
+                    return ComicCard(
+                      comic: comic,
+                      heroTagBase: heroTagBase,
+                      onTap: () => _openComic(comic, heroTagBase),
+                    );
+                  }, childCount: _rankingPreview.length),
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: cardExtent,
+                    childAspectRatio: _mangaHomeCardAspectRatio,
+                    mainAxisSpacing: _mangaHomeCardSpacing,
+                    crossAxisSpacing: _mangaHomeCardSpacing,
+                  ),
                 );
-              }, childCount: _rankingPreview.length),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: _mangaHomeCardWidth,
-                childAspectRatio: _mangaHomeCardAspectRatio,
-                mainAxisSpacing: _mangaHomeCardSpacing,
-                crossAxisSpacing: _mangaHomeCardSpacing,
-              ),
+              },
             ),
           ),
         );
@@ -376,29 +467,30 @@ class _HomePageState extends ConsumerState<HomePage>
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final slivers = <Widget>[];
+    final bannerSlivers = <Widget>[];
+    final sections = <Widget>[];
+    final primarySections = <Widget>[];
+    final secondarySections = <Widget>[];
+    Widget? bannerCarousel;
 
     final bannerItems = home.banners
         .map(_MangaBannerItem.fromBanner)
         .where((item) => item.cover.isNotEmpty)
         .toList();
     if (bannerItems.isNotEmpty && _user.bannerVisible) {
-      slivers.add(
-        SliverToBoxAdapter(
-          child: _MangaBannerCarousel(
-            items: bannerItems,
-            hp: hp,
-            onTap: (comic) => _openComic(
-              comic,
-              ComicHeroTags.base(
-                scope: 'copy-banner',
-                pathWord: comic.pathWord,
-                index: 0,
-              ),
-            ),
+      bannerCarousel = _MangaBannerCarousel(
+        items: bannerItems,
+        hp: hp,
+        onTap: (comic) => _openComic(
+          comic,
+          ComicHeroTags.base(
+            scope: 'copy-banner',
+            pathWord: comic.pathWord,
+            index: 0,
           ),
         ),
       );
+      bannerSlivers.add(SliverToBoxAdapter(child: bannerCarousel));
     }
 
     void addSection(
@@ -411,27 +503,27 @@ class _HomePageState extends ConsumerState<HomePage>
       double topPadding = 0,
     }) {
       if (list.isEmpty) return;
-      slivers.add(
-        _CopyCollapsibleSection(
-          storageKey: scope,
-          title: title,
-          icon: icon,
-          hp: hp,
-          onMore: onMore,
-          topPadding: topPadding,
-          child: twoRowGrid
-              ? _CopyTwoRowComicGrid(
-                  items: list,
-                  onTap: _openComic,
-                  scope: scope,
-                )
-              : _CopyHorizontalComicList(
-                  items: list,
-                  onTap: _openComic,
-                  scope: scope,
-                ),
-        ),
+      final section = _CopyCollapsibleSection(
+        storageKey: scope,
+        title: title,
+        icon: icon,
+        hp: hp,
+        onMore: onMore,
+        topPadding: topPadding,
+        child: twoRowGrid
+            ? _CopyTwoRowComicGrid(items: list, onTap: _openComic, scope: scope)
+            : _CopyHorizontalComicList(
+                items: list,
+                onTap: _openComic,
+                scope: scope,
+              ),
       );
+      // 宽屏双栏时推荐/排行榜进左窄栏，其余板块进右宽栏。
+      (scope == 'copy-rec' || scope == 'copy-ranking'
+              ? primarySections
+              : secondarySections)
+          .add(section);
+      sections.add(section);
     }
 
     addSection(
@@ -448,24 +540,24 @@ class _HomePageState extends ConsumerState<HomePage>
     if (home.rankDayComics.isNotEmpty ||
         home.rankWeekComics.isNotEmpty ||
         home.rankMonthComics.isNotEmpty) {
-      slivers.add(
-        _CopyCollapsibleSection(
-          storageKey: 'copy-ranking',
-          title: l10n.copyRanking,
-          icon: Icons.leaderboard,
-          hp: hp,
-          onMore: () => context.pushNamed(
-            AppRoutes.copyMangaList,
-            pathParameters: {'kind': 'ranking'},
-          ),
-          child: _CopyRankingTabs(
-            dayItems: home.rankDayComics,
-            weekItems: home.rankWeekComics,
-            monthItems: home.rankMonthComics,
-            onTap: _openComic,
-          ),
+      final rankingSection = _CopyCollapsibleSection(
+        storageKey: 'copy-ranking',
+        title: l10n.copyRanking,
+        icon: Icons.leaderboard,
+        hp: hp,
+        onMore: () => context.pushNamed(
+          AppRoutes.copyMangaList,
+          pathParameters: {'kind': 'ranking'},
+        ),
+        child: _CopyRankingTabs(
+          dayItems: home.rankDayComics,
+          weekItems: home.rankWeekComics,
+          monthItems: home.rankMonthComics,
+          onTap: _openComic,
         ),
       );
+      primarySections.add(rankingSection);
+      sections.add(rankingSection);
     }
     addSection(
       l10n.copyHotUpdate,
@@ -494,7 +586,9 @@ class _HomePageState extends ConsumerState<HomePage>
       ),
     );
 
-    if (slivers.isEmpty) {
+    final slivers = <Widget>[];
+    if (sections.isEmpty) {
+      slivers.addAll(bannerSlivers);
       slivers.add(
         SliverFillRemaining(
           hasScrollBody: false,
@@ -514,6 +608,36 @@ class _HomePageState extends ConsumerState<HomePage>
           ),
         ),
       );
+    } else if (MediaQuery.sizeOf(context).width >= 720) {
+      // 宽屏：左窄栏放 banner + 推荐 + 排行榜，右宽栏放其余板块（2:3）。
+      final left = <Widget>[
+        if (bannerCarousel != null)
+          Padding(
+            padding: EdgeInsets.fromLTRB(hp, 8, hp, 12),
+            child: bannerCarousel,
+          ),
+        ...primarySections,
+      ];
+      final right = secondarySections;
+      slivers.add(
+        SliverToBoxAdapter(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(flex: 2, child: Column(children: left)),
+              const SizedBox(width: _mangaHomeCardSpacing),
+              Flexible(flex: 3, child: Column(children: right)),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // 竖屏：banner 在顶部全宽，板块逐块纵向叠放。
+      // _CopyCollapsibleSection 已是普通盒子组件，需各自包 SliverToBoxAdapter。
+      slivers.addAll(bannerSlivers);
+      slivers.addAll([
+        for (final section in sections) SliverToBoxAdapter(child: section),
+      ]);
     }
 
     return slivers;
@@ -635,60 +759,72 @@ class _MangaBannerCarouselState extends State<_MangaBannerCarousel> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 176,
-          child: Stack(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // banner 卡片严格按 16:9 固定比例：宽度 = 可用宽 − 两侧 padding，
+        // 高度随之联动，保证任何窗口宽度下都不会被拉扁或压窄。
+        final bannerWidth = math.max(1.0, constraints.maxWidth - widget.hp * 2);
+        final bannerHeight = (bannerWidth / (16 / 9)).clamp(140.0, 240.0);
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: widget.hp),
+          child: Column(
             children: [
-              PageView.builder(
-                controller: _controller,
-                physics: const PageScrollPhysics(),
-                itemCount: widget.items.length > 1 ? null : widget.items.length,
-                onPageChanged: (page) => setState(() => _page = page),
-                itemBuilder: (_, i) {
-                  final item = widget.items[i % widget.items.length];
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      left: widget.hp,
-                      right: widget.hp,
-                      bottom: 8,
-                    ),
-                    child: _MangaBannerCard(
-                      item: item,
-                      onTap: item.comic == null
+              SizedBox(
+                height: bannerHeight + 8,
+                child: Stack(
+                  children: [
+                    PageView.builder(
+                      controller: _controller,
+                      physics: const PageScrollPhysics(),
+                      itemCount: widget.items.length > 1
                           ? null
-                          : () => widget.onTap(item.comic!),
+                          : widget.items.length,
+                      onPageChanged: (page) => setState(() => _page = page),
+                      itemBuilder: (_, i) {
+                        final item = widget.items[i % widget.items.length];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: _MangaBannerCard(
+                              item: item,
+                              onTap: item.comic == null
+                                  ? null
+                                  : () => widget.onTap(item.comic!),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
+              if (widget.items.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < widget.items.length; i++)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: i == _page % widget.items.length ? 16 : 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(
+                            color: i == _page % widget.items.length
+                                ? cs.primary
+                                : cs.onSurfaceVariant.withValues(alpha: 0.35),
+                            borderRadius: AppRadius.fullR,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
             ],
           ),
-        ),
-        if (widget.items.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < widget.items.length; i++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: i == _page % widget.items.length ? 16 : 6,
-                    height: 6,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: i == _page % widget.items.length
-                          ? cs.primary
-                          : cs.onSurfaceVariant.withValues(alpha: 0.35),
-                      borderRadius: AppRadius.fullR,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-      ],
+        );
+      },
     );
   }
 }
@@ -774,6 +910,117 @@ class _MangaBannerCard extends StatelessWidget {
 }
 
 // ── Section & Card ──
+
+/// 宽屏双栏里的分区标题行（无水平 padding，由外层统一控制）。
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback? onMore;
+
+  const _SectionHeader({required this.title, required this.icon, this.onMore});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: cs.primary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+        if (onMore != null)
+          TextButton(
+            onPressed: onMore,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.moreButton, style: TextStyle(color: cs.primary)),
+                Icon(Icons.chevron_right, size: 18, color: cs.primary),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 双栏内给横滑列表/网格一个已知宽度，使其卡片尺寸按半栏宽计算。
+class _PaneScope extends StatelessWidget {
+  final double width;
+  final Widget child;
+
+  const _PaneScope({required this.width, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(width: width, child: child);
+  }
+}
+
+/// 双栏里的排行榜网格：按半栏宽自适应列数、卡片尺寸与大屏规则一致。
+class _RankingPaneGrid extends StatelessWidget {
+  final List<Comic> items;
+  final void Function(Comic, String) onTap;
+
+  const _RankingPaneGrid({required this.items, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final cardExtent = _mangaHomeCardMaxExtent(width);
+        // 与 maxCrossAxisExtent 网格、横滑列表一致用 ceil 取列数，
+        // 卡片宽 ≤ 上限且与同栏其他卡片同尺寸（floor 会少一列、卡片偏大）。
+        final columns = (width / (cardExtent + _mangaHomeCardSpacing))
+            .ceil()
+            .clamp(1, items.length);
+        final rows = (items.length / columns).ceil();
+        final cardWidth = _mangaHomeGridCardWidth(
+          width,
+          maxCardExtent: cardExtent,
+        );
+        final cardHeight = cardWidth / _mangaHomeCardAspectRatio;
+        return SizedBox(
+          height: rows * cardHeight + (rows - 1) * _mangaHomeCardSpacing,
+          child: GridView.builder(
+            primary: false,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              childAspectRatio: _mangaHomeCardAspectRatio,
+              mainAxisSpacing: _mangaHomeCardSpacing,
+              crossAxisSpacing: _mangaHomeCardSpacing,
+            ),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final comic = items[i];
+              final heroTagBase = ComicHeroTags.base(
+                scope: 'home-ranking',
+                pathWord: comic.pathWord,
+                index: i,
+              );
+              return ComicCard(
+                comic: comic,
+                heroTagBase: heroTagBase,
+                onTap: () => onTap(comic, heroTagBase),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _MangaSection extends StatelessWidget {
   final String title;
@@ -881,93 +1128,86 @@ class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          widget.hp,
-          widget.topPadding,
-          widget.hp,
-          12,
+    return Padding(
+      padding: EdgeInsets.fromLTRB(widget.hp, widget.topPadding, widget.hp, 12),
+      child: Material(
+        color: cs.surfaceContainerLow,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.smR,
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.72)),
         ),
-        child: Material(
-          color: cs.surfaceContainerLow,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.smR,
-            side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.72)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              InkWell(
-                onTap: _toggleExpanded,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              onTap: _toggleExpanded,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                child: Row(
+                  children: [
+                    Icon(widget.icon, size: 20, color: cs.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (widget.onMore != null)
+                      TextButton(
+                        onPressed: widget.onMore,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              l10n.moreButton,
+                              style: TextStyle(color: cs.primary),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: cs.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 22,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            ClipRect(
+              child: AnimatedAlign(
+                alignment: Alignment.topCenter,
+                heightFactor: _expanded ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-                  child: Row(
-                    children: [
-                      Icon(widget.icon, size: 20, color: cs.primary),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      if (widget.onMore != null)
-                        TextButton(
-                          onPressed: widget.onMore,
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                l10n.moreButton,
-                                style: TextStyle(color: cs.primary),
-                              ),
-                              Icon(
-                                Icons.chevron_right,
-                                size: 18,
-                                color: cs.primary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      AnimatedRotation(
-                        turns: _expanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOut,
-                        child: Icon(
-                          Icons.expand_more,
-                          size: 22,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: widget.child,
                 ),
               ),
-              ClipRect(
-                child: AnimatedAlign(
-                  alignment: Alignment.topCenter,
-                  heightFactor: _expanded ? 1 : 0,
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: widget.child,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -995,7 +1235,10 @@ class _CopyHorizontalComicList extends StatelessWidget {
           1.0,
           _copySectionContentWidth(context, constraints),
         );
-        final cardWidth = _mangaHomeGridCardWidth(contentWidth);
+        final cardWidth = _mangaHomeGridCardWidth(
+          contentWidth,
+          maxCardExtent: _mangaHomeCardMaxExtent(contentWidth),
+        );
         final cardHeight = cardWidth / _mangaHomeCardAspectRatio;
 
         return SizedBox(
@@ -1046,23 +1289,32 @@ class _CopyTwoRowComicGrid extends StatelessWidget {
           1.0,
           _copySectionContentWidth(context, constraints),
         );
-        final cardWidth = _mangaHomeGridCardWidth(contentWidth);
+        // 普通换行网格：列数按宽度算（ceil，与其他网格一致），
+        // 从左到右放不下才换行，全部展示、不滚动。
+        final columns =
+            (contentWidth /
+                    (_mangaHomeCardMaxExtent(contentWidth) +
+                        _mangaHomeCardSpacing))
+                .ceil()
+                .clamp(1, items.length);
+        final rows = (items.length / columns).ceil();
+        final cardWidth = _mangaHomeGridCardWidth(
+          contentWidth,
+          maxCardExtent: _mangaHomeCardMaxExtent(contentWidth),
+        );
         final cardHeight = cardWidth / _mangaHomeCardAspectRatio;
-        final visibleRows = math.min(2, items.length);
         final gridHeight =
-            cardHeight * visibleRows +
-            _mangaHomeCardSpacing * (visibleRows - 1);
+            cardHeight * rows + _mangaHomeCardSpacing * (rows - 1);
 
         return SizedBox(
           height: gridHeight,
           child: GridView.builder(
             primary: false,
-            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
-            physics: const ClampingScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: visibleRows,
-              childAspectRatio: 1 / _mangaHomeCardAspectRatio,
+              crossAxisCount: columns,
+              childAspectRatio: _mangaHomeCardAspectRatio,
               mainAxisSpacing: _mangaHomeCardSpacing,
               crossAxisSpacing: _mangaHomeCardSpacing,
             ),
@@ -1087,7 +1339,7 @@ class _CopyTwoRowComicGrid extends StatelessWidget {
   }
 }
 
-class _CopyRankingTabs extends StatefulWidget {
+class _CopyRankingTabs extends StatelessWidget {
   final List<Comic> dayItems;
   final List<Comic> weekItems;
   final List<Comic> monthItems;
@@ -1100,82 +1352,45 @@ class _CopyRankingTabs extends StatefulWidget {
     required this.onTap,
   });
 
-  @override
-  State<_CopyRankingTabs> createState() => _CopyRankingTabsState();
-}
-
-class _CopyRankingTabsState extends State<_CopyRankingTabs>
-    with SingleTickerProviderStateMixin {
-  late final TabController _controller;
-  int _selectedIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  List<Comic> _itemsForIndex(int index) {
-    if (index == 0) return widget.dayItems;
-    if (index == 1) return widget.weekItems;
-    return widget.monthItems;
-  }
-
-  String _scopeForIndex(int index) {
-    if (index == 0) return 'copy-rank-day';
-    if (index == 1) return 'copy-rank-week';
-    return 'copy-rank-month';
-  }
-
+  /// 三个榜全部直接展示，一行一榜（标题 + 横滑卡片），不用 tab。
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final items = _itemsForIndex(_selectedIndex);
+
+    final boards = <(String, List<Comic>, String)>[
+      (l10n.dayRank, dayItems, 'copy-rank-day'),
+      (l10n.weekRank, weekItems, 'copy-rank-week'),
+      (l10n.monthRank, monthItems, 'copy-rank-month'),
+    ];
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.44),
-            borderRadius: AppRadius.smR,
-          ),
-          child: TabBar(
-            controller: _controller,
-            onTap: (index) => setState(() => _selectedIndex = index),
-            dividerColor: Colors.transparent,
-            indicator: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: AppRadius.smR,
+        for (final (title, items, scope) in boards)
+          if (items.isNotEmpty) ...[
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: cs.primary,
+                    borderRadius: AppRadius.fullR,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  title,
+                  style: tt.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
-            indicatorPadding: const EdgeInsets.all(4),
-            indicatorSize: TabBarIndicatorSize.tab,
-            labelColor: cs.onPrimaryContainer,
-            unselectedLabelColor: cs.onSurfaceVariant,
-            labelStyle: tt.labelMedium?.copyWith(fontWeight: FontWeight.bold),
-            unselectedLabelStyle: tt.labelMedium,
-            splashBorderRadius: AppRadius.smR,
-            tabs: [
-              Tab(text: l10n.dayRank),
-              Tab(text: l10n.weekRank),
-              Tab(text: l10n.monthRank),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _CopyTwoRowComicGrid(
-          items: items,
-          onTap: widget.onTap,
-          scope: _scopeForIndex(_selectedIndex),
-        ),
+            const SizedBox(height: 6),
+            _CopyHorizontalComicList(items: items, onTap: onTap, scope: scope),
+            const SizedBox(height: AppSpacing.md),
+          ],
       ],
     );
   }
@@ -1209,33 +1424,40 @@ class _MangaHorizontalList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth < 900 ? screenWidth : 900.0;
-    final hp = (screenWidth - contentWidth) / 2 + 16;
-    final cardWidth = _mangaHomeGridCardWidth(contentWidth - 32);
-    final cardHeight = cardWidth / _mangaHomeCardAspectRatio;
+    // 用 LayoutBuilder 而非 MediaQuery：双栏里实际可用宽是半栏，
+    // 卡片尺寸必须按真实约束算。
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = math.max(1.0, constraints.maxWidth - 32);
+        final cardWidth = _mangaHomeGridCardWidth(
+          available,
+          maxCardExtent: _mangaHomeCardMaxExtent(available),
+        );
+        final cardHeight = cardWidth / _mangaHomeCardAspectRatio;
 
-    return SizedBox(
-      height: cardHeight,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: hp),
-        itemCount: items.length,
-        itemBuilder: (_, i) {
-          final comic = items[i];
-          final heroTagBase = ComicHeroTags.base(
-            scope: 'home-recommend',
-            pathWord: comic.pathWord,
-            index: i,
-          );
-          return _MangaCard(
-            comic: comic,
-            width: cardWidth,
-            heroTagBase: heroTagBase,
-            onTap: () => onTap(comic, heroTagBase),
-          );
-        },
-      ),
+        return SizedBox(
+          height: cardHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final comic = items[i];
+              final heroTagBase = ComicHeroTags.base(
+                scope: 'home-recommend',
+                pathWord: comic.pathWord,
+                index: i,
+              );
+              return _MangaCard(
+                comic: comic,
+                width: cardWidth,
+                heroTagBase: heroTagBase,
+                onTap: () => onTap(comic, heroTagBase),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

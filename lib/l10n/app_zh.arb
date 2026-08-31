@@ -2190,14 +2190,6 @@
   },
   "comicDetailQueued": "排队中",
   "processingStatus": "处理中",
-  "comicDetailReadWithStatus": "已读 · {status}",
-  "@comicDetailReadWithStatus": {
-    "placeholders": {
-      "status": {
-        "type": "String"
-      }
-    }
-  },
   "collectButton": "收藏",
   "downloadQueueTab": "队列",
   "downloadQueueEmpty": "下载队列为空",

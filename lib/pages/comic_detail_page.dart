@@ -1105,7 +1105,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
   }
 
-  Widget _buildChapterCard(Chapter chapter, ColorScheme cs, TextTheme tt) {
+  Widget _buildChapterCard(Chapter chapter) {
     final isLastRead = _lastBrowseId == chapter.uuid;
     final isRead = _readChapterUuids.contains(chapter.uuid);
     final isDownloaded = _isChapterDownloaded(chapter.uuid);
@@ -1116,146 +1116,34 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
     final progress = _downloads.progressOf(widget.pathWord, chapter.uuid);
     final isSelected = _selectedChapterIds.contains(chapter.uuid);
-    final brightness = Theme.of(context).brightness;
 
-    final backgroundColor = isSelected
-        ? cs.secondaryContainer
-        : isLastRead
-        ? cs.primaryContainer
-        : isRead
-        ? Color.alphaBlend(
-            cs.primary.withValues(
-              alpha: brightness == Brightness.dark ? 0.16 : 0.08,
-            ),
-            cs.surfaceContainerLow,
-          )
-        : cs.surfaceContainerLow;
-    final foregroundColor = isSelected
-        ? cs.onSecondaryContainer
-        : isLastRead
-        ? cs.onPrimaryContainer
-        : isRead
-        ? cs.onSurface.withValues(
-            alpha: brightness == Brightness.dark ? 0.70 : 0.62,
-          )
-        : cs.onSurface;
-    final subtitleColor = isSelected
-        ? foregroundColor.withValues(alpha: 0.8)
-        : isRead && !isLastRead
-        ? cs.onSurfaceVariant.withValues(
-            alpha: brightness == Brightness.dark ? 0.72 : 0.62,
-          )
-        : cs.onSurfaceVariant;
-
-    final statusText = isDownloaded
-        ? AppLocalizations.of(context)!.downloadedStatus
-        : isDownloading && progress != null
+    // 已下载时右上角有勾选徽标，副标题仍显示页数即可
+    final subtitle = isDownloading && progress != null
         ? AppLocalizations.of(
             context,
           )!.comicDetailDownloadProgress(progress.completed, progress.total)
         : isQueued
         ? AppLocalizations.of(context)!.comicDetailQueued
         : '${chapter.size}P';
-    final subtitle = isRead && !isLastRead
-        ? AppLocalizations.of(context)!.comicDetailReadWithStatus(statusText)
-        : statusText;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: AppRadius.mdR,
-        border: Border.all(
-          color: isSelected
-              ? cs.primary
-              : cs.outlineVariant.withValues(
-                  alpha: brightness == Brightness.dark ? 0.22 : 0.45,
-                ),
-          width: isSelected ? 1.4 : 0.6,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: brightness == Brightness.dark ? 0.30 : 0.14,
-            ),
-            blurRadius: brightness == Brightness.dark ? 12 : 14,
-            spreadRadius: brightness == Brightness.dark ? 0 : -1,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Material(
-            color: Colors.transparent,
-            borderRadius: AppRadius.mdR,
-            child: InkWell(
-              borderRadius: AppRadius.mdR,
-              onTap: () {
-                if (_selectionMode) {
-                  _toggleChapterSelection(chapter);
-                  return;
-                }
-                _openReader(chapter);
-              },
-              onLongPress: _selectionMode || !_isChapterSelectable(chapter)
-                  ? null
-                  : () => _enterSelectionMode(chapter.uuid),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        chapter.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: tt.bodySmall?.copyWith(
-                          color: foregroundColor,
-                          fontWeight: isLastRead || isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        textAlign: TextAlign.center,
-                        style: tt.labelSmall?.copyWith(
-                          color: subtitleColor,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (isDownloaded)
-            const Positioned(top: 4, right: 4, child: _DownloadedBadge()),
-          if (isDownloading && progress != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(10),
-                ),
-                child: LinearProgressIndicator(
-                  minHeight: 3,
-                  value: progress.ratio,
-                ),
-              ),
-            ),
-        ],
-      ),
+    return ChapterCard(
+      name: chapter.name,
+      subtitle: subtitle,
+      isSelected: isSelected,
+      isLastRead: isLastRead,
+      isRead: isRead,
+      isDownloaded: isDownloaded,
+      progressRatio: isDownloading && progress != null ? progress.ratio : null,
+      onTap: () {
+        if (_selectionMode) {
+          _toggleChapterSelection(chapter);
+          return;
+        }
+        _openReader(chapter);
+      },
+      onLongPress: _selectionMode || !_isChapterSelectable(chapter)
+          ? null
+          : () => _enterSelectionMode(chapter.uuid),
     );
   }
 
@@ -1340,330 +1228,381 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     );
   }
 
+  /// 横屏（宽 > 高且 ≥640）时左右分栏：左侧漫画信息 + 操作按钮，右侧章节列表，
+  /// 避免顶部按钮和内容在宽屏下被整行拉满；竖屏维持原单列滚动布局。
   Widget _buildBody(ColorScheme cs, TextTheme tt) {
     final comic = _comic!;
+    final size = MediaQuery.sizeOf(context);
+    final isWide = comicDetailUsesTwoPane(size);
+    final infoSlivers = _buildInfoSlivers(cs, tt, comic);
+    final chapterSlivers = _buildChapterSlivers(cs, tt, comic);
+
+    if (!isWide) {
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        child: CustomScrollView(slivers: [...infoSlivers, ...chapterSlivers]),
+      );
+    }
+
+    final leftWidth = comicDetailInfoPaneWidth(size);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: leftWidth,
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                ...infoSlivers,
+                const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+              ],
+            ),
+          ),
+        ),
+        VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: cs.outlineVariant.withValues(alpha: 0.6),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            child: CustomScrollView(slivers: chapterSlivers),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildInfoSlivers(ColorScheme cs, TextTheme tt, Comic comic) {
     final authors = comic.authors
         .where((author) => author.name.trim().isNotEmpty)
         .toList();
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: CustomScrollView(
-        slivers: [
-          // ── 漫画信息卡片 ──
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _hero(
-                    ComicHeroTags.cover,
-                    ClipRRect(
-                      borderRadius: AppRadius.mdR,
-                      child: CoverBrightnessFilter(
-                        child: CachedNetworkImage(
-                          imageUrl: comic.cover,
-                          width: 120,
-                          height: 160,
-                          fit: BoxFit.cover,
-                          fadeInDuration: Duration.zero,
-                          fadeOutDuration: Duration.zero,
-                          placeholder: (_, _) => Container(
-                            width: 120,
-                            height: 160,
-                            color: cs.surfaceContainerHighest,
+    return [
+      // ── 漫画信息卡片 ──
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _hero(
+                ComicHeroTags.cover,
+                ClipRRect(
+                  borderRadius: AppRadius.mdR,
+                  child: CoverBrightnessFilter(
+                    child: CachedNetworkImage(
+                      imageUrl: comic.cover,
+                      width: 120,
+                      height: 160,
+                      fit: BoxFit.cover,
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholder: (_, _) => Container(
+                        width: 120,
+                        height: 160,
+                        color: cs.surfaceContainerHighest,
+                      ),
+                      errorWidget: (_, _, _) => Container(
+                        width: 120,
+                        height: 160,
+                        color: cs.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.broken_image,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      comic.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (authors.isNotEmpty ||
+                        comic.status != null ||
+                        comic.region != null ||
+                        comic.themes.isNotEmpty)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final author in authors)
+                            _AuthorChip(
+                              author: author,
+                              onTap: () => _openAuthorWorks(author),
+                            ),
+                          if (comic.status != null)
+                            _InfoChip(
+                              icon: Icons.timelapse,
+                              label: comic.status!['display'] ?? '',
+                              color: cs.primaryContainer,
+                              textColor: cs.onPrimaryContainer,
+                            ),
+                          if (comic.region != null)
+                            _InfoChip(
+                              icon: Icons.public,
+                              label: comic.region!['display'] ?? '',
+                              color: cs.secondaryContainer,
+                              textColor: cs.onSecondaryContainer,
+                            ),
+                          for (final theme in comic.themes)
+                            _ThemeChip(
+                              theme: theme,
+                              onTap: () => _openThemeWorks(theme),
+                              color: cs.tertiaryContainer,
+                              textColor: cs.onTertiaryContainer,
+                            ),
+                        ],
+                      ),
+                    if (comic.popular > 0) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.local_fire_department,
+                            size: 14,
+                            color: cs.primary,
                           ),
-                          errorWidget: (_, _, _) => Container(
-                            width: 120,
-                            height: 160,
-                            color: cs.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.broken_image,
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            _formatPopular(context, comic.popular),
+                            style: tt.labelSmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.lg),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          comic.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        if (authors.isNotEmpty ||
-                            comic.status != null ||
-                            comic.region != null ||
-                            comic.themes.isNotEmpty)
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              for (final author in authors)
-                                _AuthorChip(
-                                  author: author,
-                                  onTap: () => _openAuthorWorks(author),
-                                ),
-                              if (comic.status != null)
-                                _InfoChip(
-                                  icon: Icons.timelapse,
-                                  label: comic.status!['display'] ?? '',
-                                  color: cs.primaryContainer,
-                                  textColor: cs.onPrimaryContainer,
-                                ),
-                              if (comic.region != null)
-                                _InfoChip(
-                                  icon: Icons.public,
-                                  label: comic.region!['display'] ?? '',
-                                  color: cs.secondaryContainer,
-                                  textColor: cs.onSecondaryContainer,
-                                ),
-                              for (final theme in comic.themes)
-                                _ThemeChip(
-                                  theme: theme,
-                                  onTap: () => _openThemeWorks(theme),
-                                  color: cs.tertiaryContainer,
-                                  textColor: cs.onTertiaryContainer,
-                                ),
-                            ],
-                          ),
-                        if (comic.popular > 0) ...[
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.local_fire_department,
-                                size: 14,
-                                color: cs.primary,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(
-                                _formatPopular(context, comic.popular),
-                                style: tt.labelSmall?.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (comic.datetimeUpdated != null) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.update,
-                                size: 14,
-                                color: cs.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(
-                                TimeFormat.relativeOf(
-                                  comic.datetimeUpdated!,
-                                  AppLocalizations.of(context)!,
-                                ),
-                                style: tt.labelSmall?.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // ── 简介 ──
-          if (comic.brief != null && comic.brief!.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: GestureDetector(
-                  onTap: () => setState(() => _briefExpanded = !_briefExpanded),
-                  child: Text(
-                    comic.brief!,
-                    maxLines: _briefExpanded ? null : 3,
-                    overflow: _briefExpanded ? null : TextOverflow.ellipsis,
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              ),
-            ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildDetailActions(comic),
-            ),
-          ),
-          // ── 分组切换 ──
-          if (comic.groups != null && comic.groups!.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: _totalPages <= 1
-                    // 无分页时把排序按钮放到分组按钮后面，节省空间
-                    ? Row(
+                    ],
+                    if (comic.datetimeUpdated != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
                         children: [
-                          Expanded(child: _buildGroupSegments(comic)),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 160),
-                            child: _refreshingComic
-                                ? const Padding(
-                                    key: ValueKey('comic_detail_refreshing'),
-                                    padding: EdgeInsets.only(left: 8),
-                                    child: SizedBox.square(
-                                      dimension: 38,
-                                      child: Center(
-                                        child: SizedBox.square(
-                                          dimension: 22,
-                                          child: ExpressiveLoadingIndicator(),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(
-                                    key: ValueKey(
-                                      'comic_detail_not_refreshing',
-                                    ),
-                                  ),
+                          Icon(
+                            Icons.update,
+                            size: 14,
+                            color: cs.onSurfaceVariant,
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8),
-                            child: _buildSortButton(cs),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            TimeFormat.relativeOf(
+                              comic.datetimeUpdated!,
+                              AppLocalizations.of(context)!,
+                            ),
+                            style: tt.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
                           ),
                         ],
-                      )
-                    : _buildGroupSegments(comic),
-              ),
-            ),
-          // ── 章节标题 + 排序 + 分页（单页时排序按钮已合并到分组行）──
-          if (_totalPages > 1)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: List.generate(_totalPages, (i) {
-                            final isSelected = i == _chapterPage;
-                            final pageButtonShape = RoundedRectangleBorder(
-                              borderRadius: AppRadius.mdR,
-                            );
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 2,
-                              ),
-                              child: isSelected
-                                  ? FilledButton(
-                                      onPressed: () {},
-                                      style: FilledButton.styleFrom(
-                                        minimumSize: const Size(38, 38),
-                                        maximumSize: const Size(38, 38),
-                                        fixedSize: const Size(38, 38),
-                                        padding: EdgeInsets.zero,
-                                        backgroundColor: cs.primary,
-                                        foregroundColor: cs.onPrimary,
-                                        disabledBackgroundColor: cs.primary,
-                                        disabledForegroundColor: cs.onPrimary,
-                                        shape: pageButtonShape,
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: Text('${i + 1}'),
-                                    )
-                                  : FilledButton.tonal(
-                                      onPressed: () => _loadChapterPage(i),
-                                      style: FilledButton.styleFrom(
-                                        minimumSize: const Size(38, 38),
-                                        maximumSize: const Size(38, 38),
-                                        fixedSize: const Size(38, 38),
-                                        padding: EdgeInsets.zero,
-                                        backgroundColor:
-                                            cs.surfaceContainerHigh,
-                                        foregroundColor: cs.onSurfaceVariant,
-                                        shape: pageButtonShape,
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: Text('${i + 1}'),
-                                    ),
-                            );
-                          }),
-                        ),
                       ),
-                    ),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 160),
-                      child: _refreshingComic
-                          ? const Padding(
-                              key: ValueKey('comic_detail_refreshing'),
-                              padding: EdgeInsets.only(left: 8),
-                              child: SizedBox.square(
-                                dimension: 38,
-                                child: Center(
-                                  child: SizedBox.square(
-                                    dimension: 22,
-                                    child: ExpressiveLoadingIndicator(),
-                                  ),
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink(
-                              key: ValueKey('comic_detail_not_refreshing'),
-                            ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: _buildSortButton(cs),
-                    ),
+                    ],
                   ],
                 ),
               ),
-            ),
-          _buildDownloadToolbar(cs, tt),
-          // ── 章节网格 ──
-          if (_loadingChapters &&
-              (!_keepShowingCachedChapters || _chapters.isEmpty))
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: ExpressiveLoadingIndicator()),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate((_, i) {
-                  final ch = _displayChapters[i];
-                  return _buildChapterCard(ch, cs, tt);
-                }, childCount: _displayChapters.length),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 120,
-                  mainAxisExtent: 52,
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
-                ),
-              ),
-            ),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
-        ],
+            ],
+          ),
+        ),
       ),
-    );
+      // ── 简介 ──（横屏左栏空间充裕，默认展开；竖屏仍折叠 3 行）
+      if (comic.brief != null && comic.brief!.isNotEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Builder(
+              builder: (context) {
+                final expanded =
+                    _briefExpanded ||
+                    comicDetailUsesTwoPane(MediaQuery.sizeOf(context));
+                return GestureDetector(
+                  onTap: () => setState(() => _briefExpanded = !_briefExpanded),
+                  child: Text(
+                    comic.brief!,
+                    maxLines: expanded ? null : 3,
+                    overflow: expanded ? null : TextOverflow.ellipsis,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: _buildDetailActions(comic),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildChapterSlivers(ColorScheme cs, TextTheme tt, Comic comic) {
+    return [
+      // ── 分组切换 ──
+      if (comic.groups != null && comic.groups!.isNotEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _totalPages <= 1
+                // 无分页时把排序按钮放到分组按钮后面，节省空间
+                ? Row(
+                    children: [
+                      Expanded(child: _buildGroupSegments(comic)),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 160),
+                        child: _refreshingComic
+                            ? const Padding(
+                                key: ValueKey('comic_detail_refreshing'),
+                                padding: EdgeInsets.only(left: 8),
+                                child: SizedBox.square(
+                                  dimension: 38,
+                                  child: Center(
+                                    child: SizedBox.square(
+                                      dimension: 22,
+                                      child: ExpressiveLoadingIndicator(),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(
+                                key: ValueKey('comic_detail_not_refreshing'),
+                              ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: _buildSortButton(cs),
+                      ),
+                    ],
+                  )
+                : _buildGroupSegments(comic),
+          ),
+        ),
+      // ── 章节标题 + 排序 + 分页（单页时排序按钮已合并到分组行）──
+      if (_totalPages > 1)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(_totalPages, (i) {
+                        final isSelected = i == _chapterPage;
+                        final pageButtonShape = RoundedRectangleBorder(
+                          borderRadius: AppRadius.mdR,
+                        );
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: isSelected
+                              ? FilledButton(
+                                  onPressed: () {},
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(38, 38),
+                                    maximumSize: const Size(38, 38),
+                                    fixedSize: const Size(38, 38),
+                                    padding: EdgeInsets.zero,
+                                    backgroundColor: cs.primary,
+                                    foregroundColor: cs.onPrimary,
+                                    disabledBackgroundColor: cs.primary,
+                                    disabledForegroundColor: cs.onPrimary,
+                                    shape: pageButtonShape,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text('${i + 1}'),
+                                )
+                              : FilledButton.tonal(
+                                  onPressed: () => _loadChapterPage(i),
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(38, 38),
+                                    maximumSize: const Size(38, 38),
+                                    fixedSize: const Size(38, 38),
+                                    padding: EdgeInsets.zero,
+                                    backgroundColor: cs.surfaceContainerHigh,
+                                    foregroundColor: cs.onSurfaceVariant,
+                                    shape: pageButtonShape,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text('${i + 1}'),
+                                ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 160),
+                  child: _refreshingComic
+                      ? const Padding(
+                          key: ValueKey('comic_detail_refreshing'),
+                          padding: EdgeInsets.only(left: 8),
+                          child: SizedBox.square(
+                            dimension: 38,
+                            child: Center(
+                              child: SizedBox.square(
+                                dimension: 22,
+                                child: ExpressiveLoadingIndicator(),
+                              ),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('comic_detail_not_refreshing'),
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: _buildSortButton(cs),
+                ),
+              ],
+            ),
+          ),
+        ),
+      _buildDownloadToolbar(cs, tt),
+      // ── 章节网格 ──
+      if (_loadingChapters &&
+          (!_keepShowingCachedChapters || _chapters.isEmpty))
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: ExpressiveLoadingIndicator()),
+          ),
+        )
+      else
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverGrid(
+            delegate: SliverChildBuilderDelegate((_, i) {
+              final ch = _displayChapters[i];
+              return _buildChapterCard(ch);
+            }, childCount: _displayChapters.length),
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 150,
+              mainAxisExtent: chapterTileExtent(
+                MediaQuery.textScalerOf(context).scale(1),
+              ),
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+            ),
+          ),
+        ),
+      const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+    ];
   }
 
   static String _formatPopular(BuildContext context, int n) {
@@ -1675,6 +1614,182 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
     }
     return n.toString();
+  }
+}
+
+/// 章节卡片内容高度 = 内边距 12 + 标题行高 16s + 间距 2 + 副标题行高 ~17.5s，
+/// 实测约 15.5 + 33.5s（s 为文字缩放），再加安全余量取 18 + 33.5s。
+/// 网格 mainAxisExtent 固定 52 时 s≈1.14 起即纵向溢出，
+/// 故按缩放推导卡片高度，最低保持 52。
+double chapterTileExtent(double textScale) {
+  final extent = 18 + 33.5 * textScale;
+  return extent > 52 ? extent : 52;
+}
+
+/// 详情页是否启用横屏左右分栏：宽 > 高（横屏/宽窗口）且宽度 ≥640。
+/// 竖屏（包括平板竖持）维持单列滚动布局。
+bool comicDetailUsesTwoPane(Size size) =>
+    size.width > size.height && size.width >= 640;
+
+/// 分栏布局左侧信息栏宽度：约为窗口 36%，夹在 300~420 之间，
+/// 保证按钮和 chips 不会过窄也不会被拉满整行。
+double comicDetailInfoPaneWidth(Size size) =>
+    (size.width * 0.36).clamp(300.0, 420.0);
+
+/// 详情页章节卡片：标题 + 状态副标题的紧凑卡片。
+/// 在网格中使用时必须以 [chapterTileExtent] 的返回值作为 mainAxisExtent，
+/// 否则大字号/高显示缩放下内容会纵向溢出。
+class ChapterCard extends StatelessWidget {
+  final String name;
+  final String subtitle;
+  final bool isSelected;
+  final bool isLastRead;
+  final bool isRead;
+  final bool isDownloaded;
+  final double? progressRatio;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  const ChapterCard({
+    super.key,
+    required this.name,
+    required this.subtitle,
+    required this.isSelected,
+    required this.isLastRead,
+    required this.isRead,
+    required this.isDownloaded,
+    required this.onTap,
+    this.onLongPress,
+    this.progressRatio,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tt = theme.textTheme;
+    final brightness = theme.brightness;
+
+    final backgroundColor = isSelected
+        ? cs.secondaryContainer
+        : isLastRead
+        ? cs.primaryContainer
+        : isRead
+        ? Color.alphaBlend(
+            cs.primary.withValues(
+              alpha: brightness == Brightness.dark ? 0.16 : 0.08,
+            ),
+            cs.surfaceContainerLow,
+          )
+        : cs.surfaceContainerLow;
+    final foregroundColor = isSelected
+        ? cs.onSecondaryContainer
+        : isLastRead
+        ? cs.onPrimaryContainer
+        : isRead
+        ? cs.onSurface.withValues(
+            alpha: brightness == Brightness.dark ? 0.70 : 0.62,
+          )
+        : cs.onSurface;
+    final subtitleColor = isSelected
+        ? foregroundColor.withValues(alpha: 0.8)
+        : isRead && !isLastRead
+        ? cs.onSurfaceVariant.withValues(
+            alpha: brightness == Brightness.dark ? 0.72 : 0.62,
+          )
+        : cs.onSurfaceVariant;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: AppRadius.mdR,
+        border: Border.all(
+          color: isSelected
+              ? cs.primary
+              : cs.outlineVariant.withValues(
+                  alpha: brightness == Brightness.dark ? 0.22 : 0.45,
+                ),
+          width: isSelected ? 1.4 : 0.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: brightness == Brightness.dark ? 0.30 : 0.14,
+            ),
+            blurRadius: brightness == Brightness.dark ? 12 : 14,
+            spreadRadius: brightness == Brightness.dark ? 0 : -1,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Material(
+            color: Colors.transparent,
+            borderRadius: AppRadius.mdR,
+            child: InkWell(
+              borderRadius: AppRadius.mdR,
+              onTap: onTap,
+              onLongPress: onLongPress,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: tt.bodySmall?.copyWith(
+                          color: foregroundColor,
+                          fontWeight: isLastRead || isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: tt.labelSmall?.copyWith(
+                          color: subtitleColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (isDownloaded)
+            const Positioned(top: 4, right: 4, child: _DownloadedBadge()),
+          if (progressRatio != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(10),
+                ),
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  value: progressRatio,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

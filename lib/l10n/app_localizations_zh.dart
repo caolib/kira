@@ -3225,11 +3225,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get processingStatus => '处理中';
 
   @override
-  String comicDetailReadWithStatus(String status) {
-    return '已读 · $status';
-  }
-
-  @override
   String get collectButton => '收藏';
 
   @override
@@ -7180,11 +7175,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get processingStatus => '處理中';
-
-  @override
-  String comicDetailReadWithStatus(String status) {
-    return '已讀 · $status';
-  }
 
   @override
   String get collectButton => '收藏';

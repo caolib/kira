@@ -667,11 +667,9 @@ class _LocalChapterCard extends StatelessWidget {
     final partialText = isPartial
         ? l10n.downloadChapterPartialFailed(summary.failedIndices.length)
         : null;
-    final subtitle = isRead && !isLastRead
-        ? l10n.comicDetailReadWithStatus(
-            partialText != null ? '$statusText · $partialText' : statusText,
-          )
-        : (partialText != null ? '$statusText · $partialText' : statusText);
+    final subtitle = partialText != null
+        ? '$statusText · $partialText'
+        : statusText;
     final partialColor = cs.error;
 
     return Stack(

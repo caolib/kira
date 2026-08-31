@@ -277,6 +277,10 @@ class _MainShellState extends State<MainShell>
     final orderedKeys = _visibleNavKeys(_user);
     final selectedIndex = _selectedIndex(orderedKeys);
     final labelMode = _user.bottomNavLabelMode;
+    final size = MediaQuery.sizeOf(context);
+    // 宽 > 高且 ≥600 的横屏/宽窗口用左侧 NavigationRail，释放纵向空间；
+    // 竖屏维持底部导航（含 capsule 样式与标签模式设置）。
+    final useSideNav = size.width > size.height && size.width >= 600;
 
     // canPop=false 只作用于 shell 路由本身：分支内已 push 的页面、根导航栈上
     // 的顶层页面各自先处理返回，走不到这里。
@@ -287,22 +291,28 @@ class _MainShellState extends State<MainShell>
         _handleBackAttempt();
       },
       child: Scaffold(
-        body: _user.theme.navSwipeEnabled
-            ? GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onHorizontalDragStart: (details) =>
-                    _branchContainerKey.currentState?.dragBegin(details),
-                onHorizontalDragUpdate: (details) =>
-                    _branchContainerKey.currentState?.dragUpdate(details),
-                onHorizontalDragEnd: (details) {
-                  _onHorizontalDragEnd(details, orderedKeys);
-                },
-                onHorizontalDragCancel: () =>
-                    _branchContainerKey.currentState?.dragCancel(),
-                child: widget.navigationShell,
+        body: useSideNav
+            ? Row(
+                children: [
+                  _buildSideNavRail(
+                    orderedKeys: orderedKeys,
+                    selectedIndex: selectedIndex,
+                    l10n: l10n,
+                  ),
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.6),
+                  ),
+                  Expanded(child: _buildBranchArea(orderedKeys)),
+                ],
               )
-            : widget.navigationShell,
-        bottomNavigationBar: labelMode == BottomNavLabelMode.always
+            : _buildBranchArea(orderedKeys),
+        bottomNavigationBar: useSideNav
+            ? null
+            : labelMode == BottomNavLabelMode.always
             ? _buildClassicNavBar(
                 orderedKeys: orderedKeys,
                 selectedIndex: selectedIndex,
@@ -315,6 +325,67 @@ class _MainShellState extends State<MainShell>
                 showSelectedLabel: labelMode == BottomNavLabelMode.selectedOnly,
               ),
       ),
+    );
+  }
+
+  /// 分支内容区：navSwipeEnabled 时外挂横向拖动手势做分支跟手切换。
+  Widget _buildBranchArea(List<String> orderedKeys) {
+    return _user.theme.navSwipeEnabled
+        ? GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: (details) =>
+                _branchContainerKey.currentState?.dragBegin(details),
+            onHorizontalDragUpdate: (details) =>
+                _branchContainerKey.currentState?.dragUpdate(details),
+            onHorizontalDragEnd: (details) {
+              _onHorizontalDragEnd(details, orderedKeys);
+            },
+            onHorizontalDragCancel: () =>
+                _branchContainerKey.currentState?.dragCancel(),
+            child: widget.navigationShell,
+          )
+        : widget.navigationShell;
+  }
+
+  Widget _buildSideNavRail({
+    required List<String> orderedKeys,
+    required int selectedIndex,
+    required AppLocalizations l10n,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: NavigationRail(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) =>
+            _goToDestination(orderedKeys, index, resetIfSelected: true),
+        backgroundColor: cs.surfaceContainer,
+        labelType: NavigationRailLabelType.all,
+        groupAlignment: -1.0,
+        destinations: [
+          for (final key in orderedKeys)
+            _buildRailDestination(key: key, label: _navLabel(l10n, key)),
+        ],
+      ),
+    );
+  }
+
+  NavigationRailDestination _buildRailDestination({
+    required String key,
+    required String label,
+  }) {
+    final item = _navItemData[key]!;
+    if (key != 'profile') {
+      return NavigationRailDestination(
+        icon: Icon(item.icon),
+        selectedIcon: Icon(item.selectedIcon),
+        label: Text(label),
+      );
+    }
+
+    return NavigationRailDestination(
+      icon: _NoticeBadgeIcon(child: Icon(item.icon)),
+      selectedIcon: _NoticeBadgeIcon(child: Icon(item.selectedIcon)),
+      label: Text(label),
     );
   }
 

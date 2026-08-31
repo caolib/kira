@@ -5849,12 +5849,6 @@ abstract class AppLocalizations {
   /// **'处理中'**
   String get processingStatus;
 
-  /// No description provided for @comicDetailReadWithStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'已读 · {status}'**
-  String comicDetailReadWithStatus(String status);
-
   /// No description provided for @collectButton.
   ///
   /// In zh, this message translates to:

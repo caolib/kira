@@ -2161,14 +2161,6 @@
   },
   "comicDetailQueued": "排隊中",
   "processingStatus": "處理中",
-  "comicDetailReadWithStatus": "已讀 · {status}",
-  "@comicDetailReadWithStatus": {
-    "placeholders": {
-      "status": {
-        "type": "String"
-      }
-    }
-  },
   "collectButton": "收藏",
   "downloadQueueTab": "佇列",
   "downloadQueueEmpty": "下載佇列為空",
