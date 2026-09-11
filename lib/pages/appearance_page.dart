@@ -504,6 +504,7 @@ class _AppearancePageState extends State<AppearancePage> {
                     label: Text(option.localizedLabel(l10n)),
                     selected: _user.themeVariant == option.variant,
                     onSelected: (_) => _user.setThemeVariant(option.variant),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
             ],

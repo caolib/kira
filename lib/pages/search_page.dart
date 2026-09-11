@@ -75,6 +75,17 @@ class _SearchPageState extends State<SearchPage> {
   bool get _isAnimeMode => _animeFeatureEnabled && _mode == _SearchMode.anime;
   String _modeLabel(AppLocalizations l10n) =>
       _isAnimeMode ? l10n.animeLabel : l10n.comicLabel;
+
+  /// tag 数量的紧凑显示：11376 -> 1.1万。与漫画详情页 formatPopular 同规则。
+  String _formatTagCount(AppLocalizations l10n, int n) {
+    if (n >= 100000000) {
+      return l10n.hundredMillionUnit((n / 100000000).toStringAsFixed(1));
+    }
+    if (n >= 10000) {
+      return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
+    }
+    return n.toString();
+  }
   bool get _hasResults => _comics.isNotEmpty || _animes.isNotEmpty;
   bool get _canClearSearch => _hasSearchText || _searchQuery != null;
 
@@ -544,11 +555,8 @@ class _SearchPageState extends State<SearchPage> {
                                       (k) => ActionChip(
                                         label: Text(k),
                                         onPressed: () => _onKeywordTap(k),
-                                        avatar: Icon(
-                                          Icons.trending_up,
-                                          size: 16,
-                                          color: cs.primary,
-                                        ),
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
                                       ),
                                     )
                                     .toList(),
@@ -593,13 +601,35 @@ class _SearchPageState extends State<SearchPage> {
                                 children: [
                                   for (final t in _tags)
                                     FilterChip(
-                                      label: Text(
-                                        t.count > 0
-                                            ? '${t.name} ${t.count}'
-                                            : t.name,
+                                      // 数字作为次级信息内联在名字后：
+                                      // 小一号 + onSurfaceVariant，避免
+                                      // 4~5 位长数字喧宾夺主。
+                                      label: Text.rich(
+                                        TextSpan(
+                                          text: t.name,
+                                          children: [
+                                            if (t.count > 0)
+                                              TextSpan(
+                                                text:
+                                                    ' ${_formatTagCount(l10n, t.count)}',
+                                                // chip 未选中态 label 默认色
+                                                // 就是 onSurfaceVariant，需再
+                                                // 降透明度才能与名字拉开层次。
+                                                style: tt.bodySmall?.copyWith(
+                                                  color: cs.onSurfaceVariant
+                                                      .withValues(
+                                                        alpha: 0.7,
+                                                      ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                       ),
                                       showCheckmark: false,
-                                      onSelected: (_) => _selectTag(t.pathWord),
+                                      onSelected: (_) =>
+                                          _selectTag(t.pathWord),
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                 ],
                               ),
