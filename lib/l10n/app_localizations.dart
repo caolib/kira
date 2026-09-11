@@ -4544,7 +4544,7 @@ abstract class AppLocalizations {
   /// No description provided for @readerContinuousReadingDesc.
   ///
   /// In zh, this message translates to:
-  /// **'到末页后直接拼接下一话，不重新加载'**
+  /// **'到末页后直接拼接下一话，上滑到顶拼接上一话，不重新加载'**
   String get readerContinuousReadingDesc;
 
   /// No description provided for @readerHorizontalImageScale.
@@ -6405,6 +6405,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'正在加载下一话…'**
   String get readerLoadingNextChapter;
+
+  /// No description provided for @readerLoadingPrevChapter.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在加载上一话…'**
+  String get readerLoadingPrevChapter;
+
+  /// No description provided for @readerScrollUpPrevChapter.
+  ///
+  /// In zh, this message translates to:
+  /// **'上滑加载上一话'**
+  String get readerScrollUpPrevChapter;
+
+  /// No description provided for @readerRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新本话'**
+  String get readerRefresh;
 
   /// No description provided for @readerAlreadyFirstChapter.
   ///

@@ -144,6 +144,85 @@ class _FirstChapterHead extends StatelessWidget {
   }
 }
 
+/// 连续阅读滚动模式链首触发区：链首之上还有上一话时显示在第一张图前，
+/// 高度与章间分隔条一致。上滑使其进入视口即预取拼接上一话
+/// （见 `_maybePrependPrevChainOnScroll`），拼接完成后本区成为新链首的触发区。
+class _PrevChapterHead extends StatelessWidget {
+  final bool isHorizontalScroll;
+  final double tailExtent;
+  final bool isLoading;
+
+  const _PrevChapterHead({
+    required this.isHorizontalScroll,
+    required this.tailExtent,
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final message = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isLoading) ...[
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: ReaderChrome.onSurfaceSubtle,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+        ],
+        Text(
+          isLoading
+              ? l10n.readerLoadingPrevChapter
+              : l10n.readerScrollUpPrevChapter,
+          style: const TextStyle(
+            color: ReaderChrome.onSurfaceSubtle,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+
+    if (isHorizontalScroll) {
+      // 与章间分隔条一致：横向滚动时随内容收缩，不占满整屏宽；
+      // item 高度被列表紧约束为视口高，Column 撑满高度后竖直居中。
+      // 不能套 Align/Center：宽度有界时它们会撑满约束，退回整屏宽。
+      return ColoredBox(
+        color: ReaderChrome.surface,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: tailExtent),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: message,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ColoredBox(
+      color: ReaderChrome.surface,
+      child: SizedBox(
+        height: _chapterBridgeStripHeight,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: message,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// End-of-chapter action row: catalog, comments, and optional next chapter.
 class _ChapterEndActionsRow extends StatelessWidget {
   final bool hasNext;

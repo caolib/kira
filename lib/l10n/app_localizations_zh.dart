@@ -2475,7 +2475,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerContinuousReading => '连续阅读';
 
   @override
-  String get readerContinuousReadingDesc => '到末页后直接拼接下一话，不重新加载';
+  String get readerContinuousReadingDesc => '到末页后直接拼接下一话，上滑到顶拼接上一话，不重新加载';
 
   @override
   String get readerHorizontalImageScale => '横向图片大小';
@@ -3526,6 +3526,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get readerLoadingNextChapter => '正在加载下一话…';
+
+  @override
+  String get readerLoadingPrevChapter => '正在加载上一话…';
+
+  @override
+  String get readerScrollUpPrevChapter => '上滑加载上一话';
+
+  @override
+  String get readerRefresh => '刷新本话';
 
   @override
   String get readerAlreadyFirstChapter => '已经是第一章';
@@ -6440,7 +6449,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get readerContinuousReading => '連續閱讀';
 
   @override
-  String get readerContinuousReadingDesc => '到末頁後直接拼接下一話，不重新載入';
+  String get readerContinuousReadingDesc => '到末頁後直接拼接下一話，上滑到頂拼接上一話，不重新載入';
 
   @override
   String get readerHorizontalImageScale => '橫向圖片大小';
@@ -7491,6 +7500,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get readerLoadingNextChapter => '正在載入下一話…';
+
+  @override
+  String get readerLoadingPrevChapter => '正在載入上一話…';
+
+  @override
+  String get readerScrollUpPrevChapter => '上滑載入上一話';
+
+  @override
+  String get readerRefresh => '重新整理本話';
 
   @override
   String get readerAlreadyFirstChapter => '已經是第一章';

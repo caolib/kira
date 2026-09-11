@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind, VelocityTracker;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -34,6 +35,7 @@ import '../utils/reading_history.dart';
 import '../utils/reading_stats.dart';
 import '../utils/toast.dart';
 import '../widgets/image_reveal_hold.dart';
+import '../widgets/pinch_zoomable.dart';
 import '../widgets/reader_status_overlay.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
@@ -42,7 +44,6 @@ part 'reader/reader_bottom_bar.dart';
 part 'reader/reader_chapter_widgets.dart';
 part 'reader/reader_image_cache.dart';
 part 'reader/reader_image_viewer.dart';
-part 'reader/reader_pull_to_refresh.dart';
 part 'reader/reader_scroll_item.dart';
 part 'reader/reader_settings_panel.dart';
 part 'reader/reader_top_bar.dart';
@@ -86,8 +87,29 @@ class ReaderPage extends StatefulWidget {
 class _ReaderPageState extends State<ReaderPage> {
   static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
   static const _hiddenToolbarSlideOffset = 1.05;
+
+  /// 滚动模式整视图缩放上限。放大的是整个阅读视图（图片、间隙、分隔条
+  /// 一起变），太大会导致可视内容过少，3x 足够看清细节。
+  static const _scrollZoomMaxScale = 3.0;
   static CacheManager? _cachedImageManager;
   static int _cachedImageManagerTimeout = -1;
+
+  /// 滚动模式整视图缩放控制器。放大后的单指横向平移由原始指针事件驱动
+  /// （见 _handleScrollPointerPan），纵向滚动仍由列表负责；惯性滑行在
+  /// 控制器内部实现。
+  final _scrollZoomController = PinchZoomController(
+    maxScale: _scrollZoomMaxScale,
+  );
+
+  /// 滚动模式阅读区当前按下的手指数（含鼠标），供单指平移判定。
+  int _scrollTouchFingers = 0;
+
+  /// 放大后单指平移的速度采样：抬手时交给控制器启动惯性滑行。
+  /// 每段触摸（按下）重建实例，避免上一段的旧样本混入本段松手速度。
+  VelocityTracker _panVelocityTracker = VelocityTracker.withKind(
+    PointerDeviceKind.touch,
+  );
+  bool _scrollPanGestureActive = false;
 
   CacheManager get _readerImageCacheManager {
     final seconds = _user.imageLoadTimeout;
@@ -164,6 +186,25 @@ class _ReaderPageState extends State<ReaderPage> {
   double _scrollModeInitialAlignment = 0.0;
   int _scrollWidgetVersion = 0;
 
+  // 翻页模式：当前页图片处于捏合放大状态。放大期间单指拖动用于平移图片，
+  // 需暂时禁用翻页手势（PageView 滑动/无动画翻页拖拽），否则翻页手势会因
+  // slop 更小（18px < 36px）抢先接管拖动。
+  bool _pageImageZoomed = false;
+
+  /// 列表/翻页控件结构变化时递增版本号；重建后缩放状态一并复位。
+  void _bumpScrollWidgetVersion() {
+    _scrollWidgetVersion++;
+    _pageImageZoomed = false;
+    // 滚动模式的 PinchZoomable 不随版本号重建（控制器保持共享外置），
+    // 缩放状态不会随列表重建自动复位，这里显式复位（连同惯性滑行）。
+    _scrollZoomController.reset();
+  }
+
+  void _handlePageZoomChanged(bool zoomed) {
+    if (zoomed == _pageImageZoomed) return;
+    setState(() => _pageImageZoomed = zoomed);
+  }
+
   // 连续阅读：按阅读顺序拼接的章节链。首项为用户进入时打开的章节。
   // _chainIndex 指向当前"所在章节"（用于导航栏显示与历史记录）。
   // 加载下一话时追加到链尾，不重建视图，从而避免闪屏与状态丢失。
@@ -176,6 +217,7 @@ class _ReaderPageState extends State<ReaderPage> {
   final List<ChapterDetail> _chain = [];
   int _chainIndex = 0;
   bool _loadingNextChainChapter = false;
+  bool _loadingPrevChainChapter = false;
   final Map<int, int> _imageReloadVersions = {};
   final Map<int, int> _imageRetryCounts = {};
   final Map<int, String> _imageRetryTokens = {};
@@ -220,11 +262,11 @@ class _ReaderPageState extends State<ReaderPage> {
   /// 避免状态组件遮挡第一页顶部；横滚/翻页/置底/关闭时留白为 0。
   double get _statusOverlayTopInset =>
       (_user.reader.statusOverlay &&
-              _statusOverlayIsTop &&
-              !_isHorizontalScrollMode &&
-              !_isPageMode)
-          ? ReaderStatusOverlay.reservedHeight
-          : 0.0;
+          _statusOverlayIsTop &&
+          !_isHorizontalScrollMode &&
+          !_isPageMode)
+      ? ReaderStatusOverlay.reservedHeight
+      : 0.0;
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
   bool get _isHorizontalScrollMode =>
       !_isPageMode && _user.readerScrollDirection != 2;
@@ -317,6 +359,9 @@ class _ReaderPageState extends State<ReaderPage> {
     final hasHeader = _chain.first.prev == null;
     if (hasHeader) {
       items.add(_ScrollItem.header());
+    } else if (_continuousReading) {
+      // 链首之上还有上一话：头部触发区，上滑进入视口即预取拼接上一话。
+      items.add(_ScrollItem.prevHead());
     }
 
     var imageCursor = 0;
@@ -420,7 +465,7 @@ class _ReaderPageState extends State<ReaderPage> {
         final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
         final oldController = _pageController;
         _pageController = PageController(initialPage: initialIndex);
-        _scrollWidgetVersion++;
+        _bumpScrollWidgetVersion();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           oldController.dispose();
         });
@@ -440,7 +485,7 @@ class _ReaderPageState extends State<ReaderPage> {
           );
           _scrollModeInitialAlignment = 0.0;
         }
-        _scrollWidgetVersion++;
+        _bumpScrollWidgetVersion();
         // 列表重建会打断自动滚动，裁剪后按需恢复。
         if (_autoScrollEnabled && !_isPageMode) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -558,6 +603,9 @@ class _ReaderPageState extends State<ReaderPage> {
       unawaited(_loadCachedSelectedGroup());
     }
     _itemPositionsListener.itemPositions.addListener(_onItemPositionsChanged);
+    // 放大后平移/惯性滑行期间喂给刹车守卫，让紧跟着的点击视为刹车，
+    // 否则横向惯性滑动时点击屏幕会误触工具栏（纵向列表惯性已有此处理）。
+    _scrollZoomController.addListener(_onScrollZoomControllerChanged);
     // 阅读器读了 readerMode / 滚动方向 / 音量翻页 / 评论预载等一批设置，
     // 此前只靠设置面板手动回调刷新——从其他入口改设置时阅读页不会更新。
     _user.addListener(_onUserSettingsChanged);
@@ -577,12 +625,14 @@ class _ReaderPageState extends State<ReaderPage> {
     _volumeChannel.setMethodCallHandler(null);
     _bookmarks.removeListener(_onBookmarksChanged);
     _user.removeListener(_onUserSettingsChanged);
+    _scrollZoomController.removeListener(_onScrollZoomControllerChanged);
     _itemPositionsListener.itemPositions.removeListener(
       _onItemPositionsChanged,
     );
     _autoScrollGeneration++;
     _autoScrollResumeTimer?.cancel();
     _pageController.dispose();
+    _scrollZoomController.dispose();
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
@@ -672,6 +722,7 @@ class _ReaderPageState extends State<ReaderPage> {
           ..add(detail);
         _chainIndex = 0;
         _loadingNextChainChapter = false;
+        _loadingPrevChainChapter = false;
         _rebuildChainStructure();
         // 整章切换：重建图片归属注册表（供阅读统计埋点反查）
         _registerChapterStatsUrls(detail, clearFirst: true);
@@ -680,7 +731,7 @@ class _ReaderPageState extends State<ReaderPage> {
           page: startPage,
         );
         _scrollModeInitialAlignment = 0.0;
-        _scrollWidgetVersion++;
+        _bumpScrollWidgetVersion();
       });
       if (_isPageMode) {
         final oldController = _pageController;
@@ -1117,6 +1168,95 @@ class _ReaderPageState extends State<ReaderPage> {
     }
   }
 
+  /// 连续阅读：在链首插入上一话。滚动模式头部触发区上滑 / 翻页模式链首回翻
+  /// 需要拼接上一话时调用。返回是否成功拼接（链首即所取上一话）。
+  /// 拼接会移动列表头部索引：滚动模式按视口锚点还原位置，翻页模式重建
+  /// PageController 指向原内容，用户所在画面保持不动。
+  Future<bool> _prependPrevChapterToChain() async {
+    if (_loadingPrevChainChapter || _chain.isEmpty) return false;
+    final firstChapter = _chain.first;
+    final prevUuid = firstChapter.prev;
+    if (prevUuid == null) return false;
+    setState(() {
+      // 立即反馈：触发区切换为「正在加载上一话…」，避免取数期间无任何提示。
+      _loadingPrevChainChapter = true;
+    });
+    try {
+      final prev =
+          (await _downloads.getDownloadedChapterDetail(
+            widget.pathWord,
+            prevUuid,
+          )) ??
+          await _api.manga.getChapterDetail(widget.pathWord, prevUuid);
+      if (prev.contents.isEmpty) {
+        throw StateError('Chapter has no readable pages');
+      }
+      if (!mounted) return false;
+      // 等待期间链首可能已被裁剪/切换，章节对不上时放弃本次拼接。
+      if (_chain.isEmpty || _chain.first.uuid != firstChapter.uuid) {
+        _loadingPrevChainChapter = false;
+        setState(() {});
+        return false;
+      }
+      // 改动链结构前记录视口锚点与当前章起始索引，重建后按差值还原。
+      final viewportAnchor = !_isPageMode
+          ? _captureLeadingScrollAnchor()
+          : null;
+      final startBounds = _chapterScrollStarts.isEmpty
+          ? 0
+          : _chapterScrollStarts[_chainIndex.clamp(
+              0,
+              _chapterScrollStarts.length - 1,
+            )];
+      setState(() {
+        _chain.insert(0, prev);
+        _chainIndex += 1;
+        _loadingPrevChainChapter = false;
+        _rebuildChainStructure();
+        // 链首增长：登记新章图片归属（供阅读统计埋点反查）
+        _registerChapterStatsUrls(prev);
+      });
+      if (_isPageMode) {
+        final page = _currentPage.clamp(
+          1,
+          _detail?.contents.isNotEmpty == true ? _detail!.contents.length : 1,
+        );
+        final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
+        final oldController = _pageController;
+        _pageController = PageController(initialPage: initialIndex);
+        _bumpScrollWidgetVersion();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          oldController.dispose();
+        });
+      } else if (_chain.isNotEmpty) {
+        final shift = _chapterScrollStarts[_chainIndex] - startBounds;
+        if (viewportAnchor != null) {
+          final maxIndex = _scrollItems.isEmpty ? 0 : _scrollItems.length - 1;
+          _scrollModeInitialIndex = (viewportAnchor.index + shift).clamp(
+            0,
+            maxIndex,
+          );
+          _scrollModeInitialAlignment = viewportAnchor.alignment;
+        } else {
+          _scrollModeInitialIndex = _scrollItemIndexFor(
+            chainIndex: _chainIndex,
+            page: _currentPage,
+          );
+          _scrollModeInitialAlignment = 0.0;
+        }
+        _bumpScrollWidgetVersion();
+      }
+      // 拼接后预加载该话评论，使分隔区评论按钮能显示数量
+      if (_user.commentPreload) unawaited(_preloadComments(chapter: prev));
+      return true;
+    } catch (_) {
+      _loadingPrevChainChapter = false;
+      if (mounted) setState(() {});
+      // 拼接失败保持链不变：滚动模式可继续上滑重试；翻页模式由调用方降级整章跳转。
+      return false;
+    }
+  }
+
   /// 根据全局图片位置更新当前所在章节，用于导航栏显示与历史记录。
   /// 返回章节是否发生变化（需要刷新评论缓存等）。
   bool _syncActiveChapterFromGlobal(int chapterIndex) {
@@ -1155,8 +1295,39 @@ class _ReaderPageState extends State<ReaderPage> {
     } else if (_detail!.prev != null && !_continuousReading) {
       _goChapter(_detail!.prev);
     } else if (_detail!.prev != null && _continuousReading) {
-      // 链首之前还有上一话：降级为整章跳转（重新加载）
-      _goChapter(_detail!.prev);
+      // 链首之前还有上一话：拼接上一话后跳到其末页，
+      // 与链中从下一话首页上翻回上一话末页的行为一致。
+      final prevUuid = _detail!.prev!;
+      if (_loadingPrevChainChapter) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.readerLoadingPrevChapter,
+        );
+        return;
+      }
+      unawaited(
+        _prependPrevChapterToChain().then((prepended) {
+          if (!mounted) return;
+          if (!prepended) {
+            // 拼接失败：降级为整章跳转（重新加载）
+            _goChapter(prevUuid);
+            return;
+          }
+          final prevChapter = _chain.first;
+          final targetGlobal =
+              _chainChapterStart(0) + prevChapter.contents.length - 1;
+          _syncActiveChapterFromGlobal(0);
+          _currentPage = prevChapter.contents.length;
+          if (_isPageMode) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _jumpPageControllerTo(targetGlobal);
+            });
+          }
+          setState(() {});
+          _saveReadingHistory();
+        }),
+      );
     } else {
       showToast(context, AppLocalizations.of(context)!.readerNoPreviousChapter);
     }
@@ -1286,7 +1457,7 @@ class _ReaderPageState extends State<ReaderPage> {
         page: page,
       );
       _scrollModeInitialAlignment = 0.0;
-      _scrollWidgetVersion++;
+      _bumpScrollWidgetVersion();
     }
     setState(() {});
     // 修改滚动设置会重建列表从而打断动画，重建后若仍开启则续滚
@@ -1740,15 +1911,26 @@ class _ReaderPageState extends State<ReaderPage> {
     ChapterDetail chapter,
     int localIndex, {
     int? retryKey,
+    bool zoomActive = true,
   }) {
     final key = retryKey ?? localIndex;
+    Widget image = _buildImage(chapter, localIndex, retryKey: key);
+    if (_isPageMode) {
+      // 翻页模式：捏合缩放当前页单图；滚动模式由 _buildScrollMode 的
+      // 整视图缩放负责。双击进查看器的手势在更外层，不受缩放影响。
+      image = PinchZoomable(
+        active: zoomActive,
+        onZoomChanged: _handlePageZoomChanged,
+        child: image,
+      );
+    }
     return _ReaderImageGesture(
       key: ValueKey('reader-image-${chapter.uuid}-$localIndex'),
       onSingleTap: _isPageMode
           ? _handlePageModeTapAt
           : (_) => _handleReadingSurfaceTap(),
       onDoubleTap: () => _openImageViewer(chapter, localIndex),
-      child: _buildImage(chapter, localIndex, retryKey: key),
+      child: image,
     );
   }
 
@@ -2183,6 +2365,39 @@ class _ReaderPageState extends State<ReaderPage> {
     _goChapter(nextUuid);
   }
 
+  /// 放大后平移/惯性滑行期间持续喂给刹车守卫：手指仍按下时记为拖动，
+  /// 抬手后的滑行记为惯性。这样惯性滑动中点击屏幕与列表惯性一样按
+  /// 「刹车」处理，不会误触工具栏。
+  void _onScrollZoomControllerChanged() {
+    _flingBrakeGuard.recordScroll(
+      isDrag: _scrollTouchFingers > 0,
+      at: DateTime.now(),
+    );
+  }
+
+  /// 滚动模式放大后：单指拖动时用横向分量（垂直列表）/纵向分量（横向列表）
+  /// 平移视野，另一轴仍交给列表滚动。
+  ///
+  /// 不能走手势竞技场：列表拖动手势按总位移（含横向分量）判定，18px 即
+  /// 赢下所有单指拖动，以横向为主的拖动也会被它抢走。原始指针事件与
+  /// 竞技场无关，两个方向的响应可以并行（venera 同款做法）。
+  void _handleScrollPointerPan(PointerMoveEvent event) {
+    if (event.kind != PointerDeviceKind.touch) return;
+    if (_scrollTouchFingers != 1 || !_scrollZoomController.zoomed) return;
+    // 缩放识别器仍在占用手势（捏合中途抬指后的过渡态，由它继续驱动
+    // 平移）：这里跳过，否则其焦点位移与下面按下的同一位移都会被应用，
+    // 同一帧产生双份移动。
+    if (_scrollZoomController.isScaleGestureActive) return;
+    if (_scrollZoomController.isScaleGestureActive) return;
+    _scrollPanGestureActive = true;
+    _panVelocityTracker.addPosition(event.timeStamp, event.position);
+    _scrollZoomController.pan(
+      _isHorizontalScrollMode
+          ? Offset(0, event.delta.dy)
+          : Offset(event.delta.dx, 0),
+    );
+  }
+
   Widget _buildScrollMode() {
     final scrollDirection = _isHorizontalScrollMode
         ? Axis.horizontal
@@ -2205,13 +2420,34 @@ class _ReaderPageState extends State<ReaderPage> {
         : -1;
 
     return Listener(
-      onPointerDown: (_) {
+      onPointerDown: (event) {
+        _scrollTouchFingers++;
+        _panVelocityTracker = VelocityTracker.withKind(PointerDeviceKind.touch);
+        _scrollPanGestureActive = false;
+        _scrollZoomController.stopFling();
         // 按下的瞬间列表若还在惯性滚动，这次触摸只是刹车（见 FlingBrakeTapGuard）。
         _flingBrakeGuard.onPointerDown(DateTime.now());
         _onAutoScrollTouchStart();
       },
-      onPointerUp: (_) => _onAutoScrollTouchEnd(),
-      onPointerCancel: (_) => _onAutoScrollTouchEnd(),
+      onPointerMove: _handleScrollPointerPan,
+      onPointerUp: (event) {
+        _scrollTouchFingers--;
+        _onAutoScrollTouchEnd();
+        // 单指拖动结束：按松手速度沿平移轴启动惯性滑行（放大状态与
+        // 最小速度由控制器内部校验）。
+        if (_scrollTouchFingers == 0 && _scrollPanGestureActive) {
+          final velocity = _panVelocityTracker.getVelocity().pixelsPerSecond;
+          _scrollZoomController.beginFling(
+            _isHorizontalScrollMode
+                ? Offset(0, velocity.dy)
+                : Offset(velocity.dx, 0),
+          );
+        }
+      },
+      onPointerCancel: (event) {
+        _scrollTouchFingers--;
+        _onAutoScrollTouchEnd();
+      },
       child: GestureDetector(
         onTap: _handleReadingSurfaceTap,
         child: NotificationListener<ScrollNotification>(
@@ -2236,6 +2472,7 @@ class _ReaderPageState extends State<ReaderPage> {
             }
             if (_continuousReading) {
               _maybeAppendNextChainOnScroll();
+              _maybePrependPrevChainOnScroll();
               if (_shouldScrollToCatalog(n)) {
                 _autoAdvancingChapter = true;
                 Navigator.pop(context);
@@ -2254,110 +2491,121 @@ class _ReaderPageState extends State<ReaderPage> {
             }
             return false;
           },
-          child: ScrollablePositionedList.separated(
-            key: ValueKey(
-              _continuousReading
-                  ? 'scroll-continuous-$_scrollWidgetVersion'
-                  : '$_currentUuid-$_scrollWidgetVersion',
-            ),
-            itemScrollController: _itemScrollController,
-            itemPositionsListener: _itemPositionsListener,
-            scrollOffsetController: _scrollOffsetController,
-            initialScrollIndex: _scrollModeInitialIndex,
-            initialAlignment: _scrollModeInitialAlignment,
-            scrollDirection: scrollDirection,
-            reverse: _isReversedScrollMode,
-            padding: EdgeInsets.only(top: _statusOverlayTopInset),
-            physics: _isHorizontalScrollMode
-                ? null
-                : const AlwaysScrollableScrollPhysics(),
-            minCacheExtent: _isHorizontalScrollMode
-                ? viewportSize.width
-                : viewportSize.height,
-            itemCount: totalItems,
-            separatorBuilder: (_, i) {
-              final item = items[i];
-              if (item.kind == _ScrollItemKind.image) {
-                return _isHorizontalScrollMode
-                    ? SizedBox(width: _user.readerImageGap)
-                    : SizedBox(height: _user.readerImageGap);
-              }
-              return const SizedBox.shrink();
-            },
-            itemBuilder: (_, i) {
-              final item = items[i];
-              switch (item.kind) {
-                case _ScrollItemKind.header:
-                  return _FirstChapterHead(
-                    isHorizontalScroll: _isHorizontalScrollMode,
-                    tailExtent: _scrollModeTailExtent(context),
-                  );
-                case _ScrollItemKind.chapterDivider:
-                  final chapter = item.chapter!;
-                  return _ChapterDivider(
-                    commentCount: _commentCountFor(chapter),
-                    isHorizontalScroll: _isHorizontalScrollMode,
-                    tailExtent: _scrollModeTailExtent(context),
-                    onCatalog: () => Navigator.pop(context),
-                    onComments: () => _showChapterComments(chapter: chapter),
-                  );
-                case _ScrollItemKind.image:
-                  final image = _buildReaderImageGesture(
-                    item.chapter!,
-                    item.localIndex!,
-                    retryKey: item.globalIndex,
-                  );
-                  if (_isHorizontalScrollMode) {
-                    // 横向列表会把 item 高度紧约束为视口高度，无法靠外层
-                    // SizedBox 改变 item 高度。因此让图片自身以有限高度
-                    // （视口高度 × scale）渲染，在视口内垂直居中、上下留白，
-                    // 宽度按宽高比自适应。
-                    final scale = _user.readerHorizontalImageScale;
-                    return Align(
-                      child: SizedBox(
-                        height: viewportSize.height * scale,
-                        child: image,
-                      ),
+          child: PinchZoomable(
+            // 捏合缩放整个阅读视图（图片、间隙、章节分隔条一起变大），而不是
+            // 单张图片。放大后的单指平移见 _handleScrollPointerPan。
+            controller: _scrollZoomController,
+            child: ScrollablePositionedList.separated(
+              key: ValueKey(
+                _continuousReading
+                    ? 'scroll-continuous-$_scrollWidgetVersion'
+                    : '$_currentUuid-$_scrollWidgetVersion',
+              ),
+              itemScrollController: _itemScrollController,
+              itemPositionsListener: _itemPositionsListener,
+              scrollOffsetController: _scrollOffsetController,
+              initialScrollIndex: _scrollModeInitialIndex,
+              initialAlignment: _scrollModeInitialAlignment,
+              scrollDirection: scrollDirection,
+              reverse: _isReversedScrollMode,
+              padding: EdgeInsets.only(top: _statusOverlayTopInset),
+              physics: _isHorizontalScrollMode
+                  ? null
+                  : const AlwaysScrollableScrollPhysics(),
+              minCacheExtent: _isHorizontalScrollMode
+                  ? viewportSize.width
+                  : viewportSize.height,
+              itemCount: totalItems,
+              separatorBuilder: (_, i) {
+                final item = items[i];
+                if (item.kind == _ScrollItemKind.image) {
+                  return _isHorizontalScrollMode
+                      ? SizedBox(width: _user.readerImageGap)
+                      : SizedBox(height: _user.readerImageGap);
+                }
+                return const SizedBox.shrink();
+              },
+              itemBuilder: (_, i) {
+                final item = items[i];
+                switch (item.kind) {
+                  case _ScrollItemKind.header:
+                    return _FirstChapterHead(
+                      isHorizontalScroll: _isHorizontalScrollMode,
+                      tailExtent: _scrollModeTailExtent(context),
                     );
-                  }
-                  return image;
-                case _ScrollItemKind.tail:
-                  final tailHasNext = _continuousReading
-                      ? _chain.last.next != null
-                      : _detail?.next != null;
-                  return _NextChapterTail(
-                    hasNext: tailHasNext,
-                    isHorizontalScroll: _isHorizontalScrollMode,
-                    tailExtent: _scrollModeTailExtent(context),
-                    commentCount: _continuousReading
-                        ? _commentCountFor(_chain.last)
-                        : _commentCount,
-                    onCatalog: () => Navigator.pop(context),
-                    onComments: _continuousReading
-                        ? () => _showChapterComments(chapter: _chain.last)
-                        : _showChapterComments,
-                    onNextChapter: tailHasNext
-                        ? () => _goChapter(
-                            _continuousReading
-                                ? _chain.last.next!
-                                : _detail!.next!,
-                          )
-                        : null,
-                  );
-                case _ScrollItemKind.loadMore:
-                  // 「加载下一话」位置与章间分隔条渲染完全一致（仅按钮行，
-                  // 不显示"继续滚动"提示），追加下一话完成替换时无视觉变化，
-                  // 避免条内按钮跳位。
-                  return _ChapterDivider(
-                    commentCount: _commentCountFor(_chain.last),
-                    isHorizontalScroll: _isHorizontalScrollMode,
-                    tailExtent: _scrollModeTailExtent(context),
-                    onCatalog: () => Navigator.pop(context),
-                    onComments: () =>
-                        _showChapterComments(chapter: _chain.last),
-                  );
-              }
-            },
+                  case _ScrollItemKind.prevHead:
+                    return _PrevChapterHead(
+                      isHorizontalScroll: _isHorizontalScrollMode,
+                      tailExtent: _scrollModeTailExtent(context),
+                      isLoading: _loadingPrevChainChapter,
+                    );
+                  case _ScrollItemKind.chapterDivider:
+                    final chapter = item.chapter!;
+                    return _ChapterDivider(
+                      commentCount: _commentCountFor(chapter),
+                      isHorizontalScroll: _isHorizontalScrollMode,
+                      tailExtent: _scrollModeTailExtent(context),
+                      onCatalog: () => Navigator.pop(context),
+                      onComments: () => _showChapterComments(chapter: chapter),
+                    );
+                  case _ScrollItemKind.image:
+                    final image = _buildReaderImageGesture(
+                      item.chapter!,
+                      item.localIndex!,
+                      retryKey: item.globalIndex,
+                    );
+                    if (_isHorizontalScrollMode) {
+                      // 横向列表会把 item 高度紧约束为视口高度，无法靠外层
+                      // SizedBox 改变 item 高度。因此让图片自身以有限高度
+                      // （视口高度 × scale）渲染，在视口内垂直居中、上下留白，
+                      // 宽度按宽高比自适应。
+                      final scale = _user.readerHorizontalImageScale;
+                      return Align(
+                        child: SizedBox(
+                          height: viewportSize.height * scale,
+                          child: image,
+                        ),
+                      );
+                    }
+                    return image;
+                  case _ScrollItemKind.tail:
+                    final tailHasNext = _continuousReading
+                        ? _chain.last.next != null
+                        : _detail?.next != null;
+                    return _NextChapterTail(
+                      hasNext: tailHasNext,
+                      isHorizontalScroll: _isHorizontalScrollMode,
+                      tailExtent: _scrollModeTailExtent(context),
+                      commentCount: _continuousReading
+                          ? _commentCountFor(_chain.last)
+                          : _commentCount,
+                      onCatalog: () => Navigator.pop(context),
+                      onComments: _continuousReading
+                          ? () => _showChapterComments(chapter: _chain.last)
+                          : _showChapterComments,
+                      onNextChapter: tailHasNext
+                          ? () => _goChapter(
+                              _continuousReading
+                                  ? _chain.last.next!
+                                  : _detail!.next!,
+                            )
+                          : null,
+                    );
+                  case _ScrollItemKind.loadMore:
+                    // 「加载下一话」位置与章间分隔条渲染完全一致（仅按钮行，
+                    // 不显示"继续滚动"提示），追加下一话完成替换时无视觉变化，
+                    // 避免条内按钮跳位。
+                    return _ChapterDivider(
+                      commentCount: _commentCountFor(_chain.last),
+                      isHorizontalScroll: _isHorizontalScrollMode,
+                      tailExtent: _scrollModeTailExtent(context),
+                      onCatalog: () => Navigator.pop(context),
+                      onComments: () =>
+                          _showChapterComments(chapter: _chain.last),
+                    );
+                }
+              },
+            ),
           ),
         ),
       ),
@@ -2395,6 +2643,21 @@ class _ReaderPageState extends State<ReaderPage> {
           p.itemLeadingEdge < 1.0 &&
           p.itemTrailingEdge > 0) {
         _appendNextChapterToChain();
+        return;
+      }
+    }
+  }
+
+  /// 连续阅读滚动模式：链首触发区进入视口且链首之上还有上一话时，
+  /// 提前异步拼接上一话，使用户上滑到顶部时上一话图片已就绪。
+  void _maybePrependPrevChainOnScroll() {
+    if (_loadingPrevChainChapter) return;
+    if (_chain.isEmpty || _chain.first.prev == null) return;
+    final positions = _itemPositionsListener.itemPositions.value;
+    for (final p in positions) {
+      // 触发区恒为列表第 0 项；与链尾预取对称，进入视口即触发。
+      if (p.index == 0 && p.itemLeadingEdge < 1.0 && p.itemTrailingEdge > 0) {
+        _prependPrevChapterToChain();
         return;
       }
     }
@@ -2526,8 +2789,13 @@ class _ReaderPageState extends State<ReaderPage> {
 
   Widget _buildPageMode() {
     final instantTurn = _user.readerInstantPageTurn;
-    final horizontalDrag = instantTurn && !_isVerticalPageMode;
-    final verticalDrag = instantTurn && _isVerticalPageMode;
+    // 当前页被捏合放大时锁定翻页手势：单指拖动交给图片平移，收拢回
+    // 1x 后由 _handlePageZoomChanged 触发重建恢复。
+    final turnGesturesLocked = _pageImageZoomed;
+    final horizontalDrag =
+        instantTurn && !_isVerticalPageMode && !turnGesturesLocked;
+    final verticalDrag =
+        instantTurn && _isVerticalPageMode && !turnGesturesLocked;
     final totalChapters = _chainImageCount;
     // 最后一话无下一话时，末尾追加一个空白页用于返回目录
     final hasEndBlank = _chain.last.next == null;
@@ -2549,7 +2817,9 @@ class _ReaderPageState extends State<ReaderPage> {
         scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
         reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
         allowImplicitScrolling: true,
-        physics: instantTurn ? const NeverScrollableScrollPhysics() : null,
+        physics: instantTurn || turnGesturesLocked
+            ? const NeverScrollableScrollPhysics()
+            : null,
         itemCount: itemCount,
         onPageChanged: (index) {
           // 末尾空白页：返回目录
@@ -2564,6 +2834,8 @@ class _ReaderPageState extends State<ReaderPage> {
           final chapterChanged = _syncActiveChapterFromGlobal(ci);
           setState(() {
             _currentPage = li + 1;
+            // 跳页（滑块等）后当前页未放大，恢复翻页手势。
+            _pageImageZoomed = false;
             if (!_isDraggingSlider) {
               _showToolbar = false;
               SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -2591,8 +2863,17 @@ class _ReaderPageState extends State<ReaderPage> {
           final chapter = _chain[ci];
           // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
           final isChapterLastPage = li == chapter.contents.length - 1;
+          // 只有当前页允许保持放大状态；切走的页自动复位缩放，
+          // 避免滑回时页面仍处于放大却无法平移的不一致状态。
+          final zoomActive =
+              i == _chainChapterStart(_chainIndex) + (_currentPage - 1);
           final child = Center(
-            child: _buildReaderImageGesture(chapter, li, retryKey: i),
+            child: _buildReaderImageGesture(
+              chapter,
+              li,
+              retryKey: i,
+              zoomActive: zoomActive,
+            ),
           );
           if (isChapterLastPage) {
             return Column(
@@ -2616,30 +2897,6 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildRefreshableReader(Widget child) {
-    final detail = _detail;
-    if (detail == null) return child;
-
-    final canUseNativeRefresh =
-        (!_isPageMode && !_isHorizontalScrollMode) ||
-        (_isPageMode && _isVerticalPageMode);
-    if (canUseNativeRefresh) {
-      return RefreshIndicator(
-        onRefresh: _refreshChapter,
-        notificationPredicate: (notification) => notification.depth == 0,
-        color: ReaderChrome.onSurface,
-        backgroundColor: ReaderChrome.surface,
-        child: child,
-      );
-    }
-
-    return _ReaderPullToRefresh(
-      enabled: !detail.isDownloaded && !_loading,
-      onRefresh: _refreshChapter,
-      child: child,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -2655,9 +2912,7 @@ class _ReaderPageState extends State<ReaderPage> {
             if (_loading)
               const Center(child: ExpressiveLoadingIndicator())
             else if (_detail != null)
-              _buildRefreshableReader(
-                _isPageMode ? _buildPageMode() : _buildScrollMode(),
-              )
+              _isPageMode ? _buildPageMode() : _buildScrollMode()
             else
               Center(
                 child: Padding(
@@ -2725,6 +2980,8 @@ class _ReaderPageState extends State<ReaderPage> {
               onBack: () => Navigator.pop(context),
               isBookmarked: _bookmarks.isBookmarked(_currentUuid, _currentPage),
               onToggleBookmark: _detail == null ? null : _toggleBookmark,
+              isRefreshing: _refreshingChapter,
+              onRefresh: _detail == null ? null : _refreshChapter,
             ),
             if (_detail != null)
               _ReaderBottomBar(

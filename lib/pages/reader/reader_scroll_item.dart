@@ -1,7 +1,7 @@
 part of '../reader_page.dart';
 
 /// Kind of item rendered in the scroll-mode list.
-enum _ScrollItemKind { header, chapterDivider, image, tail, loadMore }
+enum _ScrollItemKind { header, prevHead, chapterDivider, image, tail, loadMore }
 
 /// Describes a single item in the scroll-mode list.
 class _ScrollItem {
@@ -19,6 +19,8 @@ class _ScrollItem {
 
   factory _ScrollItem.header() =>
       const _ScrollItem._(kind: _ScrollItemKind.header);
+  factory _ScrollItem.prevHead() =>
+      const _ScrollItem._(kind: _ScrollItemKind.prevHead);
   factory _ScrollItem.chapterDivider(ChapterDetail c) =>
       _ScrollItem._(kind: _ScrollItemKind.chapterDivider, chapter: c);
   factory _ScrollItem.image(ChapterDetail c, int local, int global) =>

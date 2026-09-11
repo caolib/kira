@@ -8,6 +8,8 @@ class _ReaderTopBar extends StatelessWidget {
   final VoidCallback onBack;
   final bool isBookmarked;
   final VoidCallback? onToggleBookmark;
+  final bool isRefreshing;
+  final VoidCallback? onRefresh;
 
   const _ReaderTopBar({
     required this.showToolbar,
@@ -16,6 +18,8 @@ class _ReaderTopBar extends StatelessWidget {
     required this.onBack,
     this.isBookmarked = false,
     this.onToggleBookmark,
+    this.isRefreshing = false,
+    this.onRefresh,
   });
 
   @override
@@ -61,6 +65,24 @@ class _ReaderTopBar extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (onRefresh != null)
+                      IconButton(
+                        icon: isRefreshing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: ReaderChrome.onSurface,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.refresh,
+                                color: ReaderChrome.onSurface,
+                              ),
+                        tooltip: AppLocalizations.of(context)!.readerRefresh,
+                        onPressed: isRefreshing ? null : onRefresh,
+                      ),
                     if (onToggleBookmark != null)
                       IconButton(
                         icon: Icon(
