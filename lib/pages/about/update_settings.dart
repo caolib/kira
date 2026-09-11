@@ -149,7 +149,9 @@ extension _AboutPageUpdateSettings on _AboutPageState {
                   RadioGroup<String>(
                     groupValue: selected,
                     onChanged: (value) {
-                      if (value != null) _setState(() => selected = value);
+                      // 必须用 StatefulBuilder 的 setState 重建对话框本身；
+                      // 误用页面的 _setState 会导致 radio 选中态不刷新。
+                      if (value != null) setState(() => selected = value);
                     },
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
