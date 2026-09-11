@@ -58,8 +58,9 @@ class DownloadManager extends ChangeNotifier {
   static const int _minImageConcurrency = 1;
   static const int _maxImageConcurrency = 32;
 
-  /// 同时在飞的章节数上限：第二章的详情请求与图片下载和第一章重叠，
-  /// 消除章节间的串行空窗（相当于下一章详情预取深度 1）。
+  /// 在飞章节数：1 章下载图片 + 1 章预取详情。图片任务严格按章节顺序
+  /// 派发（当前章全部页结束后下一章才开始传图），让最早的话尽快完整
+  /// 可读；详情预取只提前发 API 请求，不提前下载下一章的图片。
   static const int _maxChaptersInFlight = 2;
 
   /// 是否下载章节评论的持久化键。
@@ -99,8 +100,11 @@ class DownloadManager extends ChangeNotifier {
   // 正在下载章节的实时进度，key 同 [_activeKeys]。
   final Map<String, ChapterDownloadProgress> _activeProgress = {};
 
-  // 在飞章节运行态，最多 [_maxChaptersInFlight] 个。
+  // 在飞章节运行态，最多 [_maxChaptersInFlight] 个（1 传图 + 1 预取详情）。
   final Map<String, _ChapterRun> _activeRuns = {};
+
+  // 当前持有传图权的章节 key；图片任务严格按章节串行派发。
+  String? _downloadingKey;
 
   // 全局图片任务队列，跨章节共享 worker 池，章节尾部不再闲置并发额度。
   final List<_ImageJob> _imageJobs = [];
@@ -345,9 +349,9 @@ class DownloadManager extends ChangeNotifier {
     }
   }
 
-  /// 章节流水线调度：维持最多 [_maxChaptersInFlight] 个在飞章节。
-  /// 第二个章节的详情请求与第一个章节的图片下载重叠，消除章节间的
-  /// 串行空窗；任务在下载期间保留在队列中供 UI 展示。
+  /// 章节流水线调度：维持最多 [_maxChaptersInFlight] 个在飞章节——
+  /// 1 个在传图，1 个在预取详情。图片任务严格按章节顺序派发，
+  /// 让最早的话尽快完整可读；任务在下载期间保留在队列中供 UI 展示。
   Future<void> _runChapterScheduler() async {
     while (true) {
       // 领取新任务，跳过已在飞的任务与未出退避窗口的自动重试。
@@ -441,14 +445,38 @@ class DownloadManager extends ChangeNotifier {
         return;
       }
 
-      for (var i = 0; i < run.total; i++) {
-        if (run.result[i] != null) continue;
-        _imageJobs.add(_ImageJob(run: run, index: i, url: detail.contents[i]));
-      }
-      _wakeImageWorkers();
+      // 图片任务严格串章：当前已有章节在传图时只标记就绪，等它完成后
+      // 再派发（详情已就绪，无空窗）。
+      run.readyToDispatch = true;
+      _dispatchNextReadyChapter();
     } catch (e, st) {
       await _handleChapterFailure(run, e, st);
     }
+  }
+
+  /// 派发下一个就绪章节的图片任务（当前无章节在传图时）。
+  void _dispatchNextReadyChapter() {
+    if (_downloadingKey != null) return;
+    for (final run in _activeRuns.values) {
+      if (!run.readyToDispatch || run.remaining <= 0) continue;
+      _downloadingKey = run.key;
+      for (var i = 0; i < run.total; i++) {
+        if (run.result[i] != null) continue;
+        _imageJobs.add(
+          _ImageJob(run: run, index: i, url: run.detail!.contents[i]),
+        );
+      }
+      _wakeImageWorkers();
+      return;
+    }
+  }
+
+  /// 章节结束传图（完成或失败）后释放传图权，并尝试派发下一章。
+  void _releaseImageSlot(_ChapterRun run) {
+    if (_downloadingKey == run.key) {
+      _downloadingKey = null;
+    }
+    _dispatchNextReadyChapter();
   }
 
   /// 章节收尾：等评论结果（失败降级）、写 chapter.json 与 manifest。
@@ -522,6 +550,7 @@ class DownloadManager extends ChangeNotifier {
       _activeRuns.remove(run.key);
       _activeKeys.remove(run.key);
       _activeProgress.remove(run.key);
+      _releaseImageSlot(run);
       notifyListeners();
     }
     if (!failed) _signalScheduler();
@@ -545,6 +574,7 @@ class DownloadManager extends ChangeNotifier {
     _activeRuns.remove(run.key);
     _activeKeys.remove(run.key);
     _activeProgress.remove(run.key);
+    _releaseImageSlot(run);
     _queue.remove(run.task);
     _queuedKeys.remove(run.key);
     notifyListeners();
@@ -1082,6 +1112,9 @@ class _ChapterRun {
 
   // 尚未完成的页任务数；归零时触发章节收尾。
   int remaining = 0;
+
+  // 详情已就绪、待派发图片任务；图片任务严格串章派发。
+  bool readyToDispatch = false;
 
   Future<({List<ChapterComment> list, int total})> commentsFuture =
       Future.value((list: const <ChapterComment>[], total: 0));

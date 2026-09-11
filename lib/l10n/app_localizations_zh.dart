@@ -2566,7 +2566,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadImageConcurrency => '并发下载数量';
 
   @override
-  String get downloadImageConcurrencyDesc => '同时下载的图片数量，跨章节共享（1-32）';
+  String get downloadImageConcurrencyDesc => '数值过大可能导致 IP 被限流，后果自负';
 
   @override
   String get downloadChapterComments => '下载章节评论';
@@ -5609,7 +5609,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get downloadImageConcurrency => '並行下載數量';
 
   @override
-  String get downloadImageConcurrencyDesc => '同時下載的圖片數量，跨章節共享（1-32）';
+  String get downloadImageConcurrencyDesc => '數值過大可能導致 IP 被限流，後果自負';
 
   @override
   String get downloadChapterComments => '下載章節評論';

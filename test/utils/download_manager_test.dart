@@ -4,9 +4,26 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/chapter.dart';
 import 'package:kira/utils/download_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   final sep = Platform.pathSeparator;
+
+  group('concurrency settings clamp', () {
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('image concurrency clamps to 1-32, invalid falls back to 8', () async {
+      final manager = DownloadManager();
+      expect(await manager.setImageDownloadConcurrency(0), 8);
+      expect(await manager.setImageDownloadConcurrency(99), 32);
+      expect(await manager.setImageDownloadConcurrency(16), 16);
+      expect(manager.imageDownloadConcurrency, 16);
+    });
+  });
+
   group('DownloadedChapterSummary.failedIndices', () {
     test('round-trips non-empty failed indices', () {
       final original = DownloadedChapterSummary(

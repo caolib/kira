@@ -23,7 +23,7 @@ Future<void> showDownloadSettingsSheet(
   );
 }
 
-/// 漫画下载设置抽屉，从底部出现，用于配置单话图片并发下载数量等。
+/// 漫画下载设置抽屉，从底部出现，用于配置图片并发下载数量等。
 class DownloadSettingsSheet extends StatefulWidget {
   final DownloadManager downloads;
   const DownloadSettingsSheet({super.key, required this.downloads});
@@ -71,7 +71,7 @@ class _DownloadSettingsSheetState extends State<DownloadSettingsSheet> {
             Text(l10n.downloadImageConcurrency, style: tt.titleSmall),
             Text(
               l10n.downloadImageConcurrencyDesc,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: tt.bodySmall?.copyWith(color: cs.error),
             ),
             Row(
               children: [
