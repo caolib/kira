@@ -635,7 +635,18 @@ class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
   @override
   void didUpdateWidget(covariant _AnimatedBranchContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final oldKeys = _orderedKeys;
     _orderedKeys = _visibleNavKeys(UserManager());
+
+    // 可见序变化（如登录后插入书架）会让所有可见页位整体平移，而分支
+    // 索引不变、上面的分支变化分支不会进入；静止态直接按逻辑分支重算
+    // 页位，否则 _scrollPos 停在旧页位上会显示错误的分支。
+    if (oldKeys.join('\u0000') != _orderedKeys.join('\u0000') &&
+        !_dragging &&
+        _pendingBranch == null &&
+        _outgoingIndex == null) {
+      _scrollPos = _visiblePos(widget.currentIndex);
+    }
 
     if (oldWidget.currentIndex == widget.currentIndex) return;
 
