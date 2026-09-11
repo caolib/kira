@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import '../models/user_manager.dart';
 import '../utils/app_dio.dart';
 import '../utils/data_cache.dart';
-import 'anime/anime_api.dart';
 import 'api_transport.dart';
 import 'manga/manga_api.dart';
 import 'network/network_api.dart';
@@ -11,7 +10,7 @@ import 'user/user_api.dart';
 
 /// Facade that creates and exposes individual API services.
 ///
-/// Consumers access domain-specific APIs via [manga], [anime], [network],
+/// Consumers access domain-specific APIs via [manga], [network],
 /// and [user].  The shared HTTP transport ([ApiTransport]) is internal.
 class ApiClient {
   static int get routeCount => routes.length;
@@ -24,7 +23,6 @@ class ApiClient {
 
   late final ApiTransport _transport;
   late final MangaApi manga;
-  late final AnimeApi anime;
   late final NetworkApi network;
   late final UserApi user;
 
@@ -64,7 +62,6 @@ class ApiClient {
     );
 
     manga = MangaApi(_transport);
-    anime = AnimeApi(_transport);
     network = NetworkApi(_transport);
     user = UserApi(_transport);
 

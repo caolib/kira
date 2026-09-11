@@ -14,10 +14,6 @@ try {
     }
     Write-Host "版本号: v$versionFull" -ForegroundColor Yellow
 
-    # 检查 .env
-    if (-not (Test-Path '.env')) {
-        throw '缺少 .env 文件'
-    }
 
     # 检查 ISCC
     $iscc = Get-Command iscc.exe -ErrorAction SilentlyContinue
@@ -42,7 +38,7 @@ try {
     Write-Host "`n正在构建 Windows release..." -ForegroundColor Yellow
     & flutter build windows `
         --release `
-        --dart-define-from-file=.env
+       
     if ($LASTEXITCODE -ne 0) {
         throw "flutter build windows 失败 (exit code: $LASTEXITCODE)"
     }

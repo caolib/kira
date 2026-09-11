@@ -9,11 +9,9 @@ extension _BookshelfToolbar on _BookshelfPageState {
   }
 
   double _toolbarContentHeight(BuildContext context) {
-    // top/bottom padding + chip 行；若开启动画功能再加类型切换行。
+    // top/bottom padding + chip 行。
     // FilterChip/ActionChip 在 M3 下实际约 40–48，预留一点防溢出。
-    const filterRow = 4.0 + 48.0 + 8.0;
-    if (!_animeFeatureEnabled) return filterRow;
-    return filterRow + 48.0 + AppSpacing.sm;
+    return 4.0 + 48.0 + 8.0;
   }
 
   Widget _buildToolbar(BuildContext context, double hp) {
@@ -25,45 +23,13 @@ extension _BookshelfToolbar on _BookshelfPageState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_animeFeatureEnabled) ...[
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<_BookshelfType>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(
-                    value: _BookshelfType.comic,
-                    icon: const Icon(Icons.menu_book),
-                    label: Text(
-                      _comicTotal > 0
-                          ? l10n.comicWithCount(_comicTotal)
-                          : l10n.comicLabel,
-                    ),
-                  ),
-                  ButtonSegment(
-                    value: _BookshelfType.anime,
-                    icon: const Icon(Icons.movie_outlined),
-                    label: Text(
-                      _animeTotal > 0
-                          ? l10n.animeWithCount(_animeTotal)
-                          : l10n.animeLabel,
-                    ),
-                  ),
-                ],
-                selected: {_type},
-                onSelectionChanged: (v) => _setType(v.first),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
           Row(
             children: [
-              if (_type == _BookshelfType.comic)
-                FilterChip(
-                  label: Text(l10n.hasUpdate),
-                  selected: _showUpdateOnly,
-                  onSelected: _setShowUpdateOnly,
-                ),
+              FilterChip(
+                label: Text(l10n.hasUpdate),
+                selected: _showUpdateOnly,
+                onSelected: _setShowUpdateOnly,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 _cacheTimeLabel,
@@ -103,7 +69,7 @@ extension _BookshelfToolbar on _BookshelfPageState {
             _OrderingTile(
               icon: Icons.update,
               title: l10n.sortByUpdateTime,
-              subtitle: l10n.sortByUpdateTimeDesc(_typeLabel(l10n)),
+              subtitle: l10n.sortByUpdateTimeDesc(l10n.comicLabel),
               selected: _ordering == ApiOrdering.datetimeUpdated,
               onTap: () => _setOrdering(context, ApiOrdering.datetimeUpdated),
             ),

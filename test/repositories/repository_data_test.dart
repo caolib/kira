@@ -102,19 +102,6 @@ void main() {
     });
   });
 
-  group('AnimeBookshelfData', () {
-    test('fromJson handles empty data', () {
-      final data = AnimeBookshelfData.fromJson({
-        'items': <dynamic>[],
-        'total': 0,
-      });
-
-      expect(data.items, isEmpty);
-      expect(data.total, 0);
-      expect(data.cacheTime, isNull);
-    });
-  });
-
   group('SearchInitData', () {
     test('toJson and fromJson round-trip', () {
       // Use a minimal JSON round-trip that doesn't require Theme directly

@@ -101,7 +101,7 @@ void main() {
 
     await NetworkError.recordDioResponse(
       response,
-      source: 'anime_player',
+      source: 'video_player',
       message: '视频诊断请求失败',
       logger: logger,
     );
@@ -110,7 +110,7 @@ void main() {
     final entry = entries.single;
 
     expect(entry.level, AppLogLevel.warning);
-    expect(entry.source, 'anime_player');
+    expect(entry.source, 'video_player');
     expect(entry.message, '视频诊断请求失败');
     expect(entry.context['statusCode'], '403');
     expect(entry.context['statusMessage'], 'Forbidden');

@@ -10,9 +10,7 @@
             "type": "dart",
             "deviceId": "emulator",
             "preLaunchTask": "launch emulator",
-            "toolArgs": [
-                "--dart-define-from-file=.env"
-            ]
+            "toolArgs": []
         },
         {
             "name": "Debug - MuMu",
@@ -20,18 +18,14 @@
             "type": "dart",
             "deviceId": "127",
             "preLaunchTask": "adb connect MuMu",
-            "toolArgs": [
-                "--dart-define-from-file=.env"
-            ]
+            "toolArgs": []
         },
         {
             "name": "Debug - Windows",
             "request": "launch",
             "type": "dart",
             "deviceId": "win",
-            "toolArgs": [
-                "--dart-define-from-file=.env"
-            ]
+            "toolArgs": []
         },
         {
             "name": "Profile - Emulator",
@@ -40,9 +34,7 @@
             "flutterMode": "profile",
             "deviceId": "emulator",
             "preLaunchTask": "launch emulator",
-            "toolArgs": [
-                "--dart-define-from-file=.env"
-            ]
+            "toolArgs": []
         },
         {
             "name": "Profile - MuMu",
@@ -51,9 +43,7 @@
             "flutterMode": "profile",
             "deviceId": "127",
             "preLaunchTask": "adb connect MuMu",
-            "toolArgs": [
-                "--dart-define-from-file=.env"
-            ]
+            "toolArgs": []
         },
         {
             "name": "Profile - Windows",
@@ -61,9 +51,7 @@
             "type": "dart",
             "flutterMode": "profile",
             "deviceId": "win",
-            "toolArgs": [
-                "--dart-define-from-file=.env"
-            ]
+            "toolArgs": []
         }
     ]
 }

@@ -24,24 +24,6 @@ extension _CacheSectionLoad on _CacheManagementPageState {
     ];
   }
 
-  Future<_MediaKitCacheSection?> _loadMediaKitSection() async {
-    final loader = MediaKitNativeLoader.instance;
-    if (!loader.needsOnDemandDownload) return null;
-
-    final l10n = AppLocalizations.of(context)!;
-    final info = await loader.installInfo();
-    return _MediaKitCacheSection(
-      id: _CacheManagementPageState._mediaKitSectionId,
-      label: l10n.cacheMediaKitLabel,
-      description: l10n.cacheMediaKitDesc,
-      directoryPath: info.directoryPath,
-      fileCount: info.fileCount,
-      sizeBytes: info.sizeBytes,
-      version: info.version,
-      isInstalled: info.isInstalled,
-    );
-  }
-
   Future<_FontCacheSection?> _loadFontSection() async {
     final fontManager = FontManager();
     final downloaded = await fontManager.listDownloadedFonts();

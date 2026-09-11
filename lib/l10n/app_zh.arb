@@ -1,8 +1,6 @@
 {
   "@@locale": "zh",
-  "appTitle": "Kira",
   "comicTabLabel": "漫画",
-  "animeTabLabel": "动漫",
   "searchTabLabel": "搜索",
   "bookshelfTabLabel": "书架",
   "profileTabLabel": "我的",
@@ -48,34 +46,6 @@
       }
     }
   },
-  "deletedLocalComicsCount": "已删除 {count} 部本地漫画",
-  "@deletedLocalComicsCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "localAnimeTitle": "本地动漫",
-  "noLocalAnimeTitle": "还没有本地动漫",
-  "noLocalAnimeSubtitle": "去动漫详情页下载剧集后，这里会显示离线内容",
-  "deleteLocalAnimeTitle": "删除本地动漫",
-  "deleteLocalAnimeContent": "确定删除选中的 {count} 部本地动漫吗？已下载视频和封面都会被删除。",
-  "@deleteLocalAnimeContent": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "deletedLocalAnimeCount": "已删除 {count} 部本地动漫",
-  "@deletedLocalAnimeCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "selectedCount": "已选 {count} {unit}",
   "@selectedCount": {
     "placeholders": {
@@ -89,22 +59,6 @@
   },
   "selectedItems": "已选 {count} 部",
   "@selectedItems": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "downloadedChapterCount": "已下载 {count} 章",
-  "@downloadedChapterCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "downloadedEpisodeCount": "已下载 {count} 集",
-  "@downloadedEpisodeCount": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -130,14 +84,6 @@
       }
     }
   },
-  "localEpisodesTitle": "本地剧集 ({count})",
-  "@localEpisodesTitle": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "deleteLocalChaptersTitle": "删除本地章节",
   "deleteChaptersConfirm": "确定删除选中的 {count} 个章节吗？",
   "@deleteChaptersConfirm": {
@@ -155,51 +101,14 @@
       }
     }
   },
-  "deleteLocalEpisodesTitle": "删除本地剧集",
-  "deleteEpisodesConfirm": "确定删除选中的 {count} 个剧集吗？",
-  "@deleteEpisodesConfirm": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "deletedEpisodesCount": "已删除 {count} 个剧集",
-  "@deletedEpisodesCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "viewOnlineDetail": "查看在线详情",
   "manageChapters": "管理章节",
-  "manageEpisodes": "管理剧集",
   "selectAll": "全选",
   "sortReverse": "逆序（新→旧）",
   "sortNormal": "正序（旧→新）",
-  "readMark": "已读",
-  "videoFileNotFound": "视频文件不存在",
   "openDownloadFolder": "打开下载位置",
   "batchManage": "批量管理",
   "comicLabel": "漫画",
-  "animeLabel": "动漫",
-  "comicWithCount": "漫画（{count}）",
-  "@comicWithCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "animeWithCount": "动漫（{count}）",
-  "@animeWithCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "hasUpdate": "有更新",
   "updateBadge": "更新",
   "refreshedAt": "刷新于 {time}",
@@ -256,14 +165,6 @@
   "goLoginButton": "去登录",
   "autoLoginFailed": "自动登录失败，请手动重新登录",
   "loginToViewBookshelf": "登录后可继续查看书架",
-  "totalEpisodes": "共 {count} 集",
-  "@totalEpisodes": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "searchHint": "搜索{mode}...",
   "@searchHint": {
     "placeholders": {
@@ -321,16 +222,11 @@
   },
   "deleteToastPrefix": "已删除 ",
   "deleteToastSuffixComic": " 部本地漫画",
-  "deleteToastSuffixAnime": " 部本地动漫",
   "chapterUnit": "章",
-  "episodeUnit": "集",
   "generalTitle": "通用",
   "autoLoginTitle": "自动登录",
   "autoLoginEnabledDesc": "登录过期时自动重新登录",
   "autoLoginUnavailableDesc": "登录并保存账号密码后可用",
-  "animeFeatureTitle": "动漫功能",
-  "animeFeatureDesc": "关闭后隐藏动漫相关功能",
-  "animeFeatureMaintenanceWarning": "动漫功能已经停止维护",
   "remoteNoticeTitle": "通知",
   "remoteNoticeDesc": "开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取",
   "noticeSettingsTooltip": "通知设置",
@@ -451,23 +347,8 @@
   },
   "confirmTextLabel": "确认文本",
   "confirmResetButton": "确认重置",
-  "animeUnavailableToast": "当前动漫暂时无法打开",
-  "animeEditorRecommend": "编辑推荐",
-  "animeRecentUpdate": "最近更新",
-  "animeClassicRecommend": "经典推荐",
-  "animeClassicAnimation": "经典动画",
-  "animeHotAnime": "热门动漫",
-  "loginRequiredTitle": "需要登录",
-  "playbackFailedTitle": "播放失败",
-  "viewLogButton": "查看日志",
   "errorLogTitle": "错误日志",
-  "noLogInfo": "无日志信息",
   "closeButton": "关闭",
-  "videoLinkTitle": "视频链接",
-  "videoLinkPending": "加载后显示视频链接",
-  "copyVideoLinkButton": "复制视频链接",
-  "openInBrowserButton": "浏览器打开",
-  "switchLineTooltip": "切换线路",
   "profileCopyCredentialLabel": "拷贝漫画",
   "profileHotCredentialLabel": "热辣漫画",
   "accountSwitchedToast": "账号已切换",
@@ -492,7 +373,6 @@
       }
     }
   },
-  "appearanceBottomNavShowLabels": "底部导航栏显示文字",
   "appearanceBottomNavLabelMode": "底部导航栏文字",
   "appearanceBottomNavLabelModeSelectedOnly": "选中时显示",
   "appearanceBottomNavLabelModeSelectedOnlyDesc": "胶囊导航，仅选中项显示文字",
@@ -598,15 +478,6 @@
       }
     }
   },
-  "appearanceFontNeedDownload": "请先下载字体后再使用",
-  "appearanceFontDownloaded": "{fontId} 下载完成",
-  "@appearanceFontDownloaded": {
-    "placeholders": {
-      "fontId": {
-        "type": "String"
-      }
-    }
-  },
   "appearanceFontDownloadFailed": "字体下载失败",
   "appearanceFontDownloadTooltip": "下载字体",
   "appearanceFontNotDownloaded": "未下载",
@@ -671,11 +542,8 @@
     }
   },
   "networkTitle": "网络",
-  "networkApiRouteTitle": "API 线路",
   "networkSelectionMode": "选择模式",
   "networkModeRoute": "线路",
-  "networkModeFixedNode": "固定节点",
-  "networkTestOtherLatency": "测试其他节点延迟",
   "networkFixedNodeAutoSelected": "测速后已选择延迟最低的节点",
   "networkRouteLabel": "线路 {index}",
   "@networkRouteLabel": {
@@ -685,7 +553,6 @@
       }
     }
   },
-  "networkTestLatency": "测试线路延迟",
   "networkTestingNodes": "正在检测各节点...",
   "networkNotTested": "尚未进行检测",
   "networkHighLatencyProxySuggestion": "当前延迟较大，建议开启代理",
@@ -704,8 +571,6 @@
   "networkSystemProxyNotDetected": "系统代理：未检测到",
   "networkManualProxyNotConfigured": "手动代理：未配置",
   "networkOtherRouteGroup": "其他",
-  "networkCollapseTestResults": "收起测试结果",
-  "networkExpandTestResults": "展开测试结果",
   "networkProxySettings": "代理设置",
   "networkRefreshSystemProxy": "重新检测系统代理",
   "networkProxySystem": "系统",
@@ -713,19 +578,9 @@
   "networkProxyDirect": "直连",
   "networkProxyDirectActive": "直连（不使用代理）",
   "networkProxyDirectHint": "已忽略系统代理，所有请求直接连接",
-  "networkCurrentProxy": "当前代理",
   "networkProxyAddress": "代理地址",
   "networkProxyAddressHint": "127.0.0.1:7890 或 http://127.0.0.1:7890",
   "networkSaveAndEnableManualProxy": "保存并启用手动代理",
-  "networkTestingGoogle": "正在通过 {proxy} 访问 Google ...",
-  "@networkTestingGoogle": {
-    "placeholders": {
-      "proxy": {
-        "type": "String"
-      }
-    }
-  },
-  "networkGoogleConnectivity": "Google 连通性",
   "networkAdvancedSettings": "高级设置",
   "networkCopyLoginDomain": "拷贝登录域名",
   "networkCopyLoginDomainHint": "拷贝账号登录接口使用的域名，登录失败时可切换重试",
@@ -800,58 +655,6 @@
       }
     }
   },
-  "networkConnectionSuccess": "连接成功，HTTP {statusCode}，{proxyRule}",
-  "@networkConnectionSuccess": {
-    "placeholders": {
-      "statusCode": {
-        "type": "int"
-      },
-      "proxyRule": {
-        "type": "String"
-      }
-    }
-  },
-  "networkConnectionFailed": "连接失败，HTTP {statusCode}，{proxyRule}",
-  "@networkConnectionFailed": {
-    "placeholders": {
-      "statusCode": {
-        "type": "int"
-      },
-      "proxyRule": {
-        "type": "String"
-      }
-    }
-  },
-  "networkConnectionTimeout": "连接超时，{proxyRule}",
-  "@networkConnectionTimeout": {
-    "placeholders": {
-      "proxyRule": {
-        "type": "String"
-      }
-    }
-  },
-  "networkProxyRuleError": "{proxyRule}：{error}",
-  "@networkProxyRuleError": {
-    "placeholders": {
-      "proxyRule": {
-        "type": "String"
-      },
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "networkTestFailed": "测试失败，{proxyRule}：{error}",
-  "@networkTestFailed": {
-    "placeholders": {
-      "proxyRule": {
-        "type": "String"
-      },
-      "error": {
-        "type": "String"
-      }
-    }
-  },
   "networkStatusGood": "网络通畅",
   "networkStatusGoodHint": "当前最佳延迟 {ms} ms，状态良好",
   "@networkStatusGoodHint": {
@@ -879,10 +682,6 @@
   "networkNodeGridRouteHint": "选择一条线路，测速后自动切换到最快的",
   "networkNodeGridFixedHint": "点击节点卡片即可固定到该节点",
   "networkModeFixedNodeShort": "节点",
-  "networkSettings": "设置",
-  "networkSettingsTitle": "网络设置",
-  "networkHistorySettingsTitle": "节点历史记录",
-  "networkStatusAutoGoodHint": "基于真实请求自动选择，状态健康",
   "aiConfigTitle": "AI配置",
   "aiConfigNewChat": "新对话",
   "aiConfigProvidersTitle": "AI 供应商",
@@ -1068,7 +867,6 @@
   "bookmarksEmptySubtitle": "阅读漫画时，点击右上角的书签按钮即可标记当前位置",
   "bookmarksClearTitle": "清空书签",
   "bookmarksClearContent": "确定要清空所有书签吗？",
-  "bookmarksClearGroupTitle": "删除该漫画的书签",
   "bookmarksGroupDeleted": "已删除 {count} 条书签",
   "@bookmarksGroupDeleted": {
     "placeholders": {
@@ -1104,7 +902,6 @@
   },
   "profileRegisterSuccessLoginToast": "注册成功，请登录",
   "profileUsernamePasswordRequired": "请输入用户名和密码",
-  "profileLoginFailed": "登录失败",
   "profileLoginFailedProxyHint": "登录失败，建议开启代理后重试",
   "profileLoginIpBlockedHint": "当前 IP 被封禁，请更换网络环境或开启代理后重试",
   "profileTokenRequired": "请输入令牌",
@@ -1113,7 +910,6 @@
   "profileAccountPasswordLoginMode": "账号密码",
   "profileTokenLoginMode": "令牌",
   "profileTokenLoginEntry": "令牌登录",
-  "profileAccountLoginEntry": "账号密码登录",
   "profileWebLoginButton": "官网登录",
   "profileWebLoginRecommendedTag": "推荐",
   "profileWebLoginPageTitle": "官网登录",
@@ -1145,9 +941,6 @@
   "profileOfficialRegisterPrompt": "去官网注册",
   "profileHotMangaLabel": "热辣漫画",
   "profileCopyMangaLabel": "拷贝漫画",
-  "aboutQqGroupTitle": "QQ交流群",
-  "aboutJoinGroupButton": "加入群聊",
-  "aboutGroupNumberCopiedToast": "已复制群号",
   "aboutMirrorPrefixTitle": "设置镜像源",
   "aboutMirrorPrefixDesc": "用于更新与播放组件下载的镜像链接，会拼接在 GitHub 下载地址前。",
   "aboutMirrorPrefixLabel": "镜像源地址",
@@ -1167,14 +960,11 @@
   "aboutGotItButton": "知道了",
   "aboutRepositoryLabel": "仓库",
   "aboutFeedbackLabel": "反馈",
-  "aboutCommunityLabel": "交流",
   "aboutCheckUpdateTitle": "检查更新",
   "aboutAutoCheckUpdateTitle": "启动时检查更新",
   "aboutLogTitle": "日志",
   "aboutAcknowledgementTitle": "致谢",
   "acknowledgementThanksTitle": "感谢以下服务与项目的支持",
-  "acknowledgementDandanplayTitle": "弹弹play",
-  "acknowledgementDandanplayDesc": "提供弹幕服务",
   "acknowledgementZhconvertTitle": "繁化姬",
   "acknowledgementZhconvertDesc": "提供简体化服务",
   "aboutLicenseTitle": "许可证",
@@ -1218,14 +1008,6 @@
       "count": {
         "type": "int"
       },
-      "size": {
-        "type": "String"
-      }
-    }
-  },
-  "cacheMediaKitDataTarget": "播放组件（{size}）",
-  "@cacheMediaKitDataTarget": {
-    "placeholders": {
       "size": {
         "type": "String"
       }
@@ -1286,24 +1068,6 @@
   "cacheReaderImageDesc": "漫画章节图片缓存。再次打开读过的章节时，图片会优先从这里读取。",
   "cacheDefaultImageLabel": "图片缓存 / 封面与头像",
   "cacheDefaultImageDesc": "封面、头像等 CachedNetworkImage 默认使用的图片缓存。",
-  "cacheMediaKitLabel": "播放组件 / media_kit",
-  "cacheMediaKitDesc": "动漫播放器原生库（libmpv 等）。首次播放时按需下载；删除后下次播放会重新下载。",
-  "cacheMediaKitSection": "播放组件",
-  "cacheNoMediaKitToClear": "尚未下载播放组件",
-  "cacheClearMediaKitTitle": "删除播放组件",
-  "cacheClearMediaKitContent": "确定删除已下载的播放组件吗？将删除 {fileCount} 个文件，释放约 {size}。下次播放动漫时会重新下载。",
-  "@cacheClearMediaKitContent": {
-    "placeholders": {
-      "fileCount": {
-        "type": "int"
-      },
-      "size": {
-        "type": "String"
-      }
-    }
-  },
-  "cacheMediaKitClearedToast": "已删除播放组件",
-  "cacheMediaKitVersionLabel": "组件版本",
   "commentSettingsEditBuiltInPromptTitle": "编辑内置提示词",
   "commentSettingsEditPromptTitle": "编辑提示词",
   "commentSettingsAddPromptTitle": "添加提示词",
@@ -1550,76 +1314,6 @@
   "comicCommentReplyPosted": "回复已发布",
   "comicCommentReplyButton": "回复",
   "comicCommentExpandFullText": "展开全文",
-  "animeDetailTitle": "动漫详情",
-  "animeDetailIntroTab": "简介",
-  "animeDetailEpisodesTab": "选集 ({count})",
-  "@animeDetailEpisodesTab": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "animeDetailIntroRefreshFailed": "简介刷新失败",
-  "animeDetailEpisodeRefreshFailed": "选集刷新失败",
-  "animeDetailDandanplayBindingCleared": "已清除弹弹play绑定",
-  "animeDetailDandanplayBound": "已绑定 {title}",
-  "@animeDetailDandanplayBound": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      }
-    }
-  },
-  "animeDetailAlignmentCleared": "已清除对齐",
-  "animeDetailRealigned": "已重新对齐弹幕",
-  "animeDetailNoAvailableLine": "当前选集暂无可用线路",
-  "animeDetailPlaybackEpisodeUnavailable": "播放记录对应选集暂不可用",
-  "animeDetailInfoLoadFailedForDownload": "动漫信息加载失败，无法下载",
-  "animeDetailNoLineForDownload": "当前选集暂无可用线路，无法下载",
-  "animeDetailDownloadTasksAdded": "已添加 {count} 个下载任务",
-  "@animeDetailDownloadTasksAdded": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "animeDetailCannotCollect": "当前动漫暂时无法收藏",
-  "animeDetailCollected": "已收藏",
-  "animeDetailCollectCancelled": "已取消收藏",
-  "animeDetailCollectFailed": "收藏状态修改失败",
-  "animeDetailDownloadTaskCount": "{count} 个任务",
-  "@animeDetailDownloadTaskCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "animeDetailNoIntroInfo": "暂无简介信息",
-  "animeDetailInfoTitle": "资料",
-  "animeDetailIntroLoadFailed": "简介加载失败，下拉重试",
-  "animeDetailIntroRefreshFailedCached": "简介刷新失败，当前显示缓存内容",
-  "animeDetailSelectedEpisodes": "已选 {count} 集",
-  "@animeDetailSelectedEpisodes": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "animeDetailSelectAllUndownloaded": "全选未下载",
-  "animeDetailDownloadSelected": "下载选中",
-  "animeDetailEpisodeLoadFailed": "选集加载失败，下拉重试",
-  "animeDetailNoEpisodes": "暂无选集",
-  "animeDetailEpisodeRefreshFailedCached": "选集刷新失败，当前显示上次结果",
-  "animeDetailBindToViewComments": "绑定弹弹play 后才可查看评论",
-  "animeDetailBindDanmaku": "绑定弹幕",
-  "animeDetailRebind": "重新绑定",
-  "animeDetailAlign": "对齐",
-  "animeDetailDownloadButton": "下载",
-  "animeDetailEpisodeLoadFailedShort": "选集加载失败",
   "readerSettingsTitle": "阅读设置",
   "readerScrollMode": "滚动",
   "readerPageMode": "翻页",
@@ -1719,7 +1413,6 @@
   },
   "browseHistoryLoginExpiredContent": "浏览记录需要登录后才能继续查看，是否现在重新登录？",
   "browseHistoryLoginToView": "登录后可继续查看浏览记录",
-  "browseHistoryLoginHintWithAnime": "浏览过的漫画和动漫会同步显示在这里",
   "browseHistoryLoginHintComicOnly": "浏览过的漫画会同步显示在这里",
   "browseHistoryEmptyTitle": "还没有{mode}浏览记录",
   "@browseHistoryEmptyTitle": {
@@ -1780,143 +1473,6 @@
       }
     }
   },
-  "animePlayerLoginRequiredToPlay": "登录后才能播放该视频",
-  "animePlayerEmptyVideoUrl": "视频链接为空",
-  "animePlayerRequestFailedStatus": "请求失败（{statusCode}）",
-  "@animePlayerRequestFailedStatus": {
-    "placeholders": {
-      "statusCode": {
-        "type": "int"
-      }
-    }
-  },
-  "animePlayerRequestFailedStatusText": "请求失败（{statusCode}）",
-  "@animePlayerRequestFailedStatusText": {
-    "placeholders": {
-      "statusCode": {
-        "type": "String"
-      }
-    }
-  },
-  "animePlayerMpvLogTitle": "media_kit/mpv 日志:",
-  "animePlayerQuickDiagnosisTitle": "快速诊断:",
-  "animePlayerDiagnosisManifestStatus": "m3u8 状态: {statusCode}",
-  "@animePlayerDiagnosisManifestStatus": {
-    "placeholders": {
-      "statusCode": {
-        "type": "int"
-      }
-    }
-  },
-  "animePlayerDiagnosisManifestHls": "m3u8 内容: 已识别为 HLS 清单",
-  "animePlayerDiagnosisManifestNotHls": "m3u8 内容: 返回 200，但内容不像标准 HLS 清单",
-  "animePlayerDiagnosisManifestError": "m3u8 错误: {error}",
-  "@animePlayerDiagnosisManifestError": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "animePlayerDiagnosisFirstSegment": "首个分片: {url}",
-  "@animePlayerDiagnosisFirstSegment": {
-    "placeholders": {
-      "url": {
-        "type": "String"
-      }
-    }
-  },
-  "animePlayerDiagnosisSegmentStatus": "首个分片状态: {statusCode}",
-  "@animePlayerDiagnosisSegmentStatus": {
-    "placeholders": {
-      "statusCode": {
-        "type": "int"
-      }
-    }
-  },
-  "animePlayerDiagnosisSegmentBytes": "首个分片字节数: {bytes}",
-  "@animePlayerDiagnosisSegmentBytes": {
-    "placeholders": {
-      "bytes": {
-        "type": "int"
-      }
-    }
-  },
-  "animePlayerDiagnosisSegmentError": "首个分片错误: {error}",
-  "@animePlayerDiagnosisSegmentError": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "animePlayerDiagnosisConclusionDecodeIssue": "结论: m3u8 与首个分片都可访问，更像是播放器解析或解码兼容问题",
-  "animePlayerSourceForbidden": "视频源拒绝访问（403）",
-  "animePlayerSourceNotFound": "视频地址已失效（404）",
-  "animePlayerCertificateFailed": "视频证书校验失败",
-  "animePlayerConnectionTimeout": "视频连接超时",
-  "animePlayerCannotParseStream": "视频源可访问，但播放器无法解析该视频流",
-  "animePlayerEnableProxyToRetry": "视频加载失败，请开启代理后重试",
-  "animePlayerInvalidVideoUri": "视频地址不是合法 URI",
-  "animePlayerDiagnosisRequestFailed": "视频诊断请求失败",
-  "animePlayerSegmentDiagnosisRequestFailed": "视频分片诊断请求失败",
-  "animePlayerSegmentUrlNotResolved": "未解析出分片地址",
-  "animePlayerLoadingCannotSwitch": "视频加载中，请稍后再切换",
-  "animePlayerNoVideoUrlToCopy": "暂无可复制的视频链接",
-  "animePlayerVideoUrlCopied": "视频链接已复制到剪贴板",
-  "animePlayerNoVideoUrlToOpen": "暂无可打开的视频链接",
-  "animePlayerOpenVideoUrlFailed": "无法打开视频链接",
-  "animePlayerSeekedTo": "已跳转到 {position}",
-  "@animePlayerSeekedTo": {
-    "placeholders": {
-      "position": {
-        "type": "String"
-      }
-    }
-  },
-  "animePlayerSeekLastFailed": "无法跳转到上次进度",
-  "animePlayerSearchFailed": "搜索失败: {error}",
-  "@animePlayerSearchFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "animePlayerRefreshTooFrequent": "不要频繁刷新！",
-  "animePlayerLoadDanmakuFailed": "加载弹幕失败: {error}",
-  "@animePlayerLoadDanmakuFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "animePlayerBuffering": "正在缓冲...",
-  "animePlayerProxySuggestion": "如果网络卡顿，建议开启代理访问",
-  "animePlayerPlay": "播放",
-  "animePlayerFastForward": "快进 {seconds}秒",
-  "@animePlayerFastForward": {
-    "placeholders": {
-      "seconds": {
-        "type": "int"
-      }
-    }
-  },
-  "animePlayerHideDanmaku": "隐藏弹幕",
-  "animePlayerChapterSelector": "选集",
-  "animePlayerChapterSelectorWithCount": "选集 ({count})",
-  "@animePlayerChapterSelectorWithCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "animePlayerSetSkipSeconds": "设置跳转秒数",
-  "animePlayerExitFullscreen": "退出全屏",
-  "animePlayerFullscreen": "全屏",
-  "backButton": "返回",
   "cacheSelectedCards": "已选 {count} 个卡片",
   "@cacheSelectedCards": {
     "placeholders": {
@@ -1939,7 +1495,6 @@
       }
     }
   },
-  "cacheManagementSummaryDesc": "按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片与播放组件可单独清理。",
   "cacheImageCacheSection": "图片缓存",
   "cacheDataCacheSection": "数据缓存",
   "cacheNoLocalKeyValueData": "没有可显示的本地键值数据",
@@ -1969,15 +1524,10 @@
       }
     }
   },
-  "cacheDescriptionTitle": "说明",
-  "cacheKeyTitle": "缓存标识",
-  "cacheDirectoryTitle": "缓存目录",
   "cacheCategoryPersistentCache": "业务缓存",
   "cacheCategoryAccount": "账号数据",
   "cacheCategoryAppSettings": "应用设置",
   "cacheCategoryMangaHistory": "漫画阅读历史",
-  "cacheCategoryAnimeHistory": "动漫播放历史",
-  "cacheCategoryBindings": "弹幕绑定",
   "cacheCategoryAiSummaryCache": "AI 总结缓存",
   "cacheCategoryOther": "其他数据",
   "themeColorBlueGrey": "蓝灰",
@@ -2121,14 +1671,6 @@
     }
   },
   "comicDetailSelectedAlreadyDownloadedOrQueued": "所选章节已下载或已在队列中",
-  "comicDetailSelectedChapters": "已选 {count} 章",
-  "@comicDetailSelectedChapters": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "comicDetailDownloadSelectedCount": "下载{count}话",
   "@comicDetailDownloadSelectedCount": {
     "placeholders": {
@@ -2187,7 +1729,6 @@
       }
     }
   },
-  "downloadedStatus": "已下载",
   "comicDetailDownloadProgress": "下载 {completed}/{total}",
   "@comicDetailDownloadProgress": {
     "placeholders": {
@@ -2200,44 +1741,12 @@
     }
   },
   "comicDetailQueued": "排队中",
-  "processingStatus": "处理中",
   "collectButton": "收藏",
   "downloadQueueTab": "队列",
   "downloadQueueEmpty": "下载队列为空",
   "downloadQueueEmptyComicHint": "去漫画详情页添加下载任务",
-  "downloadQueueEmptyMixedHint": "去漫画或动漫详情页添加下载任务",
-  "downloadProgressApproxBytes": "{percent}% · 约 {size}",
-  "@downloadProgressApproxBytes": {
-    "placeholders": {
-      "percent": {
-        "type": "String"
-      },
-      "size": {
-        "type": "String"
-      }
-    }
-  },
   "downloadingStatus": "下载中",
   "waitingStatus": "等待中",
-  "pausedStatus": "已暂停",
-  "downloadFailedStatus": "下载失败",
-  "animeDownloadConnectionTimeout": "连接超时",
-  "animeDownloadProxyRetrySuggestion": "建议开启代理后重试",
-  "animeDownloadUnknownError": "未知错误",
-  "animeDownloadFailedMessage": "{chapter} 下载失败：{error}",
-  "@animeDownloadFailedMessage": {
-    "placeholders": {
-      "chapter": {
-        "type": "String"
-      },
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "animeDownloadEmptyVideoUrl": "视频链接为空",
-  "pauseButton": "暂停",
-  "resumeButton": "继续",
   "downloadProgressCount": "{percent}% ({completed}/{total})",
   "@downloadProgressCount": {
     "placeholders": {
@@ -2261,7 +1770,6 @@
       }
     }
   },
-  "downloadChapterRetryTooltip": "补全失败页",
   "downloadProgressPartial": "{percent}% ({completed}/{total})，失败 {failed}",
   "@downloadProgressPartial": {
     "placeholders": {
@@ -2318,46 +1826,6 @@
   "profileFallbackQuestionFriend": "我的基友叫啥？",
   "profileFallbackQuestionBestFriendCount": "我的好麻吉有幾個？",
   "profileFallbackQuestionParentName": "我的父親(母親)叫什麽？",
-  "animeDetailSubtitleChip": "字幕",
-  "animeDetailLatestChapter": "最新：{chapter}",
-  "@animeDetailLatestChapter": {
-    "placeholders": {
-      "chapter": {
-        "type": "String"
-      }
-    }
-  },
-  "animeDetailOnAirChip": "连载中",
-  "animeDetailRestrictedChip": "受限",
-  "animeDetailDirector": "导演：{name}",
-  "@animeDetailDirector": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "playerSettingsPlaybackTitle": "播放设置",
-  "playerSettingsSkipSeconds": "快进秒数",
-  "playerSettingsSkipSecondsDesc": "动漫片头一般约90秒",
-  "playerSettingsSecondsLabel": "秒数",
-  "readerSecondsSuffix": "秒",
-  "playerSettingsRecordProgress": "记录播放进度",
-  "playerSettingsRecordProgressDesc": "再次打开同一集时自动跳转到上次观看位置",
-  "playerSettingsDanmakuTitle": "弹幕设置",
-  "playerSettingsShowDanmaku": "显示弹幕",
-  "playerSettingsFontSize": "字体大小",
-  "playerSettingsDisplayArea": "显示区域",
-  "playerSettingsOpacity": "透明度",
-  "playerSettingsDanmakuType": "弹幕类型",
-  "playerSettingsScrollDanmaku": "滚动弹幕",
-  "playerSettingsTopDanmaku": "顶部弹幕",
-  "playerSettingsBottomDanmaku": "底部弹幕",
-  "playerSettingsBlocklist": "屏蔽词",
-  "playerSettingsBlocklistDesc": "包含屏蔽词的弹幕将被自动过滤",
-  "playerSettingsBlocklistHint": "输入屏蔽词",
-  "playerSettingsDanmakuFont": "弹幕字体",
-  "playerSettingsDanmakuFontSystem": "跟随系统",
   "playerSettingsChineseConvertTooltip": "简繁转换",
   "readerImageLinksRefreshed": "图片链接已刷新",
   "refreshFailedWithError": "刷新失败：{error}",
@@ -2413,26 +1881,12 @@
   "readerSaveImagePermissionDenied": "没有相册写入权限，保存失败",
   "updateAlreadyLatest": "当前已是最新版本",
   "updateNoPackageForPlatform": "当前平台暂无安装包",
-  "updateCheckFailedRetryLater": "检查更新失败，请稍后重试",
   "updateOpenDownloadFailed": "无法打开下载链接",
   "updateViewNotes": "更新说明",
   "updateNoReleaseNotes": "暂无更新说明",
   "updateCurrentVersionNotes": "当前版本",
-  "updateMirrorDownload": "镜像下载",
-  "updateLatestBadge": "最新",
-  "updateCollapseOtherVersions": "收起其他版本",
-  "updateViewMoreVersions": "查看更多版本 ({count})",
-  "@updateViewMoreVersions": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "updateCiBuildUnstable": "CI 自动构建版本，不保证稳定性。",
   "updateOpenReleasePage": "打开发布页",
-  "updatePackagesBeta": "安装包",
-  "updatePackages": "安装包",
   "updateOtherPackages": "其他安装包（{count}）",
   "@updateOtherPackages": {
     "placeholders": {
@@ -2443,8 +1897,6 @@
   },
   "updateSkipVersion": "跳过此版本",
   "updateDisableAutoCheck": "取消自动检查更新",
-  "updateInstallInApp": "应用内安装",
-  "updateInstallInAppMirror": "镜像应用内安装",
   "updateDownloading": "下载中 {percent}%",
   "@updateDownloading": {
     "placeholders": {
@@ -2459,7 +1911,6 @@
   "updateDownloadPreparing": "准备下载…",
   "updateInstalling": "正在安装…",
   "updateCardChecking": "正在检查更新…",
-  "updateCardLatest": "当前已是最新版本",
   "updateCardFailed": "检查更新失败，点击重试",
   "updateCardRetry": "重试",
   "updateButtonUpdate": "更新",
@@ -2490,154 +1941,11 @@
   "readerRotationDirection": "旋转方向",
   "readerRotateLeftShort": "向左",
   "readerRotateRightShort": "向右",
-  "browseHistoryLastSeenLabel": "上次看到",
-  "playerProgressAutoResumed": "{progress}（已自动继续）",
-  "@playerProgressAutoResumed": {
-    "placeholders": {
-      "progress": {
-        "type": "String"
-      }
-    }
-  },
-  "playerSeekButton": "跳转",
-  "bangumiCommentsLoadFailed": "评论加载失败",
-  "bangumiCommentsRetryHint": "下拉或点按钮重试",
-  "bangumiCommentsEmptyTitle": "还没有评论",
-  "bangumiCommentsEmptySubtitle": "暂时没有可显示的 Bangumi 评论",
-  "bangumiCommentsLoadMoreFailed": "更多评论加载失败",
-  "bangumiCommentsRetryLoadMore": "重试加载更多",
-  "bangumiCommentsLoadMore": "加载更多",
-  "bangumiCommentsEmptyComment": "这条评论没有内容",
-  "danmakuSearchTitle": "弹幕搜索",
-  "danmakuSearchTitleWithCount": "弹幕搜索（{count}）",
-  "@danmakuSearchTitleWithCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "danmakuLoadedTitle": "已装载{count}发弹幕",
-  "@danmakuLoadedTitle": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "danmakuSearchHint": "输入搜索关键词",
-  "forceRefreshTooltip": "强制刷新",
-  "danmakuSearchInstruction": "请选择分段或输入搜索词后点击搜索",
-  "danmakuSearchResultCount": "共找到 {count} 条结果",
-  "@danmakuSearchResultCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "danmakuSearchNoResults": "未找到相关弹幕",
-  "danmakuSearchNoResultsHint": "减少关键词，仅搜索作品名称\n如：「Re：从零开始的异世界生活第四季丧失篇」搜索「从零开始的异世界生活第四季」",
-  "danmakuLabel": "弹幕",
-  "dandanplayBindingSearchKeyword": "搜索关键词",
-  "dandanplayBindingClear": "清除绑定",
-  "dandanplayBindingSearchFailed": "搜索失败：{error}",
-  "@dandanplayBindingSearchFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "dandanplayBindingNoResults": "未找到相关番剧",
-  "dandanplayBindingSearchInstruction": "输入关键词后点击搜索",
-  "dandanplayBindingCurrent": "当前绑定",
-  "dandanplayBindingBound": "已绑定",
-  "dandanplayBindingUnbound": "未绑定",
-  "dandanplayBindingBind": "绑定",
-  "dandanplayBindingRating": "评分 {rating}",
-  "@dandanplayBindingRating": {
-    "placeholders": {
-      "rating": {
-        "type": "String"
-      }
-    }
-  },
-  "dandanplayAlignmentTitle": "对齐弹幕",
-  "dandanplayAlignmentVideoFirstEpisode": "视频第一集",
-  "dandanplayAlignmentDanmakuFirstEpisode": "弹幕第一集",
-  "dandanplayAlignmentClear": "清除对齐",
   "spoilerWarningTitle": "剧透警告",
   "spoilerWarningContent": "真的要打开吗？前方是地狱啊！",
   "openButton": "打开",
   "spoilerSuspectedComment": "这是一条高度剧透嫌疑的评论",
   "spoilerTapToView": "含剧透，点击查看",
-  "mediaKitDownloadTitle": "需要下载播放组件",
-  "mediaKitDownloadMessage": "首次使用动漫播放功能需下载播放组件（{size}）。下载后会保存在本地，软件更新无需重新下载。",
-  "@mediaKitDownloadMessage": {
-    "placeholders": {
-      "size": {
-        "type": "String"
-      }
-    }
-  },
-  "mediaKitDownloadSourceLabel": "下载来源",
-  "mediaKitDownloadSourceGithub": "GitHub",
-  "mediaKitDownloadSourceGithubHint": "直连 GitHub 官方资源",
-  "mediaKitDownloadSourceMirror": "镜像下载",
-  "mediaKitDownloadSourceMirrorHint": "使用当前镜像：{mirror}",
-  "@mediaKitDownloadSourceMirrorHint": {
-    "placeholders": {
-      "mirror": {
-        "type": "String"
-      }
-    }
-  },
-  "mediaKitDownloadConfirm": "开始下载",
-  "mediaKitDownloadingTitle": "正在下载播放组件",
-  "mediaKitDownloadFailedTitle": "下载失败",
-  "mediaKitDownloadFailed": "下载播放组件失败：{error}",
-  "@mediaKitDownloadFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "mediaKitInitFailed": "播放器初始化失败：{error}",
-  "@mediaKitInitFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "mediaKitDownloadStageConnect": "正在连接…",
-  "mediaKitDownloadBytesProgress": "{received} / {total}",
-  "@mediaKitDownloadBytesProgress": {
-    "placeholders": {
-      "received": {
-        "type": "String"
-      },
-      "total": {
-        "type": "String"
-      }
-    }
-  },
-  "mediaKitDownloadBytesOnly": "已下载 {received}",
-  "@mediaKitDownloadBytesOnly": {
-    "placeholders": {
-      "received": {
-        "type": "String"
-      }
-    }
-  },
-  "mediaKitDownloadTimeout": "连接或下载超时，请切换 GitHub/镜像后重试",
-  "mediaKitDownloadNetworkError": "网络连接失败，请检查网络或切换下载来源",
-  "mediaKitDownloadStagePrepare": "准备中…",
-  "mediaKitDownloadStageDownload": "正在下载…",
-  "mediaKitDownloadStageVerify": "校验文件…",
-  "mediaKitDownloadStageExtract": "解压组件…",
-  "mediaKitDownloadStageLoad": "加载组件…",
-  "mediaKitDownloadStageDone": "完成"
+  "alreadyCollectedLabel": "已收藏",
+  "downloadActionButton": "下载"
 }

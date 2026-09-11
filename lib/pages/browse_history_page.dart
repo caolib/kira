@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
-import '../models/anime.dart';
 import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
@@ -22,8 +21,6 @@ import '../utils/toast.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/load_more_footer.dart';
 
-enum _HistoryMode { comic, anime }
-
 class BrowseHistoryPage extends StatefulWidget {
   final WidgetBuilder loginPageBuilder;
 
@@ -37,9 +34,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
   final _api = ApiClient();
   final _user = UserManager();
 
-  _HistoryMode _mode = _HistoryMode.comic;
   List<BrowseHistoryItem> _comicItems = [];
-  List<AnimeBrowseHistoryItem> _animeItems = [];
   bool _loading = true;
   bool _refreshing = false;
   bool _loadingMore = false;
@@ -47,14 +42,9 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
   int _offset = 0;
   int _total = 0;
 
-  bool get _animeFeatureEnabled => _user.animeFeatureEnabled;
-  bool get _isAnimeMode => _animeFeatureEnabled && _mode == _HistoryMode.anime;
-  String _modeLabel(AppLocalizations l10n) =>
-      _isAnimeMode ? l10n.animeLabel : l10n.comicLabel;
-  bool get _currentItemsEmpty =>
-      _isAnimeMode ? _animeItems.isEmpty : _comicItems.isEmpty;
-  int get _currentLength =>
-      _isAnimeMode ? _animeItems.length : _comicItems.length;
+  String _modeLabel(AppLocalizations l10n) => l10n.comicLabel;
+  bool get _currentItemsEmpty => _comicItems.isEmpty;
+  int get _currentLength => _comicItems.length;
 
   @override
   void initState() {
@@ -75,12 +65,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   void _onUserChanged() {
     if (!mounted) return;
-    if (!_animeFeatureEnabled && _mode == _HistoryMode.anime) {
-      setState(() {
-        _mode = _HistoryMode.comic;
-        _clearItems();
-      });
-    }
     if (_user.isLoggedIn) {
       _load(silent: true, force: true);
     } else {
@@ -93,7 +77,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   void _clearItems() {
     _comicItems = [];
-    _animeItems = [];
     _offset = 0;
     _total = 0;
   }
@@ -121,11 +104,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     if (confirmed != true || !mounted) return;
 
     try {
-      if (_isAnimeMode) {
-        await _api.user.clearAnimeBrowseHistory();
-      } else {
-        await _api.user.clearBrowseHistory();
-      }
+      await _api.user.clearBrowseHistory();
       if (!mounted) return;
       showToast(context, l10n.browseHistoryCleared(modeLabel));
       setState(_clearItems);
@@ -141,7 +120,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   Future<void> _load({bool silent = false, bool force = false}) async {
     if (_refreshing && !force) return;
-    final mode = _mode;
     _refreshing = true;
     final isInitial = _currentItemsEmpty;
     if (isInitial) {
@@ -152,25 +130,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     _offset = 0;
 
     try {
-      if (mode == _HistoryMode.anime) {
-        final data = await _api.anime.getAnimeBrowseHistory();
-        if (!mounted || _mode != mode) return;
-        setState(() {
-          _animeItems = data.list;
-          _total = data.total;
-          _offset = data.list.length;
-          _loading = false;
-        });
-      } else {
-        final data = await _api.user.getBrowseHistory();
-        if (!mounted || _mode != mode) return;
-        setState(() {
-          _comicItems = data.list;
-          _total = data.total;
-          _offset = data.list.length;
-          _loading = false;
-        });
-      }
+      final data = await _api.user.getBrowseHistory();
+      if (!mounted) return;
+      setState(() {
+        _comicItems = data.list;
+        _total = data.total;
+        _offset = data.list.length;
+        _loading = false;
+      });
       if (!silent && mounted) {
         showToast(context, AppLocalizations.of(context)!.refreshSuccess);
       }
@@ -200,24 +167,14 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   Future<void> _loadMore() async {
     if (_loadingMore || _refreshing || _offset >= _total) return;
-    final mode = _mode;
     setState(() => _loadingMore = true);
     try {
-      if (mode == _HistoryMode.anime) {
-        final data = await _api.anime.getAnimeBrowseHistory(offset: _offset);
-        if (!mounted || _mode != mode) return;
-        setState(() {
-          _animeItems.addAll(data.list);
-          _offset = _animeItems.length;
-        });
-      } else {
-        final data = await _api.user.getBrowseHistory(offset: _offset);
-        if (!mounted || _mode != mode) return;
-        setState(() {
-          _comicItems.addAll(data.list);
-          _offset = _comicItems.length;
-        });
-      }
+      final data = await _api.user.getBrowseHistory(offset: _offset);
+      if (!mounted) return;
+      setState(() {
+        _comicItems.addAll(data.list);
+        _offset = _comicItems.length;
+      });
     } catch (e, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
@@ -235,18 +192,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
       } else {
         _loadingMore = false;
       }
-    }
-  }
-
-  void _setMode(_HistoryMode mode) {
-    if (mode == _HistoryMode.anime && !_animeFeatureEnabled) return;
-    if (_mode == mode) return;
-    setState(() {
-      _mode = mode;
-      _clearItems();
-    });
-    if (_user.isLoggedIn) {
-      _load(silent: true);
     }
   }
 
@@ -307,16 +252,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
     }
   }
 
-  void _openAnime(AnimeBrowseHistoryItem item) {
-    if (!_animeFeatureEnabled) return;
-    if (item.anime.pathWord.isEmpty) return;
-    context.pushNamed(
-      AppRoutes.animeDetail,
-      pathParameters: {'pathWord': item.anime.pathWord},
-      extra: AnimeDetailExtra(initialAnime: item.anime),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -359,9 +294,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      _animeFeatureEnabled
-                          ? l10n.browseHistoryLoginHintWithAnime
-                          : l10n.browseHistoryLoginHintComicOnly,
+                      l10n.browseHistoryLoginHintComicOnly,
                       textAlign: TextAlign.center,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -379,28 +312,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
           ? CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                if (_animeFeatureEnabled)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
-                      child: SegmentedButton<_HistoryMode>(
-                        segments: [
-                          ButtonSegment(
-                            value: _HistoryMode.comic,
-                            label: Text(l10n.comicLabel),
-                            icon: const Icon(Icons.menu_book_outlined),
-                          ),
-                          ButtonSegment(
-                            value: _HistoryMode.anime,
-                            label: Text(l10n.animeLabel),
-                            icon: const Icon(Icons.movie_outlined),
-                          ),
-                        ],
-                        selected: {_mode},
-                        onSelectionChanged: (v) => _setMode(v.first),
-                      ),
-                    ),
-                  ),
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(hp, 0, hp, 24),
                   sliver: SliverToBoxAdapter(
@@ -438,28 +349,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                     if (_refreshing)
                       const SliverToBoxAdapter(
                         child: LinearProgressIndicator(minHeight: 2),
-                      ),
-                    if (_animeFeatureEnabled)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(hp, 12, hp, 8),
-                          child: SegmentedButton<_HistoryMode>(
-                            segments: [
-                              ButtonSegment(
-                                value: _HistoryMode.comic,
-                                label: Text(l10n.comicLabel),
-                                icon: const Icon(Icons.menu_book_outlined),
-                              ),
-                              ButtonSegment(
-                                value: _HistoryMode.anime,
-                                label: Text(l10n.animeLabel),
-                                icon: const Icon(Icons.movie_outlined),
-                              ),
-                            ],
-                            selected: {_mode},
-                            onSelectionChanged: (v) => _setMode(v.first),
-                          ),
-                        ),
                       ),
                     if (_currentItemsEmpty)
                       SliverFillRemaining(
@@ -526,22 +415,15 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                               final wide =
                                   constraints.maxWidth >=
                                   ScreenLayout.wideBreakpoint;
-                              Widget card(int i) => _isAnimeMode
-                                  ? _AnimeBrowseHistoryCard(
-                                      item: _animeItems[i],
-                                      onTap: () => _openAnime(_animeItems[i]),
-                                      hugText: wide,
-                                    )
-                                  : _ComicBrowseHistoryCard(
-                                      item: _comicItems[i],
-                                      hugText: wide,
-                                    );
                               return Wrap(
                                 spacing: 12,
                                 runSpacing: 12,
                                 children: [
                                   for (var i = 0; i < _currentLength; i++)
-                                    card(i),
+                                    _ComicBrowseHistoryCard(
+                                      item: _comicItems[i],
+                                      hugText: wide,
+                                    ),
                                 ],
                               );
                             },
@@ -655,55 +537,6 @@ class _ComicBrowseHistoryCard extends StatelessWidget {
     Widget child,
   ) {
     return SizedBox(width: heroSize.width, height: heroSize.height);
-  }
-}
-
-class _AnimeBrowseHistoryCard extends StatelessWidget {
-  final AnimeBrowseHistoryItem item;
-  final VoidCallback onTap;
-  final bool hugText;
-
-  const _AnimeBrowseHistoryCard({
-    required this.item,
-    required this.onTap,
-    this.hugText = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final anime = item.anime;
-    final subtitle = [
-      if (anime.company != null && anime.company!.name.isNotEmpty)
-        anime.company!.name,
-      if (anime.years != null && anime.years!.isNotEmpty) anime.years!,
-    ].join(' / ');
-
-    return _HistoryCardShell(
-      onTap: onTap,
-      hugText: hugText,
-      cover: _HistoryCover(imageUrl: anime.cover, icon: Icons.movie_outlined),
-      title: anime.name,
-      subtitle: subtitle.isEmpty ? null : subtitle,
-      lastBrowseName: item.lastBrowseName,
-      lastBrowseIcon: Icons.play_circle_outline,
-      latestText: anime.count > 0
-          ? AppLocalizations.of(context)!.totalEpisodes(anime.count)
-          : null,
-      chips: [
-        _HistoryMetaChip(
-          icon: Icons.local_fire_department,
-          label: _BrowseHistoryPageState.formatPopular(context, anime.popular),
-        ),
-        if (anime.datetimeUpdated != null)
-          _HistoryMetaChip(
-            icon: Icons.schedule,
-            label: TimeFormat.relativeOf(
-              anime.datetimeUpdated!,
-              AppLocalizations.of(context)!,
-            ),
-          ),
-      ],
-    );
   }
 }
 

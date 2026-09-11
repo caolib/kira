@@ -52,22 +52,4 @@ void main() {
     await tester.pump();
     expect(button().onPressed, isNotNull);
   });
-
-  testWidgets('anime feature switch updates setting', (tester) async {
-    final user = UserManager();
-    await user.init();
-
-    await tester.pumpWidget(
-      wrapWithApp(const GeneralPage(), wrapInScaffold: false),
-    );
-    await tester.pumpAndSettle();
-
-    expect(user.animeFeatureEnabled, isFalse);
-    expect(find.text('动漫功能'), findsOneWidget);
-
-    await tester.tap(find.text('动漫功能'));
-    await tester.pumpAndSettle();
-
-    expect(user.animeFeatureEnabled, isTrue);
-  });
 }

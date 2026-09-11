@@ -33,14 +33,6 @@ class AcknowledgementPage extends StatelessWidget {
                 children: [
                   _buildAcknowledgementItem(
                     context,
-                    icon: Icons.subtitles_rounded,
-                    title: l10n.acknowledgementDandanplayTitle,
-                    description: l10n.acknowledgementDandanplayDesc,
-                    url: 'https://www.dandanplay.com/',
-                  ),
-                  const Divider(height: 24),
-                  _buildAcknowledgementItem(
-                    context,
                     icon: Icons.translate_rounded,
                     title: l10n.acknowledgementZhconvertTitle,
                     description: l10n.acknowledgementZhconvertDesc,

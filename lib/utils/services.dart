@@ -1,13 +1,10 @@
 import '../api/ai_api.dart';
 import '../api/api_client.dart';
-import '../api/dandanplay_api.dart';
 import '../models/comment_settings.dart';
-import '../models/danmaku_settings.dart';
 import '../models/network_settings.dart';
 import '../models/reader_settings.dart';
 import '../models/theme_settings.dart';
 import '../models/user_manager.dart';
-import 'anime_download_manager.dart';
 import 'download_manager.dart';
 
 /// Lightweight service locator that centralizes access to app-wide
@@ -36,15 +33,11 @@ class Services {
   static ApiClient get api => resolve<ApiClient>();
   static UserManager get user => resolve<UserManager>();
   static ReaderSettings get reader => resolve<ReaderSettings>();
-  static DanmakuSettings get danmaku => resolve<DanmakuSettings>();
   static CommentSettings get comment => resolve<CommentSettings>();
   static ThemeSettings get theme => resolve<ThemeSettings>();
   static NetworkSettings get network => resolve<NetworkSettings>();
   static AiSettings get ai => resolve<AiSettings>();
-  static DandanplayApi get dandanplay => resolve<DandanplayApi>();
   static DownloadManager get downloadManager => resolve<DownloadManager>();
-  static AnimeDownloadManager get animeDownloadManager =>
-      resolve<AnimeDownloadManager>();
 
   // ── Core resolve / register ────────────────────────────────────────
 
@@ -87,14 +80,11 @@ class Services {
     if (T == ApiClient) return ApiClient() as T;
     if (T == UserManager) return UserManager() as T;
     if (T == ReaderSettings) return ReaderSettings() as T;
-    if (T == DanmakuSettings) return DanmakuSettings() as T;
     if (T == CommentSettings) return CommentSettings() as T;
     if (T == ThemeSettings) return ThemeSettings() as T;
     if (T == NetworkSettings) return NetworkSettings() as T;
     if (T == AiSettings) return AiSettings() as T;
-    if (T == DandanplayApi) return DandanplayApi() as T;
     if (T == DownloadManager) return DownloadManager() as T;
-    if (T == AnimeDownloadManager) return AnimeDownloadManager() as T;
     throw StateError('No default factory registered for $T');
   }
 }

@@ -17,7 +17,7 @@ extension _BookshelfGrids on _BookshelfPageState {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            l10n.goFindSomething(_typeLabel(l10n)),
+            l10n.goFindSomething(l10n.comicLabel),
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -166,39 +166,5 @@ extension _BookshelfGrids on _BookshelfPageState {
     }
     return before.chapterUuid != after.chapterUuid ||
         before.chapterName != after.chapterName;
-  }
-
-  Widget _buildAnimeGrid(BuildContext context, double hp) {
-    final skeletonCount = _loadingMore ? 6 : 0;
-    final totalCount = _animeItems.length + skeletonCount;
-    return SliverPadding(
-      padding: EdgeInsets.symmetric(horizontal: hp),
-      sliver: SliverGrid(
-        delegate: SliverChildBuilderDelegate((_, i) {
-          if (i >= _animeItems.length) {
-            return const ComicCardSkeleton();
-          }
-          final item = _animeItems[i];
-          return _AnimeBookshelfCard(
-            anime: item.anime,
-            onTap: () => context
-                .pushNamed(
-                  AppRoutes.animeDetail,
-                  pathParameters: {'pathWord': item.anime.pathWord},
-                  extra: AnimeDetailExtra(initialAnime: item.anime),
-                )
-                .then((_) => _refreshLoaded()),
-          );
-        }, childCount: totalCount),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: ScreenLayout.cardExtent(
-            MediaQuery.sizeOf(context).width,
-          ),
-          childAspectRatio: 0.55,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-        ),
-      ),
-    );
   }
 }

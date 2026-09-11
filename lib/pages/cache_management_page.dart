@@ -15,7 +15,6 @@ import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/app_storage.dart';
 import '../utils/font_manager.dart';
-import '../utils/media_kit_native_loader.dart';
 import '../utils/reading_history.dart';
 import '../utils/toast.dart';
 
@@ -35,7 +34,6 @@ class CacheManagementPage extends StatefulWidget {
 
 class _CacheManagementPageState extends State<CacheManagementPage> {
   static const _readerImageCacheKey = 'readerImageCache';
-  static const _mediaKitSectionId = 'media_kit_native';
   static const _fontSectionId = 'downloaded_fonts';
 
   static const _aiConfigKeys = <String>{
@@ -75,7 +73,6 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   String? _error;
   List<_CacheSection> _sections = const [];
   List<_ImageCacheSection> _imageCacheSections = const [];
-  _MediaKitCacheSection? _mediaKitSection;
   _FontCacheSection? _fontSection;
   final Set<String> _revealedSensitiveKeys = {};
   bool _selectionMode = false;
@@ -148,22 +145,18 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       }
 
       final imageCacheSections = await _loadImageCacheSections();
-      final mediaKitSection = await _loadMediaKitSection();
       final fontSection = await _loadFontSection();
 
       if (!mounted) return;
       setState(() {
         _sections = sections;
         _imageCacheSections = imageCacheSections;
-        _mediaKitSection = mediaKitSection;
         _fontSection = fontSection;
         final sectionIds = <String>{
           ...sections.map((section) => section.id),
           ...imageCacheSections
               .where((section) => !section.isEmpty)
               .map((section) => section.id),
-          if (mediaKitSection != null && !mediaKitSection.isEmpty)
-            mediaKitSection.id,
         };
         _selectedSectionIds.removeWhere((id) => !sectionIds.contains(id));
         if (sectionIds.isEmpty) {
@@ -235,14 +228,12 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       0,
       (sum, section) => sum + section.sizeBytes,
     );
-    final mediaKitBytes = _mediaKitSection?.sizeBytes ?? 0;
     final fontBytes = _fontSection?.sizeBytes ?? 0;
-    final totalBytes = localBytes + imageCacheBytes + mediaKitBytes + fontBytes;
+    final totalBytes = localBytes + imageCacheBytes + fontBytes;
     final maxSectionCardHeight = MediaQuery.sizeOf(context).height * 0.5;
     final maxSectionEntriesHeight = (maxSectionCardHeight - 73)
         .clamp(96.0, maxSectionCardHeight)
         .toDouble();
-    final mediaKitSection = _mediaKitSection;
     final fontSection = _fontSection;
 
     return Scaffold(
@@ -318,32 +309,6 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                             _toggleImageSectionSelected(section),
                         onClear: () => _deleteImageCacheSection(section),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                if (mediaKitSection != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                    child: Text(
-                      l10n.cacheMediaKitSection,
-                      style: tt.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _MediaKitCacheSectionCard(
-                      section: mediaKitSection,
-                      selectionMode: _selectionMode,
-                      selected: _selectedSectionIds.contains(
-                        mediaKitSection.id,
-                      ),
-                      sizeLabel: _formatBytes(mediaKitSection.sizeBytes),
-                      onToggleSelected: () =>
-                          _toggleMediaKitSectionSelected(mediaKitSection),
-                      onClear: () => _deleteMediaKitSection(mediaKitSection),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),

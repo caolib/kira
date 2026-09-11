@@ -54,8 +54,8 @@ class _MarkerPage extends StatelessWidget {
   }
 }
 
-/// 分支布局与 `_navKeyToBranchIndex` 对齐（comic 0 / anime 1 / search 2 /
-/// bookshelf 3 / profile 4），保证 goBranch 的分支序号不越界。
+/// 分支布局与 `_navKeyToBranchIndex` 对齐（comic 0 / search 1 / bookshelf 2 /
+/// profile 3），保证 goBranch 的分支序号不越界。
 /// preload 与 app_router 保持一致：各分支页面启动即挂载。
 GoRouter _buildRouter() {
   return GoRouter(
@@ -72,15 +72,6 @@ GoRouter _buildRouter() {
               GoRoute(
                 path: '/',
                 builder: (_, _) => const _MarkerPage('page-comic'),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            preload: true,
-            routes: [
-              GoRoute(
-                path: '/anime',
-                builder: (_, _) => const _MarkerPage('page-anime'),
               ),
             ],
           ),
@@ -129,7 +120,7 @@ Widget _buildApp(GoRouter router) {
   );
 }
 
-/// 用户未登录且未开启 anime，默认可见序为 [comic, search, profile]。
+/// 用户未登录时默认可见序为 [comic, search, profile]。
 Future<void> _pumpShell(WidgetTester tester) async {
   await tester.pumpWidget(_buildApp(_buildRouter()));
   await tester.pumpAndSettle();
@@ -177,7 +168,7 @@ void main() {
     await _pumpShell(tester);
 
     // 结构稳定：隐藏分支也保持同一套包装结构（Offstage>TickerMode>IgnorePointer>
-    // FractionalTranslation>RepaintBoundary），5 个分支各有一份。页面内容里
+    // FractionalTranslation>RepaintBoundary），4 个分支各有一份。页面内容里
     // 也有零散的 FractionalTranslation，这里只认「直接包 RepaintBoundary」的
     // 分支级包装。
     final translations = find.byWidgetPredicate(
@@ -185,10 +176,10 @@ void main() {
           widget is FractionalTranslation && widget.child is RepaintBoundary,
       skipOffstage: false,
     );
-    expect(tester.widgetList(translations).length, 5);
+    expect(tester.widgetList(translations).length, 4);
 
     // 预热后：不可见的相邻分支应已被绘制（无待重绘标记），首次滑入不再付
-    // 首次光栅化的开销；被设置隐藏的分支（anime、bookshelf）则跳过预热。
+    // 首次光栅化的开销；被登录态隐藏的分支（bookshelf）则跳过预热。
     await _pumpThroughWarmUp(tester);
     expect(_branchBoundary(tester, 'page-search').debugNeedsPaint, isFalse);
     expect(_branchBoundary(tester, 'page-profile').debugNeedsPaint, isFalse);
@@ -227,6 +218,6 @@ void main() {
     expect(find.text('count:1'), findsOneWidget);
 
     // 滑动结束后结构依旧稳定。
-    expect(tester.widgetList(translations).length, 5);
+    expect(tester.widgetList(translations).length, 4);
   });
 }

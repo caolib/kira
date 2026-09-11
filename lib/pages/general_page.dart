@@ -256,19 +256,6 @@ class _GeneralPageState extends State<GeneralPage> {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   SwitchListTile(
-                    secondary: const Icon(Icons.movie_outlined),
-                    title: Text(l10n.animeFeatureTitle),
-                    subtitle: Text(
-                      l10n.animeFeatureMaintenanceWarning,
-                      style: tt.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                    value: _user.animeFeatureEnabled,
-                    onChanged: _user.setAnimeFeatureEnabled,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  SwitchListTile(
                     secondary: const Icon(Icons.view_carousel_outlined),
                     title: Text(l10n.bannerVisibleTitle),
                     subtitle: Text(l10n.bannerVisibleDesc, style: tt.bodySmall),

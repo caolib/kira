@@ -12,18 +12,13 @@ extension _CacheEntryFormat on _CacheManagementPageState {
     if (key.startsWith(AppPersistentCache.prefix)) {
       return _CacheCategory.persistentCache;
     }
-    if (_CacheManagementPageState._accountKeys.contains(key) || key.startsWith('user_')) {
+    if (_CacheManagementPageState._accountKeys.contains(key) ||
+        key.startsWith('user_')) {
       return _CacheCategory.account;
     }
     if (key.startsWith('reading_history_')) return _CacheCategory.mangaHistory;
     if (key.startsWith('reading_stats_')) return _CacheCategory.mangaHistory;
     if (key.startsWith('comic_bookmarks')) return _CacheCategory.mangaHistory;
-    if (key.startsWith('anime_playback_history_')) {
-      return _CacheCategory.animeHistory;
-    }
-    if (key.startsWith('dandanplay_binding_')) {
-      return _CacheCategory.bindings;
-    }
     if (key.startsWith('zhipu_chapter_summary_')) {
       return _CacheCategory.aiSummaryCache;
     }
@@ -56,13 +51,8 @@ extension _CacheEntryFormat on _CacheManagementPageState {
       'skipped_update_',
       'disclaimer_',
       'api_route',
-      'anime_feature_',
       'banner_',
-      'anime_home_',
-      'anime_skip_',
-      'anime_playback_progress_',
       'download_',
-      'danmaku_',
       'local_bookshelf_',
     ];
     return settingPrefixes.any(key.startsWith);

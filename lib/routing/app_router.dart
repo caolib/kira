@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../models/anime.dart';
 import '../models/comic.dart' hide Theme;
-import '../models/user_manager.dart';
 import '../pages/about_page.dart' show AboutPage;
 import '../pages/acknowledgement_page.dart';
 import '../pages/ai_config_page.dart';
-import '../pages/anime_detail_page.dart';
-import '../pages/anime_home_page.dart';
-import '../pages/anime_list_page.dart';
-import '../pages/anime_player_page.dart';
 import '../pages/app_log_page.dart';
 import '../pages/appearance_page.dart';
 import '../pages/bookmarks_page.dart';
@@ -24,7 +18,6 @@ import '../pages/download_center_page.dart';
 import '../pages/general_page.dart';
 import '../pages/home_page.dart';
 import '../pages/license_page.dart';
-import '../pages/local_anime_page.dart';
 import '../pages/local_comics_page.dart';
 import '../pages/login_page.dart' show LoginPage;
 import '../pages/network_page.dart';
@@ -48,7 +41,6 @@ final class AppRoutes {
 
   // Shell tabs
   static const home = 'home';
-  static const anime = 'anime';
   static const search = 'search';
   static const bookshelf = 'bookshelf';
   static const profile = 'profile';
@@ -56,16 +48,11 @@ final class AppRoutes {
   // Top-level pages
   static const comicDetail = 'comic_detail';
   static const reader = 'reader';
-  static const animeDetail = 'anime_detail';
-  static const animePlayer = 'anime_player';
   static const recommend = 'recommend';
   static const ranking = 'ranking';
   static const copyMangaList = 'copy_manga_list';
-  static const animeList = 'anime_list';
   static const localComics = 'local_comics';
-  static const localAnime = 'local_anime';
   static const localComicDetail = 'local_comic_detail';
-  static const localAnimeDetail = 'local_anime_detail';
   static const login = 'login';
   static const register = 'register';
   static const webviewLogin = 'webview_login';
@@ -118,30 +105,6 @@ class ReaderExtra {
   });
 }
 
-/// Extra data for [AnimeDetailPage] route.
-class AnimeDetailExtra {
-  final Anime? initialAnime;
-
-  const AnimeDetailExtra({this.initialAnime});
-}
-
-/// Extra data for [AnimePlayerPage] route.
-class AnimePlayerExtra {
-  final String animeName;
-  final String chapterName;
-  final String line;
-  final List<AnimeChapter> chapters;
-  final String? localVideoPath;
-
-  const AnimePlayerExtra({
-    required this.animeName,
-    required this.chapterName,
-    required this.line,
-    this.chapters = const [],
-    this.localVideoPath,
-  });
-}
-
 /// Extra data for [RankingPage] route.
 class RankingExtra {
   final String? authorPathWord;
@@ -176,18 +139,6 @@ GoRouter createAppRouter() {
                 path: '/',
                 name: AppRoutes.home,
                 builder: (_, _) => const HomePage(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            // anime 页面 initState 不看功能开关就拉数据，关闭时预热只会
-            // 白白发请求，这里按创建路由时的开关决定。
-            preload: UserManager().animeFeatureEnabled,
-            routes: [
-              GoRoute(
-                path: '/anime',
-                name: AppRoutes.anime,
-                builder: (_, _) => const AnimeHomePage(),
               ),
             ],
           ),
@@ -276,36 +227,6 @@ GoRouter createAppRouter() {
         },
       ),
       GoRoute(
-        path: '/anime-detail/:pathWord',
-        name: AppRoutes.animeDetail,
-        builder: (context, state) {
-          final pathWord = state.pathParameters['pathWord']!;
-          final extra = state.extra as AnimeDetailExtra?;
-          return AnimeDetailPage(
-            pathWord: pathWord,
-            initialAnime: extra?.initialAnime,
-          );
-        },
-      ),
-      GoRoute(
-        path: '/anime-player/:pathWord/:chapterUuid',
-        name: AppRoutes.animePlayer,
-        builder: (context, state) {
-          final pathWord = state.pathParameters['pathWord']!;
-          final chapterUuid = state.pathParameters['chapterUuid']!;
-          final extra = state.extra as AnimePlayerExtra?;
-          return AnimePlayerPage(
-            pathWord: pathWord,
-            chapterUuid: chapterUuid,
-            animeName: extra?.animeName ?? '',
-            chapterName: extra?.chapterName ?? '',
-            line: extra?.line ?? '',
-            chapters: extra?.chapters ?? const [],
-            localVideoPath: extra?.localVideoPath,
-          );
-        },
-      ),
-      GoRoute(
         path: '/recommend',
         name: AppRoutes.recommend,
         builder: (_, _) => const RecommendPage(),
@@ -336,18 +257,6 @@ GoRouter createAppRouter() {
         },
       ),
       GoRoute(
-        path: '/anime-list/:type',
-        name: AppRoutes.animeList,
-        builder: (context, state) {
-          final typeName = state.pathParameters['type'] ?? 'editor';
-          final type = AnimeListType.values.firstWhere(
-            (e) => e.name == typeName,
-            orElse: () => AnimeListType.editor,
-          );
-          return AnimeListPage(type: type);
-        },
-      ),
-      GoRoute(
         path: '/local-comics',
         name: AppRoutes.localComics,
         builder: (_, _) => const LocalComicsPage(),
@@ -358,19 +267,6 @@ GoRouter createAppRouter() {
         builder: (context, state) {
           final pathWord = state.pathParameters['pathWord']!;
           return LocalComicDetailPage(pathWord: pathWord);
-        },
-      ),
-      GoRoute(
-        path: '/local-anime',
-        name: AppRoutes.localAnime,
-        builder: (_, _) => const LocalAnimePage(),
-      ),
-      GoRoute(
-        path: '/local-anime-detail/:pathWord',
-        name: AppRoutes.localAnimeDetail,
-        builder: (context, state) {
-          final pathWord = state.pathParameters['pathWord']!;
-          return LocalAnimeDetailPage(pathWord: pathWord);
         },
       ),
       GoRoute(

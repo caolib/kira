@@ -18,7 +18,6 @@ import '../utils/toast.dart';
 import '../widgets/github_markdown.dart';
 import '../widgets/text_controller_scope.dart';
 
-part 'about/qq_group.dart';
 part 'about/update_card_actions.dart';
 part 'about/update_card_builders.dart';
 part 'about/update_settings.dart';
@@ -35,11 +34,6 @@ class _AboutPageState extends State<AboutPage> {
   final _user = UserManager();
 
   static const _repoUrl = 'https://github.com/caolib/kira';
-
-  /// QQ 群入口暂时隐藏；代码保留，恢复时改回 true。
-  static const bool _showQqGroupEntry = false;
-  static const _qqGroupUrl = 'https://qm.qq.com/q/rezw7xWuK4';
-  static const _qqGroupNumber = '1025321453';
 
   /// extension part 文件里的成员不是 State 子类成员，不能直接调用受保护的
   /// [setState]，统一经由这个转发方法。
@@ -184,27 +178,6 @@ class _AboutPageState extends State<AboutPage> {
                           onTap: () => context.pushNamed(AppRoutes.appLog),
                         ),
                       ),
-                      if (_showQqGroupEntry) ...[
-                        VerticalDivider(
-                          width: 1,
-                          color: cs.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                        Expanded(
-                          child: _LinkAction(
-                            icon: SvgPicture.asset(
-                              'assets/qq.svg',
-                              width: 24,
-                              height: 24,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFF1EBAFC),
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                            label: l10n.aboutCommunityLabel,
-                            onTap: () => _showQQGroupDialog(context),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -232,7 +205,6 @@ class _AboutPageState extends State<AboutPage> {
       ),
     );
   }
-
 }
 
 class _UpdateCardState extends State<_UpdateCard> {
@@ -542,5 +514,4 @@ class _UpdateCardState extends State<_UpdateCard> {
       ),
     );
   }
-
 }

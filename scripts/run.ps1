@@ -1,8 +1,8 @@
 ﻿# kira 一键启动脚本（psmux 托管，复用 run-kira driver）
 # 用法: .\scripts\run.ps1 [win|mumu|emu] [-Stop] [-Log]
-#   win   flutter run -d win --dart-define-from-file=.env
-#   mumu  启动 MuMu 模拟器 → adb connect 127.0.0.1:16416 → flutter run -d 127 --dart-define-from-file=.env
-#   emu   flutter emulators --launch Medium_Phone_API_36 → flutter run -d emu --dart-define-from-file=.env
+#   win   flutter run -d win
+#   mumu  启动 MuMu 模拟器 → adb connect 127.0.0.1:16416 → flutter run -d 127
+#   emu   flutter emulators --launch Medium_Phone_API_36 → flutter run -d emu
 # 无参数: 打印用法
 
 param(
@@ -101,6 +101,6 @@ $DeviceArg = switch ($Target) {
 
 # ---- 通过 driver 启动（session 名、就绪轮询统一） ----
 $env:KIRA_DEVICE = $DeviceArg
-Write-Host "启动: flutter run -d $DeviceArg --dart-define-from-file=.env"
+Write-Host "启动: flutter run -d $DeviceArg"
 node $Driver start
 exit $LASTEXITCODE

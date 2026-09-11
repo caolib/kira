@@ -35,45 +35,6 @@ void main() {
     expect(user.imageViewerLandscapeRotation, -1);
   });
 
-  test('anime home banner collapsed setting persists', () async {
-    final user = UserManager();
-    await user.init();
-
-    expect(user.animeHomeBannerCollapsed, isFalse);
-
-    await user.setAnimeHomeBannerCollapsed(true);
-    await user.init();
-
-    expect(user.animeHomeBannerCollapsed, isTrue);
-  });
-
-  test(
-    'anime playback progress setting defaults to enabled and persists',
-    () async {
-      final user = UserManager();
-      await user.init();
-
-      expect(user.animePlaybackProgressEnabled, isTrue);
-
-      await user.setAnimePlaybackProgressEnabled(false);
-      await user.init();
-
-      expect(user.animePlaybackProgressEnabled, isFalse);
-    },
-  );
-
-  test('anime feature setting defaults to disabled and persists', () async {
-    final user = UserManager();
-    await user.init();
-
-    expect(user.animeFeatureEnabled, isFalse);
-
-    await user.setAnimeFeatureEnabled(true);
-    await user.init();
-
-    expect(user.animeFeatureEnabled, isTrue);
-  });
-
   test('network selection mode and fixed node persist', () async {
     final user = UserManager();
     await user.init();

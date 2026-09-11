@@ -76,30 +76,6 @@ class _ImageCacheSection {
   bool get isEmpty => fileCount == 0 && sizeBytes == 0;
 }
 
-class _MediaKitCacheSection {
-  const _MediaKitCacheSection({
-    required this.id,
-    required this.label,
-    required this.description,
-    required this.directoryPath,
-    required this.fileCount,
-    required this.sizeBytes,
-    required this.version,
-    required this.isInstalled,
-  });
-
-  final String id;
-  final String label;
-  final String description;
-  final String directoryPath;
-  final int fileCount;
-  final int sizeBytes;
-  final String? version;
-  final bool isInstalled;
-
-  bool get isEmpty => fileCount == 0 && sizeBytes == 0;
-}
-
 class _DirectoryStats {
   const _DirectoryStats({this.fileCount = 0, this.sizeBytes = 0});
 
@@ -142,8 +118,6 @@ enum _CacheCategory {
   account(1, Icons.account_circle_outlined),
   appSettings(2, Icons.tune_rounded),
   mangaHistory(3, Icons.history_edu_rounded),
-  animeHistory(4, Icons.play_circle_outline_rounded),
-  bindings(5, Icons.link_rounded),
   aiSummaryCache(6, Icons.summarize_outlined),
   other(99, Icons.more_horiz_rounded);
 
@@ -157,8 +131,6 @@ enum _CacheCategory {
     _CacheCategory.account => l10n.cacheCategoryAccount,
     _CacheCategory.appSettings => l10n.cacheCategoryAppSettings,
     _CacheCategory.mangaHistory => l10n.cacheCategoryMangaHistory,
-    _CacheCategory.animeHistory => l10n.cacheCategoryAnimeHistory,
-    _CacheCategory.bindings => l10n.cacheCategoryBindings,
     _CacheCategory.aiSummaryCache => l10n.cacheCategoryAiSummaryCache,
     _CacheCategory.other => l10n.cacheCategoryOther,
   };

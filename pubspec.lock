@@ -145,14 +145,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.3.1"
-  canvas_danmaku:
-    dependency: "direct main"
-    description:
-      name: canvas_danmaku
-      sha256: "59018315feefe497dd6b5a5c8059a1c40a4849b985f273704acc2faf20cd0d98"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.3.1"
   characters:
     dependency: transitive
     description:
@@ -805,22 +797,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.0"
-  media_kit:
-    dependency: "direct main"
-    description:
-      name: media_kit
-      sha256: ae9e79597500c7ad6083a3c7b7b7544ddabfceacce7ae5c9709b0ec16a5d6643
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "1.2.6"
-  media_kit_video:
-    dependency: "direct main"
-    description:
-      name: media_kit_video
-      sha256: afaa509e7b7e0bf247557a3a740cde903a52c34ace9810f94500e127bd7b043d
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.0.1"
   meta:
     dependency: transitive
     description:
@@ -1093,14 +1069,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.28.0"
-  safe_local_storage:
-    dependency: transitive
-    description:
-      name: safe_local_storage
-      sha256: "494b982d5edb71030650ea463d939670e91b232b588323dc75229d2c5f23e7b7"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.0.6"
   screen_brightness:
     dependency: "direct main"
     description:
@@ -1450,14 +1418,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.4.0"
-  universal_platform:
-    dependency: transitive
-    description:
-      name: universal_platform
-      sha256: "64e16458a0ea9b99260ceb5467a214c1f298d647c659af1bff6d3bf82536b1ec"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "1.1.0"
   upower:
     dependency: transitive
     description:
@@ -1466,14 +1426,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.7.0"
-  uri_parser:
-    dependency: transitive
-    description:
-      name: uri_parser
-      sha256: "051c62e5f693de98ca9f130ee707f8916e2266945565926be3ff20659f7853ce"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "3.0.2"
   url_launcher:
     dependency: "direct main"
     description:

@@ -67,12 +67,11 @@ flutter build apk --debug
 
 启动
 ```sh
-flutter run -d <设备ID> --dart-define-from-file=.env
+flutter run -d <设备ID>
 ```
 
 ## 致谢
 
-- [弹弹play](https://www.dandanplay.com/) — 提供弹幕服务
 - [繁化姬](https://zhconvert.org/) — 提供简体化服务
 
 ## 免责声明

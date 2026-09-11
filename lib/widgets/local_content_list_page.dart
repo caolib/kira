@@ -8,12 +8,11 @@ import 'package:path_provider/path_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
-import '../utils/anime_download_manager.dart' show LocalAnimeEntry;
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart' show LocalComicEntry;
 import '../utils/toast.dart';
 
-/// Abstraction over comic/anime local content entries for the list page.
+/// Abstraction over local content entries for the list page.
 abstract class LocalContentEntry {
   String get pathWord;
   String get name;
@@ -48,31 +47,6 @@ class ComicLocalContentEntry implements LocalContentEntry {
 
   @override
   IconData get fallbackIcon => Icons.broken_image_outlined;
-}
-
-/// Adapter for [LocalAnimeEntry].
-class AnimeLocalContentEntry implements LocalContentEntry {
-  final LocalAnimeEntry _entry;
-
-  const AnimeLocalContentEntry(this._entry);
-
-  @override
-  String get pathWord => _entry.info.anime.pathWord;
-
-  @override
-  String get name => _entry.info.anime.name;
-
-  @override
-  String? get coverPath => _entry.info.coverPath;
-
-  @override
-  int get downloadedCount => _entry.downloadedCount;
-
-  @override
-  String get subtitle => _entry.info.anime.pathWord;
-
-  @override
-  IconData get fallbackIcon => Icons.movie_outlined;
 }
 
 class LocalContentListPage extends StatefulWidget {

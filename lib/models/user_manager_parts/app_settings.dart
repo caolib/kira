@@ -104,14 +104,6 @@ extension UserManagerAppSettingsPart on UserManager {
     enable: enable,
   );
 
-  Future<void> setAnimeFeatureEnabled(bool enabled) async {
-    if (_animeFeatureEnabled == enabled) return;
-    _animeFeatureEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(UserManager._keyAnimeFeatureEnabled, enabled);
-    _notifyListeners();
-  }
-
   Future<void> setRemoteNoticeEnabled(bool enabled) async {
     if (_remoteNoticeEnabled == enabled) return;
     _remoteNoticeEnabled = enabled;
@@ -203,29 +195,5 @@ extension UserManagerAppSettingsPart on UserManager {
       UserManager._keyCopyHomeSectionCollapsed,
       jsonEncode(_copyHomeSectionCollapsed),
     );
-  }
-
-  Future<void> setAnimeHomeBannerCollapsed(bool collapsed) async {
-    if (_animeHomeBannerCollapsed == collapsed) return;
-    _animeHomeBannerCollapsed = collapsed;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(UserManager._keyAnimeHomeBannerCollapsed, collapsed);
-    _notifyListeners();
-  }
-
-  Future<void> setAnimeSkipSeconds(int seconds) async {
-    if (_animeSkipSeconds == seconds) return;
-    _animeSkipSeconds = seconds;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(UserManager._keyAnimeSkipSeconds, seconds);
-    _notifyListeners();
-  }
-
-  Future<void> setAnimePlaybackProgressEnabled(bool enabled) async {
-    if (_animePlaybackProgressEnabled == enabled) return;
-    _animePlaybackProgressEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(UserManager._keyAnimePlaybackProgressEnabled, enabled);
-    _notifyListeners();
   }
 }

@@ -142,8 +142,6 @@ extension UserManagerInitPart on UserManager {
         prefs.getBool(UserManager._keyDisclaimerAccepted) ?? false;
     _loginSource = prefs.getString(UserManager._keyLoginSource) ?? 'hotmanga';
     _apiRoute = prefs.getInt(UserManager._keyApiRoute) ?? 0;
-    _animeFeatureEnabled =
-        prefs.getBool(UserManager._keyAnimeFeatureEnabled) ?? false;
     _remoteNoticeEnabled =
         prefs.getBool(UserManager._keyRemoteNoticeEnabled) ?? true;
     _locale = prefs.getString(UserManager._keyLocale) ?? '';
@@ -166,24 +164,6 @@ extension UserManagerInitPart on UserManager {
     _copyHomeSectionCollapsed = UserManager._decodeBoolMap(
       prefs.getString(UserManager._keyCopyHomeSectionCollapsed),
     );
-    _animeHomeBannerCollapsed =
-        prefs.getBool(UserManager._keyAnimeHomeBannerCollapsed) ?? false;
-    _animeSkipSeconds = prefs.getInt(UserManager._keyAnimeSkipSeconds) ?? 86;
-    _animePlaybackProgressEnabled =
-        prefs.getBool(UserManager._keyAnimePlaybackProgressEnabled) ?? true;
-    _danmakuEnabled = prefs.getBool(UserManager._keyDanmakuEnabled) ?? true;
-    _danmakuFontSize = prefs.getDouble(UserManager._keyDanmakuFontSize) ?? 16;
-    _danmakuArea = prefs.getDouble(UserManager._keyDanmakuArea) ?? 0.25;
-    _danmakuOpacity = prefs.getDouble(UserManager._keyDanmakuOpacity) ?? 1.0;
-    _danmakuHideScroll =
-        prefs.getBool(UserManager._keyDanmakuHideScroll) ?? false;
-    _danmakuHideTop = prefs.getBool(UserManager._keyDanmakuHideTop) ?? false;
-    _danmakuHideBottom =
-        prefs.getBool(UserManager._keyDanmakuHideBottom) ?? false;
-    _danmakuBlocklist =
-        prefs.getStringList(UserManager._keyDanmakuBlocklist) ?? [];
-    _danmakuFontFamily =
-        prefs.getString(UserManager._keyDanmakuFontFamily) ?? '';
     _commentBlockedUsers =
         prefs.getStringList(UserManager._keyCommentBlockedUsers) ?? [];
     _commentBlockNoRemind =
@@ -215,7 +195,6 @@ extension UserManagerInitPart on UserManager {
     }
     // Initialize domain-specific sub-stores with the same prefs instance.
     await reader.initFromPrefs(prefs);
-    await danmaku.initFromPrefs(prefs);
     await comment.initFromPrefs(prefs);
     await theme.initFromPrefs(prefs);
     await network.initFromPrefs(prefs);
@@ -223,7 +202,6 @@ extension UserManagerInitPart on UserManager {
     // Forward sub-store notifications so legacy listeners on UserManager
     // still rebuild when domain settings change.
     reader.addListener(_onSubStoreChanged);
-    danmaku.addListener(_onSubStoreChanged);
     comment.addListener(_onSubStoreChanged);
     theme.addListener(_onSubStoreChanged);
     network.addListener(_onSubStoreChanged);

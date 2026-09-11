@@ -1,7 +1,6 @@
 part of '../search_page.dart';
 
 extension _SearchHeader on _SearchPageState {
-
   /// 下滑浏览时把搜索框收起，上滑或回到顶部再放出来；输入过程中不收。
   /// 顶部判断对所有滚动通知生效（结果太少、不可滚动时不发 UserScroll，
   /// 否则切到短结果列表后搜索框会卡在收起态再也回不来）。
@@ -21,11 +20,9 @@ extension _SearchHeader on _SearchPageState {
     }
   }
 
-  /// 悬浮头占位高度：上下内边距 + SearchBar（M3 默认 56）+ 可选的类型切换行。
+  /// 悬浮头占位高度：上下内边距 + SearchBar（M3 默认 56）。
   double _headerContentHeight() {
-    const searchRow = 12.0 + 56.0 + AppSpacing.lg;
-    if (!_animeFeatureEnabled) return searchRow;
-    return searchRow + 48.0 + AppSpacing.sm;
+    return 12.0 + 56.0 + AppSpacing.lg;
   }
 
   Widget _buildSearchHeader(BuildContext context, double hp) {
@@ -55,25 +52,6 @@ extension _SearchHeader on _SearchPageState {
                 : null,
             onSubmitted: _doSearch,
           ),
-          if (_animeFeatureEnabled) ...[
-            const SizedBox(height: AppSpacing.sm),
-            SegmentedButton<_SearchMode>(
-              segments: [
-                ButtonSegment(
-                  value: _SearchMode.comic,
-                  label: Text(l10n.comicLabel),
-                  icon: const Icon(Icons.menu_book_outlined),
-                ),
-                ButtonSegment(
-                  value: _SearchMode.anime,
-                  label: Text(l10n.animeLabel),
-                  icon: const Icon(Icons.movie_outlined),
-                ),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (v) => _setMode(v.first),
-            ),
-          ],
         ],
       ),
     );

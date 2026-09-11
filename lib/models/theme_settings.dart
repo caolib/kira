@@ -14,13 +14,7 @@ class ThemeSettings extends PrefsStore {
   // ── Shared constants (moved from UserManager) ──────────────────────
 
   static const defaultNavKey = 'comic';
-  static const defaultNavOrder = [
-    'comic',
-    'anime',
-    'search',
-    'bookshelf',
-    'profile',
-  ];
+  static const defaultNavOrder = ['comic', 'search', 'bookshelf', 'profile'];
   static const defaultDisplayModeRefreshRate = 0;
 
   static const appLogoPaths = [

@@ -21,28 +21,22 @@ void main() {
   test('removeByPrefix deletes only matching cached entries', () async {
     final cache = DataCache();
 
-    await cache.put('anime_video_link_v1_anime-a_chapter-1_line-a', {
+    await cache.put('video_link_v1_anime-a_chapter-1_line-a', {
       'url': 'https://example.com/a.m3u8',
     });
-    await cache.put('anime_video_link_v1_anime-a_chapter-2_line-a', {
+    await cache.put('video_link_v1_anime-a_chapter-2_line-a', {
       'url': 'https://example.com/b.m3u8',
     });
-    await cache.put('anime_video_link_v1_anime-b_chapter-1_line-a', {
+    await cache.put('video_link_v1_anime-b_chapter-1_line-a', {
       'url': 'https://example.com/c.m3u8',
     });
 
-    await cache.removeByPrefix('anime_video_link_v1_anime-a_');
+    await cache.removeByPrefix('video_link_v1_anime-a_');
 
+    expect(await cache.get('video_link_v1_anime-a_chapter-1_line-a'), isNull);
+    expect(await cache.get('video_link_v1_anime-a_chapter-2_line-a'), isNull);
     expect(
-      await cache.get('anime_video_link_v1_anime-a_chapter-1_line-a'),
-      isNull,
-    );
-    expect(
-      await cache.get('anime_video_link_v1_anime-a_chapter-2_line-a'),
-      isNull,
-    );
-    expect(
-      await cache.get('anime_video_link_v1_anime-b_chapter-1_line-a'),
+      await cache.get('video_link_v1_anime-b_chapter-1_line-a'),
       isNotNull,
     );
   });

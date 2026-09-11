@@ -12,7 +12,6 @@ import '../utils/app_logger.dart';
 import 'api_ordering.dart';
 import 'app_theme_option.dart';
 import 'comment_settings.dart';
-import 'danmaku_settings.dart';
 import 'network_proxy_types.dart';
 import 'network_settings.dart';
 import 'reader_settings.dart';
@@ -23,7 +22,7 @@ export 'network_settings.dart' show NetworkSelectionMode;
 export 'theme_settings.dart' show BottomNavLabelMode;
 
 part 'user_manager_parts/app_settings.dart';
-part 'user_manager_parts/danmaku_comment.dart';
+part 'user_manager_parts/comment.dart';
 part 'user_manager_parts/init.dart';
 part 'user_manager_parts/reader.dart';
 part 'user_manager_parts/theme_nav.dart';
@@ -92,11 +91,10 @@ class UserManager extends ChangeNotifier {
 
   // ── Domain-specific sub-stores ─────────────────────────────────────
   // Each store is an independent ChangeNotifier.  Callers that only
-  // need reader / danmaku / comment / theme / network settings should
+  // need reader / comment / theme / network settings should
   // import the specific store directly and skip the facade entirely.
 
   final reader = ReaderSettings();
-  final danmaku = DanmakuSettings();
   final comment = CommentSettings();
   final theme = ThemeSettings();
   final network = NetworkSettings();
@@ -176,7 +174,6 @@ class UserManager extends ChangeNotifier {
   static const _keyDisclaimerAccepted = 'disclaimer_accepted';
   static const _keyLoginSource = 'login_source';
   static const _keyApiRoute = 'api_route';
-  static const _keyAnimeFeatureEnabled = 'anime_feature_enabled';
   static const _keyRemoteNoticeEnabled = 'remote_notice_enabled';
   static const _keyLocale = 'locale';
   static const _keyBannerVisible = 'banner_visible';
@@ -187,19 +184,6 @@ class UserManager extends ChangeNotifier {
   static const _keyCopyAutoUpdate = 'copy_auto_update';
   static const _keyCopySettingsUpdatedAt = 'copy_settings_updated_at';
   static const _keyCopyHomeSectionCollapsed = 'copy_home_section_collapsed';
-  static const _keyAnimeHomeBannerCollapsed = 'anime_home_banner_collapsed';
-  static const _keyAnimeSkipSeconds = 'anime_skip_seconds';
-  static const _keyAnimePlaybackProgressEnabled =
-      'anime_playback_progress_enabled';
-  static const _keyDanmakuEnabled = 'danmaku_enabled';
-  static const _keyDanmakuFontSize = 'danmaku_font_size';
-  static const _keyDanmakuArea = 'danmaku_area';
-  static const _keyDanmakuOpacity = 'danmaku_opacity';
-  static const _keyDanmakuHideScroll = 'danmaku_hide_scroll';
-  static const _keyDanmakuHideTop = 'danmaku_hide_top';
-  static const _keyDanmakuHideBottom = 'danmaku_hide_bottom';
-  static const _keyDanmakuBlocklist = 'danmaku_blocklist';
-  static const _keyDanmakuFontFamily = 'danmaku_font_family';
   static const _keyCommentBlockedUsers = 'comment_blocked_users';
   static const _keyCommentBlockNoRemind = 'comment_block_no_remind';
   static const _keyCommentBlockwords = 'comment_blockwords';
@@ -260,7 +244,6 @@ class UserManager extends ChangeNotifier {
   bool _disclaimerAccepted = false;
   String _loginSource = 'hotmanga';
   int _apiRoute = 0; // 0=线路1(默认), 1=线路2
-  bool _animeFeatureEnabled = false;
   bool _remoteNoticeEnabled = true;
 
   /// '' = follow system, 'zh' = Simplified, 'zh-Hant' = Traditional.
@@ -273,18 +256,6 @@ class UserManager extends ChangeNotifier {
   bool _copyAutoUpdate = true;
   int? _copySettingsUpdatedAt;
   Map<String, bool> _copyHomeSectionCollapsed = {};
-  bool _animeHomeBannerCollapsed = false;
-  int _animeSkipSeconds = 86;
-  bool _animePlaybackProgressEnabled = true;
-  bool _danmakuEnabled = true;
-  double _danmakuFontSize = 16;
-  double _danmakuArea = 0.25;
-  double _danmakuOpacity = 1.0;
-  bool _danmakuHideScroll = false;
-  bool _danmakuHideTop = false;
-  bool _danmakuHideBottom = false;
-  List<String> _danmakuBlocklist = [];
-  String _danmakuFontFamily = '';
 
   /// 评论屏蔽用户黑名单，元素为 `userId|userName` 形式
   List<String> _commentBlockedUsers = [];
@@ -389,7 +360,6 @@ class UserManager extends ChangeNotifier {
   String get networkProxyHost => network.proxyHost;
   int get networkProxyPort => network.proxyPort;
   bool get hasManualProxy => network.hasManualProxy;
-  bool get animeFeatureEnabled => _animeFeatureEnabled;
   bool get remoteNoticeEnabled => _remoteNoticeEnabled;
 
   /// '' = follow system, 'zh' = 简体中文, 'zh-Hant' = 繁體中文
@@ -403,18 +373,6 @@ class UserManager extends ChangeNotifier {
   int? get copySettingsUpdatedAt => _copySettingsUpdatedAt;
   bool isCopyHomeSectionCollapsed(String key) =>
       _copyHomeSectionCollapsed[key] ?? false;
-  bool get animeHomeBannerCollapsed => _animeHomeBannerCollapsed;
-  int get animeSkipSeconds => _animeSkipSeconds;
-  bool get animePlaybackProgressEnabled => _animePlaybackProgressEnabled;
-  bool get danmakuEnabled => _danmakuEnabled;
-  double get danmakuFontSize => _danmakuFontSize;
-  double get danmakuArea => _danmakuArea;
-  double get danmakuOpacity => _danmakuOpacity;
-  bool get danmakuHideScroll => _danmakuHideScroll;
-  bool get danmakuHideTop => _danmakuHideTop;
-  bool get danmakuHideBottom => _danmakuHideBottom;
-  List<String> get danmakuBlocklist => List.unmodifiable(_danmakuBlocklist);
-  String get danmakuFontFamily => _danmakuFontFamily;
   List<String> get commentBlockedUsers =>
       List.unmodifiable(_commentBlockedUsers);
   bool get commentBlockNoRemind => _commentBlockNoRemind;
@@ -491,7 +449,6 @@ class UserManager extends ChangeNotifier {
   @override
   void dispose() {
     reader.removeListener(_onSubStoreChanged);
-    danmaku.removeListener(_onSubStoreChanged);
     comment.removeListener(_onSubStoreChanged);
     theme.removeListener(_onSubStoreChanged);
     network.removeListener(_onSubStoreChanged);

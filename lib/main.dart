@@ -77,7 +77,6 @@ void main() {
         return true;
       };
 
-      // media_kit 原生库在 Android 上按需下载，首次播放时再 ensureInitialized。
       await UserManager().init();
       await NetworkProxy.init();
       // 启动时若 COPY 高级设置过时（>1天），后台自动更新；失败静默。

@@ -23,17 +23,15 @@ part 'main_shell_parts/main_shell_branch_container.dart';
 // The branch order in StatefulShellRoute must match this.
 const _navKeyToBranchIndex = {
   'comic': 0,
-  'anime': 1,
-  'search': 2,
-  'bookshelf': 3,
-  'profile': 4,
+  'search': 1,
+  'bookshelf': 2,
+  'profile': 3,
 };
 
 List<String> _visibleNavKeys(UserManager user) {
   final keys = user.navOrder
       .where(_navKeyToBranchIndex.containsKey)
       .where((key) => user.isLoggedIn || key != 'bookshelf')
-      .where((key) => user.animeFeatureEnabled || key != 'anime')
       .toList();
   return keys.isEmpty ? const [UserManager.defaultNavKey] : keys;
 }
@@ -91,8 +89,8 @@ class _MainShellState extends State<MainShell>
     super.dispose();
   }
 
-  /// 含 build 间接依赖：_visibleNavKeys 会读 navOrder / isLoggedIn /
-  /// animeFeatureEnabled。navOrder 是 List，Record 对它是引用相等，
+  /// 含 build 间接依赖：_visibleNavKeys 会读 navOrder / isLoggedIn。
+  /// navOrder 是 List，Record 对它是引用相等，
   /// 必须展平后再参与比较。
   @override
   Object watchedSettings() => (
@@ -102,7 +100,6 @@ class _MainShellState extends State<MainShell>
     _user.lastNavKey,
     _user.remoteNoticeEnabled,
     _user.isLoggedIn,
-    _user.animeFeatureEnabled,
     _user.navOrder.join('\u0000'),
     _user.theme.navSwipeEnabled,
     _user.theme.backExitConfirm,
@@ -173,11 +170,6 @@ class _MainShellState extends State<MainShell>
       selectedIcon: Icons.menu_book,
       labelKey: 'comic',
     ),
-    'anime': _NavItem(
-      icon: Icons.movie_outlined,
-      selectedIcon: Icons.movie,
-      labelKey: 'anime',
-    ),
     'search': _NavItem(
       icon: Icons.search_outlined,
       selectedIcon: Icons.search,
@@ -199,8 +191,6 @@ class _MainShellState extends State<MainShell>
     switch (key) {
       case 'comic':
         return l10n.comicTabLabel;
-      case 'anime':
-        return l10n.animeTabLabel;
       case 'search':
         return l10n.searchTabLabel;
       case 'bookshelf':

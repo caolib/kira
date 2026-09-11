@@ -9,13 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'Kira';
-
-  @override
   String get comicTabLabel => '漫画';
-
-  @override
-  String get animeTabLabel => '动漫';
 
   @override
   String get searchTabLabel => '搜索';
@@ -135,33 +129,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String deletedLocalComicsCount(int count) {
-    return '已删除 $count 部本地漫画';
-  }
-
-  @override
-  String get localAnimeTitle => '本地动漫';
-
-  @override
-  String get noLocalAnimeTitle => '还没有本地动漫';
-
-  @override
-  String get noLocalAnimeSubtitle => '去动漫详情页下载剧集后，这里会显示离线内容';
-
-  @override
-  String get deleteLocalAnimeTitle => '删除本地动漫';
-
-  @override
-  String deleteLocalAnimeContent(int count) {
-    return '确定删除选中的 $count 部本地动漫吗？已下载视频和封面都会被删除。';
-  }
-
-  @override
-  String deletedLocalAnimeCount(int count) {
-    return '已删除 $count 部本地动漫';
-  }
-
-  @override
   String selectedCount(int count, String unit) {
     return '已选 $count $unit';
   }
@@ -172,16 +139,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String downloadedChapterCount(int count) {
-    return '已下载 $count 章';
-  }
-
-  @override
-  String downloadedEpisodeCount(int count) {
-    return '已下载 $count 集';
-  }
-
-  @override
   String downloadedCountUnit(int count, String unit) {
     return '已下载 $count $unit';
   }
@@ -189,11 +146,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String localChaptersTitle(int count) {
     return '本地章节 ($count)';
-  }
-
-  @override
-  String localEpisodesTitle(int count) {
-    return '本地剧集 ($count)';
   }
 
   @override
@@ -210,26 +162,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get deleteLocalEpisodesTitle => '删除本地剧集';
-
-  @override
-  String deleteEpisodesConfirm(int count) {
-    return '确定删除选中的 $count 个剧集吗？';
-  }
-
-  @override
-  String deletedEpisodesCount(int count) {
-    return '已删除 $count 个剧集';
-  }
-
-  @override
   String get viewOnlineDetail => '查看在线详情';
 
   @override
   String get manageChapters => '管理章节';
-
-  @override
-  String get manageEpisodes => '管理剧集';
 
   @override
   String get selectAll => '全选';
@@ -241,12 +177,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sortNormal => '正序（旧→新）';
 
   @override
-  String get readMark => '已读';
-
-  @override
-  String get videoFileNotFound => '视频文件不存在';
-
-  @override
   String get openDownloadFolder => '打开下载位置';
 
   @override
@@ -254,19 +184,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get comicLabel => '漫画';
-
-  @override
-  String get animeLabel => '动漫';
-
-  @override
-  String comicWithCount(int count) {
-    return '漫画（$count）';
-  }
-
-  @override
-  String animeWithCount(int count) {
-    return '动漫（$count）';
-  }
 
   @override
   String get hasUpdate => '有更新';
@@ -361,11 +278,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loginToViewBookshelf => '登录后可继续查看书架';
 
   @override
-  String totalEpisodes(int count) {
-    return '共 $count 集';
-  }
-
-  @override
   String searchHint(String mode) {
     return '搜索$mode...';
   }
@@ -415,13 +327,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteToastSuffixComic => ' 部本地漫画';
 
   @override
-  String get deleteToastSuffixAnime => ' 部本地动漫';
-
-  @override
   String get chapterUnit => '章';
-
-  @override
-  String get episodeUnit => '集';
 
   @override
   String get generalTitle => '通用';
@@ -434,15 +340,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get autoLoginUnavailableDesc => '登录并保存账号密码后可用';
-
-  @override
-  String get animeFeatureTitle => '动漫功能';
-
-  @override
-  String get animeFeatureDesc => '关闭后隐藏动漫相关功能';
-
-  @override
-  String get animeFeatureMaintenanceWarning => '动漫功能已经停止维护';
 
   @override
   String get remoteNoticeTitle => '通知';
@@ -625,55 +522,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get confirmResetButton => '确认重置';
 
   @override
-  String get animeUnavailableToast => '当前动漫暂时无法打开';
-
-  @override
-  String get animeEditorRecommend => '编辑推荐';
-
-  @override
-  String get animeRecentUpdate => '最近更新';
-
-  @override
-  String get animeClassicRecommend => '经典推荐';
-
-  @override
-  String get animeClassicAnimation => '经典动画';
-
-  @override
-  String get animeHotAnime => '热门动漫';
-
-  @override
-  String get loginRequiredTitle => '需要登录';
-
-  @override
-  String get playbackFailedTitle => '播放失败';
-
-  @override
-  String get viewLogButton => '查看日志';
-
-  @override
   String get errorLogTitle => '错误日志';
 
   @override
-  String get noLogInfo => '无日志信息';
-
-  @override
   String get closeButton => '关闭';
-
-  @override
-  String get videoLinkTitle => '视频链接';
-
-  @override
-  String get videoLinkPending => '加载后显示视频链接';
-
-  @override
-  String get copyVideoLinkButton => '复制视频链接';
-
-  @override
-  String get openInBrowserButton => '浏览器打开';
-
-  @override
-  String get switchLineTooltip => '切换线路';
 
   @override
   String get profileCopyCredentialLabel => '拷贝漫画';
@@ -727,9 +579,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String appearanceThemeColorUpdated(String color) {
     return '主题配色已更新为 $color';
   }
-
-  @override
-  String get appearanceBottomNavShowLabels => '底部导航栏显示文字';
 
   @override
   String get appearanceBottomNavLabelMode => '底部导航栏文字';
@@ -886,14 +735,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get appearanceFontNeedDownload => '请先下载字体后再使用';
-
-  @override
-  String appearanceFontDownloaded(String fontId) {
-    return '$fontId 下载完成';
-  }
-
-  @override
   String get appearanceFontDownloadFailed => '字体下载失败';
 
   @override
@@ -973,19 +814,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkTitle => '网络';
 
   @override
-  String get networkApiRouteTitle => 'API 线路';
-
-  @override
   String get networkSelectionMode => '选择模式';
 
   @override
   String get networkModeRoute => '线路';
-
-  @override
-  String get networkModeFixedNode => '固定节点';
-
-  @override
-  String get networkTestOtherLatency => '测试其他节点延迟';
 
   @override
   String get networkFixedNodeAutoSelected => '测速后已选择延迟最低的节点';
@@ -994,9 +826,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String networkRouteLabel(int index) {
     return '线路 $index';
   }
-
-  @override
-  String get networkTestLatency => '测试线路延迟';
 
   @override
   String get networkTestingNodes => '正在检测各节点...';
@@ -1034,12 +863,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkOtherRouteGroup => '其他';
 
   @override
-  String get networkCollapseTestResults => '收起测试结果';
-
-  @override
-  String get networkExpandTestResults => '展开测试结果';
-
-  @override
   String get networkProxySettings => '代理设置';
 
   @override
@@ -1061,9 +884,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkProxyDirectHint => '已忽略系统代理，所有请求直接连接';
 
   @override
-  String get networkCurrentProxy => '当前代理';
-
-  @override
   String get networkProxyAddress => '代理地址';
 
   @override
@@ -1072,14 +892,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get networkSaveAndEnableManualProxy => '保存并启用手动代理';
-
-  @override
-  String networkTestingGoogle(String proxy) {
-    return '正在通过 $proxy 访问 Google ...';
-  }
-
-  @override
-  String get networkGoogleConnectivity => 'Google 连通性';
 
   @override
   String get networkAdvancedSettings => '高级设置';
@@ -1162,31 +974,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String networkConnectionSuccess(int statusCode, String proxyRule) {
-    return '连接成功，HTTP $statusCode，$proxyRule';
-  }
-
-  @override
-  String networkConnectionFailed(int statusCode, String proxyRule) {
-    return '连接失败，HTTP $statusCode，$proxyRule';
-  }
-
-  @override
-  String networkConnectionTimeout(String proxyRule) {
-    return '连接超时，$proxyRule';
-  }
-
-  @override
-  String networkProxyRuleError(String proxyRule, String error) {
-    return '$proxyRule：$error';
-  }
-
-  @override
-  String networkTestFailed(String proxyRule, String error) {
-    return '测试失败，$proxyRule：$error';
-  }
-
-  @override
   String get networkStatusGood => '网络通畅';
 
   @override
@@ -1228,18 +1015,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get networkModeFixedNodeShort => '节点';
-
-  @override
-  String get networkSettings => '设置';
-
-  @override
-  String get networkSettingsTitle => '网络设置';
-
-  @override
-  String get networkHistorySettingsTitle => '节点历史记录';
-
-  @override
-  String get networkStatusAutoGoodHint => '基于真实请求自动选择，状态健康';
 
   @override
   String get aiConfigTitle => 'AI配置';
@@ -1599,9 +1374,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bookmarksClearContent => '确定要清空所有书签吗？';
 
   @override
-  String get bookmarksClearGroupTitle => '删除该漫画的书签';
-
-  @override
   String bookmarksGroupDeleted(int count) {
     return '已删除 $count 条书签';
   }
@@ -1676,9 +1448,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileUsernamePasswordRequired => '请输入用户名和密码';
 
   @override
-  String get profileLoginFailed => '登录失败';
-
-  @override
   String get profileLoginFailedProxyHint => '登录失败，建议开启代理后重试';
 
   @override
@@ -1701,9 +1470,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileTokenLoginEntry => '令牌登录';
-
-  @override
-  String get profileAccountLoginEntry => '账号密码登录';
 
   @override
   String get profileWebLoginButton => '官网登录';
@@ -1799,15 +1565,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileCopyMangaLabel => '拷贝漫画';
 
   @override
-  String get aboutQqGroupTitle => 'QQ交流群';
-
-  @override
-  String get aboutJoinGroupButton => '加入群聊';
-
-  @override
-  String get aboutGroupNumberCopiedToast => '已复制群号';
-
-  @override
   String get aboutMirrorPrefixTitle => '设置镜像源';
 
   @override
@@ -1865,9 +1622,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutFeedbackLabel => '反馈';
 
   @override
-  String get aboutCommunityLabel => '交流';
-
-  @override
   String get aboutCheckUpdateTitle => '检查更新';
 
   @override
@@ -1881,12 +1635,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get acknowledgementThanksTitle => '感谢以下服务与项目的支持';
-
-  @override
-  String get acknowledgementDandanplayTitle => '弹弹play';
-
-  @override
-  String get acknowledgementDandanplayDesc => '提供弹幕服务';
 
   @override
   String get acknowledgementZhconvertTitle => '繁化姬';
@@ -1926,11 +1674,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String cacheImageDataTarget(int count, String size) {
     return '$count 个图片缓存（$size）';
-  }
-
-  @override
-  String cacheMediaKitDataTarget(String size) {
-    return '播放组件（$size）';
   }
 
   @override
@@ -1984,32 +1727,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cacheDefaultImageDesc => '封面、头像等 CachedNetworkImage 默认使用的图片缓存。';
-
-  @override
-  String get cacheMediaKitLabel => '播放组件 / media_kit';
-
-  @override
-  String get cacheMediaKitDesc => '动漫播放器原生库（libmpv 等）。首次播放时按需下载；删除后下次播放会重新下载。';
-
-  @override
-  String get cacheMediaKitSection => '播放组件';
-
-  @override
-  String get cacheNoMediaKitToClear => '尚未下载播放组件';
-
-  @override
-  String get cacheClearMediaKitTitle => '删除播放组件';
-
-  @override
-  String cacheClearMediaKitContent(int fileCount, String size) {
-    return '确定删除已下载的播放组件吗？将删除 $fileCount 个文件，释放约 $size。下次播放动漫时会重新下载。';
-  }
-
-  @override
-  String get cacheMediaKitClearedToast => '已删除播放组件';
-
-  @override
-  String get cacheMediaKitVersionLabel => '组件版本';
 
   @override
   String get commentSettingsEditBuiltInPromptTitle => '编辑内置提示词';
@@ -2333,121 +2050,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get comicCommentExpandFullText => '展开全文';
 
   @override
-  String get animeDetailTitle => '动漫详情';
-
-  @override
-  String get animeDetailIntroTab => '简介';
-
-  @override
-  String animeDetailEpisodesTab(int count) {
-    return '选集 ($count)';
-  }
-
-  @override
-  String get animeDetailIntroRefreshFailed => '简介刷新失败';
-
-  @override
-  String get animeDetailEpisodeRefreshFailed => '选集刷新失败';
-
-  @override
-  String get animeDetailDandanplayBindingCleared => '已清除弹弹play绑定';
-
-  @override
-  String animeDetailDandanplayBound(String title) {
-    return '已绑定 $title';
-  }
-
-  @override
-  String get animeDetailAlignmentCleared => '已清除对齐';
-
-  @override
-  String get animeDetailRealigned => '已重新对齐弹幕';
-
-  @override
-  String get animeDetailNoAvailableLine => '当前选集暂无可用线路';
-
-  @override
-  String get animeDetailPlaybackEpisodeUnavailable => '播放记录对应选集暂不可用';
-
-  @override
-  String get animeDetailInfoLoadFailedForDownload => '动漫信息加载失败，无法下载';
-
-  @override
-  String get animeDetailNoLineForDownload => '当前选集暂无可用线路，无法下载';
-
-  @override
-  String animeDetailDownloadTasksAdded(int count) {
-    return '已添加 $count 个下载任务';
-  }
-
-  @override
-  String get animeDetailCannotCollect => '当前动漫暂时无法收藏';
-
-  @override
-  String get animeDetailCollected => '已收藏';
-
-  @override
-  String get animeDetailCollectCancelled => '已取消收藏';
-
-  @override
-  String get animeDetailCollectFailed => '收藏状态修改失败';
-
-  @override
-  String animeDetailDownloadTaskCount(int count) {
-    return '$count 个任务';
-  }
-
-  @override
-  String get animeDetailNoIntroInfo => '暂无简介信息';
-
-  @override
-  String get animeDetailInfoTitle => '资料';
-
-  @override
-  String get animeDetailIntroLoadFailed => '简介加载失败，下拉重试';
-
-  @override
-  String get animeDetailIntroRefreshFailedCached => '简介刷新失败，当前显示缓存内容';
-
-  @override
-  String animeDetailSelectedEpisodes(int count) {
-    return '已选 $count 集';
-  }
-
-  @override
-  String get animeDetailSelectAllUndownloaded => '全选未下载';
-
-  @override
-  String get animeDetailDownloadSelected => '下载选中';
-
-  @override
-  String get animeDetailEpisodeLoadFailed => '选集加载失败，下拉重试';
-
-  @override
-  String get animeDetailNoEpisodes => '暂无选集';
-
-  @override
-  String get animeDetailEpisodeRefreshFailedCached => '选集刷新失败，当前显示上次结果';
-
-  @override
-  String get animeDetailBindToViewComments => '绑定弹弹play 后才可查看评论';
-
-  @override
-  String get animeDetailBindDanmaku => '绑定弹幕';
-
-  @override
-  String get animeDetailRebind => '重新绑定';
-
-  @override
-  String get animeDetailAlign => '对齐';
-
-  @override
-  String get animeDetailDownloadButton => '下载';
-
-  @override
-  String get animeDetailEpisodeLoadFailedShort => '选集加载失败';
-
-  @override
   String get readerSettingsTitle => '阅读设置';
 
   @override
@@ -2623,9 +2225,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get browseHistoryLoginToView => '登录后可继续查看浏览记录';
 
   @override
-  String get browseHistoryLoginHintWithAnime => '浏览过的漫画和动漫会同步显示在这里';
-
-  @override
   String get browseHistoryLoginHintComicOnly => '浏览过的漫画会同步显示在这里';
 
   @override
@@ -2664,172 +2263,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get animePlayerLoginRequiredToPlay => '登录后才能播放该视频';
-
-  @override
-  String get animePlayerEmptyVideoUrl => '视频链接为空';
-
-  @override
-  String animePlayerRequestFailedStatus(int statusCode) {
-    return '请求失败（$statusCode）';
-  }
-
-  @override
-  String animePlayerRequestFailedStatusText(String statusCode) {
-    return '请求失败（$statusCode）';
-  }
-
-  @override
-  String get animePlayerMpvLogTitle => 'media_kit/mpv 日志:';
-
-  @override
-  String get animePlayerQuickDiagnosisTitle => '快速诊断:';
-
-  @override
-  String animePlayerDiagnosisManifestStatus(int statusCode) {
-    return 'm3u8 状态: $statusCode';
-  }
-
-  @override
-  String get animePlayerDiagnosisManifestHls => 'm3u8 内容: 已识别为 HLS 清单';
-
-  @override
-  String get animePlayerDiagnosisManifestNotHls =>
-      'm3u8 内容: 返回 200，但内容不像标准 HLS 清单';
-
-  @override
-  String animePlayerDiagnosisManifestError(String error) {
-    return 'm3u8 错误: $error';
-  }
-
-  @override
-  String animePlayerDiagnosisFirstSegment(String url) {
-    return '首个分片: $url';
-  }
-
-  @override
-  String animePlayerDiagnosisSegmentStatus(int statusCode) {
-    return '首个分片状态: $statusCode';
-  }
-
-  @override
-  String animePlayerDiagnosisSegmentBytes(int bytes) {
-    return '首个分片字节数: $bytes';
-  }
-
-  @override
-  String animePlayerDiagnosisSegmentError(String error) {
-    return '首个分片错误: $error';
-  }
-
-  @override
-  String get animePlayerDiagnosisConclusionDecodeIssue =>
-      '结论: m3u8 与首个分片都可访问，更像是播放器解析或解码兼容问题';
-
-  @override
-  String get animePlayerSourceForbidden => '视频源拒绝访问（403）';
-
-  @override
-  String get animePlayerSourceNotFound => '视频地址已失效（404）';
-
-  @override
-  String get animePlayerCertificateFailed => '视频证书校验失败';
-
-  @override
-  String get animePlayerConnectionTimeout => '视频连接超时';
-
-  @override
-  String get animePlayerCannotParseStream => '视频源可访问，但播放器无法解析该视频流';
-
-  @override
-  String get animePlayerEnableProxyToRetry => '视频加载失败，请开启代理后重试';
-
-  @override
-  String get animePlayerInvalidVideoUri => '视频地址不是合法 URI';
-
-  @override
-  String get animePlayerDiagnosisRequestFailed => '视频诊断请求失败';
-
-  @override
-  String get animePlayerSegmentDiagnosisRequestFailed => '视频分片诊断请求失败';
-
-  @override
-  String get animePlayerSegmentUrlNotResolved => '未解析出分片地址';
-
-  @override
-  String get animePlayerLoadingCannotSwitch => '视频加载中，请稍后再切换';
-
-  @override
-  String get animePlayerNoVideoUrlToCopy => '暂无可复制的视频链接';
-
-  @override
-  String get animePlayerVideoUrlCopied => '视频链接已复制到剪贴板';
-
-  @override
-  String get animePlayerNoVideoUrlToOpen => '暂无可打开的视频链接';
-
-  @override
-  String get animePlayerOpenVideoUrlFailed => '无法打开视频链接';
-
-  @override
-  String animePlayerSeekedTo(String position) {
-    return '已跳转到 $position';
-  }
-
-  @override
-  String get animePlayerSeekLastFailed => '无法跳转到上次进度';
-
-  @override
-  String animePlayerSearchFailed(String error) {
-    return '搜索失败: $error';
-  }
-
-  @override
-  String get animePlayerRefreshTooFrequent => '不要频繁刷新！';
-
-  @override
-  String animePlayerLoadDanmakuFailed(String error) {
-    return '加载弹幕失败: $error';
-  }
-
-  @override
-  String get animePlayerBuffering => '正在缓冲...';
-
-  @override
-  String get animePlayerProxySuggestion => '如果网络卡顿，建议开启代理访问';
-
-  @override
-  String get animePlayerPlay => '播放';
-
-  @override
-  String animePlayerFastForward(int seconds) {
-    return '快进 $seconds秒';
-  }
-
-  @override
-  String get animePlayerHideDanmaku => '隐藏弹幕';
-
-  @override
-  String get animePlayerChapterSelector => '选集';
-
-  @override
-  String animePlayerChapterSelectorWithCount(int count) {
-    return '选集 ($count)';
-  }
-
-  @override
-  String get animePlayerSetSkipSeconds => '设置跳转秒数';
-
-  @override
-  String get animePlayerExitFullscreen => '退出全屏';
-
-  @override
-  String get animePlayerFullscreen => '全屏';
-
-  @override
-  String get backButton => '返回';
-
-  @override
   String cacheSelectedCards(int count) {
     return '已选 $count 个卡片';
   }
@@ -2847,10 +2280,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String cacheSummary(int localTotal, String size) {
     return '共 $localTotal 项本地数据 · $size';
   }
-
-  @override
-  String get cacheManagementSummaryDesc =>
-      '按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片与播放组件可单独清理。';
 
   @override
   String get cacheImageCacheSection => '图片缓存';
@@ -2884,15 +2313,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get cacheDescriptionTitle => '说明';
-
-  @override
-  String get cacheKeyTitle => '缓存标识';
-
-  @override
-  String get cacheDirectoryTitle => '缓存目录';
-
-  @override
   String get cacheCategoryPersistentCache => '业务缓存';
 
   @override
@@ -2903,12 +2323,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cacheCategoryMangaHistory => '漫画阅读历史';
-
-  @override
-  String get cacheCategoryAnimeHistory => '动漫播放历史';
-
-  @override
-  String get cacheCategoryBindings => '弹幕绑定';
 
   @override
   String get cacheCategoryAiSummaryCache => 'AI 总结缓存';
@@ -3141,11 +2555,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get comicDetailSelectedAlreadyDownloadedOrQueued => '所选章节已下载或已在队列中';
 
   @override
-  String comicDetailSelectedChapters(int count) {
-    return '已选 $count 章';
-  }
-
-  @override
   String comicDetailDownloadSelectedCount(int count) {
     return '下载$count话';
   }
@@ -3216,18 +2625,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get downloadedStatus => '已下载';
-
-  @override
   String comicDetailDownloadProgress(int completed, int total) {
     return '下载 $completed/$total';
   }
 
   @override
   String get comicDetailQueued => '排队中';
-
-  @override
-  String get processingStatus => '处理中';
 
   @override
   String get collectButton => '收藏';
@@ -3242,47 +2645,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadQueueEmptyComicHint => '去漫画详情页添加下载任务';
 
   @override
-  String get downloadQueueEmptyMixedHint => '去漫画或动漫详情页添加下载任务';
-
-  @override
-  String downloadProgressApproxBytes(String percent, String size) {
-    return '$percent% · 约 $size';
-  }
-
-  @override
   String get downloadingStatus => '下载中';
 
   @override
   String get waitingStatus => '等待中';
-
-  @override
-  String get pausedStatus => '已暂停';
-
-  @override
-  String get downloadFailedStatus => '下载失败';
-
-  @override
-  String get animeDownloadConnectionTimeout => '连接超时';
-
-  @override
-  String get animeDownloadProxyRetrySuggestion => '建议开启代理后重试';
-
-  @override
-  String get animeDownloadUnknownError => '未知错误';
-
-  @override
-  String animeDownloadFailedMessage(String chapter, String error) {
-    return '$chapter 下载失败：$error';
-  }
-
-  @override
-  String get animeDownloadEmptyVideoUrl => '视频链接为空';
-
-  @override
-  String get pauseButton => '暂停';
-
-  @override
-  String get resumeButton => '继续';
 
   @override
   String downloadProgressCount(String percent, int completed, int total) {
@@ -3296,9 +2662,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String downloadChapterPartialFailed(int count) {
     return '缺 $count 页';
   }
-
-  @override
-  String get downloadChapterRetryTooltip => '补全失败页';
 
   @override
   String downloadProgressPartial(
@@ -3409,88 +2772,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileFallbackQuestionParentName => '我的父親(母親)叫什麽？';
 
   @override
-  String get animeDetailSubtitleChip => '字幕';
-
-  @override
-  String animeDetailLatestChapter(String chapter) {
-    return '最新：$chapter';
-  }
-
-  @override
-  String get animeDetailOnAirChip => '连载中';
-
-  @override
-  String get animeDetailRestrictedChip => '受限';
-
-  @override
-  String animeDetailDirector(String name) {
-    return '导演：$name';
-  }
-
-  @override
-  String get playerSettingsPlaybackTitle => '播放设置';
-
-  @override
-  String get playerSettingsSkipSeconds => '快进秒数';
-
-  @override
-  String get playerSettingsSkipSecondsDesc => '动漫片头一般约90秒';
-
-  @override
-  String get playerSettingsSecondsLabel => '秒数';
-
-  @override
-  String get readerSecondsSuffix => '秒';
-
-  @override
-  String get playerSettingsRecordProgress => '记录播放进度';
-
-  @override
-  String get playerSettingsRecordProgressDesc => '再次打开同一集时自动跳转到上次观看位置';
-
-  @override
-  String get playerSettingsDanmakuTitle => '弹幕设置';
-
-  @override
-  String get playerSettingsShowDanmaku => '显示弹幕';
-
-  @override
-  String get playerSettingsFontSize => '字体大小';
-
-  @override
-  String get playerSettingsDisplayArea => '显示区域';
-
-  @override
-  String get playerSettingsOpacity => '透明度';
-
-  @override
-  String get playerSettingsDanmakuType => '弹幕类型';
-
-  @override
-  String get playerSettingsScrollDanmaku => '滚动弹幕';
-
-  @override
-  String get playerSettingsTopDanmaku => '顶部弹幕';
-
-  @override
-  String get playerSettingsBottomDanmaku => '底部弹幕';
-
-  @override
-  String get playerSettingsBlocklist => '屏蔽词';
-
-  @override
-  String get playerSettingsBlocklistDesc => '包含屏蔽词的弹幕将被自动过滤';
-
-  @override
-  String get playerSettingsBlocklistHint => '输入屏蔽词';
-
-  @override
-  String get playerSettingsDanmakuFont => '弹幕字体';
-
-  @override
-  String get playerSettingsDanmakuFontSystem => '跟随系统';
-
-  @override
   String get playerSettingsChineseConvertTooltip => '简繁转换';
 
   @override
@@ -3590,9 +2871,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateNoPackageForPlatform => '当前平台暂无安装包';
 
   @override
-  String get updateCheckFailedRetryLater => '检查更新失败，请稍后重试';
-
-  @override
   String get updateOpenDownloadFailed => '无法打开下载链接';
 
   @override
@@ -3605,30 +2883,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateCurrentVersionNotes => '当前版本';
 
   @override
-  String get updateMirrorDownload => '镜像下载';
-
-  @override
-  String get updateLatestBadge => '最新';
-
-  @override
-  String get updateCollapseOtherVersions => '收起其他版本';
-
-  @override
-  String updateViewMoreVersions(int count) {
-    return '查看更多版本 ($count)';
-  }
-
-  @override
   String get updateCiBuildUnstable => 'CI 自动构建版本，不保证稳定性。';
 
   @override
   String get updateOpenReleasePage => '打开发布页';
-
-  @override
-  String get updatePackagesBeta => '安装包';
-
-  @override
-  String get updatePackages => '安装包';
 
   @override
   String updateOtherPackages(int count) {
@@ -3640,12 +2898,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updateDisableAutoCheck => '取消自动检查更新';
-
-  @override
-  String get updateInstallInApp => '应用内安装';
-
-  @override
-  String get updateInstallInAppMirror => '镜像应用内安装';
 
   @override
   String updateDownloading(int percent) {
@@ -3669,9 +2921,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updateCardChecking => '正在检查更新…';
-
-  @override
-  String get updateCardLatest => '当前已是最新版本';
 
   @override
   String get updateCardFailed => '检查更新失败，点击重试';
@@ -3764,124 +3013,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerRotateRightShort => '向右';
 
   @override
-  String get browseHistoryLastSeenLabel => '上次看到';
-
-  @override
-  String playerProgressAutoResumed(String progress) {
-    return '$progress（已自动继续）';
-  }
-
-  @override
-  String get playerSeekButton => '跳转';
-
-  @override
-  String get bangumiCommentsLoadFailed => '评论加载失败';
-
-  @override
-  String get bangumiCommentsRetryHint => '下拉或点按钮重试';
-
-  @override
-  String get bangumiCommentsEmptyTitle => '还没有评论';
-
-  @override
-  String get bangumiCommentsEmptySubtitle => '暂时没有可显示的 Bangumi 评论';
-
-  @override
-  String get bangumiCommentsLoadMoreFailed => '更多评论加载失败';
-
-  @override
-  String get bangumiCommentsRetryLoadMore => '重试加载更多';
-
-  @override
-  String get bangumiCommentsLoadMore => '加载更多';
-
-  @override
-  String get bangumiCommentsEmptyComment => '这条评论没有内容';
-
-  @override
-  String get danmakuSearchTitle => '弹幕搜索';
-
-  @override
-  String danmakuSearchTitleWithCount(int count) {
-    return '弹幕搜索（$count）';
-  }
-
-  @override
-  String danmakuLoadedTitle(int count) {
-    return '已装载$count发弹幕';
-  }
-
-  @override
-  String get danmakuSearchHint => '输入搜索关键词';
-
-  @override
-  String get forceRefreshTooltip => '强制刷新';
-
-  @override
-  String get danmakuSearchInstruction => '请选择分段或输入搜索词后点击搜索';
-
-  @override
-  String danmakuSearchResultCount(int count) {
-    return '共找到 $count 条结果';
-  }
-
-  @override
-  String get danmakuSearchNoResults => '未找到相关弹幕';
-
-  @override
-  String get danmakuSearchNoResultsHint =>
-      '减少关键词，仅搜索作品名称\n如：「Re：从零开始的异世界生活第四季丧失篇」搜索「从零开始的异世界生活第四季」';
-
-  @override
-  String get danmakuLabel => '弹幕';
-
-  @override
-  String get dandanplayBindingSearchKeyword => '搜索关键词';
-
-  @override
-  String get dandanplayBindingClear => '清除绑定';
-
-  @override
-  String dandanplayBindingSearchFailed(String error) {
-    return '搜索失败：$error';
-  }
-
-  @override
-  String get dandanplayBindingNoResults => '未找到相关番剧';
-
-  @override
-  String get dandanplayBindingSearchInstruction => '输入关键词后点击搜索';
-
-  @override
-  String get dandanplayBindingCurrent => '当前绑定';
-
-  @override
-  String get dandanplayBindingBound => '已绑定';
-
-  @override
-  String get dandanplayBindingUnbound => '未绑定';
-
-  @override
-  String get dandanplayBindingBind => '绑定';
-
-  @override
-  String dandanplayBindingRating(String rating) {
-    return '评分 $rating';
-  }
-
-  @override
-  String get dandanplayAlignmentTitle => '对齐弹幕';
-
-  @override
-  String get dandanplayAlignmentVideoFirstEpisode => '视频第一集';
-
-  @override
-  String get dandanplayAlignmentDanmakuFirstEpisode => '弹幕第一集';
-
-  @override
-  String get dandanplayAlignmentClear => '清除对齐';
-
-  @override
   String get spoilerWarningTitle => '剧透警告';
 
   @override
@@ -3897,85 +3028,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get spoilerTapToView => '含剧透，点击查看';
 
   @override
-  String get mediaKitDownloadTitle => '需要下载播放组件';
+  String get alreadyCollectedLabel => '已收藏';
 
   @override
-  String mediaKitDownloadMessage(String size) {
-    return '首次使用动漫播放功能需下载播放组件（$size）。下载后会保存在本地，软件更新无需重新下载。';
-  }
-
-  @override
-  String get mediaKitDownloadSourceLabel => '下载来源';
-
-  @override
-  String get mediaKitDownloadSourceGithub => 'GitHub';
-
-  @override
-  String get mediaKitDownloadSourceGithubHint => '直连 GitHub 官方资源';
-
-  @override
-  String get mediaKitDownloadSourceMirror => '镜像下载';
-
-  @override
-  String mediaKitDownloadSourceMirrorHint(String mirror) {
-    return '使用当前镜像：$mirror';
-  }
-
-  @override
-  String get mediaKitDownloadConfirm => '开始下载';
-
-  @override
-  String get mediaKitDownloadingTitle => '正在下载播放组件';
-
-  @override
-  String get mediaKitDownloadFailedTitle => '下载失败';
-
-  @override
-  String mediaKitDownloadFailed(String error) {
-    return '下载播放组件失败：$error';
-  }
-
-  @override
-  String mediaKitInitFailed(String error) {
-    return '播放器初始化失败：$error';
-  }
-
-  @override
-  String get mediaKitDownloadStageConnect => '正在连接…';
-
-  @override
-  String mediaKitDownloadBytesProgress(String received, String total) {
-    return '$received / $total';
-  }
-
-  @override
-  String mediaKitDownloadBytesOnly(String received) {
-    return '已下载 $received';
-  }
-
-  @override
-  String get mediaKitDownloadTimeout => '连接或下载超时，请切换 GitHub/镜像后重试';
-
-  @override
-  String get mediaKitDownloadNetworkError => '网络连接失败，请检查网络或切换下载来源';
-
-  @override
-  String get mediaKitDownloadStagePrepare => '准备中…';
-
-  @override
-  String get mediaKitDownloadStageDownload => '正在下载…';
-
-  @override
-  String get mediaKitDownloadStageVerify => '校验文件…';
-
-  @override
-  String get mediaKitDownloadStageExtract => '解压组件…';
-
-  @override
-  String get mediaKitDownloadStageLoad => '加载组件…';
-
-  @override
-  String get mediaKitDownloadStageDone => '完成';
+  String get downloadActionButton => '下载';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -3983,13 +3039,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
 
   @override
-  String get appTitle => 'Kira';
-
-  @override
   String get comicTabLabel => '漫畫';
-
-  @override
-  String get animeTabLabel => '動漫';
 
   @override
   String get searchTabLabel => '搜尋';
@@ -4109,33 +3159,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String deletedLocalComicsCount(int count) {
-    return '已刪除 $count 部本地漫畫';
-  }
-
-  @override
-  String get localAnimeTitle => '本地動漫';
-
-  @override
-  String get noLocalAnimeTitle => '還沒有本地動漫';
-
-  @override
-  String get noLocalAnimeSubtitle => '去動漫詳情頁下載劇集後，這裡會顯示離線內容';
-
-  @override
-  String get deleteLocalAnimeTitle => '刪除本地動漫';
-
-  @override
-  String deleteLocalAnimeContent(int count) {
-    return '確定刪除選中的 $count 部本地動漫嗎？已下載影片和封面都會被刪除。';
-  }
-
-  @override
-  String deletedLocalAnimeCount(int count) {
-    return '已刪除 $count 部本地動漫';
-  }
-
-  @override
   String selectedCount(int count, String unit) {
     return '已選 $count $unit';
   }
@@ -4146,16 +3169,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String downloadedChapterCount(int count) {
-    return '已下載 $count 章';
-  }
-
-  @override
-  String downloadedEpisodeCount(int count) {
-    return '已下載 $count 集';
-  }
-
-  @override
   String downloadedCountUnit(int count, String unit) {
     return '已下載 $count $unit';
   }
@@ -4163,11 +3176,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String localChaptersTitle(int count) {
     return '本地章節 ($count)';
-  }
-
-  @override
-  String localEpisodesTitle(int count) {
-    return '本地劇集 ($count)';
   }
 
   @override
@@ -4184,26 +3192,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get deleteLocalEpisodesTitle => '刪除本地劇集';
-
-  @override
-  String deleteEpisodesConfirm(int count) {
-    return '確定刪除選中的 $count 個劇集嗎？';
-  }
-
-  @override
-  String deletedEpisodesCount(int count) {
-    return '已刪除 $count 個劇集';
-  }
-
-  @override
   String get viewOnlineDetail => '檢視線上詳情';
 
   @override
   String get manageChapters => '管理章節';
-
-  @override
-  String get manageEpisodes => '管理劇集';
 
   @override
   String get selectAll => '全選';
@@ -4215,12 +3207,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sortNormal => '正序（舊→新）';
 
   @override
-  String get readMark => '已讀';
-
-  @override
-  String get videoFileNotFound => '影片檔案不存在';
-
-  @override
   String get openDownloadFolder => '開啟下載位置';
 
   @override
@@ -4228,19 +3214,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get comicLabel => '漫畫';
-
-  @override
-  String get animeLabel => '動漫';
-
-  @override
-  String comicWithCount(int count) {
-    return '漫畫（$count）';
-  }
-
-  @override
-  String animeWithCount(int count) {
-    return '動漫（$count）';
-  }
 
   @override
   String get hasUpdate => '有更新';
@@ -4335,11 +3308,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get loginToViewBookshelf => '登入後可繼續檢視書架';
 
   @override
-  String totalEpisodes(int count) {
-    return '共 $count 集';
-  }
-
-  @override
   String searchHint(String mode) {
     return '搜尋$mode...';
   }
@@ -4389,13 +3357,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get deleteToastSuffixComic => ' 部本地漫畫';
 
   @override
-  String get deleteToastSuffixAnime => ' 部本地動漫';
-
-  @override
   String get chapterUnit => '章';
-
-  @override
-  String get episodeUnit => '集';
 
   @override
   String get generalTitle => '通用';
@@ -4408,15 +3370,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get autoLoginUnavailableDesc => '登入並儲存帳號密碼後可用';
-
-  @override
-  String get animeFeatureTitle => '動漫功能';
-
-  @override
-  String get animeFeatureDesc => '關閉後隱藏動漫相關功能';
-
-  @override
-  String get animeFeatureMaintenanceWarning => '動漫功能已經停止維護';
 
   @override
   String get remoteNoticeTitle => '通知';
@@ -4599,55 +3552,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get confirmResetButton => '確認重設';
 
   @override
-  String get animeUnavailableToast => '目前動漫暫時無法開啟';
-
-  @override
-  String get animeEditorRecommend => '編輯推薦';
-
-  @override
-  String get animeRecentUpdate => '最近更新';
-
-  @override
-  String get animeClassicRecommend => '經典推薦';
-
-  @override
-  String get animeClassicAnimation => '經典動畫';
-
-  @override
-  String get animeHotAnime => '熱門動漫';
-
-  @override
-  String get loginRequiredTitle => '需要登入';
-
-  @override
-  String get playbackFailedTitle => '播放失敗';
-
-  @override
-  String get viewLogButton => '檢視日誌';
-
-  @override
   String get errorLogTitle => '錯誤日誌';
 
   @override
-  String get noLogInfo => '無日誌資訊';
-
-  @override
   String get closeButton => '關閉';
-
-  @override
-  String get videoLinkTitle => '影片連結';
-
-  @override
-  String get videoLinkPending => '載入後顯示影片連結';
-
-  @override
-  String get copyVideoLinkButton => '複製影片連結';
-
-  @override
-  String get openInBrowserButton => '瀏覽器開啟';
-
-  @override
-  String get switchLineTooltip => '切換線路';
 
   @override
   String get profileCopyCredentialLabel => '拷貝漫畫';
@@ -4701,9 +3609,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String appearanceThemeColorUpdated(String color) {
     return '主題配色已更新為 $color';
   }
-
-  @override
-  String get appearanceBottomNavShowLabels => '底部導覽列顯示文字';
 
   @override
   String get appearanceBottomNavLabelMode => '底部導覽列文字';
@@ -4860,14 +3765,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get appearanceFontNeedDownload => '請先下載字型後再使用';
-
-  @override
-  String appearanceFontDownloaded(String fontId) {
-    return '$fontId 下載完成';
-  }
-
-  @override
   String get appearanceFontDownloadFailed => '字型下載失敗';
 
   @override
@@ -4947,19 +3844,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkTitle => '網路';
 
   @override
-  String get networkApiRouteTitle => 'API 線路';
-
-  @override
   String get networkSelectionMode => '選擇模式';
 
   @override
   String get networkModeRoute => '線路';
-
-  @override
-  String get networkModeFixedNode => '固定節點';
-
-  @override
-  String get networkTestOtherLatency => '測試其他節點延遲';
 
   @override
   String get networkFixedNodeAutoSelected => '測速後已選擇延遲最低的節點';
@@ -4968,9 +3856,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String networkRouteLabel(int index) {
     return '線路 $index';
   }
-
-  @override
-  String get networkTestLatency => '測試線路延遲';
 
   @override
   String get networkTestingNodes => '正在檢測各節點...';
@@ -5008,12 +3893,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkOtherRouteGroup => '其他';
 
   @override
-  String get networkCollapseTestResults => '收起測試結果';
-
-  @override
-  String get networkExpandTestResults => '展開測試結果';
-
-  @override
   String get networkProxySettings => '代理設定';
 
   @override
@@ -5035,9 +3914,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkProxyDirectHint => '已忽略系統代理，所有請求直接連線';
 
   @override
-  String get networkCurrentProxy => '目前代理';
-
-  @override
   String get networkProxyAddress => '代理地址';
 
   @override
@@ -5046,14 +3922,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkSaveAndEnableManualProxy => '儲存並啟用手動代理';
-
-  @override
-  String networkTestingGoogle(String proxy) {
-    return '正在透過 $proxy 存取 Google ...';
-  }
-
-  @override
-  String get networkGoogleConnectivity => 'Google 連通性';
 
   @override
   String get networkAdvancedSettings => '進階設定';
@@ -5136,31 +4004,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String networkConnectionSuccess(int statusCode, String proxyRule) {
-    return '連接成功，HTTP $statusCode，$proxyRule';
-  }
-
-  @override
-  String networkConnectionFailed(int statusCode, String proxyRule) {
-    return '連接失敗，HTTP $statusCode，$proxyRule';
-  }
-
-  @override
-  String networkConnectionTimeout(String proxyRule) {
-    return '連接逾時，$proxyRule';
-  }
-
-  @override
-  String networkProxyRuleError(String proxyRule, String error) {
-    return '$proxyRule：$error';
-  }
-
-  @override
-  String networkTestFailed(String proxyRule, String error) {
-    return '測試失敗，$proxyRule：$error';
-  }
-
-  @override
   String get networkStatusGood => '網路通暢';
 
   @override
@@ -5202,18 +4045,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkModeFixedNodeShort => '節點';
-
-  @override
-  String get networkSettings => '設定';
-
-  @override
-  String get networkSettingsTitle => '網路設定';
-
-  @override
-  String get networkHistorySettingsTitle => '節點歷史記錄';
-
-  @override
-  String get networkStatusAutoGoodHint => '根據實測結果自動選擇狀態良好的';
 
   @override
   String get aiConfigTitle => 'AI 設定';
@@ -5573,9 +4404,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get bookmarksClearContent => '確定要清空所有書籤嗎？';
 
   @override
-  String get bookmarksClearGroupTitle => '刪除該漫畫的書籤';
-
-  @override
   String bookmarksGroupDeleted(int count) {
     return '已刪除 $count 條書籤';
   }
@@ -5650,9 +4478,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get profileUsernamePasswordRequired => '請輸入使用者名稱和密碼';
 
   @override
-  String get profileLoginFailed => '登入失敗';
-
-  @override
   String get profileLoginFailedProxyHint => '登入失敗，建議開啟代理後重試';
 
   @override
@@ -5675,9 +4500,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get profileTokenLoginEntry => '權杖登入';
-
-  @override
-  String get profileAccountLoginEntry => '帳號密碼登入';
 
   @override
   String get profileWebLoginButton => '官網登入';
@@ -5773,15 +4595,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get profileCopyMangaLabel => '拷貝漫畫';
 
   @override
-  String get aboutQqGroupTitle => 'QQ 交流群';
-
-  @override
-  String get aboutJoinGroupButton => '加入群聊';
-
-  @override
-  String get aboutGroupNumberCopiedToast => '已複製群號';
-
-  @override
   String get aboutMirrorPrefixTitle => '設定鏡像源';
 
   @override
@@ -5839,9 +4652,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutFeedbackLabel => '回饋';
 
   @override
-  String get aboutCommunityLabel => '交流';
-
-  @override
   String get aboutCheckUpdateTitle => '檢查更新';
 
   @override
@@ -5855,12 +4665,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get acknowledgementThanksTitle => '感謝以下服務與專案的支援';
-
-  @override
-  String get acknowledgementDandanplayTitle => '彈彈play';
-
-  @override
-  String get acknowledgementDandanplayDesc => '提供彈幕服務';
 
   @override
   String get acknowledgementZhconvertTitle => '繁化姬';
@@ -5900,11 +4704,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String cacheImageDataTarget(int count, String size) {
     return '$count 個圖片快取（$size）';
-  }
-
-  @override
-  String cacheMediaKitDataTarget(String size) {
-    return '播放元件（$size）';
   }
 
   @override
@@ -5958,32 +4757,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get cacheDefaultImageDesc => '封面、頭像等 CachedNetworkImage 預設使用的圖片快取。';
-
-  @override
-  String get cacheMediaKitLabel => '播放元件 / media_kit';
-
-  @override
-  String get cacheMediaKitDesc => '動漫播放器原生庫（libmpv 等）。首次播放時按需下載；刪除後下次播放會重新下載。';
-
-  @override
-  String get cacheMediaKitSection => '播放元件';
-
-  @override
-  String get cacheNoMediaKitToClear => '尚未下載播放元件';
-
-  @override
-  String get cacheClearMediaKitTitle => '刪除播放元件';
-
-  @override
-  String cacheClearMediaKitContent(int fileCount, String size) {
-    return '確定刪除已下載的播放元件嗎？將刪除 $fileCount 個檔案，釋放約 $size。下次播放動漫時會重新下載。';
-  }
-
-  @override
-  String get cacheMediaKitClearedToast => '已刪除播放元件';
-
-  @override
-  String get cacheMediaKitVersionLabel => '元件版本';
 
   @override
   String get commentSettingsEditBuiltInPromptTitle => '編輯內建提示詞';
@@ -6307,121 +5080,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get comicCommentExpandFullText => '展開全文';
 
   @override
-  String get animeDetailTitle => '動漫詳情';
-
-  @override
-  String get animeDetailIntroTab => '簡介';
-
-  @override
-  String animeDetailEpisodesTab(int count) {
-    return '選集 ($count)';
-  }
-
-  @override
-  String get animeDetailIntroRefreshFailed => '簡介重新整理失敗';
-
-  @override
-  String get animeDetailEpisodeRefreshFailed => '選集重新整理失敗';
-
-  @override
-  String get animeDetailDandanplayBindingCleared => '已清除彈彈play綁定';
-
-  @override
-  String animeDetailDandanplayBound(String title) {
-    return '已綁定 $title';
-  }
-
-  @override
-  String get animeDetailAlignmentCleared => '已清除對齊';
-
-  @override
-  String get animeDetailRealigned => '已重新對齊彈幕';
-
-  @override
-  String get animeDetailNoAvailableLine => '目前選集暫無可用線路';
-
-  @override
-  String get animeDetailPlaybackEpisodeUnavailable => '播放紀錄對應選集暫不可用';
-
-  @override
-  String get animeDetailInfoLoadFailedForDownload => '動漫資訊載入失敗，無法下載';
-
-  @override
-  String get animeDetailNoLineForDownload => '目前選集暫無可用線路，無法下載';
-
-  @override
-  String animeDetailDownloadTasksAdded(int count) {
-    return '已新增 $count 個下載任務';
-  }
-
-  @override
-  String get animeDetailCannotCollect => '目前動漫暫時無法收藏';
-
-  @override
-  String get animeDetailCollected => '已收藏';
-
-  @override
-  String get animeDetailCollectCancelled => '已取消收藏';
-
-  @override
-  String get animeDetailCollectFailed => '收藏狀態修改失敗';
-
-  @override
-  String animeDetailDownloadTaskCount(int count) {
-    return '$count 個任務';
-  }
-
-  @override
-  String get animeDetailNoIntroInfo => '暫無簡介資訊';
-
-  @override
-  String get animeDetailInfoTitle => '資料';
-
-  @override
-  String get animeDetailIntroLoadFailed => '簡介載入失敗，下拉重試';
-
-  @override
-  String get animeDetailIntroRefreshFailedCached => '簡介重新整理失敗，目前顯示快取內容';
-
-  @override
-  String animeDetailSelectedEpisodes(int count) {
-    return '已選 $count 集';
-  }
-
-  @override
-  String get animeDetailSelectAllUndownloaded => '全選未下載';
-
-  @override
-  String get animeDetailDownloadSelected => '下載選中';
-
-  @override
-  String get animeDetailEpisodeLoadFailed => '選集載入失敗，下拉重試';
-
-  @override
-  String get animeDetailNoEpisodes => '暫無選集';
-
-  @override
-  String get animeDetailEpisodeRefreshFailedCached => '選集重新整理失敗，目前顯示上次結果';
-
-  @override
-  String get animeDetailBindToViewComments => '綁定彈彈play 後才可查看評論';
-
-  @override
-  String get animeDetailBindDanmaku => '綁定彈幕';
-
-  @override
-  String get animeDetailRebind => '重新綁定';
-
-  @override
-  String get animeDetailAlign => '對齊';
-
-  @override
-  String get animeDetailDownloadButton => '下載';
-
-  @override
-  String get animeDetailEpisodeLoadFailedShort => '選集載入失敗';
-
-  @override
   String get readerSettingsTitle => '閱讀設定';
 
   @override
@@ -6597,9 +5255,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get browseHistoryLoginToView => '登入後可繼續查看瀏覽紀錄';
 
   @override
-  String get browseHistoryLoginHintWithAnime => '瀏覽過的漫畫和動漫會同步顯示在這裡';
-
-  @override
   String get browseHistoryLoginHintComicOnly => '瀏覽過的漫畫會同步顯示在這裡';
 
   @override
@@ -6638,172 +5293,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get animePlayerLoginRequiredToPlay => '登入後才能播放該影片';
-
-  @override
-  String get animePlayerEmptyVideoUrl => '影片連結為空';
-
-  @override
-  String animePlayerRequestFailedStatus(int statusCode) {
-    return '請求失敗（$statusCode）';
-  }
-
-  @override
-  String animePlayerRequestFailedStatusText(String statusCode) {
-    return '請求失敗（$statusCode）';
-  }
-
-  @override
-  String get animePlayerMpvLogTitle => 'media_kit/mpv 日誌:';
-
-  @override
-  String get animePlayerQuickDiagnosisTitle => '快速診斷:';
-
-  @override
-  String animePlayerDiagnosisManifestStatus(int statusCode) {
-    return 'm3u8 狀態: $statusCode';
-  }
-
-  @override
-  String get animePlayerDiagnosisManifestHls => 'm3u8 內容: 已識別為 HLS 清單';
-
-  @override
-  String get animePlayerDiagnosisManifestNotHls =>
-      'm3u8 內容: 返回 200，但內容不像標準 HLS 清單';
-
-  @override
-  String animePlayerDiagnosisManifestError(String error) {
-    return 'm3u8 錯誤: $error';
-  }
-
-  @override
-  String animePlayerDiagnosisFirstSegment(String url) {
-    return '首個分片: $url';
-  }
-
-  @override
-  String animePlayerDiagnosisSegmentStatus(int statusCode) {
-    return '首個分片狀態: $statusCode';
-  }
-
-  @override
-  String animePlayerDiagnosisSegmentBytes(int bytes) {
-    return '首個分片位元組數: $bytes';
-  }
-
-  @override
-  String animePlayerDiagnosisSegmentError(String error) {
-    return '首個分片錯誤: $error';
-  }
-
-  @override
-  String get animePlayerDiagnosisConclusionDecodeIssue =>
-      '結論: m3u8 與首個分片都可存取，更像是播放器解析或解碼相容問題';
-
-  @override
-  String get animePlayerSourceForbidden => '影片來源拒絕存取（403）';
-
-  @override
-  String get animePlayerSourceNotFound => '影片地址已失效（404）';
-
-  @override
-  String get animePlayerCertificateFailed => '影片憑證校驗失敗';
-
-  @override
-  String get animePlayerConnectionTimeout => '影片連線逾時';
-
-  @override
-  String get animePlayerCannotParseStream => '影片來源可存取，但播放器無法解析該影片串流';
-
-  @override
-  String get animePlayerEnableProxyToRetry => '影片載入失敗，請開啟代理後重試';
-
-  @override
-  String get animePlayerInvalidVideoUri => '影片地址不是合法 URI';
-
-  @override
-  String get animePlayerDiagnosisRequestFailed => '影片診斷請求失敗';
-
-  @override
-  String get animePlayerSegmentDiagnosisRequestFailed => '影片分片診斷請求失敗';
-
-  @override
-  String get animePlayerSegmentUrlNotResolved => '未解析出分片地址';
-
-  @override
-  String get animePlayerLoadingCannotSwitch => '影片載入中，請稍後再切換';
-
-  @override
-  String get animePlayerNoVideoUrlToCopy => '暫無可複製的影片連結';
-
-  @override
-  String get animePlayerVideoUrlCopied => '影片連結已複製到剪貼簿';
-
-  @override
-  String get animePlayerNoVideoUrlToOpen => '暫無可開啟的影片連結';
-
-  @override
-  String get animePlayerOpenVideoUrlFailed => '無法開啟影片連結';
-
-  @override
-  String animePlayerSeekedTo(String position) {
-    return '已跳轉到 $position';
-  }
-
-  @override
-  String get animePlayerSeekLastFailed => '無法跳轉到上次進度';
-
-  @override
-  String animePlayerSearchFailed(String error) {
-    return '搜尋失敗: $error';
-  }
-
-  @override
-  String get animePlayerRefreshTooFrequent => '不要頻繁重新整理！';
-
-  @override
-  String animePlayerLoadDanmakuFailed(String error) {
-    return '載入彈幕失敗: $error';
-  }
-
-  @override
-  String get animePlayerBuffering => '正在緩衝...';
-
-  @override
-  String get animePlayerProxySuggestion => '如果網路卡頓，建議開啟代理存取';
-
-  @override
-  String get animePlayerPlay => '播放';
-
-  @override
-  String animePlayerFastForward(int seconds) {
-    return '快進 $seconds秒';
-  }
-
-  @override
-  String get animePlayerHideDanmaku => '隱藏彈幕';
-
-  @override
-  String get animePlayerChapterSelector => '選集';
-
-  @override
-  String animePlayerChapterSelectorWithCount(int count) {
-    return '選集 ($count)';
-  }
-
-  @override
-  String get animePlayerSetSkipSeconds => '設定跳轉秒數';
-
-  @override
-  String get animePlayerExitFullscreen => '退出全螢幕';
-
-  @override
-  String get animePlayerFullscreen => '全螢幕';
-
-  @override
-  String get backButton => '返回';
-
-  @override
   String cacheSelectedCards(int count) {
     return '已選 $count 個卡片';
   }
@@ -6821,10 +5310,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String cacheSummary(int localTotal, String size) {
     return '共 $localTotal 項本地資料 · $size';
   }
-
-  @override
-  String get cacheManagementSummaryDesc =>
-      '按快取、帳號、設定、歷史等分類顯示；AI 配置 key 已隱藏；圖片與播放元件可單獨清理。';
 
   @override
   String get cacheImageCacheSection => '圖片快取';
@@ -6858,15 +5343,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get cacheDescriptionTitle => '說明';
-
-  @override
-  String get cacheKeyTitle => '快取標識';
-
-  @override
-  String get cacheDirectoryTitle => '快取目錄';
-
-  @override
   String get cacheCategoryPersistentCache => '業務快取';
 
   @override
@@ -6877,12 +5353,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get cacheCategoryMangaHistory => '漫畫閱讀歷史';
-
-  @override
-  String get cacheCategoryAnimeHistory => '動漫播放歷史';
-
-  @override
-  String get cacheCategoryBindings => '彈幕綁定';
 
   @override
   String get cacheCategoryAiSummaryCache => 'AI 總結快取';
@@ -7115,11 +5585,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get comicDetailSelectedAlreadyDownloadedOrQueued => '所選章節已下載或已在佇列中';
 
   @override
-  String comicDetailSelectedChapters(int count) {
-    return '已選 $count 章';
-  }
-
-  @override
   String comicDetailDownloadSelectedCount(int count) {
     return '下載$count話';
   }
@@ -7190,18 +5655,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get downloadedStatus => '已下載';
-
-  @override
   String comicDetailDownloadProgress(int completed, int total) {
     return '下載 $completed/$total';
   }
 
   @override
   String get comicDetailQueued => '排隊中';
-
-  @override
-  String get processingStatus => '處理中';
 
   @override
   String get collectButton => '收藏';
@@ -7216,47 +5675,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get downloadQueueEmptyComicHint => '去漫畫詳情頁新增下載任務';
 
   @override
-  String get downloadQueueEmptyMixedHint => '去漫畫或動漫詳情頁新增下載任務';
-
-  @override
-  String downloadProgressApproxBytes(String percent, String size) {
-    return '$percent% · 約 $size';
-  }
-
-  @override
   String get downloadingStatus => '下載中';
 
   @override
   String get waitingStatus => '等待中';
-
-  @override
-  String get pausedStatus => '已暫停';
-
-  @override
-  String get downloadFailedStatus => '下載失敗';
-
-  @override
-  String get animeDownloadConnectionTimeout => '連線逾時';
-
-  @override
-  String get animeDownloadProxyRetrySuggestion => '建議開啟代理後重試';
-
-  @override
-  String get animeDownloadUnknownError => '未知錯誤';
-
-  @override
-  String animeDownloadFailedMessage(String chapter, String error) {
-    return '$chapter 下載失敗：$error';
-  }
-
-  @override
-  String get animeDownloadEmptyVideoUrl => '影片連結為空';
-
-  @override
-  String get pauseButton => '暫停';
-
-  @override
-  String get resumeButton => '繼續';
 
   @override
   String downloadProgressCount(String percent, int completed, int total) {
@@ -7270,9 +5692,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String downloadChapterPartialFailed(int count) {
     return '缺 $count 頁';
   }
-
-  @override
-  String get downloadChapterRetryTooltip => '補全失敗頁';
 
   @override
   String downloadProgressPartial(
@@ -7383,88 +5802,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get profileFallbackQuestionParentName => '我的父親(母親)叫什麽？';
 
   @override
-  String get animeDetailSubtitleChip => '字幕';
-
-  @override
-  String animeDetailLatestChapter(String chapter) {
-    return '最新：$chapter';
-  }
-
-  @override
-  String get animeDetailOnAirChip => '連載中';
-
-  @override
-  String get animeDetailRestrictedChip => '受限';
-
-  @override
-  String animeDetailDirector(String name) {
-    return '導演：$name';
-  }
-
-  @override
-  String get playerSettingsPlaybackTitle => '播放設定';
-
-  @override
-  String get playerSettingsSkipSeconds => '快進秒數';
-
-  @override
-  String get playerSettingsSkipSecondsDesc => '動漫片頭一般約90秒';
-
-  @override
-  String get playerSettingsSecondsLabel => '秒數';
-
-  @override
-  String get readerSecondsSuffix => '秒';
-
-  @override
-  String get playerSettingsRecordProgress => '記錄播放進度';
-
-  @override
-  String get playerSettingsRecordProgressDesc => '再次打開同一集時自動跳轉到上次觀看位置';
-
-  @override
-  String get playerSettingsDanmakuTitle => '彈幕設定';
-
-  @override
-  String get playerSettingsShowDanmaku => '顯示彈幕';
-
-  @override
-  String get playerSettingsFontSize => '字體大小';
-
-  @override
-  String get playerSettingsDisplayArea => '顯示區域';
-
-  @override
-  String get playerSettingsOpacity => '透明度';
-
-  @override
-  String get playerSettingsDanmakuType => '彈幕類型';
-
-  @override
-  String get playerSettingsScrollDanmaku => '滾動彈幕';
-
-  @override
-  String get playerSettingsTopDanmaku => '頂部彈幕';
-
-  @override
-  String get playerSettingsBottomDanmaku => '底部彈幕';
-
-  @override
-  String get playerSettingsBlocklist => '屏蔽詞';
-
-  @override
-  String get playerSettingsBlocklistDesc => '包含屏蔽詞的彈幕將被自動過濾';
-
-  @override
-  String get playerSettingsBlocklistHint => '輸入屏蔽詞';
-
-  @override
-  String get playerSettingsDanmakuFont => '彈幕字體';
-
-  @override
-  String get playerSettingsDanmakuFontSystem => '跟隨系統';
-
-  @override
   String get playerSettingsChineseConvertTooltip => '簡繁轉換';
 
   @override
@@ -7564,9 +5901,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get updateNoPackageForPlatform => '目前平台暫無安裝包';
 
   @override
-  String get updateCheckFailedRetryLater => '檢查更新失敗，請稍後重試';
-
-  @override
   String get updateOpenDownloadFailed => '無法開啟下載連結';
 
   @override
@@ -7579,30 +5913,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get updateCurrentVersionNotes => '目前版本';
 
   @override
-  String get updateMirrorDownload => '鏡像下載';
-
-  @override
-  String get updateLatestBadge => '最新';
-
-  @override
-  String get updateCollapseOtherVersions => '收起其他版本';
-
-  @override
-  String updateViewMoreVersions(int count) {
-    return '查看更多版本 ($count)';
-  }
-
-  @override
   String get updateCiBuildUnstable => 'CI 自動構建版本，不保證穩定性。';
 
   @override
   String get updateOpenReleasePage => '開啟發布頁';
-
-  @override
-  String get updatePackagesBeta => '安裝包';
-
-  @override
-  String get updatePackages => '安裝包';
 
   @override
   String updateOtherPackages(int count) {
@@ -7614,12 +5928,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get updateDisableAutoCheck => '取消自動檢查更新';
-
-  @override
-  String get updateInstallInApp => '應用內安裝';
-
-  @override
-  String get updateInstallInAppMirror => '鏡像應用內安裝';
 
   @override
   String updateDownloading(int percent) {
@@ -7643,9 +5951,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get updateCardChecking => '正在檢查更新…';
-
-  @override
-  String get updateCardLatest => '目前已是最新版本';
 
   @override
   String get updateCardFailed => '檢查更新失敗，點擊重試';
@@ -7738,124 +6043,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get readerRotateRightShort => '向右';
 
   @override
-  String get browseHistoryLastSeenLabel => '上次看到';
-
-  @override
-  String playerProgressAutoResumed(String progress) {
-    return '$progress（已自動繼續）';
-  }
-
-  @override
-  String get playerSeekButton => '跳轉';
-
-  @override
-  String get bangumiCommentsLoadFailed => '評論載入失敗';
-
-  @override
-  String get bangumiCommentsRetryHint => '下拉或點按按鈕重試';
-
-  @override
-  String get bangumiCommentsEmptyTitle => '還沒有評論';
-
-  @override
-  String get bangumiCommentsEmptySubtitle => '暫時沒有可顯示的 Bangumi 評論';
-
-  @override
-  String get bangumiCommentsLoadMoreFailed => '更多評論載入失敗';
-
-  @override
-  String get bangumiCommentsRetryLoadMore => '重試載入更多';
-
-  @override
-  String get bangumiCommentsLoadMore => '載入更多';
-
-  @override
-  String get bangumiCommentsEmptyComment => '這條評論沒有內容';
-
-  @override
-  String get danmakuSearchTitle => '彈幕搜尋';
-
-  @override
-  String danmakuSearchTitleWithCount(int count) {
-    return '彈幕搜尋（$count）';
-  }
-
-  @override
-  String danmakuLoadedTitle(int count) {
-    return '已裝載$count發彈幕';
-  }
-
-  @override
-  String get danmakuSearchHint => '輸入搜尋關鍵詞';
-
-  @override
-  String get forceRefreshTooltip => '強制重新整理';
-
-  @override
-  String get danmakuSearchInstruction => '請選擇分段或輸入搜尋詞後點擊搜尋';
-
-  @override
-  String danmakuSearchResultCount(int count) {
-    return '共找到 $count 條結果';
-  }
-
-  @override
-  String get danmakuSearchNoResults => '未找到相關彈幕';
-
-  @override
-  String get danmakuSearchNoResultsHint =>
-      '減少關鍵詞，僅搜尋作品名稱\n如：「Re：從零開始的異世界生活第四季喪失篇」搜尋「從零開始的異世界生活第四季」';
-
-  @override
-  String get danmakuLabel => '彈幕';
-
-  @override
-  String get dandanplayBindingSearchKeyword => '搜尋關鍵詞';
-
-  @override
-  String get dandanplayBindingClear => '清除綁定';
-
-  @override
-  String dandanplayBindingSearchFailed(String error) {
-    return '搜尋失敗：$error';
-  }
-
-  @override
-  String get dandanplayBindingNoResults => '未找到相關番劇';
-
-  @override
-  String get dandanplayBindingSearchInstruction => '輸入關鍵詞後點擊搜尋';
-
-  @override
-  String get dandanplayBindingCurrent => '目前綁定';
-
-  @override
-  String get dandanplayBindingBound => '已綁定';
-
-  @override
-  String get dandanplayBindingUnbound => '未綁定';
-
-  @override
-  String get dandanplayBindingBind => '綁定';
-
-  @override
-  String dandanplayBindingRating(String rating) {
-    return '評分 $rating';
-  }
-
-  @override
-  String get dandanplayAlignmentTitle => '對齊彈幕';
-
-  @override
-  String get dandanplayAlignmentVideoFirstEpisode => '影片第一集';
-
-  @override
-  String get dandanplayAlignmentDanmakuFirstEpisode => '彈幕第一集';
-
-  @override
-  String get dandanplayAlignmentClear => '清除對齊';
-
-  @override
   String get spoilerWarningTitle => '劇透警告';
 
   @override
@@ -7871,83 +6058,8 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get spoilerTapToView => '含劇透，點擊查看';
 
   @override
-  String get mediaKitDownloadTitle => '需要下載播放元件';
+  String get alreadyCollectedLabel => '已收藏';
 
   @override
-  String mediaKitDownloadMessage(String size) {
-    return '首次使用動漫播放功能需下載播放元件（$size）。下載後會保存在本地，軟體更新無需重新下載。';
-  }
-
-  @override
-  String get mediaKitDownloadSourceLabel => '下載來源';
-
-  @override
-  String get mediaKitDownloadSourceGithub => 'GitHub';
-
-  @override
-  String get mediaKitDownloadSourceGithubHint => '直連 GitHub 官方資源';
-
-  @override
-  String get mediaKitDownloadSourceMirror => '鏡像下載';
-
-  @override
-  String mediaKitDownloadSourceMirrorHint(String mirror) {
-    return '使用目前鏡像：$mirror';
-  }
-
-  @override
-  String get mediaKitDownloadConfirm => '開始下載';
-
-  @override
-  String get mediaKitDownloadingTitle => '正在下載播放元件';
-
-  @override
-  String get mediaKitDownloadFailedTitle => '下載失敗';
-
-  @override
-  String mediaKitDownloadFailed(String error) {
-    return '下載播放元件失敗：$error';
-  }
-
-  @override
-  String mediaKitInitFailed(String error) {
-    return '播放器初始化失敗：$error';
-  }
-
-  @override
-  String get mediaKitDownloadStageConnect => '正在連線…';
-
-  @override
-  String mediaKitDownloadBytesProgress(String received, String total) {
-    return '$received / $total';
-  }
-
-  @override
-  String mediaKitDownloadBytesOnly(String received) {
-    return '已下載 $received';
-  }
-
-  @override
-  String get mediaKitDownloadTimeout => '連線或下載逾時，請切換 GitHub/鏡像後重試';
-
-  @override
-  String get mediaKitDownloadNetworkError => '網路連線失敗，請檢查網路或切換下載來源';
-
-  @override
-  String get mediaKitDownloadStagePrepare => '準備中…';
-
-  @override
-  String get mediaKitDownloadStageDownload => '正在下載…';
-
-  @override
-  String get mediaKitDownloadStageVerify => '校驗檔案…';
-
-  @override
-  String get mediaKitDownloadStageExtract => '解壓元件…';
-
-  @override
-  String get mediaKitDownloadStageLoad => '載入元件…';
-
-  @override
-  String get mediaKitDownloadStageDone => '完成';
+  String get downloadActionButton => '下載';
 }

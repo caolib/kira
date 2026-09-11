@@ -22,17 +22,13 @@ try {
     }
     Write-Host "版本号: v$version" -ForegroundColor Yellow
 
-    # 检查 .env
-    if (-not (Test-Path '.env')) {
-        throw '缺少 .env 文件'
-    }
 
     # 构建 APK
     Write-Host "`n正在构建 APK ($TargetPlatform, release)..." -ForegroundColor Yellow
     & flutter build apk `
         --release `
         --target-platform $TargetPlatform `
-        --dart-define-from-file=.env
+       
     if ($LASTEXITCODE -ne 0) {
         throw "flutter build apk 失败 (exit code: $LASTEXITCODE)"
     }

@@ -214,7 +214,7 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
             label: Text(
               _selectionMode
                   ? AppLocalizations.of(context)!.cancelButton
-                  : AppLocalizations.of(context)!.animeDetailDownloadButton,
+                  : AppLocalizations.of(context)!.downloadActionButton,
             ),
             style: buttonStyle,
           ),
@@ -242,7 +242,7 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
             ),
             label: Text(
               _isCollected
-                  ? AppLocalizations.of(context)!.animeDetailCollected
+                  ? AppLocalizations.of(context)!.alreadyCollectedLabel
                   : AppLocalizations.of(context)!.collectButton,
             ),
             style: buttonStyle,

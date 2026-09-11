@@ -97,23 +97,11 @@ abstract class AppLocalizations {
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
 
-  /// No description provided for @appTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'Kira'**
-  String get appTitle;
-
   /// No description provided for @comicTabLabel.
   ///
   /// In zh, this message translates to:
   /// **'漫画'**
   String get comicTabLabel;
-
-  /// No description provided for @animeTabLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫'**
-  String get animeTabLabel;
 
   /// No description provided for @searchTabLabel.
   ///
@@ -343,48 +331,6 @@ abstract class AppLocalizations {
   /// **'确定删除选中的 {count} 部本地漫画吗？已下载章节和封面都会被删除。'**
   String deleteLocalComicsContent(int count);
 
-  /// No description provided for @deletedLocalComicsCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'已删除 {count} 部本地漫画'**
-  String deletedLocalComicsCount(int count);
-
-  /// No description provided for @localAnimeTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'本地动漫'**
-  String get localAnimeTitle;
-
-  /// No description provided for @noLocalAnimeTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'还没有本地动漫'**
-  String get noLocalAnimeTitle;
-
-  /// No description provided for @noLocalAnimeSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'去动漫详情页下载剧集后，这里会显示离线内容'**
-  String get noLocalAnimeSubtitle;
-
-  /// No description provided for @deleteLocalAnimeTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'删除本地动漫'**
-  String get deleteLocalAnimeTitle;
-
-  /// No description provided for @deleteLocalAnimeContent.
-  ///
-  /// In zh, this message translates to:
-  /// **'确定删除选中的 {count} 部本地动漫吗？已下载视频和封面都会被删除。'**
-  String deleteLocalAnimeContent(int count);
-
-  /// No description provided for @deletedLocalAnimeCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'已删除 {count} 部本地动漫'**
-  String deletedLocalAnimeCount(int count);
-
   /// No description provided for @selectedCount.
   ///
   /// In zh, this message translates to:
@@ -397,18 +343,6 @@ abstract class AppLocalizations {
   /// **'已选 {count} 部'**
   String selectedItems(int count);
 
-  /// No description provided for @downloadedChapterCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'已下载 {count} 章'**
-  String downloadedChapterCount(int count);
-
-  /// No description provided for @downloadedEpisodeCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'已下载 {count} 集'**
-  String downloadedEpisodeCount(int count);
-
   /// No description provided for @downloadedCountUnit.
   ///
   /// In zh, this message translates to:
@@ -420,12 +354,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'本地章节 ({count})'**
   String localChaptersTitle(int count);
-
-  /// No description provided for @localEpisodesTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'本地剧集 ({count})'**
-  String localEpisodesTitle(int count);
 
   /// No description provided for @deleteLocalChaptersTitle.
   ///
@@ -445,24 +373,6 @@ abstract class AppLocalizations {
   /// **'已删除 {count} 个章节'**
   String deletedChaptersCount(int count);
 
-  /// No description provided for @deleteLocalEpisodesTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'删除本地剧集'**
-  String get deleteLocalEpisodesTitle;
-
-  /// No description provided for @deleteEpisodesConfirm.
-  ///
-  /// In zh, this message translates to:
-  /// **'确定删除选中的 {count} 个剧集吗？'**
-  String deleteEpisodesConfirm(int count);
-
-  /// No description provided for @deletedEpisodesCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'已删除 {count} 个剧集'**
-  String deletedEpisodesCount(int count);
-
   /// No description provided for @viewOnlineDetail.
   ///
   /// In zh, this message translates to:
@@ -474,12 +384,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'管理章节'**
   String get manageChapters;
-
-  /// No description provided for @manageEpisodes.
-  ///
-  /// In zh, this message translates to:
-  /// **'管理剧集'**
-  String get manageEpisodes;
 
   /// No description provided for @selectAll.
   ///
@@ -499,18 +403,6 @@ abstract class AppLocalizations {
   /// **'正序（旧→新）'**
   String get sortNormal;
 
-  /// No description provided for @readMark.
-  ///
-  /// In zh, this message translates to:
-  /// **'已读'**
-  String get readMark;
-
-  /// No description provided for @videoFileNotFound.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频文件不存在'**
-  String get videoFileNotFound;
-
   /// No description provided for @openDownloadFolder.
   ///
   /// In zh, this message translates to:
@@ -528,24 +420,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'漫画'**
   String get comicLabel;
-
-  /// No description provided for @animeLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫'**
-  String get animeLabel;
-
-  /// No description provided for @comicWithCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'漫画（{count}）'**
-  String comicWithCount(int count);
-
-  /// No description provided for @animeWithCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫（{count}）'**
-  String animeWithCount(int count);
 
   /// No description provided for @hasUpdate.
   ///
@@ -715,12 +589,6 @@ abstract class AppLocalizations {
   /// **'登录后可继续查看书架'**
   String get loginToViewBookshelf;
 
-  /// No description provided for @totalEpisodes.
-  ///
-  /// In zh, this message translates to:
-  /// **'共 {count} 集'**
-  String totalEpisodes(int count);
-
   /// No description provided for @searchHint.
   ///
   /// In zh, this message translates to:
@@ -799,23 +667,11 @@ abstract class AppLocalizations {
   /// **' 部本地漫画'**
   String get deleteToastSuffixComic;
 
-  /// No description provided for @deleteToastSuffixAnime.
-  ///
-  /// In zh, this message translates to:
-  /// **' 部本地动漫'**
-  String get deleteToastSuffixAnime;
-
   /// No description provided for @chapterUnit.
   ///
   /// In zh, this message translates to:
   /// **'章'**
   String get chapterUnit;
-
-  /// No description provided for @episodeUnit.
-  ///
-  /// In zh, this message translates to:
-  /// **'集'**
-  String get episodeUnit;
 
   /// No description provided for @generalTitle.
   ///
@@ -840,24 +696,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'登录并保存账号密码后可用'**
   String get autoLoginUnavailableDesc;
-
-  /// No description provided for @animeFeatureTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫功能'**
-  String get animeFeatureTitle;
-
-  /// No description provided for @animeFeatureDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'关闭后隐藏动漫相关功能'**
-  String get animeFeatureDesc;
-
-  /// No description provided for @animeFeatureMaintenanceWarning.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫功能已经停止维护'**
-  String get animeFeatureMaintenanceWarning;
 
   /// No description provided for @remoteNoticeTitle.
   ///
@@ -1183,107 +1021,17 @@ abstract class AppLocalizations {
   /// **'确认重置'**
   String get confirmResetButton;
 
-  /// No description provided for @animeUnavailableToast.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前动漫暂时无法打开'**
-  String get animeUnavailableToast;
-
-  /// No description provided for @animeEditorRecommend.
-  ///
-  /// In zh, this message translates to:
-  /// **'编辑推荐'**
-  String get animeEditorRecommend;
-
-  /// No description provided for @animeRecentUpdate.
-  ///
-  /// In zh, this message translates to:
-  /// **'最近更新'**
-  String get animeRecentUpdate;
-
-  /// No description provided for @animeClassicRecommend.
-  ///
-  /// In zh, this message translates to:
-  /// **'经典推荐'**
-  String get animeClassicRecommend;
-
-  /// No description provided for @animeClassicAnimation.
-  ///
-  /// In zh, this message translates to:
-  /// **'经典动画'**
-  String get animeClassicAnimation;
-
-  /// No description provided for @animeHotAnime.
-  ///
-  /// In zh, this message translates to:
-  /// **'热门动漫'**
-  String get animeHotAnime;
-
-  /// No description provided for @loginRequiredTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'需要登录'**
-  String get loginRequiredTitle;
-
-  /// No description provided for @playbackFailedTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放失败'**
-  String get playbackFailedTitle;
-
-  /// No description provided for @viewLogButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'查看日志'**
-  String get viewLogButton;
-
   /// No description provided for @errorLogTitle.
   ///
   /// In zh, this message translates to:
   /// **'错误日志'**
   String get errorLogTitle;
 
-  /// No description provided for @noLogInfo.
-  ///
-  /// In zh, this message translates to:
-  /// **'无日志信息'**
-  String get noLogInfo;
-
   /// No description provided for @closeButton.
   ///
   /// In zh, this message translates to:
   /// **'关闭'**
   String get closeButton;
-
-  /// No description provided for @videoLinkTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频链接'**
-  String get videoLinkTitle;
-
-  /// No description provided for @videoLinkPending.
-  ///
-  /// In zh, this message translates to:
-  /// **'加载后显示视频链接'**
-  String get videoLinkPending;
-
-  /// No description provided for @copyVideoLinkButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'复制视频链接'**
-  String get copyVideoLinkButton;
-
-  /// No description provided for @openInBrowserButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'浏览器打开'**
-  String get openInBrowserButton;
-
-  /// No description provided for @switchLineTooltip.
-  ///
-  /// In zh, this message translates to:
-  /// **'切换线路'**
-  String get switchLineTooltip;
 
   /// No description provided for @profileCopyCredentialLabel.
   ///
@@ -1386,12 +1134,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'主题配色已更新为 {color}'**
   String appearanceThemeColorUpdated(String color);
-
-  /// No description provided for @appearanceBottomNavShowLabels.
-  ///
-  /// In zh, this message translates to:
-  /// **'底部导航栏显示文字'**
-  String get appearanceBottomNavShowLabels;
 
   /// No description provided for @appearanceBottomNavLabelMode.
   ///
@@ -1669,18 +1411,6 @@ abstract class AppLocalizations {
   /// **'确定要删除字体 {fontId} 吗？删除后将恢复为系统默认字体。'**
   String appearanceFontDeleteContent(String fontId);
 
-  /// No description provided for @appearanceFontNeedDownload.
-  ///
-  /// In zh, this message translates to:
-  /// **'请先下载字体后再使用'**
-  String get appearanceFontNeedDownload;
-
-  /// No description provided for @appearanceFontDownloaded.
-  ///
-  /// In zh, this message translates to:
-  /// **'{fontId} 下载完成'**
-  String appearanceFontDownloaded(String fontId);
-
   /// No description provided for @appearanceFontDownloadFailed.
   ///
   /// In zh, this message translates to:
@@ -1819,12 +1549,6 @@ abstract class AppLocalizations {
   /// **'网络'**
   String get networkTitle;
 
-  /// No description provided for @networkApiRouteTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'API 线路'**
-  String get networkApiRouteTitle;
-
   /// No description provided for @networkSelectionMode.
   ///
   /// In zh, this message translates to:
@@ -1837,18 +1561,6 @@ abstract class AppLocalizations {
   /// **'线路'**
   String get networkModeRoute;
 
-  /// No description provided for @networkModeFixedNode.
-  ///
-  /// In zh, this message translates to:
-  /// **'固定节点'**
-  String get networkModeFixedNode;
-
-  /// No description provided for @networkTestOtherLatency.
-  ///
-  /// In zh, this message translates to:
-  /// **'测试其他节点延迟'**
-  String get networkTestOtherLatency;
-
   /// No description provided for @networkFixedNodeAutoSelected.
   ///
   /// In zh, this message translates to:
@@ -1860,12 +1572,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'线路 {index}'**
   String networkRouteLabel(int index);
-
-  /// No description provided for @networkTestLatency.
-  ///
-  /// In zh, this message translates to:
-  /// **'测试线路延迟'**
-  String get networkTestLatency;
 
   /// No description provided for @networkTestingNodes.
   ///
@@ -1933,18 +1639,6 @@ abstract class AppLocalizations {
   /// **'其他'**
   String get networkOtherRouteGroup;
 
-  /// No description provided for @networkCollapseTestResults.
-  ///
-  /// In zh, this message translates to:
-  /// **'收起测试结果'**
-  String get networkCollapseTestResults;
-
-  /// No description provided for @networkExpandTestResults.
-  ///
-  /// In zh, this message translates to:
-  /// **'展开测试结果'**
-  String get networkExpandTestResults;
-
   /// No description provided for @networkProxySettings.
   ///
   /// In zh, this message translates to:
@@ -1987,12 +1681,6 @@ abstract class AppLocalizations {
   /// **'已忽略系统代理，所有请求直接连接'**
   String get networkProxyDirectHint;
 
-  /// No description provided for @networkCurrentProxy.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前代理'**
-  String get networkCurrentProxy;
-
   /// No description provided for @networkProxyAddress.
   ///
   /// In zh, this message translates to:
@@ -2010,18 +1698,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'保存并启用手动代理'**
   String get networkSaveAndEnableManualProxy;
-
-  /// No description provided for @networkTestingGoogle.
-  ///
-  /// In zh, this message translates to:
-  /// **'正在通过 {proxy} 访问 Google ...'**
-  String networkTestingGoogle(String proxy);
-
-  /// No description provided for @networkGoogleConnectivity.
-  ///
-  /// In zh, this message translates to:
-  /// **'Google 连通性'**
-  String get networkGoogleConnectivity;
 
   /// No description provided for @networkAdvancedSettings.
   ///
@@ -2155,36 +1831,6 @@ abstract class AppLocalizations {
   /// **'已启用 {proxy}'**
   String networkProxyEnabled(String proxy);
 
-  /// No description provided for @networkConnectionSuccess.
-  ///
-  /// In zh, this message translates to:
-  /// **'连接成功，HTTP {statusCode}，{proxyRule}'**
-  String networkConnectionSuccess(int statusCode, String proxyRule);
-
-  /// No description provided for @networkConnectionFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'连接失败，HTTP {statusCode}，{proxyRule}'**
-  String networkConnectionFailed(int statusCode, String proxyRule);
-
-  /// No description provided for @networkConnectionTimeout.
-  ///
-  /// In zh, this message translates to:
-  /// **'连接超时，{proxyRule}'**
-  String networkConnectionTimeout(String proxyRule);
-
-  /// No description provided for @networkProxyRuleError.
-  ///
-  /// In zh, this message translates to:
-  /// **'{proxyRule}：{error}'**
-  String networkProxyRuleError(String proxyRule, String error);
-
-  /// No description provided for @networkTestFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'测试失败，{proxyRule}：{error}'**
-  String networkTestFailed(String proxyRule, String error);
-
   /// No description provided for @networkStatusGood.
   ///
   /// In zh, this message translates to:
@@ -2262,30 +1908,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'节点'**
   String get networkModeFixedNodeShort;
-
-  /// No description provided for @networkSettings.
-  ///
-  /// In zh, this message translates to:
-  /// **'设置'**
-  String get networkSettings;
-
-  /// No description provided for @networkSettingsTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'网络设置'**
-  String get networkSettingsTitle;
-
-  /// No description provided for @networkHistorySettingsTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'节点历史记录'**
-  String get networkHistorySettingsTitle;
-
-  /// No description provided for @networkStatusAutoGoodHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'基于真实请求自动选择，状态健康'**
-  String get networkStatusAutoGoodHint;
 
   /// No description provided for @aiConfigTitle.
   ///
@@ -2952,12 +2574,6 @@ abstract class AppLocalizations {
   /// **'确定要清空所有书签吗？'**
   String get bookmarksClearContent;
 
-  /// No description provided for @bookmarksClearGroupTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'删除该漫画的书签'**
-  String get bookmarksClearGroupTitle;
-
   /// No description provided for @bookmarksGroupDeleted.
   ///
   /// In zh, this message translates to:
@@ -3084,12 +2700,6 @@ abstract class AppLocalizations {
   /// **'请输入用户名和密码'**
   String get profileUsernamePasswordRequired;
 
-  /// No description provided for @profileLoginFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'登录失败'**
-  String get profileLoginFailed;
-
   /// No description provided for @profileLoginFailedProxyHint.
   ///
   /// In zh, this message translates to:
@@ -3137,12 +2747,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'令牌登录'**
   String get profileTokenLoginEntry;
-
-  /// No description provided for @profileAccountLoginEntry.
-  ///
-  /// In zh, this message translates to:
-  /// **'账号密码登录'**
-  String get profileAccountLoginEntry;
 
   /// No description provided for @profileWebLoginButton.
   ///
@@ -3330,24 +2934,6 @@ abstract class AppLocalizations {
   /// **'拷贝漫画'**
   String get profileCopyMangaLabel;
 
-  /// No description provided for @aboutQqGroupTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'QQ交流群'**
-  String get aboutQqGroupTitle;
-
-  /// No description provided for @aboutJoinGroupButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'加入群聊'**
-  String get aboutJoinGroupButton;
-
-  /// No description provided for @aboutGroupNumberCopiedToast.
-  ///
-  /// In zh, this message translates to:
-  /// **'已复制群号'**
-  String get aboutGroupNumberCopiedToast;
-
   /// No description provided for @aboutMirrorPrefixTitle.
   ///
   /// In zh, this message translates to:
@@ -3462,12 +3048,6 @@ abstract class AppLocalizations {
   /// **'反馈'**
   String get aboutFeedbackLabel;
 
-  /// No description provided for @aboutCommunityLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'交流'**
-  String get aboutCommunityLabel;
-
   /// No description provided for @aboutCheckUpdateTitle.
   ///
   /// In zh, this message translates to:
@@ -3497,18 +3077,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'感谢以下服务与项目的支持'**
   String get acknowledgementThanksTitle;
-
-  /// No description provided for @acknowledgementDandanplayTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹弹play'**
-  String get acknowledgementDandanplayTitle;
-
-  /// No description provided for @acknowledgementDandanplayDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'提供弹幕服务'**
-  String get acknowledgementDandanplayDesc;
 
   /// No description provided for @acknowledgementZhconvertTitle.
   ///
@@ -3569,12 +3137,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{count} 个图片缓存（{size}）'**
   String cacheImageDataTarget(int count, String size);
-
-  /// No description provided for @cacheMediaKitDataTarget.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放组件（{size}）'**
-  String cacheMediaKitDataTarget(String size);
 
   /// No description provided for @cacheDeleteSelectedTitle.
   ///
@@ -3659,54 +3221,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'封面、头像等 CachedNetworkImage 默认使用的图片缓存。'**
   String get cacheDefaultImageDesc;
-
-  /// No description provided for @cacheMediaKitLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放组件 / media_kit'**
-  String get cacheMediaKitLabel;
-
-  /// No description provided for @cacheMediaKitDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫播放器原生库（libmpv 等）。首次播放时按需下载；删除后下次播放会重新下载。'**
-  String get cacheMediaKitDesc;
-
-  /// No description provided for @cacheMediaKitSection.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放组件'**
-  String get cacheMediaKitSection;
-
-  /// No description provided for @cacheNoMediaKitToClear.
-  ///
-  /// In zh, this message translates to:
-  /// **'尚未下载播放组件'**
-  String get cacheNoMediaKitToClear;
-
-  /// No description provided for @cacheClearMediaKitTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'删除播放组件'**
-  String get cacheClearMediaKitTitle;
-
-  /// No description provided for @cacheClearMediaKitContent.
-  ///
-  /// In zh, this message translates to:
-  /// **'确定删除已下载的播放组件吗？将删除 {fileCount} 个文件，释放约 {size}。下次播放动漫时会重新下载。'**
-  String cacheClearMediaKitContent(int fileCount, String size);
-
-  /// No description provided for @cacheMediaKitClearedToast.
-  ///
-  /// In zh, this message translates to:
-  /// **'已删除播放组件'**
-  String get cacheMediaKitClearedToast;
-
-  /// No description provided for @cacheMediaKitVersionLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'组件版本'**
-  String get cacheMediaKitVersionLabel;
 
   /// No description provided for @commentSettingsEditBuiltInPromptTitle.
   ///
@@ -4277,216 +3791,6 @@ abstract class AppLocalizations {
   /// **'展开全文'**
   String get comicCommentExpandFullText;
 
-  /// No description provided for @animeDetailTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫详情'**
-  String get animeDetailTitle;
-
-  /// No description provided for @animeDetailIntroTab.
-  ///
-  /// In zh, this message translates to:
-  /// **'简介'**
-  String get animeDetailIntroTab;
-
-  /// No description provided for @animeDetailEpisodesTab.
-  ///
-  /// In zh, this message translates to:
-  /// **'选集 ({count})'**
-  String animeDetailEpisodesTab(int count);
-
-  /// No description provided for @animeDetailIntroRefreshFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'简介刷新失败'**
-  String get animeDetailIntroRefreshFailed;
-
-  /// No description provided for @animeDetailEpisodeRefreshFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'选集刷新失败'**
-  String get animeDetailEpisodeRefreshFailed;
-
-  /// No description provided for @animeDetailDandanplayBindingCleared.
-  ///
-  /// In zh, this message translates to:
-  /// **'已清除弹弹play绑定'**
-  String get animeDetailDandanplayBindingCleared;
-
-  /// No description provided for @animeDetailDandanplayBound.
-  ///
-  /// In zh, this message translates to:
-  /// **'已绑定 {title}'**
-  String animeDetailDandanplayBound(String title);
-
-  /// No description provided for @animeDetailAlignmentCleared.
-  ///
-  /// In zh, this message translates to:
-  /// **'已清除对齐'**
-  String get animeDetailAlignmentCleared;
-
-  /// No description provided for @animeDetailRealigned.
-  ///
-  /// In zh, this message translates to:
-  /// **'已重新对齐弹幕'**
-  String get animeDetailRealigned;
-
-  /// No description provided for @animeDetailNoAvailableLine.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前选集暂无可用线路'**
-  String get animeDetailNoAvailableLine;
-
-  /// No description provided for @animeDetailPlaybackEpisodeUnavailable.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放记录对应选集暂不可用'**
-  String get animeDetailPlaybackEpisodeUnavailable;
-
-  /// No description provided for @animeDetailInfoLoadFailedForDownload.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫信息加载失败，无法下载'**
-  String get animeDetailInfoLoadFailedForDownload;
-
-  /// No description provided for @animeDetailNoLineForDownload.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前选集暂无可用线路，无法下载'**
-  String get animeDetailNoLineForDownload;
-
-  /// No description provided for @animeDetailDownloadTasksAdded.
-  ///
-  /// In zh, this message translates to:
-  /// **'已添加 {count} 个下载任务'**
-  String animeDetailDownloadTasksAdded(int count);
-
-  /// No description provided for @animeDetailCannotCollect.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前动漫暂时无法收藏'**
-  String get animeDetailCannotCollect;
-
-  /// No description provided for @animeDetailCollected.
-  ///
-  /// In zh, this message translates to:
-  /// **'已收藏'**
-  String get animeDetailCollected;
-
-  /// No description provided for @animeDetailCollectCancelled.
-  ///
-  /// In zh, this message translates to:
-  /// **'已取消收藏'**
-  String get animeDetailCollectCancelled;
-
-  /// No description provided for @animeDetailCollectFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'收藏状态修改失败'**
-  String get animeDetailCollectFailed;
-
-  /// No description provided for @animeDetailDownloadTaskCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'{count} 个任务'**
-  String animeDetailDownloadTaskCount(int count);
-
-  /// No description provided for @animeDetailNoIntroInfo.
-  ///
-  /// In zh, this message translates to:
-  /// **'暂无简介信息'**
-  String get animeDetailNoIntroInfo;
-
-  /// No description provided for @animeDetailInfoTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'资料'**
-  String get animeDetailInfoTitle;
-
-  /// No description provided for @animeDetailIntroLoadFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'简介加载失败，下拉重试'**
-  String get animeDetailIntroLoadFailed;
-
-  /// No description provided for @animeDetailIntroRefreshFailedCached.
-  ///
-  /// In zh, this message translates to:
-  /// **'简介刷新失败，当前显示缓存内容'**
-  String get animeDetailIntroRefreshFailedCached;
-
-  /// No description provided for @animeDetailSelectedEpisodes.
-  ///
-  /// In zh, this message translates to:
-  /// **'已选 {count} 集'**
-  String animeDetailSelectedEpisodes(int count);
-
-  /// No description provided for @animeDetailSelectAllUndownloaded.
-  ///
-  /// In zh, this message translates to:
-  /// **'全选未下载'**
-  String get animeDetailSelectAllUndownloaded;
-
-  /// No description provided for @animeDetailDownloadSelected.
-  ///
-  /// In zh, this message translates to:
-  /// **'下载选中'**
-  String get animeDetailDownloadSelected;
-
-  /// No description provided for @animeDetailEpisodeLoadFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'选集加载失败，下拉重试'**
-  String get animeDetailEpisodeLoadFailed;
-
-  /// No description provided for @animeDetailNoEpisodes.
-  ///
-  /// In zh, this message translates to:
-  /// **'暂无选集'**
-  String get animeDetailNoEpisodes;
-
-  /// No description provided for @animeDetailEpisodeRefreshFailedCached.
-  ///
-  /// In zh, this message translates to:
-  /// **'选集刷新失败，当前显示上次结果'**
-  String get animeDetailEpisodeRefreshFailedCached;
-
-  /// No description provided for @animeDetailBindToViewComments.
-  ///
-  /// In zh, this message translates to:
-  /// **'绑定弹弹play 后才可查看评论'**
-  String get animeDetailBindToViewComments;
-
-  /// No description provided for @animeDetailBindDanmaku.
-  ///
-  /// In zh, this message translates to:
-  /// **'绑定弹幕'**
-  String get animeDetailBindDanmaku;
-
-  /// No description provided for @animeDetailRebind.
-  ///
-  /// In zh, this message translates to:
-  /// **'重新绑定'**
-  String get animeDetailRebind;
-
-  /// No description provided for @animeDetailAlign.
-  ///
-  /// In zh, this message translates to:
-  /// **'对齐'**
-  String get animeDetailAlign;
-
-  /// No description provided for @animeDetailDownloadButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'下载'**
-  String get animeDetailDownloadButton;
-
-  /// No description provided for @animeDetailEpisodeLoadFailedShort.
-  ///
-  /// In zh, this message translates to:
-  /// **'选集加载失败'**
-  String get animeDetailEpisodeLoadFailedShort;
-
   /// No description provided for @readerSettingsTitle.
   ///
   /// In zh, this message translates to:
@@ -4811,12 +4115,6 @@ abstract class AppLocalizations {
   /// **'登录后可继续查看浏览记录'**
   String get browseHistoryLoginToView;
 
-  /// No description provided for @browseHistoryLoginHintWithAnime.
-  ///
-  /// In zh, this message translates to:
-  /// **'浏览过的漫画和动漫会同步显示在这里'**
-  String get browseHistoryLoginHintWithAnime;
-
   /// No description provided for @browseHistoryLoginHintComicOnly.
   ///
   /// In zh, this message translates to:
@@ -4865,282 +4163,6 @@ abstract class AppLocalizations {
   /// **'上次看到 {name}'**
   String browseHistoryLastSeen(String name);
 
-  /// No description provided for @animePlayerLoginRequiredToPlay.
-  ///
-  /// In zh, this message translates to:
-  /// **'登录后才能播放该视频'**
-  String get animePlayerLoginRequiredToPlay;
-
-  /// No description provided for @animePlayerEmptyVideoUrl.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频链接为空'**
-  String get animePlayerEmptyVideoUrl;
-
-  /// No description provided for @animePlayerRequestFailedStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'请求失败（{statusCode}）'**
-  String animePlayerRequestFailedStatus(int statusCode);
-
-  /// No description provided for @animePlayerRequestFailedStatusText.
-  ///
-  /// In zh, this message translates to:
-  /// **'请求失败（{statusCode}）'**
-  String animePlayerRequestFailedStatusText(String statusCode);
-
-  /// No description provided for @animePlayerMpvLogTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'media_kit/mpv 日志:'**
-  String get animePlayerMpvLogTitle;
-
-  /// No description provided for @animePlayerQuickDiagnosisTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'快速诊断:'**
-  String get animePlayerQuickDiagnosisTitle;
-
-  /// No description provided for @animePlayerDiagnosisManifestStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'m3u8 状态: {statusCode}'**
-  String animePlayerDiagnosisManifestStatus(int statusCode);
-
-  /// No description provided for @animePlayerDiagnosisManifestHls.
-  ///
-  /// In zh, this message translates to:
-  /// **'m3u8 内容: 已识别为 HLS 清单'**
-  String get animePlayerDiagnosisManifestHls;
-
-  /// No description provided for @animePlayerDiagnosisManifestNotHls.
-  ///
-  /// In zh, this message translates to:
-  /// **'m3u8 内容: 返回 200，但内容不像标准 HLS 清单'**
-  String get animePlayerDiagnosisManifestNotHls;
-
-  /// No description provided for @animePlayerDiagnosisManifestError.
-  ///
-  /// In zh, this message translates to:
-  /// **'m3u8 错误: {error}'**
-  String animePlayerDiagnosisManifestError(String error);
-
-  /// No description provided for @animePlayerDiagnosisFirstSegment.
-  ///
-  /// In zh, this message translates to:
-  /// **'首个分片: {url}'**
-  String animePlayerDiagnosisFirstSegment(String url);
-
-  /// No description provided for @animePlayerDiagnosisSegmentStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'首个分片状态: {statusCode}'**
-  String animePlayerDiagnosisSegmentStatus(int statusCode);
-
-  /// No description provided for @animePlayerDiagnosisSegmentBytes.
-  ///
-  /// In zh, this message translates to:
-  /// **'首个分片字节数: {bytes}'**
-  String animePlayerDiagnosisSegmentBytes(int bytes);
-
-  /// No description provided for @animePlayerDiagnosisSegmentError.
-  ///
-  /// In zh, this message translates to:
-  /// **'首个分片错误: {error}'**
-  String animePlayerDiagnosisSegmentError(String error);
-
-  /// No description provided for @animePlayerDiagnosisConclusionDecodeIssue.
-  ///
-  /// In zh, this message translates to:
-  /// **'结论: m3u8 与首个分片都可访问，更像是播放器解析或解码兼容问题'**
-  String get animePlayerDiagnosisConclusionDecodeIssue;
-
-  /// No description provided for @animePlayerSourceForbidden.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频源拒绝访问（403）'**
-  String get animePlayerSourceForbidden;
-
-  /// No description provided for @animePlayerSourceNotFound.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频地址已失效（404）'**
-  String get animePlayerSourceNotFound;
-
-  /// No description provided for @animePlayerCertificateFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频证书校验失败'**
-  String get animePlayerCertificateFailed;
-
-  /// No description provided for @animePlayerConnectionTimeout.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频连接超时'**
-  String get animePlayerConnectionTimeout;
-
-  /// No description provided for @animePlayerCannotParseStream.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频源可访问，但播放器无法解析该视频流'**
-  String get animePlayerCannotParseStream;
-
-  /// No description provided for @animePlayerEnableProxyToRetry.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频加载失败，请开启代理后重试'**
-  String get animePlayerEnableProxyToRetry;
-
-  /// No description provided for @animePlayerInvalidVideoUri.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频地址不是合法 URI'**
-  String get animePlayerInvalidVideoUri;
-
-  /// No description provided for @animePlayerDiagnosisRequestFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频诊断请求失败'**
-  String get animePlayerDiagnosisRequestFailed;
-
-  /// No description provided for @animePlayerSegmentDiagnosisRequestFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频分片诊断请求失败'**
-  String get animePlayerSegmentDiagnosisRequestFailed;
-
-  /// No description provided for @animePlayerSegmentUrlNotResolved.
-  ///
-  /// In zh, this message translates to:
-  /// **'未解析出分片地址'**
-  String get animePlayerSegmentUrlNotResolved;
-
-  /// No description provided for @animePlayerLoadingCannotSwitch.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频加载中，请稍后再切换'**
-  String get animePlayerLoadingCannotSwitch;
-
-  /// No description provided for @animePlayerNoVideoUrlToCopy.
-  ///
-  /// In zh, this message translates to:
-  /// **'暂无可复制的视频链接'**
-  String get animePlayerNoVideoUrlToCopy;
-
-  /// No description provided for @animePlayerVideoUrlCopied.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频链接已复制到剪贴板'**
-  String get animePlayerVideoUrlCopied;
-
-  /// No description provided for @animePlayerNoVideoUrlToOpen.
-  ///
-  /// In zh, this message translates to:
-  /// **'暂无可打开的视频链接'**
-  String get animePlayerNoVideoUrlToOpen;
-
-  /// No description provided for @animePlayerOpenVideoUrlFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'无法打开视频链接'**
-  String get animePlayerOpenVideoUrlFailed;
-
-  /// No description provided for @animePlayerSeekedTo.
-  ///
-  /// In zh, this message translates to:
-  /// **'已跳转到 {position}'**
-  String animePlayerSeekedTo(String position);
-
-  /// No description provided for @animePlayerSeekLastFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'无法跳转到上次进度'**
-  String get animePlayerSeekLastFailed;
-
-  /// No description provided for @animePlayerSearchFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜索失败: {error}'**
-  String animePlayerSearchFailed(String error);
-
-  /// No description provided for @animePlayerRefreshTooFrequent.
-  ///
-  /// In zh, this message translates to:
-  /// **'不要频繁刷新！'**
-  String get animePlayerRefreshTooFrequent;
-
-  /// No description provided for @animePlayerLoadDanmakuFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'加载弹幕失败: {error}'**
-  String animePlayerLoadDanmakuFailed(String error);
-
-  /// No description provided for @animePlayerBuffering.
-  ///
-  /// In zh, this message translates to:
-  /// **'正在缓冲...'**
-  String get animePlayerBuffering;
-
-  /// No description provided for @animePlayerProxySuggestion.
-  ///
-  /// In zh, this message translates to:
-  /// **'如果网络卡顿，建议开启代理访问'**
-  String get animePlayerProxySuggestion;
-
-  /// No description provided for @animePlayerPlay.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放'**
-  String get animePlayerPlay;
-
-  /// No description provided for @animePlayerFastForward.
-  ///
-  /// In zh, this message translates to:
-  /// **'快进 {seconds}秒'**
-  String animePlayerFastForward(int seconds);
-
-  /// No description provided for @animePlayerHideDanmaku.
-  ///
-  /// In zh, this message translates to:
-  /// **'隐藏弹幕'**
-  String get animePlayerHideDanmaku;
-
-  /// No description provided for @animePlayerChapterSelector.
-  ///
-  /// In zh, this message translates to:
-  /// **'选集'**
-  String get animePlayerChapterSelector;
-
-  /// No description provided for @animePlayerChapterSelectorWithCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'选集 ({count})'**
-  String animePlayerChapterSelectorWithCount(int count);
-
-  /// No description provided for @animePlayerSetSkipSeconds.
-  ///
-  /// In zh, this message translates to:
-  /// **'设置跳转秒数'**
-  String get animePlayerSetSkipSeconds;
-
-  /// No description provided for @animePlayerExitFullscreen.
-  ///
-  /// In zh, this message translates to:
-  /// **'退出全屏'**
-  String get animePlayerExitFullscreen;
-
-  /// No description provided for @animePlayerFullscreen.
-  ///
-  /// In zh, this message translates to:
-  /// **'全屏'**
-  String get animePlayerFullscreen;
-
-  /// No description provided for @backButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'返回'**
-  String get backButton;
-
   /// No description provided for @cacheSelectedCards.
   ///
   /// In zh, this message translates to:
@@ -5170,12 +4192,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'共 {localTotal} 项本地数据 · {size}'**
   String cacheSummary(int localTotal, String size);
-
-  /// No description provided for @cacheManagementSummaryDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'按缓存、账号、设置、历史等分类显示；AI 配置 key 已隐藏；图片与播放组件可单独清理。'**
-  String get cacheManagementSummaryDesc;
 
   /// No description provided for @cacheImageCacheSection.
   ///
@@ -5231,24 +4247,6 @@ abstract class AppLocalizations {
   /// **'{count} 个文件 · {size}'**
   String cacheFileCountSize(int count, String size);
 
-  /// No description provided for @cacheDescriptionTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'说明'**
-  String get cacheDescriptionTitle;
-
-  /// No description provided for @cacheKeyTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'缓存标识'**
-  String get cacheKeyTitle;
-
-  /// No description provided for @cacheDirectoryTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'缓存目录'**
-  String get cacheDirectoryTitle;
-
   /// No description provided for @cacheCategoryPersistentCache.
   ///
   /// In zh, this message translates to:
@@ -5272,18 +4270,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'漫画阅读历史'**
   String get cacheCategoryMangaHistory;
-
-  /// No description provided for @cacheCategoryAnimeHistory.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫播放历史'**
-  String get cacheCategoryAnimeHistory;
-
-  /// No description provided for @cacheCategoryBindings.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕绑定'**
-  String get cacheCategoryBindings;
 
   /// No description provided for @cacheCategoryAiSummaryCache.
   ///
@@ -5705,12 +4691,6 @@ abstract class AppLocalizations {
   /// **'所选章节已下载或已在队列中'**
   String get comicDetailSelectedAlreadyDownloadedOrQueued;
 
-  /// No description provided for @comicDetailSelectedChapters.
-  ///
-  /// In zh, this message translates to:
-  /// **'已选 {count} 章'**
-  String comicDetailSelectedChapters(int count);
-
   /// No description provided for @comicDetailDownloadSelectedCount.
   ///
   /// In zh, this message translates to:
@@ -5831,12 +4811,6 @@ abstract class AppLocalizations {
   /// **'下载中 {count} 章'**
   String comicDetailSequentialDownloading(int count);
 
-  /// No description provided for @downloadedStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'已下载'**
-  String get downloadedStatus;
-
   /// No description provided for @comicDetailDownloadProgress.
   ///
   /// In zh, this message translates to:
@@ -5848,12 +4822,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'排队中'**
   String get comicDetailQueued;
-
-  /// No description provided for @processingStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'处理中'**
-  String get processingStatus;
 
   /// No description provided for @collectButton.
   ///
@@ -5879,18 +4847,6 @@ abstract class AppLocalizations {
   /// **'去漫画详情页添加下载任务'**
   String get downloadQueueEmptyComicHint;
 
-  /// No description provided for @downloadQueueEmptyMixedHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'去漫画或动漫详情页添加下载任务'**
-  String get downloadQueueEmptyMixedHint;
-
-  /// No description provided for @downloadProgressApproxBytes.
-  ///
-  /// In zh, this message translates to:
-  /// **'{percent}% · 约 {size}'**
-  String downloadProgressApproxBytes(String percent, String size);
-
   /// No description provided for @downloadingStatus.
   ///
   /// In zh, this message translates to:
@@ -5902,60 +4858,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'等待中'**
   String get waitingStatus;
-
-  /// No description provided for @pausedStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'已暂停'**
-  String get pausedStatus;
-
-  /// No description provided for @downloadFailedStatus.
-  ///
-  /// In zh, this message translates to:
-  /// **'下载失败'**
-  String get downloadFailedStatus;
-
-  /// No description provided for @animeDownloadConnectionTimeout.
-  ///
-  /// In zh, this message translates to:
-  /// **'连接超时'**
-  String get animeDownloadConnectionTimeout;
-
-  /// No description provided for @animeDownloadProxyRetrySuggestion.
-  ///
-  /// In zh, this message translates to:
-  /// **'建议开启代理后重试'**
-  String get animeDownloadProxyRetrySuggestion;
-
-  /// No description provided for @animeDownloadUnknownError.
-  ///
-  /// In zh, this message translates to:
-  /// **'未知错误'**
-  String get animeDownloadUnknownError;
-
-  /// No description provided for @animeDownloadFailedMessage.
-  ///
-  /// In zh, this message translates to:
-  /// **'{chapter} 下载失败：{error}'**
-  String animeDownloadFailedMessage(String chapter, String error);
-
-  /// No description provided for @animeDownloadEmptyVideoUrl.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频链接为空'**
-  String get animeDownloadEmptyVideoUrl;
-
-  /// No description provided for @pauseButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'暂停'**
-  String get pauseButton;
-
-  /// No description provided for @resumeButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'继续'**
-  String get resumeButton;
 
   /// No description provided for @downloadProgressCount.
   ///
@@ -5974,12 +4876,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'缺 {count} 页'**
   String downloadChapterPartialFailed(int count);
-
-  /// No description provided for @downloadChapterRetryTooltip.
-  ///
-  /// In zh, this message translates to:
-  /// **'补全失败页'**
-  String get downloadChapterRetryTooltip;
 
   /// No description provided for @downloadProgressPartial.
   ///
@@ -6184,162 +5080,6 @@ abstract class AppLocalizations {
   /// **'我的父親(母親)叫什麽？'**
   String get profileFallbackQuestionParentName;
 
-  /// No description provided for @animeDetailSubtitleChip.
-  ///
-  /// In zh, this message translates to:
-  /// **'字幕'**
-  String get animeDetailSubtitleChip;
-
-  /// No description provided for @animeDetailLatestChapter.
-  ///
-  /// In zh, this message translates to:
-  /// **'最新：{chapter}'**
-  String animeDetailLatestChapter(String chapter);
-
-  /// No description provided for @animeDetailOnAirChip.
-  ///
-  /// In zh, this message translates to:
-  /// **'连载中'**
-  String get animeDetailOnAirChip;
-
-  /// No description provided for @animeDetailRestrictedChip.
-  ///
-  /// In zh, this message translates to:
-  /// **'受限'**
-  String get animeDetailRestrictedChip;
-
-  /// No description provided for @animeDetailDirector.
-  ///
-  /// In zh, this message translates to:
-  /// **'导演：{name}'**
-  String animeDetailDirector(String name);
-
-  /// No description provided for @playerSettingsPlaybackTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放设置'**
-  String get playerSettingsPlaybackTitle;
-
-  /// No description provided for @playerSettingsSkipSeconds.
-  ///
-  /// In zh, this message translates to:
-  /// **'快进秒数'**
-  String get playerSettingsSkipSeconds;
-
-  /// No description provided for @playerSettingsSkipSecondsDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'动漫片头一般约90秒'**
-  String get playerSettingsSkipSecondsDesc;
-
-  /// No description provided for @playerSettingsSecondsLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'秒数'**
-  String get playerSettingsSecondsLabel;
-
-  /// No description provided for @readerSecondsSuffix.
-  ///
-  /// In zh, this message translates to:
-  /// **'秒'**
-  String get readerSecondsSuffix;
-
-  /// No description provided for @playerSettingsRecordProgress.
-  ///
-  /// In zh, this message translates to:
-  /// **'记录播放进度'**
-  String get playerSettingsRecordProgress;
-
-  /// No description provided for @playerSettingsRecordProgressDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'再次打开同一集时自动跳转到上次观看位置'**
-  String get playerSettingsRecordProgressDesc;
-
-  /// No description provided for @playerSettingsDanmakuTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕设置'**
-  String get playerSettingsDanmakuTitle;
-
-  /// No description provided for @playerSettingsShowDanmaku.
-  ///
-  /// In zh, this message translates to:
-  /// **'显示弹幕'**
-  String get playerSettingsShowDanmaku;
-
-  /// No description provided for @playerSettingsFontSize.
-  ///
-  /// In zh, this message translates to:
-  /// **'字体大小'**
-  String get playerSettingsFontSize;
-
-  /// No description provided for @playerSettingsDisplayArea.
-  ///
-  /// In zh, this message translates to:
-  /// **'显示区域'**
-  String get playerSettingsDisplayArea;
-
-  /// No description provided for @playerSettingsOpacity.
-  ///
-  /// In zh, this message translates to:
-  /// **'透明度'**
-  String get playerSettingsOpacity;
-
-  /// No description provided for @playerSettingsDanmakuType.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕类型'**
-  String get playerSettingsDanmakuType;
-
-  /// No description provided for @playerSettingsScrollDanmaku.
-  ///
-  /// In zh, this message translates to:
-  /// **'滚动弹幕'**
-  String get playerSettingsScrollDanmaku;
-
-  /// No description provided for @playerSettingsTopDanmaku.
-  ///
-  /// In zh, this message translates to:
-  /// **'顶部弹幕'**
-  String get playerSettingsTopDanmaku;
-
-  /// No description provided for @playerSettingsBottomDanmaku.
-  ///
-  /// In zh, this message translates to:
-  /// **'底部弹幕'**
-  String get playerSettingsBottomDanmaku;
-
-  /// No description provided for @playerSettingsBlocklist.
-  ///
-  /// In zh, this message translates to:
-  /// **'屏蔽词'**
-  String get playerSettingsBlocklist;
-
-  /// No description provided for @playerSettingsBlocklistDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'包含屏蔽词的弹幕将被自动过滤'**
-  String get playerSettingsBlocklistDesc;
-
-  /// No description provided for @playerSettingsBlocklistHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'输入屏蔽词'**
-  String get playerSettingsBlocklistHint;
-
-  /// No description provided for @playerSettingsDanmakuFont.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕字体'**
-  String get playerSettingsDanmakuFont;
-
-  /// No description provided for @playerSettingsDanmakuFontSystem.
-  ///
-  /// In zh, this message translates to:
-  /// **'跟随系统'**
-  String get playerSettingsDanmakuFontSystem;
-
   /// No description provided for @playerSettingsChineseConvertTooltip.
   ///
   /// In zh, this message translates to:
@@ -6526,12 +5266,6 @@ abstract class AppLocalizations {
   /// **'当前平台暂无安装包'**
   String get updateNoPackageForPlatform;
 
-  /// No description provided for @updateCheckFailedRetryLater.
-  ///
-  /// In zh, this message translates to:
-  /// **'检查更新失败，请稍后重试'**
-  String get updateCheckFailedRetryLater;
-
   /// No description provided for @updateOpenDownloadFailed.
   ///
   /// In zh, this message translates to:
@@ -6556,30 +5290,6 @@ abstract class AppLocalizations {
   /// **'当前版本'**
   String get updateCurrentVersionNotes;
 
-  /// No description provided for @updateMirrorDownload.
-  ///
-  /// In zh, this message translates to:
-  /// **'镜像下载'**
-  String get updateMirrorDownload;
-
-  /// No description provided for @updateLatestBadge.
-  ///
-  /// In zh, this message translates to:
-  /// **'最新'**
-  String get updateLatestBadge;
-
-  /// No description provided for @updateCollapseOtherVersions.
-  ///
-  /// In zh, this message translates to:
-  /// **'收起其他版本'**
-  String get updateCollapseOtherVersions;
-
-  /// No description provided for @updateViewMoreVersions.
-  ///
-  /// In zh, this message translates to:
-  /// **'查看更多版本 ({count})'**
-  String updateViewMoreVersions(int count);
-
   /// No description provided for @updateCiBuildUnstable.
   ///
   /// In zh, this message translates to:
@@ -6591,18 +5301,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'打开发布页'**
   String get updateOpenReleasePage;
-
-  /// No description provided for @updatePackagesBeta.
-  ///
-  /// In zh, this message translates to:
-  /// **'安装包'**
-  String get updatePackagesBeta;
-
-  /// No description provided for @updatePackages.
-  ///
-  /// In zh, this message translates to:
-  /// **'安装包'**
-  String get updatePackages;
 
   /// No description provided for @updateOtherPackages.
   ///
@@ -6621,18 +5319,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'取消自动检查更新'**
   String get updateDisableAutoCheck;
-
-  /// No description provided for @updateInstallInApp.
-  ///
-  /// In zh, this message translates to:
-  /// **'应用内安装'**
-  String get updateInstallInApp;
-
-  /// No description provided for @updateInstallInAppMirror.
-  ///
-  /// In zh, this message translates to:
-  /// **'镜像应用内安装'**
-  String get updateInstallInAppMirror;
 
   /// No description provided for @updateDownloading.
   ///
@@ -6675,12 +5361,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'正在检查更新…'**
   String get updateCardChecking;
-
-  /// No description provided for @updateCardLatest.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前已是最新版本'**
-  String get updateCardLatest;
 
   /// No description provided for @updateCardFailed.
   ///
@@ -6862,216 +5542,6 @@ abstract class AppLocalizations {
   /// **'向右'**
   String get readerRotateRightShort;
 
-  /// No description provided for @browseHistoryLastSeenLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'上次看到'**
-  String get browseHistoryLastSeenLabel;
-
-  /// No description provided for @playerProgressAutoResumed.
-  ///
-  /// In zh, this message translates to:
-  /// **'{progress}（已自动继续）'**
-  String playerProgressAutoResumed(String progress);
-
-  /// No description provided for @playerSeekButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'跳转'**
-  String get playerSeekButton;
-
-  /// No description provided for @bangumiCommentsLoadFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'评论加载失败'**
-  String get bangumiCommentsLoadFailed;
-
-  /// No description provided for @bangumiCommentsRetryHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'下拉或点按钮重试'**
-  String get bangumiCommentsRetryHint;
-
-  /// No description provided for @bangumiCommentsEmptyTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'还没有评论'**
-  String get bangumiCommentsEmptyTitle;
-
-  /// No description provided for @bangumiCommentsEmptySubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'暂时没有可显示的 Bangumi 评论'**
-  String get bangumiCommentsEmptySubtitle;
-
-  /// No description provided for @bangumiCommentsLoadMoreFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'更多评论加载失败'**
-  String get bangumiCommentsLoadMoreFailed;
-
-  /// No description provided for @bangumiCommentsRetryLoadMore.
-  ///
-  /// In zh, this message translates to:
-  /// **'重试加载更多'**
-  String get bangumiCommentsRetryLoadMore;
-
-  /// No description provided for @bangumiCommentsLoadMore.
-  ///
-  /// In zh, this message translates to:
-  /// **'加载更多'**
-  String get bangumiCommentsLoadMore;
-
-  /// No description provided for @bangumiCommentsEmptyComment.
-  ///
-  /// In zh, this message translates to:
-  /// **'这条评论没有内容'**
-  String get bangumiCommentsEmptyComment;
-
-  /// No description provided for @danmakuSearchTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕搜索'**
-  String get danmakuSearchTitle;
-
-  /// No description provided for @danmakuSearchTitleWithCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕搜索（{count}）'**
-  String danmakuSearchTitleWithCount(int count);
-
-  /// No description provided for @danmakuLoadedTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'已装载{count}发弹幕'**
-  String danmakuLoadedTitle(int count);
-
-  /// No description provided for @danmakuSearchHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'输入搜索关键词'**
-  String get danmakuSearchHint;
-
-  /// No description provided for @forceRefreshTooltip.
-  ///
-  /// In zh, this message translates to:
-  /// **'强制刷新'**
-  String get forceRefreshTooltip;
-
-  /// No description provided for @danmakuSearchInstruction.
-  ///
-  /// In zh, this message translates to:
-  /// **'请选择分段或输入搜索词后点击搜索'**
-  String get danmakuSearchInstruction;
-
-  /// No description provided for @danmakuSearchResultCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'共找到 {count} 条结果'**
-  String danmakuSearchResultCount(int count);
-
-  /// No description provided for @danmakuSearchNoResults.
-  ///
-  /// In zh, this message translates to:
-  /// **'未找到相关弹幕'**
-  String get danmakuSearchNoResults;
-
-  /// No description provided for @danmakuSearchNoResultsHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'减少关键词，仅搜索作品名称\n如：「Re：从零开始的异世界生活第四季丧失篇」搜索「从零开始的异世界生活第四季」'**
-  String get danmakuSearchNoResultsHint;
-
-  /// No description provided for @danmakuLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕'**
-  String get danmakuLabel;
-
-  /// No description provided for @dandanplayBindingSearchKeyword.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜索关键词'**
-  String get dandanplayBindingSearchKeyword;
-
-  /// No description provided for @dandanplayBindingClear.
-  ///
-  /// In zh, this message translates to:
-  /// **'清除绑定'**
-  String get dandanplayBindingClear;
-
-  /// No description provided for @dandanplayBindingSearchFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜索失败：{error}'**
-  String dandanplayBindingSearchFailed(String error);
-
-  /// No description provided for @dandanplayBindingNoResults.
-  ///
-  /// In zh, this message translates to:
-  /// **'未找到相关番剧'**
-  String get dandanplayBindingNoResults;
-
-  /// No description provided for @dandanplayBindingSearchInstruction.
-  ///
-  /// In zh, this message translates to:
-  /// **'输入关键词后点击搜索'**
-  String get dandanplayBindingSearchInstruction;
-
-  /// No description provided for @dandanplayBindingCurrent.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前绑定'**
-  String get dandanplayBindingCurrent;
-
-  /// No description provided for @dandanplayBindingBound.
-  ///
-  /// In zh, this message translates to:
-  /// **'已绑定'**
-  String get dandanplayBindingBound;
-
-  /// No description provided for @dandanplayBindingUnbound.
-  ///
-  /// In zh, this message translates to:
-  /// **'未绑定'**
-  String get dandanplayBindingUnbound;
-
-  /// No description provided for @dandanplayBindingBind.
-  ///
-  /// In zh, this message translates to:
-  /// **'绑定'**
-  String get dandanplayBindingBind;
-
-  /// No description provided for @dandanplayBindingRating.
-  ///
-  /// In zh, this message translates to:
-  /// **'评分 {rating}'**
-  String dandanplayBindingRating(String rating);
-
-  /// No description provided for @dandanplayAlignmentTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'对齐弹幕'**
-  String get dandanplayAlignmentTitle;
-
-  /// No description provided for @dandanplayAlignmentVideoFirstEpisode.
-  ///
-  /// In zh, this message translates to:
-  /// **'视频第一集'**
-  String get dandanplayAlignmentVideoFirstEpisode;
-
-  /// No description provided for @dandanplayAlignmentDanmakuFirstEpisode.
-  ///
-  /// In zh, this message translates to:
-  /// **'弹幕第一集'**
-  String get dandanplayAlignmentDanmakuFirstEpisode;
-
-  /// No description provided for @dandanplayAlignmentClear.
-  ///
-  /// In zh, this message translates to:
-  /// **'清除对齐'**
-  String get dandanplayAlignmentClear;
-
   /// No description provided for @spoilerWarningTitle.
   ///
   /// In zh, this message translates to:
@@ -7102,143 +5572,17 @@ abstract class AppLocalizations {
   /// **'含剧透，点击查看'**
   String get spoilerTapToView;
 
-  /// No description provided for @mediaKitDownloadTitle.
+  /// No description provided for @alreadyCollectedLabel.
   ///
   /// In zh, this message translates to:
-  /// **'需要下载播放组件'**
-  String get mediaKitDownloadTitle;
+  /// **'已收藏'**
+  String get alreadyCollectedLabel;
 
-  /// No description provided for @mediaKitDownloadMessage.
+  /// No description provided for @downloadActionButton.
   ///
   /// In zh, this message translates to:
-  /// **'首次使用动漫播放功能需下载播放组件（{size}）。下载后会保存在本地，软件更新无需重新下载。'**
-  String mediaKitDownloadMessage(String size);
-
-  /// No description provided for @mediaKitDownloadSourceLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'下载来源'**
-  String get mediaKitDownloadSourceLabel;
-
-  /// No description provided for @mediaKitDownloadSourceGithub.
-  ///
-  /// In zh, this message translates to:
-  /// **'GitHub'**
-  String get mediaKitDownloadSourceGithub;
-
-  /// No description provided for @mediaKitDownloadSourceGithubHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'直连 GitHub 官方资源'**
-  String get mediaKitDownloadSourceGithubHint;
-
-  /// No description provided for @mediaKitDownloadSourceMirror.
-  ///
-  /// In zh, this message translates to:
-  /// **'镜像下载'**
-  String get mediaKitDownloadSourceMirror;
-
-  /// No description provided for @mediaKitDownloadSourceMirrorHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'使用当前镜像：{mirror}'**
-  String mediaKitDownloadSourceMirrorHint(String mirror);
-
-  /// No description provided for @mediaKitDownloadConfirm.
-  ///
-  /// In zh, this message translates to:
-  /// **'开始下载'**
-  String get mediaKitDownloadConfirm;
-
-  /// No description provided for @mediaKitDownloadingTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'正在下载播放组件'**
-  String get mediaKitDownloadingTitle;
-
-  /// No description provided for @mediaKitDownloadFailedTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'下载失败'**
-  String get mediaKitDownloadFailedTitle;
-
-  /// No description provided for @mediaKitDownloadFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'下载播放组件失败：{error}'**
-  String mediaKitDownloadFailed(String error);
-
-  /// No description provided for @mediaKitInitFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'播放器初始化失败：{error}'**
-  String mediaKitInitFailed(String error);
-
-  /// No description provided for @mediaKitDownloadStageConnect.
-  ///
-  /// In zh, this message translates to:
-  /// **'正在连接…'**
-  String get mediaKitDownloadStageConnect;
-
-  /// No description provided for @mediaKitDownloadBytesProgress.
-  ///
-  /// In zh, this message translates to:
-  /// **'{received} / {total}'**
-  String mediaKitDownloadBytesProgress(String received, String total);
-
-  /// No description provided for @mediaKitDownloadBytesOnly.
-  ///
-  /// In zh, this message translates to:
-  /// **'已下载 {received}'**
-  String mediaKitDownloadBytesOnly(String received);
-
-  /// No description provided for @mediaKitDownloadTimeout.
-  ///
-  /// In zh, this message translates to:
-  /// **'连接或下载超时，请切换 GitHub/镜像后重试'**
-  String get mediaKitDownloadTimeout;
-
-  /// No description provided for @mediaKitDownloadNetworkError.
-  ///
-  /// In zh, this message translates to:
-  /// **'网络连接失败，请检查网络或切换下载来源'**
-  String get mediaKitDownloadNetworkError;
-
-  /// No description provided for @mediaKitDownloadStagePrepare.
-  ///
-  /// In zh, this message translates to:
-  /// **'准备中…'**
-  String get mediaKitDownloadStagePrepare;
-
-  /// No description provided for @mediaKitDownloadStageDownload.
-  ///
-  /// In zh, this message translates to:
-  /// **'正在下载…'**
-  String get mediaKitDownloadStageDownload;
-
-  /// No description provided for @mediaKitDownloadStageVerify.
-  ///
-  /// In zh, this message translates to:
-  /// **'校验文件…'**
-  String get mediaKitDownloadStageVerify;
-
-  /// No description provided for @mediaKitDownloadStageExtract.
-  ///
-  /// In zh, this message translates to:
-  /// **'解压组件…'**
-  String get mediaKitDownloadStageExtract;
-
-  /// No description provided for @mediaKitDownloadStageLoad.
-  ///
-  /// In zh, this message translates to:
-  /// **'加载组件…'**
-  String get mediaKitDownloadStageLoad;
-
-  /// No description provided for @mediaKitDownloadStageDone.
-  ///
-  /// In zh, this message translates to:
-  /// **'完成'**
-  String get mediaKitDownloadStageDone;
+  /// **'下载'**
+  String get downloadActionButton;
 }
 
 class _AppLocalizationsDelegate

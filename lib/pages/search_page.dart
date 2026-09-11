@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:go_router/go_router.dart';
@@ -9,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
-import '../models/anime.dart';
 import '../models/api_ordering.dart';
 import '../models/comic.dart' as m;
 import '../models/comic.dart' hide Theme;
@@ -20,7 +18,6 @@ import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
-import '../utils/cover_brightness_filter.dart';
 import '../utils/screen_layout.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
@@ -30,8 +27,6 @@ import 'home_page.dart' show ComicCard;
 part 'search/search_data.dart';
 part 'search/search_grids.dart';
 part 'search/search_header.dart';
-
-enum _SearchMode { comic, anime }
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -57,9 +52,7 @@ class _SearchPageState extends State<SearchPage> {
   List<String> _keywords = [];
   List<m.Theme> _tags = [];
   List<Comic> _comics = [];
-  List<Anime> _animes = [];
 
-  _SearchMode _mode = _SearchMode.comic;
   String? _selectedTag;
   String _ordering = ApiOrdering.popular;
   bool _loadingMore = false;
@@ -79,10 +72,7 @@ class _SearchPageState extends State<SearchPage> {
   /// [setState]，统一经由这个转发方法。
   void _setState(VoidCallback fn) => setState(fn);
 
-  bool get _animeFeatureEnabled => _user.animeFeatureEnabled;
-  bool get _isAnimeMode => _animeFeatureEnabled && _mode == _SearchMode.anime;
-  String _modeLabel(AppLocalizations l10n) =>
-      _isAnimeMode ? l10n.animeLabel : l10n.comicLabel;
+  String _modeLabel(AppLocalizations l10n) => l10n.comicLabel;
 
   /// tag 数量的紧凑显示：11376 -> 1.1万。与漫画详情页 formatPopular 同规则。
   String _formatTagCount(AppLocalizations l10n, int n) {
@@ -94,7 +84,8 @@ class _SearchPageState extends State<SearchPage> {
     }
     return n.toString();
   }
-  bool get _hasResults => _comics.isNotEmpty || _animes.isNotEmpty;
+
+  bool get _hasResults => _comics.isNotEmpty;
   bool get _canClearSearch => _hasSearchText || _searchQuery != null;
 
   /// 当前选中 tag 的显示名（从初始化拿到的 tag 列表里按 pathWord 反查）。
@@ -203,10 +194,6 @@ class _SearchPageState extends State<SearchPage> {
 
   void _onUserChanged() {
     if (!mounted) return;
-    if (!_animeFeatureEnabled && _mode == _SearchMode.anime) {
-      _setMode(_SearchMode.comic);
-      return;
-    }
     setState(() {});
   }
 
@@ -243,37 +230,17 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void _setMode(_SearchMode mode) {
-    if (mode == _SearchMode.anime && !_animeFeatureEnabled) return;
-    if (_mode == mode) return;
-    final keyword = _searchController.text.trim();
-    setState(() {
-      _mode = mode;
-      _selectedTag = null;
-      _comics = [];
-      _animes = [];
-      _offset = 0;
-      _total = 0;
-      _searchQuery = keyword.isEmpty ? null : keyword;
-    });
-    if (keyword.isNotEmpty) {
-      _doSearch(keyword);
-    }
-  }
-
   void _selectTag(String? tagPathWord) {
     _searchController.clear();
     final isToggleOff = tagPathWord != null && _selectedTag == tagPathWord;
     final next = isToggleOff ? null : tagPathWord;
     setState(() {
-      _mode = _SearchMode.comic;
       _selectedTag = next;
       _searchQuery = null;
       _searching = next != null;
       _offset = 0;
       _total = 0;
       _comics = [];
-      _animes = [];
     });
     if (next != null) {
       _loadComics();
@@ -288,7 +255,6 @@ class _SearchPageState extends State<SearchPage> {
     setState(() {
       _searchQuery = null;
       _comics = [];
-      _animes = [];
       _offset = 0;
       _total = 0;
     });
@@ -297,16 +263,6 @@ class _SearchPageState extends State<SearchPage> {
   void _onKeywordTap(String keyword) {
     _searchController.text = keyword;
     _doSearch(keyword);
-  }
-
-  void _openAnime(Anime anime) {
-    if (!_animeFeatureEnabled) return;
-    if (anime.pathWord.isEmpty) return;
-    context.pushNamed(
-      AppRoutes.animeDetail,
-      pathParameters: {'pathWord': anime.pathWord},
-      extra: AnimeDetailExtra(initialAnime: anime),
-    );
   }
 
   @override
@@ -421,8 +377,7 @@ class _SearchPageState extends State<SearchPage> {
                         ),
                       ),
                     ),
-                  if (!_isAnimeMode &&
-                      _tags.isNotEmpty &&
+                  if (_tags.isNotEmpty &&
                       _selectedTag == null &&
                       _searchQuery == null &&
                       !_searching)
@@ -471,17 +426,14 @@ class _SearchPageState extends State<SearchPage> {
                                                 // 降透明度才能与名字拉开层次。
                                                 style: tt.bodySmall?.copyWith(
                                                   color: cs.onSurfaceVariant
-                                                      .withValues(
-                                                        alpha: 0.7,
-                                                      ),
+                                                      .withValues(alpha: 0.7),
                                                 ),
                                               ),
                                           ],
                                         ),
                                       ),
                                       showCheckmark: false,
-                                      onSelected: (_) =>
-                                          _selectTag(t.pathWord),
+                                      onSelected: (_) => _selectTag(t.pathWord),
                                       materialTapTargetSize:
                                           MaterialTapTargetSize.shrinkWrap,
                                     ),
@@ -525,7 +477,7 @@ class _SearchPageState extends State<SearchPage> {
                         ),
                       ),
                     ),
-                  if (!_isAnimeMode && _comics.isNotEmpty)
+                  if (_comics.isNotEmpty)
                     _ComicGrid(
                       comics: _comics,
                       hp: hp,
@@ -539,14 +491,6 @@ class _SearchPageState extends State<SearchPage> {
                           heroTagBase: heroTagBase,
                         ),
                       ),
-                    ),
-                  if (_isAnimeMode && _animes.isNotEmpty)
-                    _AnimeGrid(
-                      animes: _animes,
-                      hp: hp,
-                      cardExtent: cardExtent,
-                      loadingMore: _loadingMore,
-                      onOpen: _openAnime,
                     ),
                   // 显式加载更多按钮：宽屏下一页结果不满屏、列表不可滚动时，
                   // 近底自动加载永远等不到触发，这里是兜底入口。
@@ -562,9 +506,7 @@ class _SearchPageState extends State<SearchPage> {
                   // 底部留白：选了 tag 时为悬浮按钮组留出避让空间，
                   // 同时保证结果太少时列表仍可滚动（搜索框/按钮不会卡在收起态）。
                   SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: _selectedTag != null && !_isAnimeMode ? 140 : 16,
-                    ),
+                    child: SizedBox(height: _selectedTag != null ? 140 : 16),
                   ),
                 ],
               ),
@@ -592,8 +534,7 @@ class _SearchPageState extends State<SearchPage> {
           ),
           // 右下角悬浮层：上一行回到顶部（任何可滚列表都出现），
           // 下一行 tag 胶囊 + 排序（仅 tag 浏览态）。两者都跟随搜索框收显。
-          if ((_canScrollUp || (_selectedTag != null && !_isAnimeMode)) &&
-              !_isAnimeMode)
+          if (_canScrollUp || _selectedTag != null)
             Positioned(
               right: 16,
               bottom: 16,
