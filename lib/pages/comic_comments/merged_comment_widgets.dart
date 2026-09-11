@@ -3,7 +3,7 @@ part of '../comic_comments_sheet.dart';
 // ─── 合并评论样式常量 & 纯函数（与 chapter_comments/comment_style.dart 对齐） ───
 
 const _mergedCardCornerRadius = 10.0;
-const _hotMergedCommentColor = Color(0xFFFF7A2F);
+const _hotMergedCommentColor = AppStatusColors.hotAccent;
 
 bool _shouldShowMergedCountTag(int count) => count > 1;
 bool _isHotMergedComment(int count) => count >= 10;

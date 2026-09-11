@@ -21,8 +21,7 @@ import '../pages/local_comics_page.dart';
 import '../pages/login_page.dart' show LoginPage;
 import '../pages/network_page.dart';
 import '../pages/notice_center_page.dart';
-import '../pages/profile_page.dart'
-    hide LoginPage, RegisterPage, DisclaimerPage, AboutPage;
+import '../pages/profile_page.dart';
 import '../pages/ranking_page.dart';
 import '../pages/reader_page.dart';
 import '../pages/recommend_page.dart';

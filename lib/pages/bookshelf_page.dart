@@ -18,6 +18,7 @@ import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
 import '../utils/reading_history.dart';
 import '../utils/screen_layout.dart';
@@ -26,6 +27,7 @@ import '../utils/toast.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/load_more_footer.dart';
+import '../widgets/login_expired_dialog.dart';
 import 'home_page.dart';
 
 part 'bookshelf/bookshelf_grids.dart';
@@ -361,25 +363,9 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
       return;
     }
 
-    final shouldLogin = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final l10n = AppLocalizations.of(context)!;
-        return AlertDialog(
-          title: Text(l10n.loginExpiredTitle),
-          content: Text(l10n.loginExpiredBookshelfContent),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.laterButton),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.goLoginButton),
-            ),
-          ],
-        );
-      },
+    final shouldLogin = await showLoginExpiredDialog(
+      context,
+      content: AppLocalizations.of(context)!.loginExpiredBookshelfContent,
     );
 
     if (shouldLogin == true && mounted) {
@@ -481,9 +467,6 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
                 floating: true,
                 snap: true,
                 automaticallyImplyLeading: false,
-                scrolledUnderElevation: 0,
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                surfaceTintColor: Colors.transparent,
                 toolbarHeight: 0,
                 bottom: PreferredSize(
                   preferredSize: Size.fromHeight(

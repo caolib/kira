@@ -8,37 +8,25 @@ extension _ProfileCards on _ProfilePageState {
     return SettingTileGroup(
       children: [
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.tune_rounded,
-            color: Color(0xFF6E9D5B),
-          ),
+          leading: const _SettingIcon(icon: Icons.tune_rounded),
           title: Text(l10n.generalTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.general),
         ),
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.palette_rounded,
-            color: Color(0xFF7C8CFF),
-          ),
+          leading: const _SettingIcon(icon: Icons.palette_rounded),
           title: Text(l10n.appearanceTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.appearance),
         ),
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.dns_rounded,
-            color: Color(0xFF2BB8A5),
-          ),
+          leading: const _SettingIcon(icon: Icons.dns_rounded),
           title: Text(l10n.networkTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.network),
         ),
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.smart_toy_outlined,
-            color: Color(0xFFE07AD0),
-          ),
+          leading: const _SettingIcon(icon: Icons.smart_toy_outlined),
           title: Text(l10n.aiConfigTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.aiConfig),
@@ -50,10 +38,7 @@ extension _ProfileCards on _ProfilePageState {
               leading: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const _SettingIcon(
-                    icon: Icons.notifications_active_outlined,
-                    color: _noticeCenterColor,
-                  ),
+                  const _SettingIcon(icon: Icons.notifications_active_outlined),
                   if (count > 0)
                     Positioned(
                       right: -1,
@@ -81,37 +66,25 @@ extension _ProfileCards on _ProfilePageState {
     return SettingTileGroup(
       children: [
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.download_done_rounded,
-            color: Color(0xFFFFA24C),
-          ),
+          leading: const _SettingIcon(icon: Icons.download_done_rounded),
           title: Text(l10n.downloadCenterTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.downloadCenter),
         ),
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.history_rounded,
-            color: Color(0xFF9B7BFF),
-          ),
+          leading: const _SettingIcon(icon: Icons.history_rounded),
           title: Text(l10n.browseHistoryTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.browseHistory),
         ),
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.bookmark_outline_rounded,
-            color: Color(0xFF4CAF7D),
-          ),
+          leading: const _SettingIcon(icon: Icons.bookmark_outline_rounded),
           title: Text(l10n.bookmarksTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.bookmarks),
         ),
         ListTile(
-          leading: const _SettingIcon(
-            icon: Icons.bar_chart_rounded,
-            color: Color(0xFF5B8DEF),
-          ),
+          leading: const _SettingIcon(icon: Icons.bar_chart_rounded),
           title: Text(l10n.statsTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.stats),
@@ -133,16 +106,13 @@ extension _ProfileCards on _ProfilePageState {
               leading: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const _SettingIcon(
-                    icon: Icons.info_rounded,
-                    color: Color(0xFF4FA8FF),
-                  ),
+                  const _SettingIcon(icon: Icons.info_rounded),
                   if (hasUnseenUpdate)
                     Positioned(
                       right: -1,
                       top: -1,
                       child: _NoticeRedDot(
-                        color: const Color(0xFF4FA8FF),
+                        color: _noticeCenterColor,
                         borderColor: cs.surfaceBright,
                       ),
                     ),

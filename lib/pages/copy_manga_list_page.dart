@@ -13,6 +13,8 @@ import '../utils/time_format.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/cover_placeholder.dart';
+import '../widgets/error_retry_view.dart';
 import '../widgets/load_more_footer.dart';
 
 enum CopyMangaListKind { recommendations, ranking, newest, finished }
@@ -380,27 +382,7 @@ class _CopyListError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            AppLocalizations.of(context)!.loadingFailed,
-            style: tt.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          FilledButton.tonal(
-            onPressed: onRetry,
-            child: Text(AppLocalizations.of(context)!.retryButton),
-          ),
-        ],
-      ),
-    );
+    return ErrorRetryView(onRetry: onRetry);
   }
 }
 
@@ -441,16 +423,8 @@ class _CopyListComicCard extends StatelessWidget {
                     height: double.infinity,
                     fadeInDuration: Duration.zero,
                     fadeOutDuration: Duration.zero,
-                    placeholder: (_, _) => _CopyImagePlaceholder(
-                      color: cs.surfaceContainerHighest,
-                      iconColor: cs.onSurfaceVariant,
-                      icon: Icons.image,
-                    ),
-                    errorWidget: (_, _, _) => _CopyImagePlaceholder(
-                      color: cs.surfaceContainerHighest,
-                      iconColor: cs.onSurfaceVariant,
-                      icon: Icons.broken_image,
-                    ),
+                    placeholder: (_, _) => const CoverPlaceholder(),
+                    errorWidget: (_, _, _) => const CoverPlaceholder.error(),
                   ),
                 ),
               ),
@@ -504,25 +478,5 @@ class _CopyListComicCard extends StatelessWidget {
       return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
     }
     return n.toString();
-  }
-}
-
-class _CopyImagePlaceholder extends StatelessWidget {
-  final Color color;
-  final Color iconColor;
-  final IconData icon;
-
-  const _CopyImagePlaceholder({
-    required this.color,
-    required this.iconColor,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: color,
-      child: Center(child: Icon(icon, color: iconColor, size: 32)),
-    );
   }
 }

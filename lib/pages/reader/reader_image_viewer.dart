@@ -544,107 +544,82 @@ class _ReaderImageViewerSettingsPanelState
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                AppLocalizations.of(context)!.readerImageViewerSettingsTitle,
-                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppLocalizations.of(context)!.readerAutoRotateLandscape,
-                ),
-                subtitle: Text(
-                  AppLocalizations.of(context)!.readerAutoRotateLandscapeDesc,
-                ),
-                value: _user.imageViewerAutoRotateLandscape,
-                onChanged: (value) {
-                  _user.setImageViewerAutoRotateLandscape(value);
-                  setState(() {});
-                  widget.onChanged();
-                },
-              ),
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 180),
-                opacity: _user.imageViewerAutoRotateLandscape ? 1 : 0.45,
-                child: IgnorePointer(
-                  ignoring: !_user.imageViewerAutoRotateLandscape,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        AppLocalizations.of(context)!.readerRotationDirection,
-                        style: tt.bodyMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<int>(
-                          segments: [
-                            ButtonSegment(
-                              value: -1,
-                              icon: const Icon(Icons.rotate_left),
-                              label: Text(
-                                AppLocalizations.of(
-                                  context,
-                                )!.readerRotateLeftShort,
-                              ),
-                            ),
-                            ButtonSegment(
-                              value: 1,
-                              icon: const Icon(Icons.rotate_right),
-                              label: Text(
-                                AppLocalizations.of(
-                                  context,
-                                )!.readerRotateRightShort,
-                              ),
-                            ),
-                          ],
-                          selected: {_user.imageViewerLandscapeRotation},
-                          onSelectionChanged: (selection) {
-                            _user.setImageViewerLandscapeRotation(
-                              selection.first,
-                            );
-                            setState(() {});
-                            widget.onChanged();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+    return AppSheet(
+      padding: const EdgeInsets.fromLTRB(24, AppSpacing.lg, 24, 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.of(context)!.readerImageViewerSettingsTitle,
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
-        ),
+          const SizedBox(height: AppSpacing.md),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              AppLocalizations.of(context)!.readerAutoRotateLandscape,
+            ),
+            subtitle: Text(
+              AppLocalizations.of(context)!.readerAutoRotateLandscapeDesc,
+            ),
+            value: _user.imageViewerAutoRotateLandscape,
+            onChanged: (value) {
+              _user.setImageViewerAutoRotateLandscape(value);
+              setState(() {});
+              widget.onChanged();
+            },
+          ),
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 180),
+            opacity: _user.imageViewerAutoRotateLandscape ? 1 : 0.45,
+            child: IgnorePointer(
+              ignoring: !_user.imageViewerAutoRotateLandscape,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    AppLocalizations.of(context)!.readerRotationDirection,
+                    style: tt.bodyMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<int>(
+                      segments: [
+                        ButtonSegment(
+                          value: -1,
+                          icon: const Icon(Icons.rotate_left),
+                          label: Text(
+                            AppLocalizations.of(context)!.readerRotateLeftShort,
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: 1,
+                          icon: const Icon(Icons.rotate_right),
+                          label: Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.readerRotateRightShort,
+                          ),
+                        ),
+                      ],
+                      selected: {_user.imageViewerLandscapeRotation},
+                      onSelectionChanged: (selection) {
+                        _user.setImageViewerLandscapeRotation(selection.first);
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

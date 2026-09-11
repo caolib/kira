@@ -1,22 +1,15 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
-import '../api/user/user_api.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
-import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/app_update.dart';
@@ -24,27 +17,10 @@ import '../utils/remote_notice_service.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
 import '../widgets/setting_tile_group.dart';
-import '../widgets/text_controller_scope.dart';
-import 'register_page.dart' show RegisterPrefill;
-part 'profile/about_page.dart';
-part 'profile/login_page.dart';
 part 'profile/profile_account.dart';
 part 'profile/profile_cards.dart';
-part 'profile/register_page.dart';
-
-List<String> _appDisclaimerItems(AppLocalizations l10n) => [
-  l10n.appDisclaimerItem1,
-  l10n.appDisclaimerItem2,
-  l10n.appDisclaimerItem3,
-  l10n.appDisclaimerItem4,
-  l10n.appDisclaimerItem5,
-  l10n.appDisclaimerItem6,
-];
 
 const _noticeCenterColor = Color(0xFFEB6F92);
-
-/// Profile cards share the app-wide medium shadow token.
-List<BoxShadow> _profileCardShadow(ColorScheme cs) => AppShadows.md(cs);
 
 enum _SwitchAccountSheetAction { addAccount }
 
@@ -305,20 +281,16 @@ class _NoticeRedDot extends StatelessWidget {
 
 class _SettingIcon extends StatelessWidget {
   final IconData icon;
-  final Color color;
 
-  const _SettingIcon({required this.icon, required this.color});
+  const _SettingIcon({required this.icon});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: AppRadius.mdR,
-      ),
-      child: Icon(icon, color: color, size: 20),
+    // 与许可证页头部图标同款：裸图标 + 主题色，不带底衬色块。
+    return Icon(
+      icon,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      size: 24,
     );
   }
 }

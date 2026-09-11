@@ -37,4 +37,8 @@ class AppStatusColors {
   /// Tinted fill for pills and cards carrying a status color.
   static Color fill(Color base, {double alpha = 0.12}) =>
       base.withValues(alpha: alpha);
+
+  /// "热门评论" 角标的火焰橙——评论子系统的品牌化强调色(非语义状态)。
+  /// 曾以同值同名常量在 chapter/comic 两套评论里各定义一份,收编于此。
+  static const Color hotAccent = Color(0xFFFF7A2F);
 }

@@ -428,6 +428,22 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
         surfaceTintColor: Colors.transparent,
       ),
       cardTheme: _cardTheme(colorScheme),
+      // 组件级圆角阶梯：卡片 lg(16) / 对话框与弹层 xl(20)。弹层外观统一由
+      // AppSheet / showAppSheet 承载，这里兜底所有直接用系统组件的调用点。
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.xlR),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        clipBehavior: Clip.antiAlias,
+      ),
+      // SnackBar 与自定义 Toast 同为“悬浮圆角条”观感，避免两套通知皮。
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
+      ),
       fontFamily: resolvedFont,
     );
   }

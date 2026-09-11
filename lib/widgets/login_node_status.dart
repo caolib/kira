@@ -7,7 +7,9 @@ import '../api/api_transport.dart' show hotLoginHost;
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_status_colors.dart';
 
 /// 一批登录节点的探测函数：返回 {host: 延迟毫秒}，超时为 null。
 /// 探测遵循应用代理设置（见 NetworkApi.testHostsConnectivity）。
@@ -101,9 +103,6 @@ class _LoginNodeStatusCardState extends State<LoginNodeStatusCard> {
     final tt = Theme.of(context).textTheme;
 
     final host = _displayHost;
-    // 探测失败（超时）时提示无法连接；延迟高但可达时不额外提示。
-    final latency = _results[host];
-    final showHint = _results.containsKey(host) && latency == null;
 
     return Container(
       decoration: BoxDecoration(
@@ -113,6 +112,8 @@ class _LoginNodeStatusCardState extends State<LoginNodeStatusCard> {
           cs.surface,
         ),
         borderRadius: AppRadius.mdR,
+        // 与登录页其余卡片（已保存账号卡）同款阴影。
+        boxShadow: AppShadows.md(cs),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
@@ -125,30 +126,20 @@ class _LoginNodeStatusCardState extends State<LoginNodeStatusCard> {
                 Icon(Icons.lan_outlined, size: 16, color: cs.onSurfaceVariant),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(child: _buildHostRow(host, l10n, tt, cs)),
-                if (_testing)
-                  const Padding(
-                    padding: EdgeInsets.all(10),
-                    child: SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                else
-                  IconButton(
-                    tooltip: l10n.networkTestLatencyShort,
-                    onPressed: _test,
-                    icon: const Icon(Icons.refresh, size: 18),
-                  ),
+                // 探测中/空闲占同一 48x48 槽位，行高恒定，卡片不跳动。
+                IconButton(
+                  tooltip: l10n.networkTestLatencyShort,
+                  onPressed: _testing ? null : _test,
+                  icon: _testing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh, size: 18),
+                ),
               ],
             ),
-            if (showHint) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                l10n.loginNodeUnreachable,
-                style: tt.bodySmall?.copyWith(color: cs.error),
-              ),
-            ],
           ],
         ),
       ),
@@ -165,15 +156,15 @@ class _LoginNodeStatusCardState extends State<LoginNodeStatusCard> {
     final latency = _results[host];
     final Color color;
     if (pending) {
-      color = cs.onSurfaceVariant;
+      color = AppStatusColors.neutral(cs);
     } else if (latency == null) {
-      color = Colors.red;
+      color = AppStatusColors.danger(cs);
     } else if (latency <= 800) {
-      color = Colors.green;
+      color = AppStatusColors.success(cs);
     } else if (latency <= 2000) {
-      color = Colors.orange;
+      color = AppStatusColors.warning(cs);
     } else {
-      color = Colors.red;
+      color = AppStatusColors.danger(cs);
     }
 
     final label = host == hotLoginHost

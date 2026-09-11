@@ -689,8 +689,6 @@
   "networkStatusUnknown": "尚未检测",
   "networkStatusUnknownHint": "点击下方按钮测速，了解各节点延迟",
   "networkTestLatencyShort": "测速",
-  "networkNodeGridRouteHint": "点击线路卡片切换当前线路",
-  "networkNodeGridFixedHint": "点击节点固定，将一直使用所选节点",
   "networkModeFixedNodeShort": "节点",
   "networkCurrentInUse": "使用中",
   "networkModeRouteDesc": "请求自动在线路内的节点间切换",

@@ -16,12 +16,16 @@ import '../repositories/manga_home_repository.dart';
 import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/settings_rebuild_guard.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/cover_placeholder.dart';
+import '../widgets/error_retry_view.dart';
+import '../widgets/section_header.dart';
 
 part 'home/home_banner.dart';
 part 'home/home_cards.dart';
@@ -222,8 +226,6 @@ class _HomePageState extends ConsumerState<HomePage>
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
     // 不再 clamp 到 900：横屏双栏 + 卡片上限 150 自适应铺满，宽屏不留大空白。
     const hp = 16.0;
@@ -242,24 +244,7 @@ class _HomePageState extends ConsumerState<HomePage>
     if (_error != null && !hasData) {
       return Scaffold(
         floatingActionButton: _buildSourceFab(),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off, size: 64, color: cs.onSurfaceVariant),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                AppLocalizations.of(context)!.loadingFailed,
-                style: tt.titleMedium,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FilledButton.tonal(
-                onPressed: _load,
-                child: Text(AppLocalizations.of(context)!.retryButton),
-              ),
-            ],
-          ),
-        ),
+        body: ErrorRetryView(onRetry: _load),
       );
     }
 
@@ -458,11 +443,7 @@ class _HomePageState extends ConsumerState<HomePage>
         isCopy
             ? AppLocalizations.of(context)!.homeSourceCopy
             : AppLocalizations.of(context)!.homeSourceHot,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          letterSpacing: 0.5,
-        ),
+        style: AppTypography.fabLabel(Theme.of(context).textTheme),
       ),
     );
   }

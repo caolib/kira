@@ -12,10 +12,12 @@ import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_status_colors.dart';
 import '../utils/comment_text.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/text_controller_scope.dart';
 import 'chapter_comments/comment_paging.dart';
 import 'chapter_comments/comment_scroll_behavior.dart';
@@ -107,24 +109,14 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
+                color: AppSheet.backgroundColor(cs),
+                borderRadius: AppSheet.borderRadius,
               ),
               child: SafeArea(
                 top: false,
                 child: Column(
                   children: [
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.35),
-                        borderRadius: AppRadius.fullR,
-                      ),
-                    ),
+                    const AppSheetHandle(),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 14, 12, 12),
                       child: Row(

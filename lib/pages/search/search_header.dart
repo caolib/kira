@@ -157,44 +157,33 @@ extension _SearchHeader on _SearchPageState {
   /// 可折叠区块的标题行：左侧图标 + 标题（+ 可选 trailing），右侧旋转箭头随展开/收起翻转。
   Widget _buildSectionHeader({
     required IconData icon,
-    required Color color,
     required String title,
     required bool expanded,
     required VoidCallback onTap,
     Widget? trailing,
   }) {
-    return InkWell(
+    return SectionHeader(
+      icon: icon,
+      title: title,
       onTap: onTap,
-      borderRadius: AppRadius.xsR,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: AppSpacing.sm),
-              trailing,
-            ],
-            const Spacer(),
-            AnimatedRotation(
-              turns: expanded ? 0.0 : 0.5,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeInOutCubic,
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 20,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailing != null) ...[
+            trailing,
+            const SizedBox(width: AppSpacing.sm),
           ],
-        ),
+          AnimatedRotation(
+            turns: expanded ? 0.0 : 0.5,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeInOutCubic,
+            child: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: AppIconSize.lg,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

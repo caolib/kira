@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/user_manager.dart';
+import 'package:kira/pages/about_page.dart' show AboutPage;
 import 'package:kira/pages/profile_page.dart';
 import 'package:kira/utils/remote_notice_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -124,7 +125,10 @@ void main() {
     await UserManager().init();
 
     await tester.pumpWidget(_buildTestApp(const AboutPage()));
-    await tester.pumpAndSettle();
+    // AboutPage 的更新检查指示器常驻动画会让 pumpAndSettle 永不结束，
+    // 用固定 pump 等首帧与异步初始化完成。
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('日志'), findsOneWidget);
     expect(find.byIcon(Icons.bug_report_outlined), findsOneWidget);

@@ -20,6 +20,8 @@ import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/load_more_footer.dart';
+import '../widgets/login_expired_dialog.dart';
+import '../widgets/shimmer_skeleton.dart';
 
 class BrowseHistoryPage extends StatefulWidget {
   final WidgetBuilder loginPageBuilder;
@@ -218,22 +220,9 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
       return;
     }
 
-    final shouldLogin = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.loginExpiredTitle),
-        content: Text(l10n.browseHistoryLoginExpiredContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.laterButton),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.goLoginButton),
-          ),
-        ],
-      ),
+    final shouldLogin = await showLoginExpiredDialog(
+      context,
+      content: l10n.browseHistoryLoginExpiredContent,
     );
 
     if (shouldLogin == true && mounted) {
@@ -733,116 +722,53 @@ class _HistoryMetaChip extends StatelessWidget {
   }
 }
 
-class _HistoryCardSkeleton extends StatefulWidget {
+class _HistoryCardSkeleton extends StatelessWidget {
   const _HistoryCardSkeleton();
 
   @override
-  State<_HistoryCardSkeleton> createState() => _HistoryCardSkeletonState();
-}
-
-class _HistoryCardSkeletonState extends State<_HistoryCardSkeleton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final alpha = 0.15 + 0.15 * _controller.value;
-        final color = cs.onSurfaceVariant.withValues(alpha: alpha);
-        return Card(
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 84,
-                  child: AspectRatio(
-                    aspectRatio: 0.72,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: AppRadius.mdR,
-                      ),
+    return const Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: ShimmerShell(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 84,
+                child: AspectRatio(
+                  aspectRatio: 0.72,
+                  child: ShimmerBox(radius: AppRadius.md),
+                ),
+              ),
+              SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerBox(height: 16),
+                    SizedBox(height: AppSpacing.sm),
+                    ShimmerBox(width: 120, height: 12),
+                    SizedBox(height: AppSpacing.md),
+                    ShimmerBox(width: 160),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        ShimmerBox(width: 60, height: 24, radius: 999),
+                        SizedBox(width: AppSpacing.sm),
+                        ShimmerBox(width: 60, height: 24, radius: 999),
+                      ],
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: AppRadius.xsR,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        width: 120,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: AppRadius.xsR,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Container(
-                        width: 160,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: AppRadius.xsR,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: AppRadius.fullR,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Container(
-                            width: 60,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: AppRadius.fullR,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-              ],
-            ),
+              ),
+              SizedBox(width: AppSpacing.sm),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

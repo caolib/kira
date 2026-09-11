@@ -105,16 +105,22 @@ Do **not** "fix" this by giving `MainActivity` a LAUNCHER intent-filter: that ad
 - **Never** use `@ts-ignore`-equivalent suppression; fix the type error instead.
 - Prefer `const` constructors where possible.
 - Import `comic.dart` with `hide Theme` to avoid Flutter `Theme` conflict.
-- **Prefer design tokens over hard-coded values**: use `AppSpacing` (4/8/12/16/20/24), `AppRadius` (xs~xl/full + `*R` getters), and `ReaderChrome`/`PlayerChrome` color tokens. Only fall back to literals for genuinely ad-hoc values that carry component-specific meaning (e.g. a one-off 10px padding).
+ - **Prefer design tokens over hard-coded values**: use `AppSpacing` (4/8/12/16/20/24), `AppRadius` (xs~xl/full + `*R` getters), `AppIconSize` (xs 12 / sm 16 / md 18 / lg 20 / xl 24 / placeholder 32 / empty 48 / display 64), and `ReaderChrome`/`PlayerChrome` color tokens. Only fall back to literals for genuinely ad-hoc values that carry component-specific meaning (e.g. a one-off 10px padding).
+ - **Text styles**: derive from `Theme.of(context).textTheme`; use `AppTypography.meta(tt)` for the small grey meta line (12px) and `AppTypography.fabLabel(tt)` for FAB labels instead of hand-writing `TextStyle(fontSize: …)`. Do not add page-local TextTheme copies.
+ - **Component radius ladder**: 卡片 lg(16) / 对话框与弹层 xl(20) — enforced by `cardTheme`/`dialogTheme`/`bottomSheetTheme` in `main.dart`; don't override shapes per page.
+ - **Semantic colors**: status colors go through `AppStatusColors` (`success/warning/danger/neutral`, plus `hotAccent` for the comment hot-badge orange); never hand-code `Colors.green/orange/red` or raw `Color(0x…)` for these roles.
 
 ## Reusable Widget Patterns
 
 When extracting a shared widget, place it in `lib/widgets/` and follow these patterns:
 
-- **Skeleton/Shimmer**: Use `ShimmerBox` + `ShimmerShell` for loading states. Prefer `ComicCoverSkeletonGrid` or `ComicRowSkeletonList` for list placeholders.
-- **Error states**: Use `ErrorRetryView` (box) or `SliverErrorRetryView` (in CustomScrollView). Provide `onRetry` callback.
+- **Skeleton/Shimmer**: Use `ShimmerBox` + `ShimmerShell` for loading states. Prefer `ComicCoverSkeletonGrid` or `ComicRowSkeletonList` for list placeholders. `ShimmerBox` must sit inside a `ShimmerShell` to animate.
+- **Error states**: Use `ErrorRetryView` (box) or `SliverErrorRetryView` (in CustomScrollView). Provide `onRetry` callback. Inline banner-style errors (retry-all + dismiss, e.g. download center) are a different pattern — keep those bespoke.
+- **Bottom sheets**: Build new sheets with `showAppSheet` / `AppSheet` (`lib/widgets/app_sheet.dart`). Sheets that must own their frame use `AppSheet.borderRadius` + `AppSheet.backgroundColor(cs)` + `AppSheetHandle()` — never hand-roll a 36x4 handle or a raw `Radius.circular(20/24)`.
+- **Section headers**: Use `SectionHeader` (`lib/widgets/section_header.dart`) for "icon + 标题 (+ 更多)" rows; pass `trailing`/`onTap` for collapsible variants.
+- **Cover placeholders**: Use `CoverPlaceholder()` / `CoverPlaceholder.error()` for cover image placeholder/error boxes.
 - **Generic list pages**: Use `LocalContentListPage` with `LocalContentEntry` interface + adapters (`ComicLocalContentEntry`, `AnimeLocalContentEntry`).
-- **Login expired**: Use `showLoginExpiredDialog(context)` from `lib/widgets/login_expired_dialog.dart`.
+- **Login expired**: Use `showLoginExpiredDialog(context, content: …)` from `lib/widgets/login_expired_dialog.dart` — pass the page-specific copy; do not hand-roll the AlertDialog.
 
 ## Testing Guidelines
 

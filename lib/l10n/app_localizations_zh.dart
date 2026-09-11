@@ -1039,12 +1039,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkTestLatencyShort => '测速';
 
   @override
-  String get networkNodeGridRouteHint => '点击线路卡片切换当前线路';
-
-  @override
-  String get networkNodeGridFixedHint => '点击节点固定，将一直使用所选节点';
-
-  @override
   String get networkModeFixedNodeShort => '节点';
 
   @override
@@ -4170,12 +4164,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkTestLatencyShort => '測速';
-
-  @override
-  String get networkNodeGridRouteHint => '點擊線路卡片切換目前線路';
-
-  @override
-  String get networkNodeGridFixedHint => '點擊節點固定，將一直使用所選節點';
 
   @override
   String get networkModeFixedNodeShort => '節點';

@@ -46,7 +46,7 @@ bool _isHotMergedComment(int count) => count >= 10;
 
 const _commentCardCornerRadius = 10.0;
 
-const _hotCommentAccentColor = Color(0xFFFF7A2F);
+const _hotCommentAccentColor = AppStatusColors.hotAccent;
 
 double _hotCommentTagIconSize({required bool compact}) => compact ? 14.0 : 16.0;
 

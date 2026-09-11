@@ -1990,8 +1990,6 @@
   "networkStatusUnknown": "尚未檢測",
   "networkStatusUnknownHint": "點擊線路按鈕測速，了解各節點延遲",
   "networkTestLatencyShort": "測速",
-  "networkNodeGridRouteHint": "點擊線路卡片切換目前線路",
-  "networkNodeGridFixedHint": "點擊節點固定，將一直使用所選節點",
   "networkModeFixedNodeShort": "節點",
   "networkCurrentInUse": "使用中",
   "networkModeRouteDesc": "請求自動在線路內的節點間切換",

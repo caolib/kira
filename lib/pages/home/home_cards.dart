@@ -85,26 +85,8 @@ class _MangaCard extends StatelessWidget {
                       height: double.infinity,
                       fadeInDuration: Duration.zero,
                       fadeOutDuration: Duration.zero,
-                      placeholder: (_, _) => Container(
-                        color: cs.surfaceContainerHighest,
-                        child: Center(
-                          child: Icon(
-                            Icons.image,
-                            color: cs.onSurfaceVariant,
-                            size: 32,
-                          ),
-                        ),
-                      ),
-                      errorWidget: (_, _, _) => Container(
-                        color: cs.surfaceContainerHighest,
-                        child: Center(
-                          child: Icon(
-                            Icons.broken_image,
-                            color: cs.onSurfaceVariant,
-                            size: 32,
-                          ),
-                        ),
-                      ),
+                      placeholder: (_, _) => const CoverPlaceholder(),
+                      errorWidget: (_, _, _) => const CoverPlaceholder.error(),
                     ),
                   ),
                 ),
@@ -187,34 +169,10 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     return SliverToBoxAdapter(
       child: Padding(
         padding: EdgeInsets.fromLTRB(hp, 0, hp - 8, 6),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: cs.primary),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const Spacer(),
-            if (onMore != null)
-              TextButton(
-                onPressed: onMore,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(l10n.moreButton, style: TextStyle(color: cs.primary)),
-                    Icon(Icons.chevron_right, size: 18, color: cs.primary),
-                  ],
-                ),
-              ),
-          ],
-        ),
+        child: SectionHeader(title: title, icon: icon, onMore: onMore),
       ),
     );
   }
@@ -276,26 +234,8 @@ class ComicCard extends StatelessWidget {
                     height: double.infinity,
                     fadeInDuration: Duration.zero,
                     fadeOutDuration: Duration.zero,
-                    placeholder: (_, _) => Container(
-                      color: cs.surfaceContainerHighest,
-                      child: Center(
-                        child: Icon(
-                          Icons.image,
-                          color: cs.onSurfaceVariant,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (_, _, _) => Container(
-                      color: cs.surfaceContainerHighest,
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          color: cs.onSurfaceVariant,
-                          size: 32,
-                        ),
-                      ),
-                    ),
+                    placeholder: (_, _) => const CoverPlaceholder(),
+                    errorWidget: (_, _, _) => const CoverPlaceholder.error(),
                   ),
                 ),
               ),

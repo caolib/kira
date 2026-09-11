@@ -9,6 +9,7 @@ import '../utils/cover_brightness_filter.dart';
 import '../utils/time_format.dart';
 import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
+import 'cover_placeholder.dart';
 
 /// Reusable comic card with cover image, title, popular count, and optional
 /// update time. Used across home, search, bookshelf, category, etc.
@@ -135,19 +136,9 @@ class ComicCoverCard extends StatelessWidget {
     );
   }
 
-  static Widget _imagePlaceholder(ColorScheme cs) => Container(
-    color: cs.surfaceContainerHighest,
-    child: Center(
-      child: Icon(Icons.image, color: cs.onSurfaceVariant, size: 32),
-    ),
-  );
+  static Widget _imagePlaceholder(ColorScheme cs) => const CoverPlaceholder();
 
-  static Widget _imageError(ColorScheme cs) => Container(
-    color: cs.surfaceContainerHighest,
-    child: Center(
-      child: Icon(Icons.broken_image, color: cs.onSurfaceVariant, size: 32),
-    ),
-  );
+  static Widget _imageError(ColorScheme cs) => const CoverPlaceholder.error();
 
   static String formatPopular(int n, AppLocalizations l10n) {
     if (n >= 100000000) {

@@ -12,34 +12,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: cs.primary),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ),
-        if (onMore != null)
-          TextButton(
-            onPressed: onMore,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.moreButton, style: TextStyle(color: cs.primary)),
-                Icon(Icons.chevron_right, size: 18, color: cs.primary),
-              ],
-            ),
-          ),
-      ],
-    );
+    return SectionHeader(title: title, icon: icon, onMore: onMore);
   }
 }
 

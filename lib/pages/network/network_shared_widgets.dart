@@ -10,11 +10,11 @@ extension _HealthLevelX on _HealthLevel {
   Color color(ColorScheme cs) {
     switch (this) {
       case _HealthLevel.good:
-        return Colors.green;
+        return AppStatusColors.success(cs);
       case _HealthLevel.warn:
-        return Colors.orange;
+        return AppStatusColors.warning(cs);
       case _HealthLevel.bad:
-        return Colors.red;
+        return AppStatusColors.danger(cs);
       case _HealthLevel.busy:
         return cs.primary;
       case _HealthLevel.unknown:
@@ -29,12 +29,12 @@ extension _ToneX on _Tone {
   Color color(ColorScheme cs) {
     switch (this) {
       case _Tone.good:
-        return Colors.green;
+        return AppStatusColors.success(cs);
       case _Tone.warn:
-        return Colors.orange;
+        return AppStatusColors.warning(cs);
       case _Tone.bad:
       case _Tone.timeout:
-        return Colors.red;
+        return AppStatusColors.danger(cs);
       case _Tone.pending:
         return cs.onSurfaceVariant;
     }

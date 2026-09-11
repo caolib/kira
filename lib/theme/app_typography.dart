@@ -10,6 +10,18 @@ class AppTypography {
     if (fontSizeFactor == 1) return platformTextScaler;
     return _AppTextScaler(platformTextScaler, fontSizeFactor);
   }
+
+  /// Meta line under titles/inside cards: timestamps, counts, chapter names.
+  ///
+  /// Pages used to spell this as `labelSmall.copyWith(fontSize: 12)` in dozens
+  /// of ad-hoc places; keep one source so the app's "small grey text" never
+  /// drifts.
+  static TextStyle? meta(TextTheme tt) => tt.labelSmall?.copyWith(fontSize: 12);
+
+  /// Floating action button label — the two FAB sites used to disagree on
+  /// weight and letter spacing.
+  static TextStyle? fabLabel(TextTheme tt) =>
+      tt.labelLarge?.copyWith(fontSize: 13, fontWeight: FontWeight.w600);
 }
 
 @immutable

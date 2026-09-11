@@ -60,7 +60,7 @@ void main() {
     expect(find.text('120 ms'), findsOneWidget);
   });
 
-  testWidgets('shows timeout state and proxy hint when host is unreachable', (
+  testWidgets('shows timeout value on the host row when host is unreachable', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -78,8 +78,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // 右侧延迟值已显示「超时」，不再重复出现整行提示。
     expect(find.text('超时'), findsOneWidget);
-    expect(find.text('超时，无法连接'), findsOneWidget);
+    expect(find.text('超时，无法连接'), findsNothing);
   });
 
   testWidgets('refresh button re-runs the probe', (tester) async {

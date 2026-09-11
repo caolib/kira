@@ -15,6 +15,7 @@ class SettingsSection extends StatelessWidget {
   final IconData? icon;
   final String? title;
   final String? description;
+  final Widget? trailing;
   final Widget child;
   final EdgeInsetsGeometry padding;
   final Color? color;
@@ -24,6 +25,7 @@ class SettingsSection extends StatelessWidget {
     this.icon,
     this.title,
     this.description,
+    this.trailing,
     required this.child,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     this.color,
@@ -57,6 +59,7 @@ class SettingsSection extends StatelessWidget {
                           style: tt.titleSmall ?? tt.titleMedium,
                         ),
                       ),
+                    ?trailing,
                   ],
                 ),
               if (description != null) ...[

@@ -15,6 +15,7 @@ import '../repositories/comic_detail_repository.dart';
 import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
@@ -25,6 +26,7 @@ import '../utils/toast.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/comic_info_chips.dart';
 import '../widgets/download_settings_sheet.dart';
+import '../widgets/error_retry_view.dart';
 import 'comic_comments_sheet.dart';
 
 part 'comic_detail/comic_detail_actions.dart';
@@ -477,25 +479,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       body: _loadingComic
           ? const Center(child: ExpressiveLoadingIndicator())
           : _comic == null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: cs.onSurfaceVariant,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(AppLocalizations.of(context)!.loadingFailed),
-                  const SizedBox(height: AppSpacing.sm),
-                  FilledButton.tonal(
-                    onPressed: _loadComic,
-                    child: Text(AppLocalizations.of(context)!.retryButton),
-                  ),
-                ],
-              ),
-            )
+          ? ErrorRetryView(icon: Icons.error_outline, onRetry: _loadComic)
           : Stack(
               children: [
                 _buildBody(cs, tt),
@@ -558,7 +542,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                     _truncateNextChapterName(
                                       _nextBrowseChapter!.name,
                                     ),
-                                    style: const TextStyle(fontSize: 13),
+                                    style: AppTypography.fabLabel(
+                                      Theme.of(context).textTheme,
+                                    ),
                                   ),
                                 ),
                               if (_nextBrowseChapter != null &&
@@ -587,7 +573,9 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                                   icon: const Icon(Icons.play_arrow, size: 20),
                                   label: Text(
                                     _continueReadingLabel(),
-                                    style: const TextStyle(fontSize: 13),
+                                    style: AppTypography.fabLabel(
+                                      Theme.of(context).textTheme,
+                                    ),
                                   ),
                                 ),
                             ],

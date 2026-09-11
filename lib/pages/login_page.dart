@@ -571,10 +571,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildBottomBar(BuildContext context, AppLocalizations l10n) {
-    final cs = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
+    // 与页面背景同色：亮色下页面底是 surfaceContainer，写作 cs.surface 会差一档色阶。
     return Material(
-      color: cs.surface,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         top: false,
         child: Padding(

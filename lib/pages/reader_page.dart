@@ -34,6 +34,7 @@ import '../utils/network_error.dart';
 import '../utils/reading_history.dart';
 import '../utils/reading_stats.dart';
 import '../utils/toast.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/image_reveal_hold.dart';
 import '../widgets/pinch_zoomable.dart';
 import '../widgets/reader_status_overlay.dart';

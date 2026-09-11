@@ -1951,18 +1951,6 @@ abstract class AppLocalizations {
   /// **'测速'**
   String get networkTestLatencyShort;
 
-  /// No description provided for @networkNodeGridRouteHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'点击线路卡片切换当前线路'**
-  String get networkNodeGridRouteHint;
-
-  /// No description provided for @networkNodeGridFixedHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'点击节点固定，将一直使用所选节点'**
-  String get networkNodeGridFixedHint;
-
   /// No description provided for @networkModeFixedNodeShort.
   ///
   /// In zh, this message translates to:

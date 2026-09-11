@@ -14,6 +14,7 @@ import '../models/comic.dart' hide Theme;
 import '../models/user_manager.dart';
 import '../repositories/search_init_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
@@ -22,6 +23,7 @@ import '../utils/screen_layout.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/load_more_footer.dart';
+import '../widgets/section_header.dart';
 import 'home_page.dart' show ComicCard;
 
 part 'search/search_data.dart';
@@ -348,7 +350,6 @@ class _SearchPageState extends State<SearchPage> {
                           children: [
                             _buildSectionHeader(
                               icon: Icons.local_fire_department,
-                              color: cs.primary,
                               title: l10n.hotSearchTitle,
                               expanded: _hotSearchExpanded,
                               onTap: () => setState(
@@ -389,7 +390,6 @@ class _SearchPageState extends State<SearchPage> {
                           children: [
                             _buildSectionHeader(
                               icon: Icons.category,
-                              color: cs.primary,
                               title: l10n.allTagsTitle,
                               expanded: _allTagsExpanded,
                               trailing: Text(
@@ -524,7 +524,9 @@ class _SearchPageState extends State<SearchPage> {
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
               child: Material(
-                color: cs.surface,
+                // 与 Scaffold 背景同色（亮色下是 surfaceContainer 而非 surface），
+                // 否则搜索框顶部悬浮层与页面底色差一档色阶。
+                color: Theme.of(context).scaffoldBackgroundColor,
                 child: Padding(
                   padding: EdgeInsets.only(top: topInset),
                   child: _buildSearchHeader(context, hp),

@@ -16,37 +16,21 @@ extension _NetworkNodesSection on _NetworkPageState {
     return SettingsSection(
       icon: Icons.alt_route_rounded,
       title: l10n.networkNodesSectionTitle,
+      // 模式切换下拉放标题行右上角；标题下方直接跟模式说明。
+      trailing: SelectTile<NetworkSelectionMode>(
+        value: _user.networkSelectionMode,
+        items: [
+          SelectItem(NetworkSelectionMode.route, l10n.networkModeRoute),
+          SelectItem(
+            NetworkSelectionMode.fixedNode,
+            l10n.networkModeFixedNodeShort,
+          ),
+        ],
+        onChanged: _setSelectionMode,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.networkSelectionMode),
-            subtitle: Text(
-              isFixed
-                  ? l10n.networkModeFixedNodeDesc
-                  : l10n.networkModeRouteDesc,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            trailing: SelectTile<NetworkSelectionMode>(
-              value: _user.networkSelectionMode,
-              items: [
-                SelectItem(NetworkSelectionMode.route, l10n.networkModeRoute),
-                SelectItem(
-                  NetworkSelectionMode.fixedNode,
-                  l10n.networkModeFixedNodeShort,
-                ),
-              ],
-              onChanged: _setSelectionMode,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            isFixed
-                ? l10n.networkNodeGridFixedHint
-                : l10n.networkNodeGridRouteHint,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
           const SizedBox(height: AppSpacing.md),
           // 两种模式都始终展示全部线路：未测速时延迟显示为「—」，
           // 用户无需等测速完成即可点选。
