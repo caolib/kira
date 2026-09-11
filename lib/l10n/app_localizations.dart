@@ -5751,6 +5751,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下载'**
   String get downloadActionButton;
+
+  /// No description provided for @downloadForegroundTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在下载漫画'**
+  String get downloadForegroundTitle;
+
+  /// No description provided for @downloadForegroundChannel.
+  ///
+  /// In zh, this message translates to:
+  /// **'漫画下载'**
+  String get downloadForegroundChannel;
+
+  /// No description provided for @downloadForegroundBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载中 {active} 章 · 等待 {pending} 章'**
+  String downloadForegroundBody(int active, int pending);
+
+  /// No description provided for @downloadForegroundImages.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片 {done}/{total}'**
+  String downloadForegroundImages(int done, int total);
 }
 
 class _AppLocalizationsDelegate

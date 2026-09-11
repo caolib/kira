@@ -2020,5 +2020,29 @@
   "spoilerSuspectedComment": "这是一条高度剧透嫌疑的评论",
   "spoilerTapToView": "含剧透，点击查看",
   "alreadyCollectedLabel": "已收藏",
-  "downloadActionButton": "下载"
+  "downloadActionButton": "下载",
+  "downloadForegroundTitle": "正在下载漫画",
+  "downloadForegroundChannel": "漫画下载",
+  "downloadForegroundBody": "下载中 {active} 章 · 等待 {pending} 章",
+  "@downloadForegroundBody": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "pending": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadForegroundImages": "图片 {done}/{total}",
+  "@downloadForegroundImages": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

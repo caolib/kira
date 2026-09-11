@@ -1996,5 +1996,29 @@
   "networkModeFixedNodeDesc": "固定使用單一節點",
   "networkNodesSectionTitle": "線路與節點",
   "alreadyCollectedLabel": "已收藏",
-  "downloadActionButton": "下載"
+  "downloadActionButton": "下載",
+  "downloadForegroundTitle": "正在下載漫畫",
+  "downloadForegroundChannel": "漫畫下載",
+  "downloadForegroundBody": "下載中 {active} 章 · 等待 {pending} 章",
+  "@downloadForegroundBody": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "pending": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadForegroundImages": "圖片 {done}/{total}",
+  "@downloadForegroundImages": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

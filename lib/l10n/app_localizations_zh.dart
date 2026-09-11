@@ -3129,6 +3129,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadActionButton => '下载';
+
+  @override
+  String get downloadForegroundTitle => '正在下载漫画';
+
+  @override
+  String get downloadForegroundChannel => '漫画下载';
+
+  @override
+  String downloadForegroundBody(int active, int pending) {
+    return '下载中 $active 章 · 等待 $pending 章';
+  }
+
+  @override
+  String downloadForegroundImages(int done, int total) {
+    return '图片 $done/$total';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -6256,4 +6272,20 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get downloadActionButton => '下載';
+
+  @override
+  String get downloadForegroundTitle => '正在下載漫畫';
+
+  @override
+  String get downloadForegroundChannel => '漫畫下載';
+
+  @override
+  String downloadForegroundBody(int active, int pending) {
+    return '下載中 $active 章 · 等待 $pending 章';
+  }
+
+  @override
+  String downloadForegroundImages(int done, int total) {
+    return '圖片 $done/$total';
+  }
 }
