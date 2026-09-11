@@ -1760,6 +1760,9 @@
       }
     }
   },
+  "downloadBatchFailedCount": "有 {count} 章下載失敗（自動重試後仍未成功）",
+  "downloadBatchRetryAll": "重試失敗章節",
+  "downloadBatchRequeued": "已重新加入下載佇列 {count} 章",
   "commentSettingsEnableAiSummary": "啟用 AI 總結",
   "commentSettingsAiSummaryEnabledDesc": "評論頂部顯示 AI 總結按鈕",
   "commentSettingsAiSummaryDisabled": "未啟用",

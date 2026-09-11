@@ -2674,6 +2674,19 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String downloadBatchFailedCount(int count) {
+    return '有 $count 章下载失败（自动重试后仍未成功）';
+  }
+
+  @override
+  String get downloadBatchRetryAll => '重试失败章节';
+
+  @override
+  String downloadBatchRequeued(int count) {
+    return '已重新加入下载队列 $count 章';
+  }
+
+  @override
   String get commentSettingsEnableAiSummary => '启用 AI 总结';
 
   @override
@@ -5701,6 +5714,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
     int failed,
   ) {
     return '$percent% ($completed/$total)，失敗 $failed';
+  }
+
+  @override
+  String downloadBatchFailedCount(int count) {
+    return '有 $count 章下載失敗（自動重試後仍未成功）';
+  }
+
+  @override
+  String get downloadBatchRetryAll => '重試失敗章節';
+
+  @override
+  String downloadBatchRequeued(int count) {
+    return '已重新加入下載佇列 $count 章';
   }
 
   @override

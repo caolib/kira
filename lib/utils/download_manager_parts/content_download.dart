@@ -125,6 +125,17 @@ extension DownloadManagerContentDownloadPart on DownloadManager {
       attempt <= DownloadManager._imageMaxRetries;
       attempt++
     ) {
+      if (attempt > 0) {
+        // 退避后重试；上次因 429 被限流时加倍等待。
+        await Future<void>.delayed(
+          DownloadManager.imageRetryDelay(
+            attempt,
+            rateLimited:
+                lastError is _ImageStatusException &&
+                lastError.statusCode == HttpStatus.tooManyRequests,
+          ),
+        );
+      }
       try {
         return await _downloadImageOnce(imageUrl, chapterDir, index);
       } catch (e) {
@@ -172,10 +183,7 @@ extension DownloadManagerContentDownloadPart on DownloadManager {
     final response = await request.close().timeout(DownloadManager._timeout);
 
     if (response.statusCode != HttpStatus.ok) {
-      throw HttpException(
-        'Image download failed (${response.statusCode})',
-        uri: uri,
-      );
+      throw _ImageStatusException(response.statusCode, uri);
     }
 
     final extension = _resolveImageExtension(uri, response);
@@ -214,4 +222,15 @@ extension DownloadManagerContentDownloadPart on DownloadManager {
 
     return '.jpg';
   }
+}
+
+/// 图片响应非 200：携带状态码，供重试时识别 429 限流并延长退避。
+class _ImageStatusException implements Exception {
+  final int statusCode;
+  final Uri uri;
+
+  const _ImageStatusException(this.statusCode, this.uri);
+
+  @override
+  String toString() => 'Image download failed ($statusCode): $uri';
 }

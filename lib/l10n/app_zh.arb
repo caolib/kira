@@ -1787,6 +1787,23 @@
       }
     }
   },
+  "downloadBatchFailedCount": "有 {count} 章下载失败（自动重试后仍未成功）",
+  "@downloadBatchFailedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadBatchRetryAll": "重试失败章节",
+  "downloadBatchRequeued": "已重新加入下载队列 {count} 章",
+  "@downloadBatchRequeued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "commentSettingsEnableAiSummary": "启用 AI 总结",
   "commentSettingsAiSummaryEnabledDesc": "评论顶部显示 AI 总结按钮",
   "commentSettingsAiSummaryDisabled": "未启用",

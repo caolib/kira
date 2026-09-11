@@ -5,6 +5,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
+import '../utils/toast.dart';
 import '../widgets/download_settings_sheet.dart';
 import 'local_comics_page.dart';
 
@@ -79,12 +80,39 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
             embedded: true,
             trailingAction: _settingsFab('download_settings_comic'),
           ),
-          _withSettingsFab(
+          _buildQueueTab(),
+        ],
+      ),
+    );
+  }
+
+  /// 队列页：顶部可选的批次失败提示条 + 任务列表 + 设置悬浮按钮。
+  Widget _buildQueueTab() {
+    final summary = _comicDownloads.lastBatchSummary;
+    return Column(
+      children: [
+        if (summary != null)
+          _BatchSummaryBanner(
+            summary: summary,
+            onRetry: _retryFailedBatch,
+            onDismiss: _comicDownloads.clearBatchSummary,
+          ),
+        Expanded(
+          child: _withSettingsFab(
             _ComicDownloadQueueView(),
             'download_settings_queue',
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _retryFailedBatch() async {
+    final added = await _comicDownloads.retryFailedBatch();
+    if (!mounted || added == 0) return;
+    showToast(
+      context,
+      AppLocalizations.of(context)!.downloadBatchRequeued(added),
     );
   }
 
@@ -107,6 +135,61 @@ class _DownloadCenterPageState extends State<DownloadCenterPage>
         Positioned.fill(child: child),
         Positioned(right: 16, bottom: 16, child: _settingsFab(heroTag)),
       ],
+    );
+  }
+}
+
+/// 批次下载结束后有失败章节时，在队列页顶部展示的提示条。
+class _BatchSummaryBanner extends StatelessWidget {
+  final DownloadBatchSummary summary;
+  final VoidCallback onRetry;
+  final VoidCallback onDismiss;
+
+  const _BatchSummaryBanner({
+    required this.summary,
+    required this.onRetry,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Material(
+      color: cs.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.xs,
+          AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, size: 20, color: cs.onErrorContainer),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                l10n.downloadBatchFailedCount(summary.failures.length),
+                style: tt.bodyMedium?.copyWith(color: cs.onErrorContainer),
+              ),
+            ),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(foregroundColor: cs.onErrorContainer),
+              child: Text(l10n.downloadBatchRetryAll),
+            ),
+            IconButton(
+              onPressed: onDismiss,
+              icon: const Icon(Icons.close),
+              iconSize: 18,
+              color: cs.onErrorContainer,
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

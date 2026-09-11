@@ -116,6 +116,7 @@ extension DownloadManagerQueriesPart on DownloadManager {
     );
     _queuedKeys.add(key);
     _notifyListeners();
+    _wakeQueue();
     unawaited(_processQueue());
     return true;
   }
@@ -130,6 +131,44 @@ extension DownloadManagerQueriesPart on DownloadManager {
     return count;
   }
 
+  /// 一键重试上一批次的失败章节：全部重新入队并重置尝试次数。
+  ///
+  /// 返回成功入队的数量；原失败汇总随之清除。
+  Future<int> retryFailedBatch() async {
+    await init();
+    if (_batchFailures.isEmpty) return 0;
+
+    var added = 0;
+    for (final failure in _batchFailures) {
+      final task = failure.task;
+      final key = _taskKey(task.pathWord, task.chapter.uuid);
+      if (_queuedKeys.contains(key)) continue;
+      if (!task.isRetry && isDownloaded(task.pathWord, task.chapter.uuid)) {
+        continue;
+      }
+      _queue.add(
+        _DownloadTask(
+          pathWord: task.pathWord,
+          group: task.group,
+          chapter: task.chapter,
+          isRetry: task.isRetry,
+        ),
+      );
+      _queuedKeys.add(key);
+      added++;
+    }
+
+    // 失败章节已重新入队或均已无效，原汇总不再展示。
+    _batchFailures = const [];
+    _lastBatchSummary = null;
+    _notifyListeners();
+    if (added > 0) {
+      _wakeQueue();
+      unawaited(_processQueue());
+    }
+    return added;
+  }
+
   Future<int> enqueueChapters({
     required String pathWord,
     required Comic comic,
@@ -138,8 +177,12 @@ extension DownloadManagerQueriesPart on DownloadManager {
   }) async {
     await init();
 
+    // 按话数升序入队：无论列表当前正序还是逆序展示，先下载靠前的章节。
+    final ordered = chapters.toList()
+      ..sort(DownloadManager.chapterDownloadOrder);
+
     var added = 0;
-    for (final chapter in chapters) {
+    for (final chapter in ordered) {
       if (chapter.uuid.isEmpty || isDownloaded(pathWord, chapter.uuid)) {
         continue;
       }
@@ -158,6 +201,7 @@ extension DownloadManagerQueriesPart on DownloadManager {
       // 章节先入队并立刻通知 UI，漫画元数据/封面在后台准备，
       // 避免点击下载后因等待封面等网络请求产生停顿。
       _notifyListeners();
+      _wakeQueue();
       unawaited(_processQueue());
       _scheduleComicPrepare(pathWord, comic);
     }

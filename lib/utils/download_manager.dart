@@ -16,7 +16,6 @@ part 'download_manager_parts/content_download.dart';
 part 'download_manager_parts/delete_migrate.dart';
 part 'download_manager_parts/queries.dart';
 
-
 class DownloadManager extends ChangeNotifier {
   static final DownloadManager _instance = DownloadManager._();
   factory DownloadManager() => _instance;
@@ -32,6 +31,22 @@ class DownloadManager extends ChangeNotifier {
 
   /// 单张图片下载失败时的最大重试次数（不含首次）。
   static const int _imageMaxRetries = 2;
+
+  /// 单图重试的基础退避时长（第 1/2 次重试前）；遇 429 限流加倍。
+  static const List<Duration> _imageRetryBaseDelays = [
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+  ];
+
+  /// 整章下载失败的最大尝试次数（含首次，超出后放弃并记入批次失败）。
+  static const int _chapterMaxAttempts = 4;
+
+  /// 整章自动重试的退避时长：第 1/2/3 次重试前各等一档。
+  static const List<Duration> _chapterRetryDelays = [
+    Duration(seconds: 5),
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+  ];
 
   /// 并发下载数量的持久化键。
   static const _keyImageConcurrency = 'download_image_concurrency';
@@ -75,6 +90,24 @@ class DownloadManager extends ChangeNotifier {
   Directory? _rootDirectory;
   String? _activeKey;
   ChapterDownloadProgress? _activeProgress;
+  Completer<void>? _queueWake;
+
+  /// 当前批次的整章失败记录，保留原任务供"重试失败章节"重新入队。
+  List<_BatchChapterFailure> _batchFailures = const [];
+
+  /// 最近一次队列清空后的批次汇总；无失败章节或已被清除时为 null。
+  DownloadBatchSummary? _lastBatchSummary;
+
+  /// 最近一次批量下载的失败汇总；无失败或已被清除/替换时为 null。
+  DownloadBatchSummary? get lastBatchSummary => _lastBatchSummary;
+
+  /// 清除批次失败汇总（用户关闭提示条后调用）。
+  void clearBatchSummary() {
+    if (_lastBatchSummary == null && _batchFailures.isEmpty) return;
+    _batchFailures = const [];
+    _lastBatchSummary = null;
+    notifyListeners();
+  }
 
   /// extension part 文件里的成员不是 DownloadManager 自身的成员，不能直接调用受
   /// 保护的 [notifyListeners]，统一经由这个转发方法。
@@ -152,6 +185,33 @@ class DownloadManager extends ChangeNotifier {
     return value;
   }
 
+  /// 单图第 [retryIndex]（从 1 起）次重试前的等待时长；[rateLimited] 为
+  /// true（429 限流）时加倍。
+  static Duration imageRetryDelay(int retryIndex, {bool rateLimited = false}) {
+    final base =
+        _imageRetryBaseDelays[(retryIndex - 1).clamp(
+          0,
+          _imageRetryBaseDelays.length - 1,
+        )];
+    return rateLimited ? base * 4 : base;
+  }
+
+  /// 整章第 [retryIndex]（从 1 起）次自动重试前的退避时长。
+  static Duration chapterRetryDelay(int retryIndex) =>
+      _chapterRetryDelays[(retryIndex - 1).clamp(
+        0,
+        _chapterRetryDelays.length - 1,
+      )];
+
+  /// 章节下载顺序比较器：ordered > 0 时按 ordered 升序，否则按 index；
+  /// 同序时按 uuid 决出稳定次序（Dart 的 sort 不保证稳定）。
+  static int chapterDownloadOrder(Chapter a, Chapter b) {
+    final orderA = a.ordered > 0 ? a.ordered : a.index;
+    final orderB = b.ordered > 0 ? b.ordered : b.index;
+    if (orderA != orderB) return orderA.compareTo(orderB);
+    return a.uuid.compareTo(b.uuid);
+  }
+
   final Map<String, Future<void>> _comicPrepares = {};
 
   void _scheduleComicPrepare(String pathWord, Comic comic) {
@@ -223,20 +283,37 @@ class DownloadManager extends ChangeNotifier {
     if (_processing) return;
     _processing = true;
 
+    var succeeded = 0;
+    final failures = <_BatchChapterFailure>[];
+
     try {
       while (_queue.isNotEmpty) {
-        // 取队首任务但暂不移除，使其在下载期间仍显示在队列中。
-        final task = _queue.first;
+        final now = DateTime.now();
+        final index = _queue.indexWhere((task) => task.isEligibleAt(now));
+        if (index < 0) {
+          // 剩余任务都在自动重试退避窗口内：等到最早到期或新任务入队唤醒。
+          await _waitForNextEligible();
+          continue;
+        }
+
+        // 暂不移除，使其在下载期间仍显示在队列中。
+        final task = _queue[index];
         final key = _taskKey(task.pathWord, task.chapter.uuid);
         _activeKey = key;
         _activeProgress = null;
         notifyListeners();
 
+        var success = false;
         try {
           await _downloadChapter(task, isRetry: task.isRetry);
-        } catch (e) {
-          debugPrint(
-            'Download chapter failed: ${task.pathWord}/${task.chapter.uuid} $e',
+          success = true;
+        } catch (e, st) {
+          unawaited(
+            AppLogger.instance.recordWarning(
+              'Download chapter failed (attempt ${task.attempt}): '
+              '${task.pathWord}/${task.chapter.uuid}: $e',
+              stackTrace: st,
+            ),
           );
         } finally {
           _queue.remove(task);
@@ -245,10 +322,85 @@ class DownloadManager extends ChangeNotifier {
           _activeProgress = null;
           notifyListeners();
         }
+
+        if (success) {
+          succeeded++;
+          continue;
+        }
+
+        if (task.attempt < _chapterMaxAttempts) {
+          // 自动重试：排到队尾并等待退避窗口，先放行后续章节。
+          final retryAt = DateTime.now().add(chapterRetryDelay(task.attempt));
+          _queue.add(task.copyWithRetry(retryAt));
+          _queuedKeys.add(key);
+          notifyListeners();
+        } else {
+          // 重试耗尽：记入批次失败，供 UI 提示与一键重试。
+          final info = getLocalComicInfo(task.pathWord);
+          failures.add(
+            _BatchChapterFailure(
+              task: task,
+              comicName: info?.comic.name ?? task.pathWord,
+              cover: info?.comic.cover,
+            ),
+          );
+        }
+      }
+
+      if (failures.isNotEmpty) {
+        _batchFailures = failures;
+        _lastBatchSummary = DownloadBatchSummary(
+          succeeded: succeeded,
+          finishedAt: DateTime.now(),
+          failures: [
+            for (final failure in failures)
+              DownloadBatchFailure(
+                pathWord: failure.task.pathWord,
+                chapterUuid: failure.task.chapter.uuid,
+                chapterName: failure.task.chapter.name,
+                comicName: failure.comicName,
+                cover: failure.cover,
+                isRetry: failure.task.isRetry,
+              ),
+          ],
+        );
       }
     } finally {
       _processing = false;
       notifyListeners();
+    }
+  }
+
+  /// 队列剩余任务全部处于自动重试退避窗口内时，等待最早到期时间；
+  /// 期间新任务入队（[_wakeQueue]）则提前返回。
+  Future<void> _waitForNextEligible() async {
+    final now = DateTime.now();
+    DateTime? earliest;
+    for (final task in _queue) {
+      final notBefore = task.notBefore;
+      if (notBefore == null || !notBefore.isAfter(now)) return;
+      if (earliest == null || notBefore.isBefore(earliest)) {
+        earliest = notBefore;
+      }
+    }
+    final wait = earliest?.difference(now);
+    if (wait == null || wait <= Duration.zero) return;
+
+    final wake = Completer<void>();
+    _queueWake = wake;
+    try {
+      await Future.any<void>([wake.future, Future<void>.delayed(wait)]);
+    } finally {
+      _queueWake = null;
+      if (!wake.isCompleted) wake.complete();
+    }
+  }
+
+  /// 唤醒正在等待退避窗口的队列循环（新任务入队时调用）。
+  void _wakeQueue() {
+    final wake = _queueWake;
+    if (wake != null && !wake.isCompleted) {
+      wake.complete();
     }
   }
 
@@ -299,7 +451,22 @@ class DownloadManager extends ChangeNotifier {
         chapterDir,
         existing: existing,
       );
-      final comments = await commentsFuture;
+      // 评论拉取失败不连累整章：降级为已有评论或空评论，图片照常保存。
+      var comments = (list: const <ChapterComment>[], total: 0);
+      try {
+        comments = await commentsFuture;
+      } catch (e, st) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            'Download chapter comments failed: ${task.chapter.uuid}: $e',
+            stackTrace: st,
+          ),
+        );
+        comments = await _loadExistingComments(
+          task.pathWord,
+          task.chapter.uuid,
+        );
+      }
 
       // 处理结果：失败页记为空串，收集失败索引。
       final failedIndices = <int>[];
@@ -715,13 +882,33 @@ class _DownloadTask {
   final Chapter chapter;
   // true 表示这是对已有部分下载的"补全重试"：不清空目录、不重复下载成功页。
   final bool isRetry;
+  // 已执行的尝试次数（含当前，从 1 起）；用于整章失败后的自动重试退避。
+  final int attempt;
+  // 自动重试的退避到期时间；早于该时刻的任务不会被领取。
+  final DateTime? notBefore;
 
   const _DownloadTask({
     required this.pathWord,
     required this.group,
     required this.chapter,
     this.isRetry = false,
+    this.attempt = 1,
+    this.notBefore,
   });
+
+  /// 是否已到可领取时间（自动重试退避窗口已过）。
+  bool isEligibleAt(DateTime now) =>
+      notBefore == null || !notBefore!.isAfter(now);
+
+  /// 生成下一次自动重试的任务副本：尝试次数 +1、退避到期时间为 [retryAt]。
+  _DownloadTask copyWithRetry(DateTime retryAt) => _DownloadTask(
+    pathWord: pathWord,
+    group: group,
+    chapter: chapter,
+    isRetry: isRetry,
+    attempt: attempt + 1,
+    notBefore: retryAt,
+  );
 }
 
 class LocalComicInfo {
@@ -791,5 +978,52 @@ class ComicDownloadTaskInfo {
     this.cover,
     required this.status,
     this.progress,
+  });
+}
+
+/// 批次内单章失败记录，保留原任务以便"重试失败章节"重新入队。
+class _BatchChapterFailure {
+  final _DownloadTask task;
+  final String comicName;
+  final String? cover;
+
+  const _BatchChapterFailure({
+    required this.task,
+    required this.comicName,
+    this.cover,
+  });
+}
+
+/// 批量下载中单章失败的记录，供 UI 展示。
+class DownloadBatchFailure {
+  final String pathWord;
+  final String chapterUuid;
+  final String chapterName;
+  final String comicName;
+  final String? cover;
+
+  /// 是否为手动补全（partial 重试）失败；false 表示全新下载失败。
+  final bool isRetry;
+
+  const DownloadBatchFailure({
+    required this.pathWord,
+    required this.chapterUuid,
+    required this.chapterName,
+    required this.comicName,
+    this.cover,
+    this.isRetry = false,
+  });
+}
+
+/// 队列清空后的批次下载汇总：成功章数与失败章清单。
+class DownloadBatchSummary {
+  final int succeeded;
+  final List<DownloadBatchFailure> failures;
+  final DateTime finishedAt;
+
+  const DownloadBatchSummary({
+    required this.succeeded,
+    required this.failures,
+    required this.finishedAt,
   });
 }

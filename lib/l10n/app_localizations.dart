@@ -4888,6 +4888,24 @@ abstract class AppLocalizations {
     int failed,
   );
 
+  /// No description provided for @downloadBatchFailedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'有 {count} 章下载失败（自动重试后仍未成功）'**
+  String downloadBatchFailedCount(int count);
+
+  /// No description provided for @downloadBatchRetryAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试失败章节'**
+  String get downloadBatchRetryAll;
+
+  /// No description provided for @downloadBatchRequeued.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重新加入下载队列 {count} 章'**
+  String downloadBatchRequeued(int count);
+
   /// No description provided for @commentSettingsEnableAiSummary.
   ///
   /// In zh, this message translates to:

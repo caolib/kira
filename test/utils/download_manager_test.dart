@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/models/chapter.dart';
 import 'package:kira/utils/download_manager.dart';
 
 void main() {
@@ -67,6 +68,69 @@ void main() {
         chapterOrder: 9,
       );
       expect(summary.sortOrder, 9);
+    });
+  });
+
+  group('chapterDownloadOrder', () {
+    Chapter ch(int ordered, int index, [String uuid = 'u']) =>
+        Chapter(uuid: uuid, index: index, name: 'n', ordered: ordered);
+
+    test('sorts by ordered ascending', () {
+      final list = [ch(29, 0, 'a'), ch(13, 1, 'b')];
+      list.sort(DownloadManager.chapterDownloadOrder);
+      expect(list.map((c) => c.ordered).toList(), [13, 29]);
+    });
+
+    test('falls back to index when ordered is 0', () {
+      final list = [ch(0, 5, 'a'), ch(0, 2, 'b')];
+      list.sort(DownloadManager.chapterDownloadOrder);
+      expect(list.map((c) => c.index).toList(), [2, 5]);
+    });
+
+    test('mixed ordered/index uses ordered when present', () {
+      final list = [ch(0, 7, 'a'), ch(3, 1, 'b'), ch(0, 2, 'c')];
+      list.sort(DownloadManager.chapterDownloadOrder);
+      expect(list.map((c) => c.ordered > 0 ? c.ordered : c.index).toList(), [
+        2,
+        3,
+        7,
+      ]);
+    });
+
+    test('equal keys resolve deterministically by uuid', () {
+      final list = [ch(1, 0, 'b'), ch(1, 0, 'a')];
+      list.sort(DownloadManager.chapterDownloadOrder);
+      expect(list.first.uuid, 'a');
+    });
+  });
+
+  group('chapterRetryDelay', () {
+    test('escalates 5s/15s/30s and clamps out-of-range indices', () {
+      expect(DownloadManager.chapterRetryDelay(1), const Duration(seconds: 5));
+      expect(DownloadManager.chapterRetryDelay(2), const Duration(seconds: 15));
+      expect(DownloadManager.chapterRetryDelay(3), const Duration(seconds: 30));
+      expect(
+        DownloadManager.chapterRetryDelay(99),
+        const Duration(seconds: 30),
+      );
+      expect(DownloadManager.chapterRetryDelay(0), const Duration(seconds: 5));
+    });
+  });
+
+  group('imageRetryDelay', () {
+    test('base delays 1s/2s, rate-limited doubles and clamps', () {
+      expect(DownloadManager.imageRetryDelay(1), const Duration(seconds: 1));
+      expect(DownloadManager.imageRetryDelay(2), const Duration(seconds: 2));
+      expect(DownloadManager.imageRetryDelay(3), const Duration(seconds: 2));
+      expect(
+        DownloadManager.imageRetryDelay(1, rateLimited: true),
+        const Duration(seconds: 4),
+      );
+      expect(
+        DownloadManager.imageRetryDelay(2, rateLimited: true),
+        const Duration(seconds: 8),
+      );
+      expect(DownloadManager.imageRetryDelay(0), const Duration(seconds: 1));
     });
   });
 
