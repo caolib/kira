@@ -181,7 +181,8 @@ Future<void> deleteAll();
 - 偏好键 `download_save_directory`（`download_` 前缀族），存绝对路径；缺省/置空 = 应用内部默认目录。
 - 启动解析：自定义目录存在、可创建且可写探测通过才使用，否则回退默认（如换机恢复备份后路径失效）。
 - 切换目录时逐漫画迁移（同卷 rename / 跨卷 copy+delete），并重写 `chapter.json` 的 `contents` 与 `comic.json` 的 `cover_path`/`comic.cover` 绝对路径前缀；manifest 只含相对标识无需改写。
-- Android 侧授权：API 30+ 为 `MANAGE_EXTERNAL_STORAGE`（"所有文件访问"开关页），API ≤29 为 `WRITE_EXTERNAL_STORAGE`；选目录用 `file_picker`（`lib/utils/download_directory.dart`）。
+- Android 侧授权:API 30+ 走 `MANAGE_EXTERNAL_STORAGE`("所有文件访问"系统开关页,**不是**应用内运行时弹窗);API ≤29 期望退化到 `WRITE_EXTERNAL_STORAGE` 的运行时授权。两者都**必须**声明在 `android/app/src/main/AndroidManifest.xml` 的 `<uses-permission>` —— `permission_handler` 的 `determinePermissionStatus`/`requestPermissions` 会先查 manifest,缺声明时直接判定 `denied` 并 `continue`,不会调用 `launchSpecialPermission`,表现为点"保存位置"立刻提示"未授予存储权限"、无任何系统页或弹窗。选目录用 `file_picker`(`lib/utils/download_directory.dart`)。
+  - 已知缺口:Android 10(API 29)下 `Permission.storage` 仅在 `WRITE_EXTERNAL_STORAGE` 已声明**且** `Environment.isExternalStorageLegacy()` 为真时才请求;当前未声明 `requestLegacyExternalStorage`,该分支 manifest names 为空,同样静默失败(API 24-28 不受影响)。
 
 `_ReaderImageFileService`（`reader_image_cache.dart:3`）按响应 `Cache-Control: max-age` 解析有效期，默认 7 天，`no-cache` 立即过期。
 
