@@ -39,6 +39,10 @@ const extraApiHostKinds = {
   _hostWeb: ExtraApiHostKind.hotLogin,
 };
 
+/// 热辣漫画网页登录/注册域名（网络页「热辣登录」节点；登录页状态卡探测用）。
+/// 热辣账号登录走 [routes] 线路节点，但注册（/api/v2/register）固定使用该域名。
+const hotLoginHost = _hostWeb;
+
 const routes = [
   ['mapi.hotmangasg.com', 'mapi.hotmangasd.com', 'mapi.hotmangasf.com'],
   ['mapi.elfgjfghkk.club', 'mapi.fgjfghkkcenter.club', 'mapi.fgjfghkk.club'],

@@ -851,6 +851,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkHotLoginHost => '热辣登录';
 
   @override
+  String get loginNodeUnreachable => '超时，无法连接';
+
+  @override
   String get networkFixedApiHost => '固定接口';
 
   @override
@@ -1563,6 +1566,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileCopyMangaLabel => '拷贝漫画';
+
+  @override
+  String get loginGoOfficialRegisterHot => '前往官网注册账号';
+
+  @override
+  String get loginGoOfficialRegisterCopy => '前往官网注册账号';
 
   @override
   String get aboutMirrorPrefixTitle => '设置镜像源';
@@ -3947,6 +3956,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkHotLoginHost => '熱辣登入';
 
   @override
+  String get loginNodeUnreachable => '逾時，無法連線';
+
+  @override
   String get networkFixedApiHost => '固定接口';
 
   @override
@@ -4659,6 +4671,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get profileCopyMangaLabel => '拷貝漫畫';
+
+  @override
+  String get loginGoOfficialRegisterHot => '前往官網註冊帳號';
+
+  @override
+  String get loginGoOfficialRegisterCopy => '前往官網註冊帳號';
 
   @override
   String get aboutMirrorPrefixTitle => '設定鏡像源';

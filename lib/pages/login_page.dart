@@ -11,6 +11,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../utils/toast.dart';
+import '../widgets/login_node_status.dart';
 import 'register_page.dart' show RegisterPrefill;
 
 List<BoxShadow> _profileCardShadow(ColorScheme cs) => AppShadows.md(cs);
@@ -311,6 +312,8 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // 应用内注册入口暂时隐藏，但功能保留（路由未删），恢复时重新引用本方法。
+  // ignore: unused_element
   Future<void> _goRegister() async {
     final result = await context.pushNamed<RegisterPrefill>(AppRoutes.register);
     if (result == null || !mounted) return;
@@ -531,6 +534,8 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            LoginNodeStatusCard(useCopyLogin: _useCopyLogin),
+            const SizedBox(height: AppSpacing.lg),
             ..._buildAccountPasswordForm(context, cs),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.md),
@@ -582,13 +587,8 @@ class _LoginPageState extends State<LoginPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (!_useCopyLogin) ...[
-                TextButton(
-                  onPressed: _loading ? null : _goRegister,
-                  child: Text(l10n.profileRegisterButton),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-              ],
+              // 应用内注册入口暂时隐藏（功能保留，路由与 RegisterPage 未删），
+              // 只保留官网注册跳转。
               TextButton.icon(
                 key: ValueKey(
                   _useCopyLogin
@@ -599,8 +599,8 @@ class _LoginPageState extends State<LoginPage> {
                 icon: const Icon(Icons.open_in_new, size: 16),
                 label: Text(
                   _useCopyLogin
-                      ? l10n.profileCopyMangaLabel
-                      : l10n.profileHotMangaLabel,
+                      ? l10n.loginGoOfficialRegisterCopy
+                      : l10n.loginGoOfficialRegisterHot,
                 ),
               ),
             ],

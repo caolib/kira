@@ -1615,6 +1615,12 @@ abstract class AppLocalizations {
   /// **'热辣登录'**
   String get networkHotLoginHost;
 
+  /// No description provided for @loginNodeUnreachable.
+  ///
+  /// In zh, this message translates to:
+  /// **'超时，无法连接'**
+  String get loginNodeUnreachable;
+
   /// No description provided for @networkFixedApiHost.
   ///
   /// In zh, this message translates to:
@@ -2933,6 +2939,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'拷贝漫画'**
   String get profileCopyMangaLabel;
+
+  /// No description provided for @loginGoOfficialRegisterHot.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往官网注册账号'**
+  String get loginGoOfficialRegisterHot;
+
+  /// No description provided for @loginGoOfficialRegisterCopy.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往官网注册账号'**
+  String get loginGoOfficialRegisterCopy;
 
   /// No description provided for @aboutMirrorPrefixTitle.
   ///

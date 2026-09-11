@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/app_dio.dart';
 import '../../utils/network_error.dart';
+import '../../utils/network_proxy.dart';
 import '../api_transport.dart';
 
 class NetworkApi {
@@ -48,11 +49,14 @@ class NetworkApi {
   }
 
   /// 测试指定线路所有 host 的延迟，返回 {host: 毫秒数，超时为 null}
+  ///
+  /// 遵循应用代理设置：测得的是「按当前网络设置实际到达该节点的延迟」，
+  /// 与 API 实际请求路径一致，避免代理用户被直连测速误导。
   Future<Map<String, int?>> testRouteLatency(
     int routeIndex, {
     void Function(String host, int? latency)? onHostResult,
   }) async {
-    final results = await _testHostsLatency(
+    final results = await testHostsConnectivity(
       getRouteHosts(routeIndex),
       onHostResult: onHostResult,
     );
@@ -65,10 +69,56 @@ class NetworkApi {
   }
 
   /// 测试固定 API / Web host 的延迟，仅用于诊断展示，不参与线路权重。
+  ///
+  /// 同样遵循应用代理设置（见 [testHostsConnectivity]）。
   Future<Map<String, int?>> testExtraApiLatency({
     void Function(String host, int? latency)? onHostResult,
   }) {
-    return _testHostsLatency(getExtraApiHosts(), onHostResult: onHostResult);
+    return testHostsConnectivity(
+      getExtraApiHosts(),
+      onHostResult: onHostResult,
+    );
+  }
+
+  /// 测试给定 host 列表的连通延迟（所有诊断测速共用），不涉及业务请求。
+  ///
+  /// 通过 [HttpClient] 建立连接，遵循应用代理设置（系统/手动/直连）——
+  /// 代理模式下先完成 CONNECT 隧道再做 TLS 握手，测得的是「按当前网络
+  /// 设置实际到达该 host 的延迟」，与 API 实际请求路径一致；直连测速
+  /// 会误导开了代理的用户（浏览器能打开官网、诊断却显示超时）。
+  /// `openUrl` 在连接建立后完成，随即 `abort`，不发送任何请求。
+  Future<Map<String, int?>> testHostsConnectivity(
+    List<String> hosts, {
+    void Function(String host, int? latency)? onHostResult,
+  }) async {
+    final results = <String, int?>{};
+    await Future.wait(
+      hosts.map((host) async {
+        int? latency;
+        final client = NetworkProxy.createHttpClient(
+          connectionTimeout: const Duration(seconds: 3),
+        );
+        try {
+          final sw = Stopwatch()..start();
+          // openUrl 在连接建立（含代理隧道与 TLS 握手）后完成；
+          // 随即 abort，不发送任何请求，测得纯连通耗时。
+          final request = await client.openUrl(
+            'HEAD',
+            Uri.parse('https://$host'),
+          );
+          sw.stop();
+          latency = sw.elapsedMilliseconds;
+          request.abort();
+        } catch (_) {
+          latency = null;
+        } finally {
+          client.close(force: true);
+        }
+        results[host] = latency;
+        onHostResult?.call(host, latency);
+      }),
+    );
+    return results;
   }
 
   /// 从 network2 接口获取当前 COPY API 地址（取路由 0 的第一个 host）。
@@ -119,39 +169,5 @@ class NetworkApi {
     } finally {
       dio.close();
     }
-  }
-
-  Future<Map<String, int?>> _testHostsLatency(
-    List<String> hosts, {
-    void Function(String host, int? latency)? onHostResult,
-  }) async {
-    final results = <String, int?>{};
-    await Future.wait(
-      hosts.map((host) async {
-        int? latency;
-        try {
-          final uri = Uri.tryParse('https://$host');
-          final socketHost = uri != null && uri.host.isNotEmpty
-              ? uri.host
-              : host;
-          final port = uri != null && uri.hasPort ? uri.port : 443;
-          final sw = Stopwatch()..start();
-          final socket = await SecureSocket.connect(
-            socketHost,
-            port,
-            timeout: const Duration(seconds: 3),
-          );
-          sw.stop();
-          latency = sw.elapsedMilliseconds;
-          await socket.close();
-        } catch (_) {
-          latency = null;
-        }
-        results[host] = latency;
-        onHostResult?.call(host, latency);
-      }),
-    );
-
-    return results;
   }
 }

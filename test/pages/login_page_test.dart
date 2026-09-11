@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/login_page.dart';
+import 'package:kira/widgets/login_node_status.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _buildTestApp(Widget child) {
@@ -17,6 +18,21 @@ Widget _buildTestApp(Widget child) {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // 登录页内置节点状态卡，测试中必须替换探测函数避免真实网络请求。
+  setUp(() {
+    LoginNodeStatusCard.probeOverride = (hosts, {onHostResult}) async {
+      final results = <String, int?>{for (final host in hosts) host: 120};
+      for (final entry in results.entries) {
+        onHostResult?.call(entry.key, entry.value);
+      }
+      return results;
+    };
+  });
+
+  tearDown(() {
+    LoginNodeStatusCard.probeOverride = null;
+  });
 
   testWidgets('saved accounts are filtered by the selected login source', (
     tester,
