@@ -1659,18 +1659,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutLogTitle => '日志';
 
   @override
-  String get aboutAcknowledgementTitle => '致谢';
-
-  @override
-  String get acknowledgementThanksTitle => '感谢以下服务与项目的支持';
-
-  @override
-  String get acknowledgementZhconvertTitle => '繁化姬';
-
-  @override
-  String get acknowledgementZhconvertDesc => '提供简体化服务';
-
-  @override
   String get aboutLicenseTitle => '许可证';
 
   @override
@@ -2864,9 +2852,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileFallbackQuestionParentName => '我的父親(母親)叫什麽？';
-
-  @override
-  String get playerSettingsChineseConvertTooltip => '简繁转换';
 
   @override
   String get readerImageLinksRefreshed => '图片链接已刷新';
@@ -4783,18 +4768,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutLogTitle => '日誌';
 
   @override
-  String get aboutAcknowledgementTitle => '致謝';
-
-  @override
-  String get acknowledgementThanksTitle => '感謝以下服務與專案的支援';
-
-  @override
-  String get acknowledgementZhconvertTitle => '繁化姬';
-
-  @override
-  String get acknowledgementZhconvertDesc => '提供簡體化服務';
-
-  @override
   String get aboutLicenseTitle => '授權條款';
 
   @override
@@ -5988,9 +5961,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get profileFallbackQuestionParentName => '我的父親(母親)叫什麽？';
-
-  @override
-  String get playerSettingsChineseConvertTooltip => '簡繁轉換';
 
   @override
   String get readerImageLinksRefreshed => '圖片連結已重新整理';

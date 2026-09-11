@@ -874,29 +874,6 @@ class _BlockwordsEditorState extends State<_BlockwordsEditor> {
     widget.onChanged(List.from(_words));
   }
 
-  Future<void> _convertSimplifiedTraditional() async {
-    final text = _controller.text;
-    if (text.isEmpty) return;
-    try {
-      final converted = await ChineseConverter.convertToSimplifiedChinese(text);
-      if (converted == text) {
-        _controller.text = await ChineseConverter.convertToTraditionalChinese(
-          text,
-        );
-      } else {
-        _controller.text = converted;
-      }
-    } catch (e, stack) {
-      unawaited(
-        AppLogger().recordWarning(
-          e,
-          stackTrace: stack,
-          source: 'comment_settings.convert_chinese',
-        ),
-      );
-    }
-  }
-
   @override
   void dispose() {
     _controller.dispose();
@@ -931,11 +908,6 @@ class _BlockwordsEditorState extends State<_BlockwordsEditor> {
                   isDense: true,
                   hintText: l10n.commentSettingsBlockwordsHint,
                   border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    onPressed: _convertSimplifiedTraditional,
-                    icon: const Icon(Icons.translate, size: 20),
-                    tooltip: l10n.playerSettingsChineseConvertTooltip,
-                  ),
                 ),
                 onSubmitted: (_) => _addWord(),
               ),

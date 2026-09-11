@@ -433,16 +433,6 @@ class _AboutPageState extends State<AboutPage> {
                       color: cs.outlineVariant.withValues(alpha: 0.5),
                     ),
                     ListTile(
-                      leading: const Icon(Icons.favorite_outline),
-                      title: Text(l10n.aboutAcknowledgementTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.pushNamed(AppRoutes.acknowledgement),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    ListTile(
                       leading: const Icon(Icons.copyright_outlined),
                       title: Text(l10n.aboutLicenseTitle),
                       trailing: const Icon(Icons.chevron_right),

@@ -21,7 +21,6 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
 import '../utils/chapter_summary_cache.dart';
-import '../utils/chinese_converter.dart';
 import '../utils/comment_text.dart';
 import '../utils/network_error.dart';
 import '../utils/time_format.dart';

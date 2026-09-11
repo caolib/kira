@@ -972,10 +972,6 @@
   "aboutCheckUpdateTitle": "检查更新",
   "aboutAutoCheckUpdateTitle": "启动时检查更新",
   "aboutLogTitle": "日志",
-  "aboutAcknowledgementTitle": "致谢",
-  "acknowledgementThanksTitle": "感谢以下服务与项目的支持",
-  "acknowledgementZhconvertTitle": "繁化姬",
-  "acknowledgementZhconvertDesc": "提供简体化服务",
   "aboutLicenseTitle": "许可证",
   "licenseMitSummary": "本项目采用 MIT 开源许可证",
   "cacheDeleteEntryTitle": "删除缓存项",
@@ -1898,7 +1894,6 @@
   "profileFallbackQuestionFriend": "我的基友叫啥？",
   "profileFallbackQuestionBestFriendCount": "我的好麻吉有幾個？",
   "profileFallbackQuestionParentName": "我的父親(母親)叫什麽？",
-  "playerSettingsChineseConvertTooltip": "简繁转换",
   "readerImageLinksRefreshed": "图片链接已刷新",
   "refreshFailedWithError": "刷新失败：{error}",
   "@refreshFailedWithError": {

@@ -3120,30 +3120,6 @@ abstract class AppLocalizations {
   /// **'日志'**
   String get aboutLogTitle;
 
-  /// No description provided for @aboutAcknowledgementTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'致谢'**
-  String get aboutAcknowledgementTitle;
-
-  /// No description provided for @acknowledgementThanksTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'感谢以下服务与项目的支持'**
-  String get acknowledgementThanksTitle;
-
-  /// No description provided for @acknowledgementZhconvertTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'繁化姬'**
-  String get acknowledgementZhconvertTitle;
-
-  /// No description provided for @acknowledgementZhconvertDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'提供简体化服务'**
-  String get acknowledgementZhconvertDesc;
-
   /// No description provided for @aboutLicenseTitle.
   ///
   /// In zh, this message translates to:
@@ -5241,12 +5217,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'我的父親(母親)叫什麽？'**
   String get profileFallbackQuestionParentName;
-
-  /// No description provided for @playerSettingsChineseConvertTooltip.
-  ///
-  /// In zh, this message translates to:
-  /// **'简繁转换'**
-  String get playerSettingsChineseConvertTooltip;
 
   /// No description provided for @readerImageLinksRefreshed.
   ///

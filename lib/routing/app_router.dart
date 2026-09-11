@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../models/comic.dart' hide Theme;
 import '../pages/about_page.dart' show AboutPage;
-import '../pages/acknowledgement_page.dart';
 import '../pages/ai_config_page.dart';
 import '../pages/app_log_page.dart';
 import '../pages/appearance_page.dart';
@@ -67,7 +66,6 @@ final class AppRoutes {
   static const about = 'about';
   static const disclaimer = 'disclaimer';
   static const appLog = 'app_log';
-  static const acknowledgement = 'acknowledgement';
   static const license = 'license';
   static const cacheManagement = 'cache_management';
   static const stats = 'stats';
@@ -348,11 +346,6 @@ GoRouter createAppRouter() {
         path: '/app-log',
         name: AppRoutes.appLog,
         builder: (_, _) => const AppLogPage(),
-      ),
-      GoRoute(
-        path: '/acknowledgement',
-        name: AppRoutes.acknowledgement,
-        builder: (_, _) => const AcknowledgementPage(),
       ),
       GoRoute(
         path: '/license',

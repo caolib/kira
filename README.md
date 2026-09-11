@@ -70,10 +70,6 @@ flutter build apk --debug
 flutter run -d <设备ID>
 ```
 
-## 致谢
-
-- [繁化姬](https://zhconvert.org/) — 提供简体化服务
-
 ## 免责声明
 
 **请在使用本应用前仔细阅读以下声明：**

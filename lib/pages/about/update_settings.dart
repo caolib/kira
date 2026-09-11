@@ -252,12 +252,6 @@ extension _AboutPageUpdateSettings on _AboutPageState {
           onTap: () => context.pushNamed(AppRoutes.disclaimer),
         ),
         ListTile(
-          leading: const Icon(Icons.favorite_outline),
-          title: Text(l10n.aboutAcknowledgementTitle),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.pushNamed(AppRoutes.acknowledgement),
-        ),
-        ListTile(
           leading: const Icon(Icons.copyright_outlined),
           title: Text(l10n.aboutLicenseTitle),
           trailing: const Icon(Icons.chevron_right),
