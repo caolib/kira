@@ -76,10 +76,10 @@ extension DownloadManagerQueriesPart on DownloadManager {
       _queuedKeys.contains(_taskKey(pathWord, chapterUuid));
 
   bool isDownloading(String pathWord, String chapterUuid) =>
-      _activeKey == _taskKey(pathWord, chapterUuid);
+      _activeKeys.contains(_taskKey(pathWord, chapterUuid));
 
   ChapterDownloadProgress? progressOf(String pathWord, String chapterUuid) =>
-      isDownloading(pathWord, chapterUuid) ? _activeProgress : null;
+      _activeProgress[_taskKey(pathWord, chapterUuid)];
 
   /// 该章节是否为部分下载（仍有未下载页，可重试补全）。
   bool isPartial(String pathWord, String chapterUuid) =>
@@ -116,7 +116,7 @@ extension DownloadManagerQueriesPart on DownloadManager {
     );
     _queuedKeys.add(key);
     _notifyListeners();
-    _wakeQueue();
+    _signalScheduler();
     unawaited(_processQueue());
     return true;
   }
@@ -163,7 +163,7 @@ extension DownloadManagerQueriesPart on DownloadManager {
     _lastBatchSummary = null;
     _notifyListeners();
     if (added > 0) {
-      _wakeQueue();
+      _signalScheduler();
       unawaited(_processQueue());
     }
     return added;
@@ -201,7 +201,7 @@ extension DownloadManagerQueriesPart on DownloadManager {
       // 章节先入队并立刻通知 UI，漫画元数据/封面在后台准备，
       // 避免点击下载后因等待封面等网络请求产生停顿。
       _notifyListeners();
-      _wakeQueue();
+      _signalScheduler();
       unawaited(_processQueue());
       _scheduleComicPrepare(pathWord, comic);
     }

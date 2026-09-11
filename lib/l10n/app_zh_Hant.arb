@@ -1654,7 +1654,7 @@
   },
   "downloadSettingsTitle": "設定",
   "downloadImageConcurrency": "並行下載數量",
-  "downloadImageConcurrencyDesc": "單話內同時下載的圖片數量（1-10）",
+  "downloadImageConcurrencyDesc": "同時下載的圖片數量，跨章節共享（1-32）",
   "downloadChapterComments": "下載章節評論",
   "downloadChapterCommentsDesc": "下載章節時一併儲存評論",
   "downloadSaveLocation": "儲存位置",

@@ -4712,7 +4712,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloadImageConcurrencyDesc.
   ///
   /// In zh, this message translates to:
-  /// **'单话内同时下载的图片数量（1-10）'**
+  /// **'同时下载的图片数量，跨章节共享（1-32）'**
   String get downloadImageConcurrencyDesc;
 
   /// No description provided for @downloadChapterComments.

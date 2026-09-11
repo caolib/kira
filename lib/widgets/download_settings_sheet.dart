@@ -78,8 +78,8 @@ class _DownloadSettingsSheetState extends State<DownloadSettingsSheet> {
                 Expanded(
                   child: Slider(
                     min: 1,
-                    max: 10,
-                    divisions: 9,
+                    max: 32,
+                    divisions: 31,
                     value: _concurrency.toDouble(),
                     label: '$_concurrency',
                     onChanged: (v) => setState(() => _concurrency = v.round()),
