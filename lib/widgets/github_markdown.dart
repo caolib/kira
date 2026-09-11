@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_radius.dart';
@@ -25,6 +26,8 @@ class GitHubMarkdown extends StatelessWidget {
     if (blocks.isEmpty) return const SizedBox.shrink();
 
     final style = styleSheet ?? githubMarkdownStyleSheet(context);
+    // 顶层文本不被任何警告框包裹，高亮块回退到警告色。
+    final highlightBuilder = _HighlightBuilder(_alertMetas['WARNING']!.color);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -36,6 +39,8 @@ class GitHubMarkdown extends StatelessWidget {
               data: text,
               onTapLink: onTapLink ?? _openMarkdownLink,
               styleSheet: style,
+              inlineSyntaxes: [_HighlightSyntax()],
+              builders: {_HighlightSyntax.tag: highlightBuilder},
             ),
             _MarkdownAlertBlock(:final type, :final content) => _GitHubAlertBox(
               type: type,
@@ -70,6 +75,8 @@ MarkdownStyleSheet githubMarkdownStyleSheet(
     em: base?.copyWith(fontStyle: FontStyle.italic),
     a: base?.copyWith(color: cs.primary, decoration: TextDecoration.underline),
     listBullet: base,
+    // 不自定义缩进，沿用 markdown 库默认值(24)。
+    listIndent: AppSpacing.xxl,
     blockquote: base?.copyWith(color: cs.onSurfaceVariant),
     blockquoteDecoration: BoxDecoration(
       color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
@@ -86,6 +93,61 @@ MarkdownStyleSheet githubMarkdownStyleSheet(
     ),
     codeblockPadding: const EdgeInsets.all(12),
   );
+}
+
+/// 「文本」→ 高亮块：经 [_HighlightSyntax] 解析为 [tag] 元素，交给 builder 渲染。
+class _HighlightSyntax extends md.InlineSyntax {
+  static const tag = 'high';
+
+  _HighlightSyntax() : super('「([^「」]+)」');
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element(tag, [md.Text(match[1]!)]));
+    return true;
+  }
+}
+
+/// 把 [_HighlightSyntax.tag] 元素渲染成实色背景、白色前景的小高亮块。
+/// 背景色取所在警告框的主题色（框外回退值由调用方决定）。
+class _HighlightBuilder extends MarkdownElementBuilder {
+  _HighlightBuilder(this.backgroundColor);
+
+  final Color backgroundColor;
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final base = parentStyle ?? preferredStyle;
+    final style =
+        base?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+          // 比正文小一号，避免白字加粗在色块上显得偏大。
+          fontSize: (base.fontSize ?? 14) - 1,
+        ) ??
+        const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+          fontSize: 13,
+        );
+    return Container(
+      // 左右内边距收紧，外间距加大，色块与相邻文字留出呼吸空间。
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: AppRadius.xsR,
+      ),
+      child: Text(element.textContent, style: style),
+    );
+  }
 }
 
 sealed class _MarkdownBlock {
@@ -202,42 +264,41 @@ class _GitHubAlertBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: meta.color, width: 2),
       ),
-      child: Row(
+      // 与 GitHub 网页版一致：图标 + 标题占一行，内容在标题下整行铺开，
+      // 这样圆点距左边框 ≈ 容器内边距，而不是被图标列顶到 38px 处。
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(meta.icon, size: 18, color: meta.color),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  meta.label,
-                  style: tt.labelMedium?.copyWith(
-                    color: meta.color,
-                    fontWeight: FontWeight.w700,
-                  ),
+          Row(
+            children: [
+              Icon(meta.icon, size: 18, color: meta.color),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                meta.label,
+                style: tt.labelMedium?.copyWith(
+                  color: meta.color,
+                  fontWeight: FontWeight.w700,
                 ),
-                if (content.trim().isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  MarkdownBody(
-                    data: content,
-                    onTapLink: onTapLink ?? _openMarkdownLink,
-                    styleSheet: styleSheet.copyWith(
-                      p: styleSheet.p?.copyWith(color: cs.onSurface),
-                      // Bold text inside the alert keeps normal weight and
-                      // adopts the alert color instead of the outer strong.
-                      strong: styleSheet.p?.copyWith(color: meta.color),
-                      a: styleSheet.a?.copyWith(color: meta.color),
-                      // 默认 listIndent 24 对窄的警告框太宽，收紧一档。
-                      listIndent: AppSpacing.md,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
+          if (content.trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            MarkdownBody(
+              data: content,
+              onTapLink: onTapLink ?? _openMarkdownLink,
+              styleSheet: styleSheet.copyWith(
+                p: styleSheet.p?.copyWith(color: cs.onSurface),
+                // Bold text inside the alert keeps normal weight and
+                // adopts the alert color instead of the outer strong.
+                strong: styleSheet.p?.copyWith(color: meta.color),
+                a: styleSheet.a?.copyWith(color: meta.color),
+              ),
+              inlineSyntaxes: [_HighlightSyntax()],
+              builders: {_HighlightSyntax.tag: _HighlightBuilder(meta.color)},
+            ),
+          ],
         ],
       ),
     );
