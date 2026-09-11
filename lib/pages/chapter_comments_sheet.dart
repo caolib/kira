@@ -1480,58 +1480,68 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       ),
       builder: (sheetContext) {
         final sheetSize = MediaQuery.sizeOf(sheetContext);
+        // 键盘弹出时面板顶边保持不动、底边抬到输入法上方，否则输入法
+        // 会盖住面板底部的屏蔽词输入框。
+        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        final sheetHeight =
+            (sheetSize.height * _sheetMaxHeightFactor - keyboard)
+                .clamp(0.0, sheetSize.height)
+                .toDouble();
         return Align(
           alignment: Alignment.bottomCenter,
-          child: SizedBox(
-            width: sheetSize.width,
-            height: sheetSize.height * _sheetMaxHeightFactor,
-            child: ExcludeSemantics(
-              child: CommentSettingsPanel(
-                useCompactLayout: _useCompactLayout,
-                showUserAvatar: _showUserAvatar,
-                showUserName: _showUserName,
-                showCommentTime: _showCommentTime,
-                commentFontScale: _commentFontScale,
-                commentPreload: _user.commentPreload,
-                commentAutoLoadAll: _user.commentAutoLoadAll,
-                onLayoutChanged: (compact) {
-                  if (!mounted) return;
-                  setState(() => _useCompactLayout = compact);
-                  _user.setCommentCompactLayout(compact);
-                },
-                onShowAvatarChanged: (enabled) {
-                  if (!mounted) return;
-                  setState(() => _showUserAvatar = enabled);
-                  _user.setCommentShowAvatar(enabled);
-                },
-                onShowUserNameChanged: (enabled) {
-                  if (!mounted) return;
-                  setState(() => _showUserName = enabled);
-                  _user.setCommentShowUserName(enabled);
-                },
-                onShowCommentTimeChanged: (enabled) {
-                  if (!mounted) return;
-                  setState(() => _showCommentTime = enabled);
-                  _user.setCommentShowTime(enabled);
-                },
-                onFontScaleChanged: (scale) {
-                  if (!mounted) return;
-                  setState(() => _commentFontScale = scale);
-                  _user.setCommentFontScale(scale);
-                },
-                onPreloadChanged: (enabled) {
-                  _user.setCommentPreload(enabled);
-                  if (!enabled &&
-                      _aiSettings.autoSummaryTiming ==
-                          AiAutoSummaryTiming.afterPreload) {
-                    _aiSettings.setAutoSummaryTiming(
-                      AiAutoSummaryTiming.onOpen,
-                    );
-                  }
-                },
-                onAutoLoadAllChanged: (enabled) {
-                  _user.setCommentAutoLoadAll(enabled);
-                },
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboard),
+            child: SizedBox(
+              width: sheetSize.width,
+              height: sheetHeight,
+              child: ExcludeSemantics(
+                child: CommentSettingsPanel(
+                  useCompactLayout: _useCompactLayout,
+                  showUserAvatar: _showUserAvatar,
+                  showUserName: _showUserName,
+                  showCommentTime: _showCommentTime,
+                  commentFontScale: _commentFontScale,
+                  commentPreload: _user.commentPreload,
+                  commentAutoLoadAll: _user.commentAutoLoadAll,
+                  onLayoutChanged: (compact) {
+                    if (!mounted) return;
+                    setState(() => _useCompactLayout = compact);
+                    _user.setCommentCompactLayout(compact);
+                  },
+                  onShowAvatarChanged: (enabled) {
+                    if (!mounted) return;
+                    setState(() => _showUserAvatar = enabled);
+                    _user.setCommentShowAvatar(enabled);
+                  },
+                  onShowUserNameChanged: (enabled) {
+                    if (!mounted) return;
+                    setState(() => _showUserName = enabled);
+                    _user.setCommentShowUserName(enabled);
+                  },
+                  onShowCommentTimeChanged: (enabled) {
+                    if (!mounted) return;
+                    setState(() => _showCommentTime = enabled);
+                    _user.setCommentShowTime(enabled);
+                  },
+                  onFontScaleChanged: (scale) {
+                    if (!mounted) return;
+                    setState(() => _commentFontScale = scale);
+                    _user.setCommentFontScale(scale);
+                  },
+                  onPreloadChanged: (enabled) {
+                    _user.setCommentPreload(enabled);
+                    if (!enabled &&
+                        _aiSettings.autoSummaryTiming ==
+                            AiAutoSummaryTiming.afterPreload) {
+                      _aiSettings.setAutoSummaryTiming(
+                        AiAutoSummaryTiming.onOpen,
+                      );
+                    }
+                  },
+                  onAutoLoadAllChanged: (enabled) {
+                    _user.setCommentAutoLoadAll(enabled);
+                  },
+                ),
               ),
             ),
           ),

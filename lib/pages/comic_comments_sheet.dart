@@ -1422,44 +1422,53 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
       ),
       builder: (sheetContext) {
         final sheetSize = MediaQuery.sizeOf(sheetContext);
+        // 键盘弹出时面板顶边保持不动、底边抬到输入法上方，否则输入法
+        // 会盖住面板底部的屏蔽词输入框。
+        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        final sheetHeight = (sheetSize.height * 0.85 - keyboard)
+            .clamp(0.0, sheetSize.height)
+            .toDouble();
         return Align(
           alignment: Alignment.bottomCenter,
-          child: SizedBox(
-            width: sheetSize.width,
-            height: sheetSize.height * 0.85,
-            child: ExcludeSemantics(
-              child: CommentSettingsPanel(
-                isChapterComments: false,
-                useCompactLayout: _user.commentCompactLayout,
-                showUserAvatar: _user.commentShowAvatar,
-                showUserName: _user.commentShowUserName,
-                showCommentTime: _user.commentShowTime,
-                commentFontScale: _user.commentFontScale,
-                commentPreload: _user.commentPreload,
-                commentAutoLoadAll: _user.commentAutoLoadAll,
-                onLayoutChanged: (_) {},
-                onShowAvatarChanged: (v) {
-                  if (!mounted) return;
-                  setState(() {});
-                  _user.setCommentShowAvatar(v);
-                },
-                onShowUserNameChanged: (v) {
-                  if (!mounted) return;
-                  setState(() {});
-                  _user.setCommentShowUserName(v);
-                },
-                onShowCommentTimeChanged: (v) {
-                  if (!mounted) return;
-                  setState(() {});
-                  _user.setCommentShowTime(v);
-                },
-                onFontScaleChanged: (v) {
-                  if (!mounted) return;
-                  setState(() {});
-                  _user.setCommentFontScale(v);
-                },
-                onPreloadChanged: (v) => _user.setCommentPreload(v),
-                onAutoLoadAllChanged: (v) => _user.setCommentAutoLoadAll(v),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboard),
+            child: SizedBox(
+              width: sheetSize.width,
+              height: sheetHeight,
+              child: ExcludeSemantics(
+                child: CommentSettingsPanel(
+                  isChapterComments: false,
+                  useCompactLayout: _user.commentCompactLayout,
+                  showUserAvatar: _user.commentShowAvatar,
+                  showUserName: _user.commentShowUserName,
+                  showCommentTime: _user.commentShowTime,
+                  commentFontScale: _user.commentFontScale,
+                  commentPreload: _user.commentPreload,
+                  commentAutoLoadAll: _user.commentAutoLoadAll,
+                  onLayoutChanged: (_) {},
+                  onShowAvatarChanged: (v) {
+                    if (!mounted) return;
+                    setState(() {});
+                    _user.setCommentShowAvatar(v);
+                  },
+                  onShowUserNameChanged: (v) {
+                    if (!mounted) return;
+                    setState(() {});
+                    _user.setCommentShowUserName(v);
+                  },
+                  onShowCommentTimeChanged: (v) {
+                    if (!mounted) return;
+                    setState(() {});
+                    _user.setCommentShowTime(v);
+                  },
+                  onFontScaleChanged: (v) {
+                    if (!mounted) return;
+                    setState(() {});
+                    _user.setCommentFontScale(v);
+                  },
+                  onPreloadChanged: (v) => _user.setCommentPreload(v),
+                  onAutoLoadAllChanged: (v) => _user.setCommentAutoLoadAll(v),
+                ),
               ),
             ),
           ),
