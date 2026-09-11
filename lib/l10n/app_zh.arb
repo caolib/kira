@@ -242,11 +242,11 @@
   "cacheManagementTitle": "缓存管理",
   "cacheManagementDesc": "查看和删除本地缓存、历史和账号数据",
   "exportSettingsTitle": "导出设置",
-  "exportSettingsDesc": "复制配置到剪贴板",
+  "exportSettingsDesc": "导出配置到 JSON 文件",
   "importSettingsTitle": "导入设置",
-  "importSettingsDesc": "粘贴导入配置",
-  "settingsCopiedWithSensitive": "设置已复制，包含敏感信息",
-  "settingsCopiedWithoutSensitive": "设置已复制，未包含敏感信息",
+  "importSettingsDesc": "从 JSON 文件导入配置",
+  "settingsExportedWithSensitive": "设置已导出，包含敏感信息",
+  "settingsExportedWithoutSensitive": "设置已导出，未包含敏感信息",
   "exportFailed": "导出失败：{error}",
   "@exportFailed": {
     "placeholders": {
@@ -256,7 +256,7 @@
     }
   },
   "noImportSettingsContent": "没有可导入的配置内容",
-  "settingsBackupEmptyClipboard": "剪贴板里没有可导入的配置",
+  "settingsBackupEmptyFile": "文件里没有可导入的配置",
   "settingsBackupInvalidJson": "配置格式不是有效的 JSON",
   "settingsBackupInvalidFormat": "配置格式不正确",
   "settingsBackupWrongApp": "这不是 Kira 的设置备份",
@@ -314,7 +314,7 @@
       }
     }
   },
-  "exportSettingsContent": "将复制 {count} 项持久化配置到剪贴板，导出内容为明文，请谨慎保管。",
+  "exportSettingsContent": "将导出 {count} 项持久化配置到 JSON 文件，内容为明文，请谨慎保管。",
   "@exportSettingsContent": {
     "placeholders": {
       "count": {
@@ -333,8 +333,7 @@
     }
   },
   "copyButton": "复制",
-  "pasteExportedSettingsHint": "粘贴导出的配置 JSON",
-  "continueButton": "继续",
+  "exportButton": "导出",
   "confirmResetAppTitle": "确认重置应用",
   "resetAppWarning": "此操作会清除应用本地保存的设置、账号、阅读记录和缓存，且无法撤销。",
   "resetAppInstruction": "如需继续，请在下方输入框中输入“{text}”。",

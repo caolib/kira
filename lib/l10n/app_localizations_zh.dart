@@ -387,19 +387,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportSettingsTitle => '导出设置';
 
   @override
-  String get exportSettingsDesc => '复制配置到剪贴板';
+  String get exportSettingsDesc => '导出配置到 JSON 文件';
 
   @override
   String get importSettingsTitle => '导入设置';
 
   @override
-  String get importSettingsDesc => '粘贴导入配置';
+  String get importSettingsDesc => '从 JSON 文件导入配置';
 
   @override
-  String get settingsCopiedWithSensitive => '设置已复制，包含敏感信息';
+  String get settingsExportedWithSensitive => '设置已导出，包含敏感信息';
 
   @override
-  String get settingsCopiedWithoutSensitive => '设置已复制，未包含敏感信息';
+  String get settingsExportedWithoutSensitive => '设置已导出，未包含敏感信息';
 
   @override
   String exportFailed(String error) {
@@ -410,7 +410,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noImportSettingsContent => '没有可导入的配置内容';
 
   @override
-  String get settingsBackupEmptyClipboard => '剪贴板里没有可导入的配置';
+  String get settingsBackupEmptyFile => '文件里没有可导入的配置';
 
   @override
   String get settingsBackupInvalidJson => '配置格式不是有效的 JSON';
@@ -481,7 +481,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String exportSettingsContent(int count) {
-    return '将复制 $count 项持久化配置到剪贴板，导出内容为明文，请谨慎保管。';
+    return '将导出 $count 项持久化配置到 JSON 文件，内容为明文，请谨慎保管。';
   }
 
   @override
@@ -499,10 +499,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get copyButton => '复制';
 
   @override
-  String get pasteExportedSettingsHint => '粘贴导出的配置 JSON';
-
-  @override
-  String get continueButton => '继续';
+  String get exportButton => '导出';
 
   @override
   String get confirmResetAppTitle => '确认重置应用';
@@ -3539,19 +3536,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get exportSettingsTitle => '匯出設定';
 
   @override
-  String get exportSettingsDesc => '複製設定到剪貼簿';
+  String get exportSettingsDesc => '匯出設定到 JSON 檔案';
 
   @override
   String get importSettingsTitle => '匯入設定';
 
   @override
-  String get importSettingsDesc => '貼上匯入設定';
+  String get importSettingsDesc => '從 JSON 檔案匯入設定';
 
   @override
-  String get settingsCopiedWithSensitive => '設定已複製，包含敏感資訊';
+  String get settingsExportedWithSensitive => '設定已匯出，包含敏感資訊';
 
   @override
-  String get settingsCopiedWithoutSensitive => '設定已複製，未包含敏感資訊';
+  String get settingsExportedWithoutSensitive => '設定已匯出，未包含敏感資訊';
 
   @override
   String exportFailed(String error) {
@@ -3562,7 +3559,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get noImportSettingsContent => '沒有可匯入的設定內容';
 
   @override
-  String get settingsBackupEmptyClipboard => '剪貼簿裡沒有可匯入的設定';
+  String get settingsBackupEmptyFile => '檔案裡沒有可匯入的設定';
 
   @override
   String get settingsBackupInvalidJson => '設定格式不是有效的 JSON';
@@ -3633,7 +3630,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String exportSettingsContent(int count) {
-    return '將複製 $count 項持久化設定到剪貼簿，匯出內容為明文，請謹慎保管。';
+    return '將匯出 $count 項持久化設定到 JSON 檔案，內容為明文，請謹慎保管。';
   }
 
   @override
@@ -3651,10 +3648,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get copyButton => '複製';
 
   @override
-  String get pasteExportedSettingsHint => '貼上匯出的設定 JSON';
-
-  @override
-  String get continueButton => '繼續';
+  String get exportButton => '匯出';
 
   @override
   String get confirmResetAppTitle => '確認重設應用';

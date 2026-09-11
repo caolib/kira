@@ -101,6 +101,40 @@ void main() {
     expect(preferences['auto_login']?['value'], true);
   });
 
+  test('inspect rejects empty, fenced-only, and non-JSON input', () {
+    final service = SettingsBackupService();
+    expect(
+      () => service.inspectPlainText(''),
+      throwsA(
+        isA<SettingsBackupException>().having(
+          (e) => e.code,
+          'code',
+          SettingsBackupErrorCode.emptyFile,
+        ),
+      ),
+    );
+    expect(
+      () => service.inspectPlainText('```\n```'),
+      throwsA(
+        isA<SettingsBackupException>().having(
+          (e) => e.code,
+          'code',
+          SettingsBackupErrorCode.emptyFile,
+        ),
+      ),
+    );
+    expect(
+      () => service.inspectPlainText('not-json'),
+      throwsA(
+        isA<SettingsBackupException>().having(
+          (e) => e.code,
+          'code',
+          SettingsBackupErrorCode.invalidJson,
+        ),
+      ),
+    );
+  });
+
   test('import overrides user settings and keeps cache untouched', () async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_token', 'old-token');

@@ -6,7 +6,7 @@ import '../l10n/app_localizations.dart';
 import 'reading_history.dart';
 
 enum SettingsBackupErrorCode {
-  emptyClipboard,
+  emptyFile,
   invalidJson,
   invalidFormat,
   wrongApp,
@@ -24,8 +24,7 @@ class SettingsBackupException implements Exception {
 
   String localizedMessage(AppLocalizations l10n) {
     return switch (code) {
-      SettingsBackupErrorCode.emptyClipboard =>
-        l10n.settingsBackupEmptyClipboard,
+      SettingsBackupErrorCode.emptyFile => l10n.settingsBackupEmptyFile,
       SettingsBackupErrorCode.invalidJson => l10n.settingsBackupInvalidJson,
       SettingsBackupErrorCode.invalidFormat => l10n.settingsBackupInvalidFormat,
       SettingsBackupErrorCode.wrongApp => l10n.settingsBackupWrongApp,
@@ -198,9 +197,7 @@ class SettingsBackupService {
   static _ParsedSettingsBackup _parseBackup(String raw) {
     final normalized = _normalizeInput(raw);
     if (normalized.isEmpty) {
-      throw const SettingsBackupException(
-        SettingsBackupErrorCode.emptyClipboard,
-      );
+      throw const SettingsBackupException(SettingsBackupErrorCode.emptyFile);
     }
 
     final Object? decoded;

@@ -790,7 +790,7 @@ abstract class AppLocalizations {
   /// No description provided for @exportSettingsDesc.
   ///
   /// In zh, this message translates to:
-  /// **'复制配置到剪贴板'**
+  /// **'导出配置到 JSON 文件'**
   String get exportSettingsDesc;
 
   /// No description provided for @importSettingsTitle.
@@ -802,20 +802,20 @@ abstract class AppLocalizations {
   /// No description provided for @importSettingsDesc.
   ///
   /// In zh, this message translates to:
-  /// **'粘贴导入配置'**
+  /// **'从 JSON 文件导入配置'**
   String get importSettingsDesc;
 
-  /// No description provided for @settingsCopiedWithSensitive.
+  /// No description provided for @settingsExportedWithSensitive.
   ///
   /// In zh, this message translates to:
-  /// **'设置已复制，包含敏感信息'**
-  String get settingsCopiedWithSensitive;
+  /// **'设置已导出，包含敏感信息'**
+  String get settingsExportedWithSensitive;
 
-  /// No description provided for @settingsCopiedWithoutSensitive.
+  /// No description provided for @settingsExportedWithoutSensitive.
   ///
   /// In zh, this message translates to:
-  /// **'设置已复制，未包含敏感信息'**
-  String get settingsCopiedWithoutSensitive;
+  /// **'设置已导出，未包含敏感信息'**
+  String get settingsExportedWithoutSensitive;
 
   /// No description provided for @exportFailed.
   ///
@@ -829,11 +829,11 @@ abstract class AppLocalizations {
   /// **'没有可导入的配置内容'**
   String get noImportSettingsContent;
 
-  /// No description provided for @settingsBackupEmptyClipboard.
+  /// No description provided for @settingsBackupEmptyFile.
   ///
   /// In zh, this message translates to:
-  /// **'剪贴板里没有可导入的配置'**
-  String get settingsBackupEmptyClipboard;
+  /// **'文件里没有可导入的配置'**
+  String get settingsBackupEmptyFile;
 
   /// No description provided for @settingsBackupInvalidJson.
   ///
@@ -952,7 +952,7 @@ abstract class AppLocalizations {
   /// No description provided for @exportSettingsContent.
   ///
   /// In zh, this message translates to:
-  /// **'将复制 {count} 项持久化配置到剪贴板，导出内容为明文，请谨慎保管。'**
+  /// **'将导出 {count} 项持久化配置到 JSON 文件，内容为明文，请谨慎保管。'**
   String exportSettingsContent(int count);
 
   /// No description provided for @includeSensitiveSettingsTitle.
@@ -979,17 +979,11 @@ abstract class AppLocalizations {
   /// **'复制'**
   String get copyButton;
 
-  /// No description provided for @pasteExportedSettingsHint.
+  /// No description provided for @exportButton.
   ///
   /// In zh, this message translates to:
-  /// **'粘贴导出的配置 JSON'**
-  String get pasteExportedSettingsHint;
-
-  /// No description provided for @continueButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'继续'**
-  String get continueButton;
+  /// **'导出'**
+  String get exportButton;
 
   /// No description provided for @confirmResetAppTitle.
   ///

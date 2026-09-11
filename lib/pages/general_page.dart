@@ -1,5 +1,7 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
@@ -64,16 +66,29 @@ class _GeneralPageState extends State<GeneralPage> {
       );
 
       if (includeSensitive == null) return;
-      await Clipboard.setData(
-        ClipboardData(text: includeSensitive ? sensitiveBackup : safeBackup),
+      final now = DateTime.now();
+      final fileName =
+          'kira-settings-'
+          '${now.year.toString().padLeft(4, '0')}'
+          '${now.month.toString().padLeft(2, '0')}'
+          '${now.day.toString().padLeft(2, '0')}'
+          '-'
+          '${now.hour.toString().padLeft(2, '0')}'
+          '${now.minute.toString().padLeft(2, '0')}'
+          '.json';
+      final uri = await FilePicker.saveFile(
+        fileName: fileName,
+        mimeType: 'application/json',
+        bytes: utf8.encode(includeSensitive ? sensitiveBackup : safeBackup),
       );
+      if (uri == null) return;
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
         showToast(
           context,
           includeSensitive
-              ? l10n.settingsCopiedWithSensitive
-              : l10n.settingsCopiedWithoutSensitive,
+              ? l10n.settingsExportedWithSensitive
+              : l10n.settingsExportedWithoutSensitive,
         );
       }
     } catch (e) {
@@ -88,23 +103,31 @@ class _GeneralPageState extends State<GeneralPage> {
   }
 
   Future<void> _importSettings() async {
-    final clipboardText = (await Clipboard.getData('text/plain'))?.text ?? '';
-    if (!mounted) return;
-
-    final raw = await showDialog<String>(
-      context: context,
-      builder: (ctx) => _ImportSettingsDialog(initialValue: clipboardText),
-    );
-    if (raw == null) return;
-
-    final text = raw.trim();
-    if (text.isEmpty) {
+    final l10n = AppLocalizations.of(context)!;
+    final PlatformFile? file;
+    try {
+      file = await FilePicker.pickFile(dialogTitle: l10n.importSettingsTitle);
+    } catch (e) {
       if (mounted) {
-        showToast(
-          context,
-          AppLocalizations.of(context)!.noImportSettingsContent,
-          isError: true,
-        );
+        showToast(context, l10n.importFailed(e.toString()), isError: true);
+      }
+      return;
+    }
+    if (file == null) return;
+
+    final String text;
+    try {
+      text = utf8.decode(await file.readAsBytes());
+    } catch (e) {
+      if (mounted) {
+        showToast(context, l10n.importFailed(e.toString()), isError: true);
+      }
+      return;
+    }
+
+    if (text.trim().isEmpty) {
+      if (mounted) {
+        showToast(context, l10n.noImportSettingsContent, isError: true);
       }
       return;
     }
@@ -114,7 +137,6 @@ class _GeneralPageState extends State<GeneralPage> {
       summary = _settingsBackup.inspectPlainText(text);
     } catch (e) {
       if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
         final error = e is SettingsBackupException
             ? e.localizedMessage(l10n)
             : e.toString();
@@ -124,7 +146,6 @@ class _GeneralPageState extends State<GeneralPage> {
     }
 
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -161,7 +182,6 @@ class _GeneralPageState extends State<GeneralPage> {
       }
     } catch (e) {
       if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
         final error = e is SettingsBackupException
             ? e.localizedMessage(l10n)
             : e.toString();
@@ -386,64 +406,7 @@ class _ExportSettingsDialogState extends State<_ExportSettingsDialog> {
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, _includeSensitive),
-          child: Text(l10n.copyButton),
-        ),
-      ],
-    );
-  }
-}
-
-class _ImportSettingsDialog extends StatefulWidget {
-  final String initialValue;
-
-  const _ImportSettingsDialog({required this.initialValue});
-
-  @override
-  State<_ImportSettingsDialog> createState() => _ImportSettingsDialogState();
-}
-
-class _ImportSettingsDialogState extends State<_ImportSettingsDialog> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return AlertDialog(
-      title: Text(l10n.importSettingsTitle),
-      content: SizedBox(
-        width: dialogContentWidth(context, 420),
-        child: TextField(
-          controller: _controller,
-          autofocus: true,
-          minLines: 10,
-          maxLines: 18,
-          decoration: InputDecoration(
-            hintText: l10n.pasteExportedSettingsHint,
-            border: const OutlineInputBorder(),
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancelButton),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _controller.text),
-          child: Text(l10n.continueButton),
+          child: Text(l10n.exportButton),
         ),
       ],
     );
