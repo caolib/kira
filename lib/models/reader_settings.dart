@@ -77,7 +77,7 @@ class ReaderSettings extends PrefsStore {
   double _imageGap = 0.0;
   bool _volumeKey = true;
   bool _instantPageTurn = false;
-  bool _longPressZoomEnabled = false;
+  bool _longPressZoomEnabled = true;
   double _longPressZoomPanSensitivity = 2.0;
   bool _pageRTL = false;
   bool _pageVertical = false;
@@ -171,7 +171,7 @@ class ReaderSettings extends PrefsStore {
     _imageGap = prefs.getDouble(_keyImageGap) ?? 0.0;
     _volumeKey = prefs.getBool(_keyVolumeKey) ?? true;
     _instantPageTurn = prefs.getBool(_keyInstantPageTurn) ?? false;
-    _longPressZoomEnabled = prefs.getBool(_keyLongPressZoomEnabled) ?? false;
+    _longPressZoomEnabled = prefs.getBool(_keyLongPressZoomEnabled) ?? true;
     _longPressZoomPanSensitivity =
         (prefs.getDouble(_keyLongPressZoomPanSensitivity) ?? 2.0).clamp(
           1.0,

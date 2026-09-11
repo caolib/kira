@@ -33,8 +33,8 @@ void main() {
       expect(settings.instantPageTurn, false);
     });
 
-    test('longPressZoomEnabled defaults to false', () {
-      expect(settings.longPressZoomEnabled, false);
+    test('longPressZoomEnabled defaults to true', () {
+      expect(settings.longPressZoomEnabled, true);
     });
 
     test('longPressZoomPanSensitivity defaults to 2.0', () {
@@ -124,14 +124,14 @@ void main() {
       expect(settings.instantPageTurn, true);
     });
 
-    test('longPressZoomEnabled persists after re-init', () async {
-      await settings.setLongPressZoomEnabled(true);
-      expect(settings.longPressZoomEnabled, true);
+    test('disabled longPressZoomEnabled persists after re-init', () async {
+      await settings.setLongPressZoomEnabled(false);
+      expect(settings.longPressZoomEnabled, false);
 
       settings.resetPrefsCache();
       final prefs = await SharedPreferences.getInstance();
       await settings.initFromPrefs(prefs);
-      expect(settings.longPressZoomEnabled, true);
+      expect(settings.longPressZoomEnabled, false);
     });
 
     test('longPressZoomPanSensitivity persists after re-init', () async {
@@ -259,7 +259,7 @@ void main() {
     test('setLongPressZoomEnabled notifies listeners', () async {
       var callCount = 0;
       settings.addListener(() => callCount++);
-      await settings.setLongPressZoomEnabled(true);
+      await settings.setLongPressZoomEnabled(false);
       expect(callCount, 1);
     });
 
