@@ -418,6 +418,28 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
               _buildSectionHeader(l10n.readerDisplaySection, cs, tt),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
+                title: Text(l10n.readerLongPressZoom),
+                subtitle: Text(l10n.readerLongPressZoomDesc),
+                value: _user.reader.longPressZoomEnabled,
+                onChanged: (value) async {
+                  await _user.reader.setLongPressZoomEnabled(value);
+                  if (!mounted) return;
+                  setState(() {});
+                  widget.onChanged();
+                },
+              ),
+              if (_user.reader.longPressZoomEnabled)
+                ReaderLongPressZoomSensitivityControl(
+                  title: l10n.readerLongPressZoomPanSensitivity,
+                  value: _user.reader.longPressZoomPanSensitivity,
+                  onCommitted: (value) async {
+                    await _user.reader.setLongPressZoomPanSensitivity(value);
+                    if (!mounted) return;
+                    widget.onChanged();
+                  },
+                ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
                 title: Text(l10n.readerStatusOverlay),
                 value: _user.reader.statusOverlay,
                 onChanged: (v) {

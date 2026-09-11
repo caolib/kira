@@ -41,6 +41,7 @@ import '../widgets/reader_status_overlay.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
 import 'reader/chain_scroll_layout.dart';
+import 'reader/reader_long_press_zoom.dart';
 
 part 'reader/reader_auto_scroll.dart';
 part 'reader/reader_bottom_bar.dart';
@@ -166,6 +167,35 @@ class _ReaderPageState extends State<ReaderPage> {
   void _handleReadingSurfaceTap() {
     if (_flingBrakeGuard.consumeTap()) return;
     _toggleToolbar();
+  }
+
+  void _recordFlingBrakeScroll(ScrollNotification notification) {
+    if (notification case ScrollUpdateNotification(
+      :final scrollDelta,
+      :final dragDetails,
+    ) when (scrollDelta ?? 0) != 0) {
+      _flingBrakeGuard.recordScroll(
+        isDrag: dragDetails != null,
+        at: DateTime.now(),
+      );
+    }
+  }
+
+  Widget _buildLongPressZoomSurface(Widget child, {bool active = true}) {
+    return ReaderLongPressZoomSurface(
+      enabled: _user.reader.longPressZoomEnabled && active,
+      panSensitivity: _user.reader.longPressZoomPanSensitivity,
+      contentScrollAxis: _isPageMode
+          ? null
+          : (_isHorizontalScrollMode ? Axis.horizontal : Axis.vertical),
+      // 已捏合放大时继续沿用原有平移，避免两套缩放叠加位移。
+      canStart: () =>
+          !(_isPageMode ? _pageImageZoomed : _scrollZoomController.zoomed) &&
+          !_flingBrakeGuard.consumeTap(),
+      onZoomStarted: _pauseAutoScrollForOverlay,
+      onZoomEnded: _resumeAutoScrollAfterOverlay,
+      child: child,
+    );
   }
 
   late String _currentUuid;

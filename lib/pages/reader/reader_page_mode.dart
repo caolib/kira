@@ -157,6 +157,7 @@ extension _ReaderPageMode on _ReaderPageState {
   // ── 翻页模式 ──
 
   void _handlePageModeTapAt(Offset globalPosition) {
+    if (_flingBrakeGuard.consumeTap()) return;
     if (_isVerticalPageMode) {
       final screenHeight = MediaQuery.of(context).size.height;
       final y = globalPosition.dy;
@@ -236,8 +237,9 @@ extension _ReaderPageMode on _ReaderPageState {
     // 最后一话无下一话时，末尾追加一个空白页用于返回目录
     final hasEndBlank = _chain.last.next == null;
     final itemCount = totalChapters + (hasEndBlank ? 1 : 0);
-    return NotificationListener<ScrollNotification>(
+    final pageView = NotificationListener<ScrollNotification>(
       onNotification: (n) {
+        _recordFlingBrakeScroll(n);
         // 回翻意图才拼接上一话（竖向上拖 / 横向反向拖，均产生 overscroll < 0，
         // 符号只取决于滚动轴方向与 reverse 无关）。进入一话不预取，章节数据
         // 请求数与不预取时一致：翻回第一页由 onPageChanged 触发，在第一页
@@ -353,6 +355,10 @@ extension _ReaderPageMode on _ReaderPageState {
           },
         ),
       ),
+    );
+    return Listener(
+      onPointerDown: (_) => _flingBrakeGuard.onPointerDown(DateTime.now()),
+      child: pageView,
     );
   }
 }

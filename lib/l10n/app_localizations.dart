@@ -4007,6 +4007,24 @@ abstract class AppLocalizations {
   /// **'显示'**
   String get readerDisplaySection;
 
+  /// No description provided for @readerLongPressZoom.
+  ///
+  /// In zh, this message translates to:
+  /// **'长按缩放'**
+  String get readerLongPressZoom;
+
+  /// No description provided for @readerLongPressZoomDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'长按图片放大，按住移动可查看细节，松手恢复'**
+  String get readerLongPressZoomDesc;
+
+  /// No description provided for @readerLongPressZoomPanSensitivity.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖动灵敏度'**
+  String get readerLongPressZoomPanSensitivity;
+
   /// No description provided for @readerStatusOverlay.
   ///
   /// In zh, this message translates to:

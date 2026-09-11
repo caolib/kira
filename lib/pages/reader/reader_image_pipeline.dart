@@ -279,13 +279,21 @@ extension _ReaderImagePipeline on _ReaderPageState {
         child: image,
       );
     }
-    return _ReaderImageGesture(
+    final imageGesture = _ReaderImageGesture(
       key: ValueKey('reader-image-${chapter.uuid}-$localIndex'),
       onSingleTap: _isPageMode
           ? _handlePageModeTapAt
           : (_) => _handleReadingSurfaceTap(),
       onDoubleTap: () => _openImageViewer(chapter, localIndex),
       child: image,
+    );
+    if (readerLongPressZoomTargetForMode(isPageMode: _isPageMode) !=
+        ReaderLongPressZoomTarget.page) {
+      return imageGesture;
+    }
+    return _buildLongPressZoomSurface(
+      imageGesture,
+      active: zoomActive && !_pageImageZoomed,
     );
   }
 

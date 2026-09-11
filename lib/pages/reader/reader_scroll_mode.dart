@@ -294,7 +294,7 @@ extension _ReaderScrollMode on _ReaderPageState {
         ? totalItems - 1
         : -1;
 
-    return Listener(
+    final scrollViewport = Listener(
       onPointerDown: (event) {
         _scrollTouchFingers++;
         _panVelocityTracker = VelocityTracker.withKind(PointerDeviceKind.touch);
@@ -339,13 +339,8 @@ extension _ReaderScrollMode on _ReaderPageState {
               _flushPendingChainPrune();
             }
             if (_isDraggingSlider) return false;
-            if (n is ScrollUpdateNotification && (n.scrollDelta ?? 0) != 0) {
-              // 区分「手指仍在拖」与「抬手后的惯性」，供点击刹车判定使用。
-              _flingBrakeGuard.recordScroll(
-                isDrag: n.dragDetails != null,
-                at: DateTime.now(),
-              );
-            }
+            // 区分「手指仍在拖」与「抬手后的惯性」，供点击刹车判定使用。
+            _recordFlingBrakeScroll(n);
             if (n is ScrollUpdateNotification &&
                 _showToolbar &&
                 (n.scrollDelta ?? 0).abs() > 0) {
@@ -492,6 +487,7 @@ extension _ReaderScrollMode on _ReaderPageState {
         ),
       ),
     );
+    return _buildLongPressZoomSurface(scrollViewport);
   }
 
   /// 连续阅读滚动模式：当链尾章节最后两张图片之一进入视口且有下一话时，
