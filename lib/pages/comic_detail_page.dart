@@ -23,6 +23,7 @@ import '../utils/reading_history.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/comic_info_chips.dart';
 import '../widgets/download_settings_sheet.dart';
 import 'comic_comments_sheet.dart';
 
@@ -1335,26 +1336,26 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                         runSpacing: 6,
                         children: [
                           for (final author in authors)
-                            _AuthorChip(
+                            AuthorChip(
                               author: author,
                               onTap: () => _openAuthorWorks(author),
                             ),
                           if (comic.status != null)
-                            _InfoChip(
+                            InfoChip(
                               icon: Icons.timelapse,
                               label: comic.status!['display'] ?? '',
                               color: cs.primaryContainer,
                               textColor: cs.onPrimaryContainer,
                             ),
                           if (comic.region != null)
-                            _InfoChip(
+                            InfoChip(
                               icon: Icons.public,
                               label: comic.region!['display'] ?? '',
                               color: cs.secondaryContainer,
                               textColor: cs.onSecondaryContainer,
                             ),
                           for (final theme in comic.themes)
-                            _ThemeChip(
+                            ThemeChip(
                               theme: theme,
                               onTap: () => _openThemeWorks(theme),
                               color: cs.tertiaryContainer,
@@ -1373,7 +1374,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           Text(
-                            _formatPopular(context, comic.popular),
+                            formatPopularCount(context, comic.popular),
                             style: tt.labelSmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -1598,17 +1599,6 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
     ];
   }
-
-  static String _formatPopular(BuildContext context, int n) {
-    final l10n = AppLocalizations.of(context)!;
-    if (n >= 100000000) {
-      return l10n.hundredMillionUnit((n / 100000000).toStringAsFixed(1));
-    }
-    if (n >= 10000) {
-      return l10n.tenThousandUnit((n / 10000).toStringAsFixed(1));
-    }
-    return n.toString();
-  }
 }
 
 /// 章节卡片内容高度 = 内边距 12 + 标题行高 16s + 间距 2 + 副标题行高 ~17.5s，
@@ -1782,137 +1772,6 @@ class ChapterCard extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final Color textColor;
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.textColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color, borderRadius: AppRadius.lgR),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: textColor),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: textColor,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AuthorChip extends StatelessWidget {
-  final Author author;
-  final VoidCallback onTap;
-
-  const _AuthorChip({required this.author, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Material(
-      color: cs.primaryContainer,
-      borderRadius: AppRadius.lgR,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.lgR,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.person_search_outlined,
-                size: 12,
-                color: cs.onPrimaryContainer,
-              ),
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(
-                  author.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: cs.onPrimaryContainer,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemeChip extends StatelessWidget {
-  final comic_model.Theme theme;
-  final VoidCallback onTap;
-  final Color color;
-  final Color textColor;
-
-  const _ThemeChip({
-    required this.theme,
-    required this.onTap,
-    required this.color,
-    required this.textColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: color,
-      borderRadius: AppRadius.lgR,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.lgR,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.label_outline, size: 12, color: textColor),
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(
-                  theme.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

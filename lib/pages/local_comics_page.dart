@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../l10n/app_localizations.dart';
+import '../models/comic.dart' as comic_model;
 import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
@@ -12,8 +13,9 @@ import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/download_manager.dart';
 import '../utils/reading_history.dart';
+import '../utils/time_format.dart';
 import '../utils/toast.dart';
-import '../widgets/detail_chip.dart';
+import '../widgets/comic_info_chips.dart';
 import '../widgets/local_content_list_page.dart';
 import 'comic_detail_page.dart'
     show comicDetailUsesTwoPane, comicDetailInfoPaneWidth, chapterTileExtent;
@@ -86,6 +88,7 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
   bool _selectionMode = false;
   bool _reversed = true;
   bool _didPopAfterDeletion = false;
+  bool _briefExpanded = false;
   String? _selectedGroup;
   String? _lastBrowseId;
   String? _lastBrowseName;
@@ -188,6 +191,49 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
     final named = comic.groups?[group]?.name;
     if (named != null && named.trim().isNotEmpty) return named;
     return group;
+  }
+
+  void _openAuthorWorks(comic_model.Author author) {
+    final authorPathWord = author.pathWord.trim();
+    if (authorPathWord.isEmpty) {
+      showToast(
+        context,
+        AppLocalizations.of(context)!.comicDetailAuthorUnavailable,
+        isError: true,
+      );
+      return;
+    }
+
+    final authorName = author.name.trim().isEmpty
+        ? authorPathWord
+        : author.name.trim();
+    context.pushNamed(
+      AppRoutes.ranking,
+      extra: RankingExtra(
+        authorPathWord: authorPathWord,
+        authorName: authorName,
+      ),
+    );
+  }
+
+  void _openThemeWorks(comic_model.Theme theme) {
+    final themePathWord = theme.pathWord.trim();
+    if (themePathWord.isEmpty) {
+      showToast(
+        context,
+        AppLocalizations.of(context)!.comicDetailThemeUnavailable,
+        isError: true,
+      );
+      return;
+    }
+
+    final themeName = theme.name.trim().isEmpty
+        ? themePathWord
+        : theme.name.trim();
+    context.pushNamed(
+      AppRoutes.ranking,
+      extra: RankingExtra(themePathWord: themePathWord, themeName: themeName),
+    );
   }
 
   /// 渲染当前选中分组的章节网格。
@@ -352,19 +398,24 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
     // 右侧章节标题/分组/网格，避免宽屏下内容被整行拉满。
     final size = MediaQuery.sizeOf(context);
     final isWide = comicDetailUsesTwoPane(size);
+    final authors = comic.authors
+        .where((author) => author.name.trim().isNotEmpty)
+        .toList();
 
     final infoSlivers = <Widget>[
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          // 信息卡与漫画详情页同款：作者/状态/地区/主题 chips、热度、更新时间；
+          // 以下载的 comic.json 实际包含的字段为准，缺失的行不显示。
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius: AppRadius.mdR,
                 child: SizedBox(
-                  width: 110,
-                  height: 150,
+                  width: 120,
+                  height: 160,
                   child:
                       info.coverPath != null &&
                           File(info.coverPath!).existsSync()
@@ -374,10 +425,10 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : ColoredBox(
+                      : Container(
                           color: cs.surfaceContainerHighest,
                           child: Icon(
-                            Icons.image_not_supported_outlined,
+                            Icons.broken_image,
                             color: cs.onSurfaceVariant,
                           ),
                         ),
@@ -388,38 +439,81 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (comic.authors.isNotEmpty)
-                      Text(
-                        comic.authors.map((item) => item.name).join(' / '),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.bodyMedium,
+                    if (authors.isNotEmpty ||
+                        comic.status != null ||
+                        comic.region != null ||
+                        comic.themes.isNotEmpty)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final author in authors)
+                            AuthorChip(
+                              author: author,
+                              onTap: () => _openAuthorWorks(author),
+                            ),
+                          if (comic.status != null)
+                            InfoChip(
+                              icon: Icons.timelapse,
+                              label: comic.status!['display']?.toString() ?? '',
+                              color: cs.primaryContainer,
+                              textColor: cs.onPrimaryContainer,
+                            ),
+                          if (comic.region != null)
+                            InfoChip(
+                              icon: Icons.public,
+                              label: comic.region!['display']?.toString() ?? '',
+                              color: cs.secondaryContainer,
+                              textColor: cs.onSecondaryContainer,
+                            ),
+                          for (final theme in comic.themes)
+                            ThemeChip(
+                              theme: theme,
+                              onTap: () => _openThemeWorks(theme),
+                              color: cs.tertiaryContainer,
+                              textColor: cs.onTertiaryContainer,
+                            ),
+                        ],
                       ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        if (comic.status != null)
-                          DetailChip(
-                            label: comic.status!['display']?.toString() ?? '',
+                    if (comic.popular > 0) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.local_fire_department,
+                            size: 14,
+                            color: cs.primary,
                           ),
-                        if (comic.region != null)
-                          DetailChip(
-                            label: comic.region!['display']?.toString() ?? '',
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            formatPopularCount(context, comic.popular),
+                            style: tt.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
                           ),
-                        ...comic.themes.map(
-                          (item) => DetailChip(label: item.name),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      l10n.downloadedChapterCount(chapters.length),
-                      style: tt.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        ],
                       ),
-                    ),
+                    ],
+                    if (comic.datetimeUpdated != null &&
+                        comic.datetimeUpdated!.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.update,
+                            size: 14,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            TimeFormat.relativeOf(comic.datetimeUpdated!, l10n),
+                            style: tt.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -431,13 +525,26 @@ class _LocalComicDetailPageState extends State<LocalComicDetailPage> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            // 宽屏左栏空间充裕，简介直接展开；窄屏维持原样。
-            child: Text(
-              comic.brief!,
-              style: tt.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.5,
-              ),
+            // 与漫画详情页一致：竖屏默认折叠 3 行，点击展开/收起；
+            // 宽屏左栏空间充裕，默认展开。
+            child: Builder(
+              builder: (context) {
+                final expanded =
+                    _briefExpanded ||
+                    comicDetailUsesTwoPane(MediaQuery.sizeOf(context));
+                return GestureDetector(
+                  onTap: () => setState(() => _briefExpanded = !_briefExpanded),
+                  child: Text(
+                    comic.brief!,
+                    maxLines: expanded ? null : 3,
+                    overflow: expanded ? null : TextOverflow.ellipsis,
+                    style: tt.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
