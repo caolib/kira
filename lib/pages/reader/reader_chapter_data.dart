@@ -120,6 +120,7 @@ extension _ReaderChapterData on _ReaderPageState {
         if (!mounted) return;
         _preloadImages(startPage - 1);
         // Chapter switches interrupt auto-scroll; resume after rebuild if enabled.
+        // Chapter switches interrupt auto-scroll; resume after rebuild if enabled.
         // Wait for first images to load before resuming to avoid scrolling blanks.
         if (_autoScrollEnabled && !_isPageMode) {
           final gen = ++_autoScrollGeneration;

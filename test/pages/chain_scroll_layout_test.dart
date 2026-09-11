@@ -185,4 +185,56 @@ void main() {
       }
     });
   });
+
+  group('链首拼接后的索引位移', () {
+    // 滚动模式回翻拼接上一话时，视口锚点取自拼接前的列表（用户停在链首话
+    // 第一页顶部时锚点是 item 0 的 prevHead 触发区）。拼接后必须用
+    // 「当前章起始 item 索引的新旧差值」还原锚点，锚点内容应落在
+    // 「上一话|链首话」的章间分隔条上——若少算/多算一项，锚点就会落到
+    // 上一话的首页，表现为回翻直接跳到上一话第一页。
+    test('锚点 prevHead 映射到章间分隔条，链首话各 item 精确归位', () {
+      final before = continuous([
+        chapter(uuid: 'B', pages: 3, prev: 'A', next: 'C'),
+      ]);
+      final after = continuous([
+        chapter(uuid: 'A', pages: 5, prev: 'Z', next: 'B'),
+        chapter(uuid: 'B', pages: 3, prev: 'A', next: 'C'),
+      ]);
+
+      final shift =
+          after.chapterScrollStarts[1] - before.chapterScrollStarts[0];
+      expect(shift, 6); // A 的 5 张图 + 1 条分隔条
+
+      final afterIds = after.items.map(itemId).toList();
+      // 旧锚点 item 0（prevHead）拼接后对应 A|B 分隔条。
+      expect(afterIds[shift], 'div:A');
+
+      final beforeIds = before.items.map(itemId).toList();
+      for (var old = 1; old < beforeIds.length; old++) {
+        expect(
+          afterIds[old + shift],
+          beforeIds[old],
+          reason: '旧索引 $old (${beforeIds[old]}) 应落到 ${old + shift}',
+        );
+      }
+    });
+
+    test('拼接漫画首话（新链首为 header 占位）时映射同样成立', () {
+      final before = continuous([
+        chapter(uuid: 'B', pages: 2, prev: 'A', next: 'C'),
+      ]);
+      final after = continuous([
+        chapter(uuid: 'A', pages: 4, next: 'B'),
+        chapter(uuid: 'B', pages: 2, prev: 'A', next: 'C'),
+      ]);
+
+      final shift =
+          after.chapterScrollStarts[1] - before.chapterScrollStarts[0];
+      expect(shift, 5); // A 的 4 张图 + 1 条分隔条
+
+      final afterIds = after.items.map(itemId).toList();
+      expect(afterIds[shift], 'div:A');
+      expect(afterIds[after.chapterScrollStarts[1]], 'img:B#0');
+    });
+  });
 }

@@ -236,99 +236,122 @@ extension _ReaderPageMode on _ReaderPageState {
     // 最后一话无下一话时，末尾追加一个空白页用于返回目录
     final hasEndBlank = _chain.last.next == null;
     final itemCount = totalChapters + (hasEndBlank ? 1 : 0);
-    return GestureDetector(
-      onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
-      onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
-      onHorizontalDragUpdate: horizontalDrag ? _onInstantTurnDragUpdate : null,
-      onHorizontalDragEnd: horizontalDrag ? _onInstantTurnDragEnd : null,
-      onHorizontalDragCancel: horizontalDrag ? _onInstantTurnDragCancel : null,
-      onVerticalDragStart: verticalDrag ? _onInstantTurnDragStart : null,
-      onVerticalDragUpdate: verticalDrag ? _onInstantTurnDragUpdate : null,
-      onVerticalDragEnd: verticalDrag ? _onInstantTurnDragEnd : null,
-      onVerticalDragCancel: verticalDrag ? _onInstantTurnDragCancel : null,
-      child: PageView.builder(
-        // 连续阅读：章切换不重建 PageView，避免丢位置；用稳定 key。
-        key: ValueKey('page-continuous-$_scrollWidgetVersion'),
-        controller: _pageController,
-        scrollDirection: _isVerticalPageMode ? Axis.vertical : Axis.horizontal,
-        reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
-        allowImplicitScrolling: true,
-        physics: instantTurn || turnGesturesLocked
-            ? const NeverScrollableScrollPhysics()
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        // 回翻意图才拼接上一话（竖向上拖 / 横向反向拖，均产生 overscroll < 0，
+        // 符号只取决于滚动轴方向与 reverse 无关）。进入一话不预取，章节数据
+        // 请求数与不预取时一致：翻回第一页由 onPageChanged 触发，在第一页
+        // 立即回翻由这里触发。无动画翻页模式拖动走 _prevPage，无此通知。
+        if (n is OverscrollNotification && n.overscroll < 0) {
+          _maybePrependPrevForPageMode();
+        }
+        return false;
+      },
+      child: GestureDetector(
+        onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
+        onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
+        onHorizontalDragUpdate: horizontalDrag
+            ? _onInstantTurnDragUpdate
             : null,
-        itemCount: itemCount,
-        onPageChanged: (index) {
-          // 末尾空白页：返回目录
-          if (hasEndBlank && index == totalChapters) {
-            if (!_autoAdvancingChapter) {
-              _autoAdvancingChapter = true;
-              Navigator.pop(context);
+        onHorizontalDragEnd: horizontalDrag ? _onInstantTurnDragEnd : null,
+        onHorizontalDragCancel: horizontalDrag
+            ? _onInstantTurnDragCancel
+            : null,
+        onVerticalDragStart: verticalDrag ? _onInstantTurnDragStart : null,
+        onVerticalDragUpdate: verticalDrag ? _onInstantTurnDragUpdate : null,
+        onVerticalDragEnd: verticalDrag ? _onInstantTurnDragEnd : null,
+        onVerticalDragCancel: verticalDrag ? _onInstantTurnDragCancel : null,
+        child: PageView.builder(
+          // 连续阅读：章切换不重建 PageView，避免丢位置；用稳定 key。
+          key: ValueKey('page-continuous-$_scrollWidgetVersion'),
+          controller: _pageController,
+          scrollDirection: _isVerticalPageMode
+              ? Axis.vertical
+              : Axis.horizontal,
+          reverse: !_isVerticalPageMode && _user.readerScrollDirection == 1,
+          allowImplicitScrolling: true,
+          physics: instantTurn || turnGesturesLocked
+              ? const NeverScrollableScrollPhysics()
+              : null,
+          itemCount: itemCount,
+          onPageChanged: (index) {
+            // 末尾空白页：返回目录
+            if (hasEndBlank && index == totalChapters) {
+              if (!_autoAdvancingChapter) {
+                _autoAdvancingChapter = true;
+                Navigator.pop(context);
+              }
+              return;
             }
-            return;
-          }
-          final (ci, li) = _resolveChainImage(index);
-          final chapterChanged = _syncActiveChapterFromGlobal(ci);
-          _setState(() {
-            _currentPage = li + 1;
-            // 跳页（滑块等）后当前页未放大，恢复翻页手势。
-            _pageImageZoomed = false;
-            if (!_isDraggingSlider) {
-              _showToolbar = false;
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+            final (ci, li) = _resolveChainImage(index);
+            final chapterChanged = _syncActiveChapterFromGlobal(ci);
+            _setState(() {
+              _currentPage = li + 1;
+              // 跳页（滑块等）后当前页未放大，恢复翻页手势。
+              _pageImageZoomed = false;
+              if (!_isDraggingSlider) {
+                _showToolbar = false;
+                SystemChrome.setEnabledSystemUIMode(
+                  SystemUiMode.immersiveSticky,
+                );
+              }
+            });
+            _saveReadingHistory();
+            _preloadChainImages(ci, li);
+            // 接近链尾且有下一话：预加载下一话到链中，翻页时即可无缝衔接
+            if (ci == _chain.length - 1 &&
+                li >= _chain.last.contents.length - 2 &&
+                _chain.last.next != null &&
+                !_loadingNextChainChapter) {
+              _appendNextChapterToChain();
             }
-          });
-          _saveReadingHistory();
-          _preloadChainImages(ci, li);
-          // 接近链尾且有下一话：预加载下一话到链中，翻页时即可无缝衔接
-          if (ci == _chain.length - 1 &&
-              li >= _chain.last.contents.length - 2 &&
-              _chain.last.next != null &&
-              !_loadingNextChainChapter) {
-            _appendNextChapterToChain();
-          }
-          if (chapterChanged) {
-            _preloadComments();
-          }
-        },
-        itemBuilder: (_, i) {
-          // 末尾空白页
-          if (hasEndBlank && i == totalChapters) {
-            return const SizedBox.expand();
-          }
-          final (ci, li) = _resolveChainImage(i);
-          final chapter = _chain[ci];
-          // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
-          final isChapterLastPage = li == chapter.contents.length - 1;
-          // 只有当前页允许保持放大状态；切走的页自动复位缩放，
-          // 避免滑回时页面仍处于放大却无法平移的不一致状态。
-          final zoomActive =
-              i == _chainChapterStart(_chainIndex) + (_currentPage - 1);
-          final child = Center(
-            child: _buildReaderImageGesture(
-              chapter,
-              li,
-              retryKey: i,
-              zoomActive: zoomActive,
-            ),
-          );
-          if (isChapterLastPage) {
-            return Column(
-              children: [
-                Expanded(child: child),
-                _PageModeEndActions(
-                  hasNext: chapter.next != null,
-                  commentCount: _commentCountFor(chapter),
-                  onCatalog: () => Navigator.pop(context),
-                  onComments: () => _showChapterComments(chapter: chapter),
-                  onNextChapter: chapter.next != null
-                      ? () => _goChapter(chapter.next)
-                      : null,
-                ),
-              ],
+            if (chapterChanged) {
+              _preloadComments();
+            }
+            // 停在链首话第一页且还有上一话：预拼接上一话，让索引 0 之前有
+            // 真实页面，拖动即可回翻（否则 PageView 无前页，拖动无响应）。
+            _maybePrependPrevForPageMode();
+          },
+          itemBuilder: (_, i) {
+            // 末尾空白页
+            if (hasEndBlank && i == totalChapters) {
+              return const SizedBox.expand();
+            }
+            final (ci, li) = _resolveChainImage(i);
+            final chapter = _chain[ci];
+            // 每章末页均显示底部操作（目录/评论/下一章），便于随时切换。
+            final isChapterLastPage = li == chapter.contents.length - 1;
+            // 只有当前页允许保持放大状态；切走的页自动复位缩放，
+            // 避免滑回时页面仍处于放大却无法平移的不一致状态。
+            final zoomActive =
+                i == _chainChapterStart(_chainIndex) + (_currentPage - 1);
+            final child = Center(
+              child: _buildReaderImageGesture(
+                chapter,
+                li,
+                retryKey: i,
+                zoomActive: zoomActive,
+              ),
             );
-          }
-          return child;
-        },
+            if (isChapterLastPage) {
+              return Column(
+                children: [
+                  Expanded(child: child),
+                  _PageModeEndActions(
+                    hasNext: chapter.next != null,
+                    commentCount: _commentCountFor(chapter),
+                    onCatalog: () => Navigator.pop(context),
+                    onComments: () => _showChapterComments(chapter: chapter),
+                    onNextChapter: chapter.next != null
+                        ? () => _goChapter(chapter.next)
+                        : null,
+                  ),
+                ],
+              );
+            }
+            return child;
+          },
+        ),
       ),
     );
   }

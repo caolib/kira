@@ -258,7 +258,7 @@ extension _ReaderChain on _ReaderPageState {
       if (!mounted) return;
       _setState(() {
         _chain.add(next);
-        _loadingNextChainChapter = false;
+        // 不在这里解除加载锁：见 _scheduleChainLoadingReset。
         _rebuildChainStructure();
         // 链尾增长：登记新章图片归属（供阅读统计埋点反查）
         _registerChapterStatsUrls(next);
@@ -267,6 +267,7 @@ extension _ReaderChain on _ReaderPageState {
       });
       // 追加后立即预加载该话评论，使分隔区评论按钮能显示数量
       if (_user.commentPreload) unawaited(_preloadComments(chapter: next));
+      _scheduleChainLoadingReset(isPrev: false);
     } catch (_) {
       _loadingNextChainChapter = false;
       // 追加失败保持链不变，用户可手动重试（继续翻页会再次触发）
@@ -311,7 +312,7 @@ extension _ReaderChain on _ReaderPageState {
       _setState(() {
         _chain.insert(0, prev);
         _chainIndex += 1;
-        _loadingPrevChainChapter = false;
+        // 不在这里解除加载锁：见 _schedulePrevChainLoadingReset。
         _rebuildChainStructure();
         // 链首增长：登记新章图片归属（供阅读统计埋点反查）
         _registerChapterStatsUrls(prev);
@@ -348,6 +349,7 @@ extension _ReaderChain on _ReaderPageState {
       }
       // 拼接后预加载该话评论，使分隔区评论按钮能显示数量
       if (_user.commentPreload) unawaited(_preloadComments(chapter: prev));
+      _scheduleChainLoadingReset(isPrev: true);
       return true;
     } catch (_) {
       _loadingPrevChainChapter = false;
@@ -355,6 +357,51 @@ extension _ReaderChain on _ReaderPageState {
       // 拼接失败保持链不变：滚动模式可继续上滑重试；翻页模式由调用方降级整章跳转。
       return false;
     }
+  }
+
+  /// 拼接成功后，延迟到「替换阅读列表的那一帧」结束再解除加载锁。
+  ///
+  /// 链首插入/链尾追加都会重建阅读列表；从改完链数据到新列表真正上屏之间，
+  /// [_itemPositionsListener] 里仍是旧列表的位置快照（链首插入时用户停在
+  /// 顶部，旧快照里触发区必然可见）。若在 setState 里立即解锁，同一批
+  /// 指针事件产生的下一个滚动通知会用旧快照再次触发拼接：第二次链首插入
+  /// 拿旧 item 0 当锚点、按再插入一级的新结构换算，正好落在「上一话|当前话
+  /// 分隔条 + 上一话首页」，表现为「回翻直接跳到上一话第一页」。且仅当被
+  /// 拼上的上一话自己还有上一话时才会二次触发——数据相关，因此部分章节
+  /// 稳定复现、部分从不出现。
+  ///
+  /// 滚动通知只在事件阶段派发，撑不过一帧；新列表的位置快照在替换帧的
+  /// post-frame 阶段刷新（其回调注册晚于本回调）。因此锁到本帧结束即可
+  /// 关闭窗口：下一批事件到来时锁已解除、位置快照已是新结构。
+  void _scheduleChainLoadingReset({required bool isPrev}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (isPrev) {
+        if (_loadingPrevChainChapter) {
+          _setState(() => _loadingPrevChainChapter = false);
+        }
+      } else if (_loadingNextChainChapter) {
+        _setState(() => _loadingNextChainChapter = false);
+      }
+    });
+  }
+
+  /// 翻页模式：停在链首话第一页且链首之上还有上一话时，拼接上一话。
+  ///
+  /// PageView 在索引 0 之前没有页面，原生拖动回翻在物理上无页可去；点按
+  /// 翻页走 [_prevPage] 的「拼接 + 跳页」路径才有响应。把上一话拼进链后，
+  /// 索引 0 之前就有真实页面，拖动即可直接回翻到上一话末页。
+  /// 按需触发、不做进页预取（章节详情请求数与不拼接时一致）：
+  /// - 翻页回到链首话第一页：onPageChanged 触发（对上一话取数与点按路径相同）；
+  /// - 在第一页直接回翻拖动：PageView 的 OverscrollNotification（overscroll < 0）
+  ///   触发，见 _buildPageMode 的通知处理。
+  void _maybePrependPrevForPageMode() {
+    if (!_isPageMode || !_continuousReading) return;
+    if (_loading || _loadingPrevChainChapter) return;
+    if (_chain.isEmpty || _chain.first.prev == null) return;
+    // 仅当活动章节就是链首且停在第一页时，索引 0 之前才没有已拼接内容。
+    if (_chainIndex != 0 || _currentPage != 1) return;
+    unawaited(_prependPrevChapterToChain());
   }
 
   /// 根据全局图片位置更新当前所在章节，用于导航栏显示与历史记录。
