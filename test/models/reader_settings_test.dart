@@ -33,6 +33,14 @@ void main() {
       expect(settings.instantPageTurn, false);
     });
 
+    test('longPressZoomEnabled defaults to false', () {
+      expect(settings.longPressZoomEnabled, false);
+    });
+
+    test('longPressZoomPanSensitivity defaults to 2.0', () {
+      expect(settings.longPressZoomPanSensitivity, 2.0);
+    });
+
     test('pageRTL defaults to false', () {
       expect(settings.pageRTL, false);
     });
@@ -114,6 +122,34 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await settings.initFromPrefs(prefs);
       expect(settings.instantPageTurn, true);
+    });
+
+    test('longPressZoomEnabled persists after re-init', () async {
+      await settings.setLongPressZoomEnabled(true);
+      expect(settings.longPressZoomEnabled, true);
+
+      settings.resetPrefsCache();
+      final prefs = await SharedPreferences.getInstance();
+      await settings.initFromPrefs(prefs);
+      expect(settings.longPressZoomEnabled, true);
+    });
+
+    test('longPressZoomPanSensitivity persists after re-init', () async {
+      await settings.setLongPressZoomPanSensitivity(2.5);
+      expect(settings.longPressZoomPanSensitivity, 2.5);
+
+      settings.resetPrefsCache();
+      final prefs = await SharedPreferences.getInstance();
+      await settings.initFromPrefs(prefs);
+      expect(settings.longPressZoomPanSensitivity, 2.5);
+    });
+
+    test('longPressZoomPanSensitivity clamps to the supported range', () async {
+      await settings.setLongPressZoomPanSensitivity(9);
+      expect(settings.longPressZoomPanSensitivity, 3.0);
+
+      await settings.setLongPressZoomPanSensitivity(0);
+      expect(settings.longPressZoomPanSensitivity, 1.0);
     });
 
     test('dimming persists after re-init', () async {
@@ -217,6 +253,20 @@ void main() {
       var callCount = 0;
       settings.addListener(() => callCount++);
       await settings.setVolumeKey(false);
+      expect(callCount, 1);
+    });
+
+    test('setLongPressZoomEnabled notifies listeners', () async {
+      var callCount = 0;
+      settings.addListener(() => callCount++);
+      await settings.setLongPressZoomEnabled(true);
+      expect(callCount, 1);
+    });
+
+    test('setLongPressZoomPanSensitivity notifies listeners', () async {
+      var callCount = 0;
+      settings.addListener(() => callCount++);
+      await settings.setLongPressZoomPanSensitivity(2.5);
       expect(callCount, 1);
     });
 

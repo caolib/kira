@@ -18,6 +18,9 @@ class ReaderSettings extends PrefsStore {
   static const _keyImageGap = 'reader_image_gap';
   static const _keyVolumeKey = 'reader_volume_key';
   static const _keyInstantPageTurn = 'reader_instant_page_turn';
+  static const _keyLongPressZoomEnabled = 'reader_long_press_zoom_enabled';
+  static const _keyLongPressZoomPanSensitivity =
+      'reader_long_press_zoom_pan_sensitivity';
   static const _keyPageRTL = 'reader_page_rtl';
   static const _keyPageVertical = 'reader_page_vertical';
   static const _keyDimming = 'reader_dimming';
@@ -74,6 +77,8 @@ class ReaderSettings extends PrefsStore {
   double _imageGap = 0.0;
   bool _volumeKey = true;
   bool _instantPageTurn = false;
+  bool _longPressZoomEnabled = false;
+  double _longPressZoomPanSensitivity = 2.0;
   bool _pageRTL = false;
   bool _pageVertical = false;
   double _dimming = 0.3;
@@ -119,6 +124,8 @@ class ReaderSettings extends PrefsStore {
   double get imageGap => _imageGap;
   bool get volumeKey => _volumeKey;
   bool get instantPageTurn => _instantPageTurn;
+  bool get longPressZoomEnabled => _longPressZoomEnabled;
+  double get longPressZoomPanSensitivity => _longPressZoomPanSensitivity;
   bool get pageRTL => _pageRTL;
   bool get pageVertical => _pageVertical;
   double get dimming => _dimming;
@@ -164,6 +171,12 @@ class ReaderSettings extends PrefsStore {
     _imageGap = prefs.getDouble(_keyImageGap) ?? 0.0;
     _volumeKey = prefs.getBool(_keyVolumeKey) ?? true;
     _instantPageTurn = prefs.getBool(_keyInstantPageTurn) ?? false;
+    _longPressZoomEnabled = prefs.getBool(_keyLongPressZoomEnabled) ?? false;
+    _longPressZoomPanSensitivity =
+        (prefs.getDouble(_keyLongPressZoomPanSensitivity) ?? 2.0).clamp(
+          1.0,
+          3.0,
+        );
     _pageRTL = prefs.getBool(_keyPageRTL) ?? false;
     _pageVertical = prefs.getBool(_keyPageVertical) ?? false;
     _dimming = prefs.getDouble(_keyDimming) ?? 0.3;
@@ -235,6 +248,19 @@ class ReaderSettings extends PrefsStore {
   Future<void> setInstantPageTurn(bool value) async {
     _instantPageTurn = value;
     await setBool(_keyInstantPageTurn, value);
+  }
+
+  Future<void> setLongPressZoomEnabled(bool value) async {
+    if (_longPressZoomEnabled == value) return;
+    _longPressZoomEnabled = value;
+    await setBool(_keyLongPressZoomEnabled, value);
+  }
+
+  Future<void> setLongPressZoomPanSensitivity(double value) async {
+    final clamped = value.clamp(1.0, 3.0);
+    if (_longPressZoomPanSensitivity == clamped) return;
+    _longPressZoomPanSensitivity = clamped;
+    await setDouble(_keyLongPressZoomPanSensitivity, clamped);
   }
 
   Future<void> setPageRTL(bool value) async {

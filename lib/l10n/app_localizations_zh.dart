@@ -2526,6 +2526,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerDisplaySection => '显示';
 
   @override
+  String get readerLongPressZoom => '长按缩放';
+
+  @override
+  String get readerLongPressZoomDesc => '长按图片放大，按住移动可查看细节，松手恢复';
+
+  @override
+  String get readerLongPressZoomPanSensitivity => '拖动灵敏度';
+
+  @override
   String get readerStatusOverlay => '状态显示';
 
   @override
@@ -6481,6 +6490,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get readerDisplaySection => '顯示';
+
+  @override
+  String get readerLongPressZoom => '長按縮放';
+
+  @override
+  String get readerLongPressZoomDesc => '長按圖片放大，按住移動可查看細節，放開後恢復';
+
+  @override
+  String get readerLongPressZoomPanSensitivity => '拖動靈敏度';
 
   @override
   String get readerStatusOverlay => '狀態顯示';

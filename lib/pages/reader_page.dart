@@ -37,6 +37,7 @@ import '../widgets/image_reveal_hold.dart';
 import '../widgets/reader_status_overlay.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
+import 'reader/reader_long_press_zoom.dart';
 
 part 'reader/reader_bottom_bar.dart';
 part 'reader/reader_chapter_widgets.dart';
@@ -146,6 +147,18 @@ class _ReaderPageState extends State<ReaderPage> {
   void _handleReadingSurfaceTap() {
     if (_flingBrakeGuard.consumeTap()) return;
     _toggleToolbar();
+  }
+
+  void _recordFlingBrakeScroll(ScrollNotification notification) {
+    if (notification case ScrollUpdateNotification(
+      :final scrollDelta,
+      :final dragDetails,
+    ) when (scrollDelta ?? 0) != 0) {
+      _flingBrakeGuard.recordScroll(
+        isDrag: dragDetails != null,
+        at: DateTime.now(),
+      );
+    }
   }
 
   late String _currentUuid;
@@ -1732,13 +1745,33 @@ class _ReaderPageState extends State<ReaderPage> {
     int? retryKey,
   }) {
     final key = retryKey ?? localIndex;
-    return _ReaderImageGesture(
+    final imageGesture = _ReaderImageGesture(
       key: ValueKey('reader-image-${chapter.uuid}-$localIndex'),
       onSingleTap: _isPageMode
           ? _handlePageModeTapAt
           : (_) => _handleReadingSurfaceTap(),
       onDoubleTap: () => _openImageViewer(chapter, localIndex),
       child: _buildImage(chapter, localIndex, retryKey: key),
+    );
+
+    if (readerLongPressZoomTargetForMode(isPageMode: _isPageMode) !=
+        ReaderLongPressZoomTarget.page) {
+      return imageGesture;
+    }
+    return _buildLongPressZoomSurface(imageGesture);
+  }
+
+  Widget _buildLongPressZoomSurface(Widget child) {
+    return ReaderLongPressZoomSurface(
+      enabled: _user.reader.longPressZoomEnabled,
+      panSensitivity: _user.reader.longPressZoomPanSensitivity,
+      contentScrollAxis: _isPageMode
+          ? null
+          : (_isHorizontalScrollMode ? Axis.horizontal : Axis.vertical),
+      canStart: () => !_flingBrakeGuard.consumeTap(),
+      onZoomStarted: _pauseAutoScrollForOverlay,
+      onZoomEnded: _resumeAutoScrollAfterOverlay,
+      child: child,
     );
   }
 
@@ -2194,7 +2227,7 @@ class _ReaderPageState extends State<ReaderPage> {
         ? totalItems - 1
         : -1;
 
-    return Listener(
+    final scrollViewport = Listener(
       onPointerDown: (_) {
         // 按下的瞬间列表若还在惯性滚动，这次触摸只是刹车（见 FlingBrakeTapGuard）。
         _flingBrakeGuard.onPointerDown(DateTime.now());
@@ -2211,13 +2244,8 @@ class _ReaderPageState extends State<ReaderPage> {
               _onAutoScrollWheel();
             }
             if (_isDraggingSlider) return false;
-            if (n is ScrollUpdateNotification && (n.scrollDelta ?? 0) != 0) {
-              // 区分「手指仍在拖」与「抬手后的惯性」，供点击刹车判定使用。
-              _flingBrakeGuard.recordScroll(
-                isDrag: n.dragDetails != null,
-                at: DateTime.now(),
-              );
-            }
+            // 区分「手指仍在拖」与「抬手后的惯性」，供点击刹车判定使用。
+            _recordFlingBrakeScroll(n);
             if (n is ScrollUpdateNotification &&
                 _showToolbar &&
                 (n.scrollDelta ?? 0).abs() > 0) {
@@ -2352,6 +2380,12 @@ class _ReaderPageState extends State<ReaderPage> {
         ),
       ),
     );
+
+    if (readerLongPressZoomTargetForMode(isPageMode: _isPageMode) !=
+        ReaderLongPressZoomTarget.viewport) {
+      return scrollViewport;
+    }
+    return _buildLongPressZoomSurface(scrollViewport);
   }
 
   /// 连续阅读滚动模式：当链尾章节最后两张图片之一进入视口且有下一话时，
@@ -2448,6 +2482,7 @@ class _ReaderPageState extends State<ReaderPage> {
   // ── 翻页模式 ──
 
   void _handlePageModeTapAt(Offset globalPosition) {
+    if (_flingBrakeGuard.consumeTap()) return;
     if (_isVerticalPageMode) {
       final screenHeight = MediaQuery.of(context).size.height;
       final y = globalPosition.dy;
@@ -2522,7 +2557,7 @@ class _ReaderPageState extends State<ReaderPage> {
     // 最后一话无下一话时，末尾追加一个空白页用于返回目录
     final hasEndBlank = _chain.last.next == null;
     final itemCount = totalChapters + (hasEndBlank ? 1 : 0);
-    return GestureDetector(
+    final pageView = GestureDetector(
       onTapUp: (details) => _handlePageModeTapAt(details.globalPosition),
       onHorizontalDragStart: horizontalDrag ? _onInstantTurnDragStart : null,
       onHorizontalDragUpdate: horizontalDrag ? _onInstantTurnDragUpdate : null,
@@ -2602,6 +2637,16 @@ class _ReaderPageState extends State<ReaderPage> {
           }
           return child;
         },
+      ),
+    );
+    return Listener(
+      onPointerDown: (_) => _flingBrakeGuard.onPointerDown(DateTime.now()),
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          _recordFlingBrakeScroll(notification);
+          return false;
+        },
+        child: pageView,
       ),
     );
   }
