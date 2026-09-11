@@ -99,7 +99,9 @@ void main() {
     // 页面上剩余的 Card（更新状态卡等）仍继承全局阴影。
     final cards = tester.widgetList<Card>(find.byType(Card)).toList();
     expect(cards.every((card) => card.elevation == null), isTrue);
-    expect(tester.widgetList<SettingTileGroup>(find.byType(SettingTileGroup)),
-        isNotEmpty);
+    expect(
+      tester.widgetList<SettingTileGroup>(find.byType(SettingTileGroup)),
+      isNotEmpty,
+    );
   });
 }

@@ -1597,6 +1597,12 @@ abstract class AppLocalizations {
   /// **'测速后已选择延迟最低的节点'**
   String get networkFixedNodeAutoSelected;
 
+  /// No description provided for @networkRouteAutoSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速后已切换到平均延迟最低的线路'**
+  String get networkRouteAutoSelected;
+
   /// No description provided for @networkRouteLabel.
   ///
   /// In zh, this message translates to:
@@ -1608,12 +1614,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'正在检测各节点...'**
   String get networkTestingNodes;
-
-  /// No description provided for @networkNotTested.
-  ///
-  /// In zh, this message translates to:
-  /// **'尚未进行检测'**
-  String get networkNotTested;
 
   /// No description provided for @networkHighLatencyProxySuggestion.
   ///
@@ -1752,6 +1752,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'拷贝账号登录接口使用的域名，登录失败时可切换重试'**
   String get networkCopyLoginDomainHint;
+
+  /// No description provided for @networkCopyLoginDomainDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get networkCopyLoginDomainDefault;
+
+  /// No description provided for @networkCopyLoginDomainCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get networkCopyLoginDomainCustom;
+
+  /// No description provided for @networkCopyLoginDomainEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改登录域名'**
+  String get networkCopyLoginDomainEditTitle;
+
+  /// No description provided for @networkCopyLoginDomainDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'该域名已在列表中'**
+  String get networkCopyLoginDomainDuplicate;
 
   /// No description provided for @networkCopyAppVersion.
   ///
@@ -1930,13 +1954,13 @@ abstract class AppLocalizations {
   /// No description provided for @networkNodeGridRouteHint.
   ///
   /// In zh, this message translates to:
-  /// **'选择一条线路，测速后自动切换到最快的'**
+  /// **'点击线路卡片切换当前线路'**
   String get networkNodeGridRouteHint;
 
   /// No description provided for @networkNodeGridFixedHint.
   ///
   /// In zh, this message translates to:
-  /// **'点击节点卡片即可固定到该节点'**
+  /// **'点击节点固定，将一直使用所选节点'**
   String get networkNodeGridFixedHint;
 
   /// No description provided for @networkModeFixedNodeShort.
@@ -1944,6 +1968,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'节点'**
   String get networkModeFixedNodeShort;
+
+  /// No description provided for @networkCurrentInUse.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用中'**
+  String get networkCurrentInUse;
+
+  /// No description provided for @networkModeRouteDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求自动在线路内的节点间切换'**
+  String get networkModeRouteDesc;
+
+  /// No description provided for @networkModeFixedNodeDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'固定使用单个节点'**
+  String get networkModeFixedNodeDesc;
+
+  /// No description provided for @networkNodesSectionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路与节点'**
+  String get networkNodesSectionTitle;
 
   /// No description provided for @aiConfigTitle.
   ///

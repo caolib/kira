@@ -67,63 +67,65 @@ class _SelectTileState<T> extends State<SelectTile<T>> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     _menuEntry = OverlayEntry(
-      builder: (context) => Stack(children: [
-        // 全屏透明捕获层：点外部收起（带方向性返回手势穿透）。
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _dismissMenu,
-            onPanStart: (_) => _dismissMenu(),
+      builder: (context) => Stack(
+        children: [
+          // 全屏透明捕获层：点外部收起（带方向性返回手势穿透）。
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _dismissMenu,
+              onPanStart: (_) => _dismissMenu(),
+            ),
           ),
-        ),
-        CompositedTransformFollower(
-          link: _layerLink,
-          targetAnchor: Alignment.bottomLeft,
-          child: SizedBox(
-            width: width,
-            child: Material(
-              elevation: 4,
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
-              color: cs.surfaceContainerHigh,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final item in widget.items)
-                    InkWell(
-                      onTap: () {
-                        widget.onChanged(item.value);
-                        _dismissMenu();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            item.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: tt.bodyMedium?.copyWith(
-                              color: item.value == widget.value
-                                  ? cs.primary
-                                  : cs.onSurface,
-                              fontWeight: item.value == widget.value
-                                  ? FontWeight.w600
-                                  : null,
+          CompositedTransformFollower(
+            link: _layerLink,
+            targetAnchor: Alignment.bottomLeft,
+            child: SizedBox(
+              width: width,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(12),
+                clipBehavior: Clip.antiAlias,
+                color: cs.surfaceContainerHigh,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final item in widget.items)
+                      InkWell(
+                        onTap: () {
+                          widget.onChanged(item.value);
+                          _dismissMenu();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              item.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.bodyMedium?.copyWith(
+                                color: item.value == widget.value
+                                    ? cs.primary
+                                    : cs.onSurface,
+                                fontWeight: item.value == widget.value
+                                    ? FontWeight.w600
+                                    : null,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
     overlay.insert(_menuEntry!);
   }
@@ -139,10 +141,12 @@ class _SelectTileState<T> extends State<SelectTile<T>> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final label = widget.items
-        .where((i) => i.value == widget.value)
-        .map((i) => i.pillLabel)
-        .firstOrNull ?? '';
+    final label =
+        widget.items
+            .where((i) => i.value == widget.value)
+            .map((i) => i.pillLabel)
+            .firstOrNull ??
+        '';
 
     return CompositedTransformTarget(
       link: _layerLink,

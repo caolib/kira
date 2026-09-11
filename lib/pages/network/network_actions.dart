@@ -23,10 +23,31 @@ extension _NetworkActions on _NetworkPageState {
     return bestHost;
   }
 
+  /// 平均延迟最低的线路索引；所有线路都不可达时返回 null。
+  int? _bestAverageRoute(Map<int, Map<String, int?>> results) {
+    int? bestRoute;
+    double? bestAvg;
+    for (var route = 0; route < ApiClient.routeCount; route++) {
+      final avg = _averageLatency(results[route]);
+      if (avg == null) continue;
+      if (bestAvg == null || avg < bestAvg) {
+        bestRoute = route;
+        bestAvg = avg;
+      }
+    }
+    return bestRoute;
+  }
+
   Color _latencyTone(double avg, ColorScheme cs) {
     if (avg <= 800) return Colors.green;
     if (avg <= 2000) return Colors.orange;
     return cs.error;
+  }
+
+  double? _averageLatency(Map<String, int?>? results) {
+    final values = results?.values.whereType<int>().toList() ?? const <int>[];
+    if (values.isEmpty) return null;
+    return values.reduce((a, b) => a + b) / values.length;
   }
 
   String _latencyHostKey(int index, String host) => '$index|$host';
@@ -100,17 +121,30 @@ extension _NetworkActions on _NetworkPageState {
       }
       final results = await Future.wait(tests);
       final latencyResults = Map<int, Map<String, int?>>.fromEntries(results);
-      // 仅 fixedNode 模式测速后自动选最低延迟节点;route 模式留给用户手动点选线路。
-      if (_user.networkSelectionMode == NetworkSelectionMode.fixedNode) {
-        final bestHost = _bestLatencyHost(latencyResults);
-        if (bestHost != null && bestHost != _user.fixedNodeHost) {
-          await _user.setFixedNodeHost(bestHost);
-          if (mounted) {
-            _showToast(
-              AppLocalizations.of(context)!.networkFixedNodeAutoSelected,
-            );
+      // 测速完成后自动选择最优目标：
+      //  - fixedNode 模式：固定到延迟最低的节点；
+      //  - route 模式：切换到平均延迟最低的线路。
+      switch (_user.networkSelectionMode) {
+        case NetworkSelectionMode.fixedNode:
+          final bestHost = _bestLatencyHost(latencyResults);
+          if (bestHost != null && bestHost != _user.fixedNodeHost) {
+            await _user.setFixedNodeHost(bestHost);
+            if (mounted) {
+              _showToast(
+                AppLocalizations.of(context)!.networkFixedNodeAutoSelected,
+              );
+            }
           }
-        }
+        case NetworkSelectionMode.route:
+          final bestRoute = _bestAverageRoute(latencyResults);
+          if (bestRoute != null && bestRoute != _user.apiRoute) {
+            await _user.setApiRoute(bestRoute);
+            if (mounted) {
+              _showToast(
+                AppLocalizations.of(context)!.networkRouteAutoSelected,
+              );
+            }
+          }
       }
       if (!mounted) return;
       _setState(() {
@@ -155,6 +189,113 @@ extension _NetworkActions on _NetworkPageState {
       _latencyResults = {};
       _pendingLatencyHosts = {};
     });
+  }
+
+  // 切换/删除/修改登录域名后，延迟结果里旧 host 的条目已失效，统一清空。
+  void _resetLatencyResults() {
+    _setState(() {
+      _latencyResults = {};
+      _pendingLatencyHosts = {};
+    });
+  }
+
+  Future<void> _addCustomLoginHost() async {
+    final value = _customLoginHostController.text.trim();
+    final ok = await _user.addCustomCopyLoginHost(value);
+    if (!mounted) return;
+    if (!ok) {
+      _showToast(
+        AppLocalizations.of(context)!.networkCopyLoginDomainDuplicate,
+        isError: true,
+      );
+      return;
+    }
+    _customLoginHostController.clear();
+    unawaited(_testLoginHostLatency([value]));
+  }
+
+  Future<void> _removeCustomLoginHost(String host) async {
+    final wasCurrent = _user.copyLoginHost == host;
+    await _user.removeCustomCopyLoginHost(host);
+    if (!mounted) return;
+    _setState(() {
+      _loginHostLatency.remove(host);
+      _pendingLoginHosts.remove(host);
+    });
+    if (wasCurrent) _resetLatencyResults();
+  }
+
+  Future<void> _editCustomLoginHost(String host) async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: host);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.networkCopyLoginDomainEditTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          keyboardType: TextInputType.url,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (value) => Navigator.pop(ctx, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancelButton),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: Text(l10n.commentSettingsSaveButton),
+          ),
+        ],
+      ),
+    );
+    if (result == null) {
+      controller.dispose();
+      return;
+    }
+    controller.dispose();
+    if (!mounted) return;
+
+    final wasCurrent = _user.copyLoginHost == host;
+    final ok = await _user.updateCustomCopyLoginHost(host, result);
+    if (!mounted) return;
+    if (!ok) {
+      _showToast(
+        AppLocalizations.of(context)!.networkCopyLoginDomainDuplicate,
+        isError: true,
+      );
+      return;
+    }
+    _setState(() {
+      _loginHostLatency.remove(host);
+      _pendingLoginHosts.remove(host);
+    });
+    if (wasCurrent) _resetLatencyResults();
+    unawaited(_testLoginHostLatency([result.trim()]));
+  }
+
+  /// 测试拷贝登录域名连通性（展开高级设置、新增/修改域名时触发）。
+  /// [hosts] 缺省为当前全部可选域名。
+  Future<void> _testLoginHostLatency([List<String>? hosts]) async {
+    final targets = hosts ?? _user.copyLoginHostChoices;
+    if (targets.isEmpty) return;
+
+    _setState(() => _pendingLoginHosts.addAll(targets));
+    await _networkApi.testHostsConnectivity(
+      targets,
+      onHostResult: (host, latency) {
+        if (!mounted) return;
+        _setState(() {
+          _loginHostLatency[host] = latency;
+          _pendingLoginHosts.remove(host);
+        });
+      },
+    );
+    if (!mounted) return;
+    _setState(() => _pendingLoginHosts.removeAll(targets));
   }
 
   Future<void> _saveCopyAdvancedSettings() async {

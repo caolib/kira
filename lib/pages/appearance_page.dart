@@ -97,9 +97,7 @@ class _AppearancePageState extends State<AppearancePage> {
     showToast(
       context,
       applied
-          ? l10n.appearanceRefreshRateRequested(
-              _formatRefreshRate(rate, l10n),
-            )
+          ? l10n.appearanceRefreshRateRequested(_formatRefreshRate(rate, l10n))
           : l10n.appearanceRefreshRateSaved,
     );
   }
@@ -271,10 +269,7 @@ class _AppearancePageState extends State<AppearancePage> {
     final navCard = SettingTileGroup(
       children: [
         ListTile(
-          leading: Icon(
-            Icons.text_fields_rounded,
-            color: cs.onSurfaceVariant,
-          ),
+          leading: Icon(Icons.text_fields_rounded, color: cs.onSurfaceVariant),
           title: Text(l10n.appearanceBottomNavLabelMode),
           subtitle: Text(
             _bottomNavLabelModeLabel(_user.bottomNavLabelMode, l10n),
@@ -458,8 +453,7 @@ class _AppearancePageState extends State<AppearancePage> {
                                   : '$rate Hz',
                             ),
                         ],
-                        onChanged:
-                            _applyingRate ? (_) {} : _selectRefreshRate,
+                        onChanged: _applyingRate ? (_) {} : _selectRefreshRate,
                       ),
               ),
             ],
@@ -474,10 +468,7 @@ class _AppearancePageState extends State<AppearancePage> {
           trailing: SelectTile<ThemeMode>(
             value: _user.themeMode,
             items: [
-              SelectItem(
-                ThemeMode.system,
-                l10n.appearanceSystemMode,
-              ),
+              SelectItem(ThemeMode.system, l10n.appearanceSystemMode),
               SelectItem(ThemeMode.light, l10n.appearanceLightMode),
               SelectItem(ThemeMode.dark, l10n.appearanceDarkMode),
             ],
@@ -551,67 +542,64 @@ class _AppearancePageState extends State<AppearancePage> {
       child: _user.theme.useDynamicColor
           ? const SizedBox.shrink()
           : Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final option in appThemeVariantOptions)
-                Tooltip(
-                  message: option.localizedDescription(l10n),
-                  child: ChoiceChip(
-                    label: Text(option.localizedLabel(l10n)),
-                    selected: _user.themeVariant == option.variant,
-                    showCheckmark: false,
-                    onSelected: (_) => _user.setThemeVariant(option.variant),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final option in appThemeVariantOptions)
+                      Tooltip(
+                        message: option.localizedDescription(l10n),
+                        child: ChoiceChip(
+                          label: Text(option.localizedLabel(l10n)),
+                          selected: _user.themeVariant == option.variant,
+                          showCheckmark: false,
+                          onSelected: (_) =>
+                              _user.setThemeVariant(option.variant),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                  ],
                 ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final option in appThemeOptions)
-                _ThemeColorTile(
-                  color: option.seedColor,
-                  selected: _user.themeColor == option.id,
-                  onTap: () => _user.setThemeColor(option.id),
+                const SizedBox(height: AppSpacing.lg),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final option in appThemeOptions)
+                      _ThemeColorTile(
+                        color: option.seedColor,
+                        selected: _user.themeColor == option.id,
+                        onTap: () => _user.setThemeColor(option.id),
+                      ),
+                    _ThemeColorTile(
+                      color: _user.customThemeColor,
+                      selected: _user.themeColor == customThemeOptionId,
+                      onTap: _pickCustomThemeColor,
+                    ),
+                  ],
                 ),
-              _ThemeColorTile(
-                color: _user.customThemeColor,
-                selected: _user.themeColor == customThemeOptionId,
-                onTap: _pickCustomThemeColor,
-              ),
-            ],
-          ),
-        ],
-      ),
+              ],
+            ),
     );
 
     final colorOptionsSection = SettingTileGroup(
       children: [
         SwitchListTile(
-          secondary: Icon(
-            Icons.colorize_rounded,
-            color: cs.onSurfaceVariant,
-          ),
+          secondary: Icon(Icons.colorize_rounded, color: cs.onSurfaceVariant),
           title: Text(l10n.appearanceDynamicColor),
           subtitle: Text(
             l10n.appearanceDynamicColorDesc,
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           value: _user.theme.useDynamicColor,
-          onChanged: (value) => unawaited(_user.theme.setUseDynamicColor(value)),
+          onChanged: (value) =>
+              unawaited(_user.theme.setUseDynamicColor(value)),
         ),
         SwitchListTile(
-          secondary: Icon(
-            Icons.contrast_rounded,
-            color: cs.onSurfaceVariant,
-          ),
+          secondary: Icon(Icons.contrast_rounded, color: cs.onSurfaceVariant),
           title: Text(l10n.appearanceAmoledDark),
           subtitle: Text(
             l10n.appearanceAmoledDarkDesc,

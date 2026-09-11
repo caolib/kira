@@ -550,6 +550,7 @@
   "networkSelectionMode": "選擇模式",
   "networkModeRoute": "線路",
   "networkFixedNodeAutoSelected": "測速後已選擇延遲最低的節點",
+  "networkRouteAutoSelected": "測速後已切換到平均延遲最低的線路",
   "networkRouteLabel": "線路 {index}",
   "@networkRouteLabel": {
     "placeholders": {
@@ -559,7 +560,6 @@
     }
   },
   "networkTestingNodes": "正在檢測各節點...",
-  "networkNotTested": "尚未進行檢測",
   "networkHighLatencyProxySuggestion": "目前延遲較大，建議開啟代理",
   "networkRateLimitMessage": "請求過於頻繁，已被限速，請稍後再試",
   "networkRequestFailedCode": "請求失敗（code: {code}）",
@@ -590,6 +590,10 @@
   "networkAdvancedSettings": "進階設定",
   "networkCopyLoginDomain": "拷貝登入域名",
   "networkCopyLoginDomainHint": "拷貝帳號登入介面使用的域名，登入失敗時可切換重試",
+  "networkCopyLoginDomainDefault": "預設",
+  "networkCopyLoginDomainCustom": "自訂",
+  "networkCopyLoginDomainEditTitle": "修改登入域名",
+  "networkCopyLoginDomainDuplicate": "該域名已在列表中",
   "networkCopyAppVersion": "COPY 請求版本號",
   "networkCopyAutoUpdate": "每天自動更新",
   "networkCopyAutoUpdateNever": "尚未更新",
@@ -1986,9 +1990,13 @@
   "networkStatusUnknown": "尚未檢測",
   "networkStatusUnknownHint": "點擊線路按鈕測速，了解各節點延遲",
   "networkTestLatencyShort": "測速",
-  "networkNodeGridRouteHint": "選擇一條線路後，測速後自動切換到該線路",
-  "networkNodeGridFixedHint": "點擊節點卡片，可固定使用該節點",
+  "networkNodeGridRouteHint": "點擊線路卡片切換目前線路",
+  "networkNodeGridFixedHint": "點擊節點固定，將一直使用所選節點",
   "networkModeFixedNodeShort": "節點",
+  "networkCurrentInUse": "使用中",
+  "networkModeRouteDesc": "請求自動在線路內的節點間切換",
+  "networkModeFixedNodeDesc": "固定使用單一節點",
+  "networkNodesSectionTitle": "線路與節點",
   "alreadyCollectedLabel": "已收藏",
   "downloadActionButton": "下載"
 }

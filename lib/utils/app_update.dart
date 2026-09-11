@@ -81,8 +81,7 @@ class ReleaseAsset {
   }
 
   /// 文件名是否带 [abi] 标识（如 arm64-v8a / x86_64）。
-  bool matchesAbi(String abi) =>
-      name.toLowerCase().contains(abi.toLowerCase());
+  bool matchesAbi(String abi) => name.toLowerCase().contains(abi.toLowerCase());
 }
 
 class AppUpdateInfo {
@@ -781,7 +780,10 @@ class InAppInstaller with WidgetsBindingObserver {
 
   /// 授权后的实际 下载 → 安装 流水线。Re-entrant calls are ignored
   /// while a task is in flight.
-  Future<void> _downloadAndInstallNow(ReleaseAsset asset, bool useMirror) async {
+  Future<void> _downloadAndInstallNow(
+    ReleaseAsset asset,
+    bool useMirror,
+  ) async {
     if (_busy) return;
     _busy = true;
     state.value = InstallState.preparing(asset.name);

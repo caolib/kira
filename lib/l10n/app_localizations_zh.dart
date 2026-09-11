@@ -839,15 +839,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkFixedNodeAutoSelected => '测速后已选择延迟最低的节点';
 
   @override
+  String get networkRouteAutoSelected => '测速后已切换到平均延迟最低的线路';
+
+  @override
   String networkRouteLabel(int index) {
     return '线路 $index';
   }
 
   @override
   String get networkTestingNodes => '正在检测各节点...';
-
-  @override
-  String get networkNotTested => '尚未进行检测';
 
   @override
   String get networkHighLatencyProxySuggestion => '当前延迟较大，建议开启代理';
@@ -920,6 +920,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get networkCopyLoginDomainHint => '拷贝账号登录接口使用的域名，登录失败时可切换重试';
+
+  @override
+  String get networkCopyLoginDomainDefault => '默认';
+
+  @override
+  String get networkCopyLoginDomainCustom => '自定义';
+
+  @override
+  String get networkCopyLoginDomainEditTitle => '修改登录域名';
+
+  @override
+  String get networkCopyLoginDomainDuplicate => '该域名已在列表中';
 
   @override
   String get networkCopyAppVersion => 'COPY 请求版本号';
@@ -1027,13 +1039,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkTestLatencyShort => '测速';
 
   @override
-  String get networkNodeGridRouteHint => '选择一条线路，测速后自动切换到最快的';
+  String get networkNodeGridRouteHint => '点击线路卡片切换当前线路';
 
   @override
-  String get networkNodeGridFixedHint => '点击节点卡片即可固定到该节点';
+  String get networkNodeGridFixedHint => '点击节点固定，将一直使用所选节点';
 
   @override
   String get networkModeFixedNodeShort => '节点';
+
+  @override
+  String get networkCurrentInUse => '使用中';
+
+  @override
+  String get networkModeRouteDesc => '请求自动在线路内的节点间切换';
+
+  @override
+  String get networkModeFixedNodeDesc => '固定使用单个节点';
+
+  @override
+  String get networkNodesSectionTitle => '线路与节点';
 
   @override
   String get aiConfigTitle => 'AI配置';
@@ -3948,15 +3972,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkFixedNodeAutoSelected => '測速後已選擇延遲最低的節點';
 
   @override
+  String get networkRouteAutoSelected => '測速後已切換到平均延遲最低的線路';
+
+  @override
   String networkRouteLabel(int index) {
     return '線路 $index';
   }
 
   @override
   String get networkTestingNodes => '正在檢測各節點...';
-
-  @override
-  String get networkNotTested => '尚未進行檢測';
 
   @override
   String get networkHighLatencyProxySuggestion => '目前延遲較大，建議開啟代理';
@@ -4029,6 +4053,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkCopyLoginDomainHint => '拷貝帳號登入介面使用的域名，登入失敗時可切換重試';
+
+  @override
+  String get networkCopyLoginDomainDefault => '預設';
+
+  @override
+  String get networkCopyLoginDomainCustom => '自訂';
+
+  @override
+  String get networkCopyLoginDomainEditTitle => '修改登入域名';
+
+  @override
+  String get networkCopyLoginDomainDuplicate => '該域名已在列表中';
 
   @override
   String get networkCopyAppVersion => 'COPY 請求版本號';
@@ -4136,13 +4172,25 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkTestLatencyShort => '測速';
 
   @override
-  String get networkNodeGridRouteHint => '選擇一條線路後，測速後自動切換到該線路';
+  String get networkNodeGridRouteHint => '點擊線路卡片切換目前線路';
 
   @override
-  String get networkNodeGridFixedHint => '點擊節點卡片，可固定使用該節點';
+  String get networkNodeGridFixedHint => '點擊節點固定，將一直使用所選節點';
 
   @override
   String get networkModeFixedNodeShort => '節點';
+
+  @override
+  String get networkCurrentInUse => '使用中';
+
+  @override
+  String get networkModeRouteDesc => '請求自動在線路內的節點間切換';
+
+  @override
+  String get networkModeFixedNodeDesc => '固定使用單一節點';
+
+  @override
+  String get networkNodesSectionTitle => '線路與節點';
 
   @override
   String get aiConfigTitle => 'AI 設定';

@@ -154,6 +154,29 @@ extension UserManagerInitPart on UserManager {
     _copyLoginHost = UserManager.normalizeCopyLoginHost(
       prefs.getString(UserManager._keyCopyLoginHost),
     );
+    {
+      // 自定义登录域名：仅去空白、去重（含与内置重复），不校验合法性。
+      final custom = <String>[];
+      for (final raw
+          in prefs.getStringList(UserManager._keyCustomCopyLoginHosts) ??
+              const <String>[]) {
+        final host = raw.trim();
+        if (host.isEmpty ||
+            custom.contains(host) ||
+            copyLoginHostOptions.contains(host)) {
+          continue;
+        }
+        custom.add(host);
+      }
+      _customCopyLoginHosts = custom;
+      // 历史内置域名（如 www.mangacopy.com）曾被选为当前域名，内置列表
+      // 收窄后不再包含它们——并入自定义列表，保持可见、可切换、可删除。
+      // 仅内存合并即可：copyLoginHost 持久不变，下次 init 会重新推导。
+      if (!copyLoginHostOptions.contains(_copyLoginHost) &&
+          !_customCopyLoginHosts.contains(_copyLoginHost)) {
+        _customCopyLoginHosts = [..._customCopyLoginHosts, _copyLoginHost];
+      }
+    }
     _copyAppVersion = UserManager.normalizeCopyAppVersion(
       prefs.getString(UserManager._keyCopyAppVersion),
     );

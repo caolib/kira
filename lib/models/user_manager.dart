@@ -180,6 +180,7 @@ class UserManager extends ChangeNotifier {
   static const _keyMangaHomeSource = 'manga_home_source';
   static const _keyCopyApiHost = 'copy_api_host';
   static const _keyCopyLoginHost = 'copy_login_host';
+  static const _keyCustomCopyLoginHosts = 'copy_login_custom_hosts';
   static const _keyCopyAppVersion = 'copy_app_version';
   static const _keyCopyAutoUpdate = 'copy_auto_update';
   static const _keyCopySettingsUpdatedAt = 'copy_settings_updated_at';
@@ -252,6 +253,9 @@ class UserManager extends ChangeNotifier {
   String _mangaHomeSource = 'hot';
   String _copyApiHost = defaultCopyApiHost;
   String _copyLoginHost = defaultCopyLoginHost;
+
+  /// 用户自定义的拷贝登录域名（内置 [copyLoginHostOptions] 之外）。
+  List<String> _customCopyLoginHosts = [];
   String _copyAppVersion = defaultCopyAppVersion;
   bool _copyAutoUpdate = true;
   int? _copySettingsUpdatedAt;
@@ -368,6 +372,14 @@ class UserManager extends ChangeNotifier {
   String get mangaHomeSource => _mangaHomeSource;
   String get copyApiHost => _copyApiHost;
   String get copyLoginHost => _copyLoginHost;
+  List<String> get customCopyLoginHosts =>
+      List.unmodifiable(_customCopyLoginHosts);
+
+  /// 高级设置中可选的全部登录域名：内置 + 自定义，去重保序。
+  List<String> get copyLoginHostChoices => List.unmodifiable([
+    ...copyLoginHostOptions,
+    ..._customCopyLoginHosts.where((h) => !copyLoginHostOptions.contains(h)),
+  ]);
   String get copyAppVersion => _copyAppVersion;
   bool get copyAutoUpdate => _copyAutoUpdate;
   int? get copySettingsUpdatedAt => _copySettingsUpdatedAt;
@@ -401,8 +413,12 @@ class UserManager extends ChangeNotifier {
   static String normalizeCopyApiHost(String? value) =>
       _normalizeHost(value, defaultCopyApiHost);
 
-  static String normalizeCopyLoginHost(String? value) =>
-      _normalizeHost(value, defaultCopyLoginHost);
+  /// 登录域名不做合法性校验（填什么由用户自己负责），仅去两端空白；
+  /// 空值回落内置默认。
+  static String normalizeCopyLoginHost(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.isEmpty ? defaultCopyLoginHost : trimmed;
+  }
 
   static String _normalizeHost(String? value, String fallback) {
     final trimmed = value?.trim() ?? '';

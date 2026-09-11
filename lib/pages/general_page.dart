@@ -262,10 +262,7 @@ class _GeneralPageState extends State<GeneralPage> {
               SwitchListTile(
                 secondary: const Icon(Icons.exit_to_app_rounded),
                 title: Text(l10n.backExitConfirmTitle),
-                subtitle: Text(
-                  l10n.backExitConfirmDesc,
-                  style: tt.bodySmall,
-                ),
+                subtitle: Text(l10n.backExitConfirmDesc, style: tt.bodySmall),
                 value: _user.theme.backExitConfirm,
                 onChanged: _user.theme.setBackExitConfirm,
               ),

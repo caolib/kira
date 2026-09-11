@@ -132,5 +132,4 @@ extension _UpdateCardActions on _UpdateCardState {
       ),
     );
   }
-
 }

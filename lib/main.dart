@@ -354,10 +354,7 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
     if (mounted) setState(() {});
   }
 
-  ThemeData _buildTheme(
-    Brightness brightness, [
-    CorePalettes? dynamicPalette,
-  ]) {
+  ThemeData _buildTheme(Brightness brightness, [CorePalettes? dynamicPalette]) {
     final seedColor = _user.themeOption.seedColor;
     var colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,

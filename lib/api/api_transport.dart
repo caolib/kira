@@ -12,14 +12,10 @@ const defaultCopyApiHost = 'api.copy202601.com';
 const defaultCopyAppVersion = '3.0.9';
 
 /// 默认拷贝登录域名（高级设置中可切换）。
-const defaultCopyLoginHost = 'copy3000.com';
+const defaultCopyLoginHost = 'copy4000.com';
 
 /// 可选的拷贝登录域名列表，用于高级设置中的切换。
-const copyLoginHostOptions = [
-  defaultCopyLoginHost,
-  'www.copy3000.com',
-  'www.mangacopy.com',
-];
+const copyLoginHostOptions = [defaultCopyLoginHost, 'copy3000.com'];
 
 const _hostComment = defaultCopyApiHost;
 const _hostWeb = 'www.manga2026.xyz';

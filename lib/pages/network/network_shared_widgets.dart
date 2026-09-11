@@ -41,7 +41,20 @@ extension _ToneX on _Tone {
   }
 }
 
-/// 会呼吸的状态圆点 —— 仪表盘的 signature 元素。
+/// 节点延迟 → 颜色语义。
+_Tone _nodeTone(bool isPending, int? latency) {
+  if (isPending) return _Tone.pending;
+  if (latency == null) return _Tone.timeout;
+  if (latency <= 800) return _Tone.good;
+  if (latency <= 2000) return _Tone.warn;
+  return _Tone.bad;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 小部件
+// ─────────────────────────────────────────────────────────────────────────
+
+/// 会呼吸的状态圆点 —— 状态卡的 signature 元素。
 class _BreathingDot extends StatelessWidget {
   final Color color;
   final AnimationController controller;
@@ -98,52 +111,18 @@ class _BreathingDot extends StatelessWidget {
   }
 }
 
-/// 代理状态胶囊：激活时显眼，未激活时灰。
-class _ProxyPill extends StatelessWidget {
-  final bool active;
-  final String label;
-  final TextTheme tt;
+/// 节点行/胶囊前的延迟状态小圆点。
+class _LatencyDot extends StatelessWidget {
+  final Color color;
 
-  const _ProxyPill({
-    required this.active,
-    required this.label,
-    required this.tt,
-  });
+  const _LatencyDot({required this.color});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final color = active ? Colors.green : cs.onSurfaceVariant;
     return Container(
-      constraints: const BoxConstraints(maxWidth: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: active ? 0.14 : 0.06),
-        borderRadius: AppRadius.smR,
-        border: Border.all(color: color.withValues(alpha: active ? 0.4 : 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            active ? Icons.shield_rounded : Icons.shield_moon_outlined,
-            size: 13,
-            color: color,
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: tt.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

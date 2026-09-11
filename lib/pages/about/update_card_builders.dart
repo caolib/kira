@@ -62,8 +62,7 @@ extension _UpdateCardBuilders on _UpdateCardState {
                   ),
                 ),
                 TextButton(
-                  onPressed: () =>
-                      _showNotesFullscreen(cs, info.releaseNotes),
+                  onPressed: () => _showNotesFullscreen(cs, info.releaseNotes),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 8),

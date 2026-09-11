@@ -160,6 +160,70 @@ extension UserManagerAppSettingsPart on UserManager {
     _notifyListeners();
   }
 
+  Future<void> _persistCustomCopyLoginHosts(SharedPreferences prefs) =>
+      prefs.setStringList(
+        UserManager._keyCustomCopyLoginHosts,
+        _customCopyLoginHosts,
+      );
+
+  /// 添加自定义登录域名（不做合法性校验，由用户自己负责）。
+  /// 空值或与现有条目重复（含内置）返回 false。
+  Future<bool> addCustomCopyLoginHost(String value) async {
+    final host = value.trim();
+    if (host.isEmpty || copyLoginHostChoices.contains(host)) return false;
+
+    _customCopyLoginHosts = [..._customCopyLoginHosts, host];
+    final prefs = await SharedPreferences.getInstance();
+    await _persistCustomCopyLoginHosts(prefs);
+    _notifyListeners();
+    return true;
+  }
+
+  /// 删除自定义登录域名。若删的是当前启用域名，回落到内置默认。
+  Future<void> removeCustomCopyLoginHost(String host) async {
+    if (!_customCopyLoginHosts.contains(host)) return;
+
+    _customCopyLoginHosts = _customCopyLoginHosts
+        .where((e) => e != host)
+        .toList(growable: true);
+    final prefs = await SharedPreferences.getInstance();
+    await _persistCustomCopyLoginHosts(prefs);
+    if (_copyLoginHost == host) {
+      _copyLoginHost = defaultCopyLoginHost;
+      await prefs.setString(
+        UserManager._keyCopyLoginHost,
+        defaultCopyLoginHost,
+      );
+    }
+    _notifyListeners();
+  }
+
+  /// 修改自定义登录域名（不做合法性校验，由用户自己负责）。
+  /// 新值为空或与现有条目重复（含内置）返回 false；
+  /// 若旧值是当前启用域名，修改后同步切换到新值。
+  Future<bool> updateCustomCopyLoginHost(String oldHost, String next) async {
+    if (!_customCopyLoginHosts.contains(oldHost)) return false;
+    final host = next.trim();
+    if (host.isEmpty) return false;
+    if (host == oldHost) return true;
+    if (copyLoginHostChoices.where((e) => e != oldHost).contains(host)) {
+      return false;
+    }
+
+    _customCopyLoginHosts = [
+      for (final h in _customCopyLoginHosts)
+        if (h == oldHost) host else h,
+    ];
+    final prefs = await SharedPreferences.getInstance();
+    await _persistCustomCopyLoginHosts(prefs);
+    if (_copyLoginHost == oldHost) {
+      _copyLoginHost = host;
+      await prefs.setString(UserManager._keyCopyLoginHost, host);
+    }
+    _notifyListeners();
+    return true;
+  }
+
   Future<void> setCopyAppVersion(String value) async {
     final normalized = UserManager.normalizeCopyAppVersion(value);
     if (_copyAppVersion == normalized) return;
