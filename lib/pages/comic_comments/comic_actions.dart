@@ -48,7 +48,7 @@ extension _ComicActions on _ComicCommentsSheetState {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: cs.surfaceBright,
+                    color: _comicCommentCardInsetColor(cs),
                     borderRadius: AppRadius.mdR,
                     border: Border.all(color: cs.outlineVariant),
                   ),
@@ -143,7 +143,7 @@ extension _ComicActions on _ComicCommentsSheetState {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: cs.surfaceBright,
+                    color: _comicCommentCardInsetColor(cs),
                     borderRadius: AppRadius.mdR,
                     border: Border.all(color: cs.outlineVariant),
                   ),

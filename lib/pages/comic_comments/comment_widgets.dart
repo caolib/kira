@@ -54,7 +54,7 @@ class _ComicCommentAvatar extends StatelessWidget {
         height: size,
         child: imageUrl.isEmpty
             ? ColoredBox(
-                color: cs.surfaceContainerHighest,
+                color: _comicCommentCardInsetColor(cs),
                 child: Icon(
                   Icons.person,
                   size: size * 0.5,
@@ -65,7 +65,7 @@ class _ComicCommentAvatar extends StatelessWidget {
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
                 placeholder: (_, _) => ColoredBox(
-                  color: cs.surfaceContainerHighest,
+                  color: _comicCommentCardInsetColor(cs),
                   child: Icon(
                     Icons.person,
                     size: size * 0.5,
@@ -73,7 +73,7 @@ class _ComicCommentAvatar extends StatelessWidget {
                   ),
                 ),
                 errorWidget: (_, _, _) => ColoredBox(
-                  color: cs.surfaceContainerHighest,
+                  color: _comicCommentCardInsetColor(cs),
                   child: Icon(
                     Icons.person,
                     size: size * 0.5,
@@ -270,7 +270,7 @@ class _ComicCommentSkeleton extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cs.surfaceBright,
+        color: _comicCommentCardColor(cs),
         borderRadius: AppRadius.lgR,
       ),
       child: Column(
@@ -337,7 +337,9 @@ class _ComicReplySkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final placeholderColor = cs.onSurfaceVariant.withValues(alpha: 0.2);
+    final placeholderColor = _comicCommentCardInsetColor(
+      cs,
+    ).withValues(alpha: 0.2);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

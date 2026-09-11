@@ -48,6 +48,17 @@ const _commentCardCornerRadius = 10.0;
 
 const _hotCommentAccentColor = AppStatusColors.hotAccent;
 
+/// 评论卡片底色。
+///
+/// 评论区容器是 [ColorScheme.surfaceContainerLow]（也是弹层底色），卡片必须
+/// 比它亮一档，否则卡片和容器糊成一片、看不出层次。[surfaceContainerHigh]
+/// 正好高两档：亮色 T92（比全局卡片 surfaceBright T98 稍低，长列表不刺眼），
+/// 暗色 T17（比容器 T10 明显亮）。亮暗共用同一令牌，无需按亮度分支。
+Color _commentCardColor(ColorScheme cs) => cs.surfaceContainerHigh;
+
+/// 卡片内部的次级色块（头像底衬、图片占位等）：再亮一档，从卡片底上浮起。
+Color _commentCardInsetColor(ColorScheme cs) => cs.surfaceContainerHighest;
+
 double _hotCommentTagIconSize({required bool compact}) => compact ? 14.0 : 16.0;
 
 double _mergedCountTagHeight({required bool compact}) => compact ? 24.0 : 28.0;
@@ -94,52 +105,41 @@ BoxDecoration _buildMergedCountTagDecoration(
 
 BoxDecoration _buildCommentCardDecoration(
   ColorScheme colorScheme, {
-  required Brightness brightness,
   required bool highlightAsHot,
   bool withShadow = true,
   Color? backgroundColor,
 }) {
   final borderRadius = BorderRadius.circular(_commentCardCornerRadius);
   final shadows = withShadow
-      ? _buildCommentCardShadows(brightness, highlightAsHot: highlightAsHot)
+      ? _buildCommentCardShadows(highlightAsHot: highlightAsHot)
       : null;
+  final surface = backgroundColor ?? _commentCardColor(colorScheme);
   if (!highlightAsHot) {
     return BoxDecoration(
-      color: backgroundColor ?? colorScheme.surfaceContainerLow,
+      color: surface,
       borderRadius: borderRadius,
       border: Border.all(
-        color: colorScheme.outlineVariant.withValues(
-          alpha: brightness == Brightness.dark ? 0.35 : 0.6,
-        ),
+        color: colorScheme.outlineVariant.withValues(alpha: 0.6),
         width: 0.8,
       ),
       boxShadow: shadows,
     );
   }
 
-  final surface = backgroundColor ?? colorScheme.surfaceContainerLow;
   return BoxDecoration(
     color: surface,
     borderRadius: borderRadius,
-    border: Border.all(
-      color: _hotCommentAccentColor.withValues(
-        alpha: brightness == Brightness.dark ? 0.48 : 0.56,
-      ),
-    ),
+    border: Border.all(color: _hotCommentAccentColor.withValues(alpha: 0.56)),
     boxShadow: shadows,
   );
 }
 
-List<BoxShadow> _buildCommentCardShadows(
-  Brightness brightness, {
-  required bool highlightAsHot,
-}) {
-  final baseShadowAlpha = brightness == Brightness.dark ? 0.30 : 0.14;
+List<BoxShadow> _buildCommentCardShadows({required bool highlightAsHot}) {
   final shadows = <BoxShadow>[
     BoxShadow(
-      color: Colors.black.withValues(alpha: baseShadowAlpha),
-      blurRadius: brightness == Brightness.dark ? 12 : 14,
-      spreadRadius: brightness == Brightness.dark ? 0 : -1,
+      color: Colors.black.withValues(alpha: 0.14),
+      blurRadius: 14,
+      spreadRadius: -1,
       offset: const Offset(0, 4),
     ),
   ];
@@ -147,9 +147,7 @@ List<BoxShadow> _buildCommentCardShadows(
   if (highlightAsHot) {
     shadows.add(
       BoxShadow(
-        color: _hotCommentAccentColor.withValues(
-          alpha: brightness == Brightness.dark ? 0.20 : 0.16,
-        ),
+        color: _hotCommentAccentColor.withValues(alpha: 0.16),
         blurRadius: 16,
         spreadRadius: -2,
         offset: const Offset(0, 4),

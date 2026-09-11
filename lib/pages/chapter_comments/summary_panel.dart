@@ -304,7 +304,7 @@ class _SummaryPanelState extends State<_SummaryPanel> {
 
         return Container(
           decoration: BoxDecoration(
-            color: cs.surfaceBright,
+            color: _commentCardColor(cs),
             borderRadius: AppRadius.mdR,
             border: Border.all(
               color: statusColor.withValues(alpha: 0.72),

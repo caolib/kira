@@ -404,6 +404,16 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
       );
     }
 
+    // 暗色分层收敛：M3 的 surfaceBright 是 T24（最高浮层色阶），铺在 T6 的
+    // 页面背景上比底部导航栏（surfaceContainer T12）还亮 12 档，且中性色调
+    // 近乎无色相，大面积看过去就是一块「泛白」的灰。降一档到 T17，卡片仍
+    // 明显高于页面与导航栏，层次不变，只是不再刺眼。
+    if (brightness == Brightness.dark) {
+      colorScheme = colorScheme.copyWith(
+        surfaceBright: colorScheme.surfaceContainerHigh,
+      );
+    }
+
     final appFont = _user.theme.appFontFamily;
     final desktopFont = _user.desktopFontFamily;
 

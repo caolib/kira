@@ -5,24 +5,24 @@ class _UpdateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Positioned(
       top: 0,
       right: 0,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: cs.error,
-          borderRadius: const BorderRadius.only(
+        decoration: const BoxDecoration(
+          color: AppStatusColors.updateAccent,
+          borderRadius: BorderRadius.only(
             topRight: Radius.circular(12),
             bottomLeft: Radius.circular(10),
           ),
         ),
         child: Text(
           AppLocalizations.of(context)!.updateBadge,
-          style: AppTypography.meta(
-            Theme.of(context).textTheme,
-          )?.copyWith(color: cs.onError, fontWeight: FontWeight.bold),
+          style: AppTypography.meta(Theme.of(context).textTheme)?.copyWith(
+            color: AppStatusColors.onUpdateAccent,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

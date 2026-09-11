@@ -234,7 +234,7 @@ extension _ComicReplyBuild on _ComicCommentsSheetState {
                 _buildCommentText(
                   reply,
                   bodyStyle: bodyStyle,
-                  backgroundColor: cs.surfaceContainerLow,
+                  backgroundColor: _comicCommentCardColor(cs),
                 ),
               ],
             ),

@@ -5,6 +5,14 @@ part of '../comic_comments_sheet.dart';
 const _mergedCardCornerRadius = 10.0;
 const _hotMergedCommentColor = AppStatusColors.hotAccent;
 
+/// 评论卡片底色（与 chapter_comments/comment_style.dart 同款）。评论区容器是
+/// [ColorScheme.surfaceContainerLow]，卡片用 [ColorScheme.surfaceContainerHigh]
+/// 高两档，亮暗都靠同一令牌拉开层次。
+Color _comicCommentCardColor(ColorScheme cs) => cs.surfaceContainerHigh;
+
+/// 卡片内部的次级色块（头像底衬、图片占位等）：再亮一档。
+Color _comicCommentCardInsetColor(ColorScheme cs) => cs.surfaceContainerHighest;
+
 bool _shouldShowMergedCountTag(int count) => count > 1;
 bool _isHotMergedComment(int count) => count >= 10;
 String _formatMergedCount(int count) => '$count';
@@ -58,55 +66,41 @@ BoxDecoration _buildMergedCountTagDecoration(
 
 BoxDecoration _buildMergedCommentCardDecoration(
   ColorScheme colorScheme, {
-  required Brightness brightness,
   required bool highlightAsHot,
   bool withShadow = true,
   Color? backgroundColor,
 }) {
   final borderRadius = BorderRadius.circular(_mergedCardCornerRadius);
   final shadows = withShadow
-      ? _buildMergedCommentCardShadows(
-          brightness,
-          highlightAsHot: highlightAsHot,
-        )
+      ? _buildMergedCommentCardShadows(highlightAsHot: highlightAsHot)
       : null;
+  final surface = backgroundColor ?? _comicCommentCardColor(colorScheme);
   if (!highlightAsHot) {
     return BoxDecoration(
-      color: backgroundColor ?? colorScheme.surfaceContainerLow,
+      color: surface,
       borderRadius: borderRadius,
       border: Border.all(
-        color: colorScheme.outlineVariant.withValues(
-          alpha: brightness == Brightness.dark ? 0.35 : 0.6,
-        ),
+        color: colorScheme.outlineVariant.withValues(alpha: 0.6),
         width: 0.8,
       ),
       boxShadow: shadows,
     );
   }
 
-  final surface = backgroundColor ?? colorScheme.surfaceContainerLow;
   return BoxDecoration(
     color: surface,
     borderRadius: borderRadius,
-    border: Border.all(
-      color: _hotMergedCommentColor.withValues(
-        alpha: brightness == Brightness.dark ? 0.48 : 0.56,
-      ),
-    ),
+    border: Border.all(color: _hotMergedCommentColor.withValues(alpha: 0.56)),
     boxShadow: shadows,
   );
 }
 
-List<BoxShadow> _buildMergedCommentCardShadows(
-  Brightness brightness, {
-  required bool highlightAsHot,
-}) {
-  final baseShadowAlpha = brightness == Brightness.dark ? 0.30 : 0.14;
+List<BoxShadow> _buildMergedCommentCardShadows({required bool highlightAsHot}) {
   final shadows = <BoxShadow>[
     BoxShadow(
-      color: Colors.black.withValues(alpha: baseShadowAlpha),
-      blurRadius: brightness == Brightness.dark ? 12 : 14,
-      spreadRadius: brightness == Brightness.dark ? 0 : -1,
+      color: Colors.black.withValues(alpha: 0.14),
+      blurRadius: 14,
+      spreadRadius: -1,
       offset: const Offset(0, 4),
     ),
   ];
@@ -114,9 +108,7 @@ List<BoxShadow> _buildMergedCommentCardShadows(
   if (highlightAsHot) {
     shadows.add(
       BoxShadow(
-        color: _hotMergedCommentColor.withValues(
-          alpha: brightness == Brightness.dark ? 0.20 : 0.16,
-        ),
+        color: _hotMergedCommentColor.withValues(alpha: 0.16),
         blurRadius: 16,
         spreadRadius: -2,
         offset: const Offset(0, 4),
@@ -468,7 +460,7 @@ class _ComicCommentAvatarStack extends StatelessWidget {
                 height: avatarSize,
                 padding: EdgeInsets.all(inset),
                 decoration: BoxDecoration(
-                  color: cs.surface,
+                  color: _comicCommentCardColor(cs),
                   shape: BoxShape.circle,
                 ),
                 child: _ComicCommentAvatar(

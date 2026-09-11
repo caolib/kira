@@ -129,10 +129,9 @@ extension _ChapterCommentActions on _ChapterCommentsSheetState {
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
             decoration: _buildCommentCardDecoration(
               cs,
-              brightness: Theme.of(context).brightness,
               highlightAsHot: false,
               withShadow: false,
-              backgroundColor: cs.surfaceContainerHigh,
+              backgroundColor: _commentCardInsetColor(cs),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,

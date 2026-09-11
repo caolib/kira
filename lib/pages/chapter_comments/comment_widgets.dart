@@ -42,7 +42,7 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
           bottomPadding,
         ),
         decoration: BoxDecoration(
-          color: cs.surfaceBright,
+          color: _commentCardColor(cs),
           borderRadius: BorderRadius.circular(_commentCardCornerRadius),
         ),
         child: Column(
@@ -55,7 +55,7 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
                   width: avatarSize,
                   height: avatarSize,
                   decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                    color: _commentCardInsetColor(cs).withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -64,7 +64,7 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
                   width: 100,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                    color: _commentCardInsetColor(cs).withValues(alpha: 0.2),
                     borderRadius: AppRadius.xsR,
                   ),
                 ),
@@ -75,7 +75,7 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
               width: double.infinity,
               height: widget.compact ? 14 : 16,
               decoration: BoxDecoration(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                color: _commentCardInsetColor(cs).withValues(alpha: 0.2),
                 borderRadius: AppRadius.xsR,
               ),
             ),
@@ -84,7 +84,7 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
               width: MediaQuery.sizeOf(context).width * 0.6,
               height: widget.compact ? 14 : 16,
               decoration: BoxDecoration(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+                color: _commentCardInsetColor(cs).withValues(alpha: 0.2),
                 borderRadius: AppRadius.xsR,
               ),
             ),
@@ -248,7 +248,6 @@ class _CommentCardState extends State<_CommentCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final brightness = Theme.of(context).brightness;
     final entry = widget.entry;
     final compact = widget.compact;
     final showAvatar = widget.showAvatar;
@@ -297,7 +296,6 @@ class _CommentCardState extends State<_CommentCard> {
               ),
               decoration: _buildCommentCardDecoration(
                 cs,
-                brightness: brightness,
                 highlightAsHot: isHotMergedComment,
               ),
               child: entry.isMerged
@@ -786,7 +784,7 @@ class _CommentAvatarStack extends StatelessWidget {
                 height: avatarSize,
                 padding: EdgeInsets.all(inset),
                 decoration: BoxDecoration(
-                  color: cs.surface,
+                  color: _commentCardColor(cs),
                   shape: BoxShape.circle,
                 ),
                 child: _CommentAvatar(

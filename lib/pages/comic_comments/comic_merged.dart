@@ -118,10 +118,9 @@ extension _ComicMerged on _ComicCommentsSheetState {
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
             decoration: _buildMergedCommentCardDecoration(
               cs,
-              brightness: Theme.of(context).brightness,
               highlightAsHot: false,
               withShadow: false,
-              backgroundColor: cs.surfaceContainerHigh,
+              backgroundColor: _comicCommentCardInsetColor(cs),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,

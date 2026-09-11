@@ -382,7 +382,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
     TextTheme tt,
     ComicCommentDisplayEntry entry,
   ) {
-    final brightness = Theme.of(context).brightness;
     final comment = entry.primaryComment;
     final replyState = _replyStateOf(comment.id);
     final canExpandReplies = comment.replyCount > 0;
@@ -411,7 +410,6 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           decoration: _buildMergedCommentCardDecoration(
             cs,
-            brightness: brightness,
             highlightAsHot: isHotMerged,
           ),
           child: Column(
@@ -426,7 +424,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
                   userStyle: userStyle,
                   showAvatar: showAvatar,
                   showUserName: user.commentShowUserName,
-                  backgroundColor: cs.surfaceContainerLow,
+                  backgroundColor: _comicCommentCardColor(cs),
                 )
               else ...[
                 Row(
@@ -466,7 +464,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
                 _buildCommentText(
                   comment,
                   bodyStyle: bodyStyle,
-                  backgroundColor: cs.surfaceContainerLow,
+                  backgroundColor: _comicCommentCardColor(cs),
                 ),
               ],
               if (canExpandReplies) ...[
