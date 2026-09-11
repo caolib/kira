@@ -16,6 +16,12 @@ import '../utils/app_logger.dart';
 /// 设计上刻意保持低调：小字号、黑色半透明圆角底、不可点击，
 /// 仅提供系统状态与阅读进度的一眼速览，不打扰阅读。
 class ReaderStatusOverlay extends StatefulWidget {
+  /// 组件渲染高度：顶部内边距 2 + 内容行 18 + 底部内边距 4。
+  /// 内容行高取段位渲染后的实测最大值（含文本行高），与启用的
+  /// 段位无关。阅读区在「状态组件置顶」时据此在首图上方预留等高
+  /// 留白，避免遮挡第一页顶部。
+  static const double reservedHeight = 2 + 18 + AppSpacing.xs;
+
   final int currentPage;
   final int totalPages;
 

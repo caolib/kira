@@ -215,6 +215,16 @@ class _ReaderPageState extends State<ReaderPage> {
   bool get _statusOverlayIsCenter =>
       _user.reader.statusOverlayPosition == 1 ||
       _user.reader.statusOverlayPosition == 4;
+
+  /// 状态组件置顶且为竖向滚动模式时，首图上方预留与组件等高的留白，
+  /// 避免状态组件遮挡第一页顶部；横滚/翻页/置底/关闭时留白为 0。
+  double get _statusOverlayTopInset =>
+      (_user.reader.statusOverlay &&
+              _statusOverlayIsTop &&
+              !_isHorizontalScrollMode &&
+              !_isPageMode)
+          ? ReaderStatusOverlay.reservedHeight
+          : 0.0;
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
   bool get _isHorizontalScrollMode =>
       !_isPageMode && _user.readerScrollDirection != 2;
@@ -2257,7 +2267,7 @@ class _ReaderPageState extends State<ReaderPage> {
             initialAlignment: _scrollModeInitialAlignment,
             scrollDirection: scrollDirection,
             reverse: _isReversedScrollMode,
-            padding: EdgeInsets.zero,
+            padding: EdgeInsets.only(top: _statusOverlayTopInset),
             physics: _isHorizontalScrollMode
                 ? null
                 : const AlwaysScrollableScrollPhysics(),
