@@ -55,59 +55,19 @@ extension _ReaderChain on _ReaderPageState {
 
   /// 根据章节链重建滚动 item 列表与索引缓存。
   void _rebuildChainStructure() {
-    _chapterImageStarts.clear();
-    _chapterScrollStarts.clear();
-    _cachedChainImageCount = 0;
-
-    if (_chain.isEmpty) {
-      _scrollItems = const [];
-      return;
-    }
-
-    final items = <_ScrollItem>[];
-    final hasHeader = _chain.first.prev == null;
-    if (hasHeader) {
-      items.add(_ScrollItem.header());
-    } else if (_continuousReading) {
-      // 链首之上还有上一话：头部触发区，上滑进入视口即预取拼接上一话。
-      items.add(_ScrollItem.prevHead());
-    }
-
-    var imageCursor = 0;
-    if (_continuousReading) {
-      for (var ci = 0; ci < _chain.length; ci++) {
-        final chapter = _chain[ci];
-        _chapterImageStarts.add(imageCursor);
-        _chapterScrollStarts.add(items.length);
-        for (var i = 0; i < chapter.contents.length; i++) {
-          items.add(_ScrollItem.image(chapter, i, imageCursor + i));
-        }
-        imageCursor += chapter.contents.length;
-
-        final isLast = ci == _chain.length - 1;
-        if (isLast) {
-          if (chapter.next == null) {
-            items.add(_ScrollItem.tail());
-          } else {
-            items.add(_ScrollItem.loadMore());
-          }
-        } else {
-          items.add(_ScrollItem.chapterDivider(chapter));
-        }
-      }
-    } else {
-      final chapter = _detail ?? _chain.first;
-      _chapterImageStarts.add(0);
-      _chapterScrollStarts.add(items.length);
-      for (var i = 0; i < chapter.contents.length; i++) {
-        items.add(_ScrollItem.image(chapter, i, i));
-      }
-      imageCursor = chapter.contents.length;
-      items.add(_ScrollItem.tail());
-    }
-
-    _cachedChainImageCount = imageCursor;
-    _scrollItems = items;
+    final layout = buildChainScrollLayout(
+      chain: _chain,
+      continuousReading: _continuousReading,
+      currentChapter: _detail,
+    );
+    _chapterImageStarts
+      ..clear()
+      ..addAll(layout.chapterImageStarts);
+    _chapterScrollStarts
+      ..clear()
+      ..addAll(layout.chapterScrollStarts);
+    _cachedChainImageCount = layout.imageCount;
+    _scrollItems = layout.items;
   }
 
   /// 清理被裁剪章节关联的缓存状态。
@@ -121,92 +81,117 @@ extension _ReaderChain on _ReaderPageState {
     }
   }
 
+  /// 滚动列表此刻能否安全重建：没有拖动、惯性，也没有在拖进度条。
+  bool get _canRebuildScrollList => !_scrollInProgress && !_isDraggingSlider;
+
   /// 按「前1后1」窗口裁剪连续阅读链，限制长会话内存与列表规模。
   /// 返回是否实际裁剪。调用方负责随后 setState。
+  ///
+  /// 链尾裁剪不改变任何现存 item 的索引，随时可做。链首裁剪会让索引整体前移，
+  /// 只能靠「重建列表 + 视口锚点还原」补偿，因此仅在 [_canRebuildScrollList]
+  /// 时执行；滚动途中改为登记 [_chainPrunePending]，等列表静止后由
+  /// [_flushPendingChainPrune] 补做——惯性/拖动途中重建会打断手势，而且锚点
+  /// 取自上一帧的位置快照，这一帧的位移会变成肉眼可见的跳变。
   bool _pruneChainWindow() {
     if (!_continuousReading || _chain.isEmpty) return false;
 
-    final behindRemoveCount =
-        _chainIndex - _ReaderPageState._maxChainChaptersBehind;
     final maxKeepIndex = _chainIndex + _ReaderPageState._maxChainChaptersAhead;
     final aheadRemoveCount = _chain.length - 1 - maxKeepIndex;
+    final behindRemoveCount =
+        _chainIndex - _ReaderPageState._maxChainChaptersBehind;
+    final pruneBehind = behindRemoveCount > 0 && _canRebuildScrollList;
+    if (behindRemoveCount > 0 && !pruneBehind) _chainPrunePending = true;
+    if (aheadRemoveCount <= 0 && !pruneBehind) return false;
 
-    if (behindRemoveCount <= 0 && aheadRemoveCount <= 0) return false;
-
-    // 在改动链结构前记录视口锚点，裁剪后按相同 alignment 还原，避免顶对齐跳动。
-    final viewportAnchor = (!_isPageMode && behindRemoveCount > 0)
+    // 改动链结构前固定视口锚点与「当前章起始 item 索引」，重建后按两者差值
+    // 还原。差值不能换成「被删掉的 item 数」：链首的 header/prevHead 会被新
+    // 链首的同类占位项替换（数量不变），按删除数折算会多减一项，还原位置整整
+    // 偏移一个 item 的高度。
+    final viewportAnchor = pruneBehind && !_isPageMode
         ? _captureLeadingScrollAnchor()
         : null;
-    final removedLeadingScrollItems = behindRemoveCount > 0
-        ? _leadingScrollItemCount(behindRemoveCount)
-        : 0;
+    final anchorBase = pruneBehind ? _currentChapterScrollStart() : 0;
 
     final prunedChapters = <ChapterDetail>[];
-    var shifted = false;
     if (aheadRemoveCount > 0) {
       prunedChapters.addAll(_chain.sublist(_chain.length - aheadRemoveCount));
       _chain.removeRange(_chain.length - aheadRemoveCount, _chain.length);
     }
-    if (behindRemoveCount > 0) {
+    if (pruneBehind) {
       prunedChapters.addAll(_chain.sublist(0, behindRemoveCount));
       _chain.removeRange(0, behindRemoveCount);
       _chainIndex -= behindRemoveCount;
-      shifted = true;
-    }
-
-    _discardPrunedChapters(prunedChapters);
-    if (shifted) {
       // 全局图片索引会因头部裁剪而重编号，清空以全局索引为键的重试状态。
       _imageReloadVersions.clear();
       _imageRetryCounts.clear();
       _imageRetryTokens.clear();
     }
 
+    _discardPrunedChapters(prunedChapters);
     _rebuildChainStructure();
 
     // 仅头部裁剪会移动当前项索引，需要重建阅读控件对齐位置。
     // 只裁链尾时保持现有滚动/翻页位置。
-    if (shifted) {
-      final page = _currentPage.clamp(
-        1,
-        _detail?.contents.isNotEmpty == true ? _detail!.contents.length : 1,
-      );
-      if (_isPageMode) {
-        final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
-        final oldController = _pageController;
-        _pageController = PageController(initialPage: initialIndex);
-        _bumpScrollWidgetVersion();
+    if (!pruneBehind) return true;
+
+    final page = _currentPage.clamp(
+      1,
+      _detail?.contents.isNotEmpty == true ? _detail!.contents.length : 1,
+    );
+    if (_isPageMode) {
+      final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
+      final oldController = _pageController;
+      _pageController = PageController(initialPage: initialIndex);
+      _bumpScrollWidgetVersion();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        oldController.dispose();
+      });
+    } else if (_chain.isNotEmpty) {
+      if (viewportAnchor != null) {
+        final shift = _currentChapterScrollStart() - anchorBase;
+        final maxIndex = _scrollItems.isEmpty ? 0 : _scrollItems.length - 1;
+        _scrollModeInitialIndex = (viewportAnchor.index + shift).clamp(
+          0,
+          maxIndex,
+        );
+        _scrollModeInitialAlignment = viewportAnchor.alignment;
+      } else {
+        _scrollModeInitialIndex = _scrollItemIndexFor(
+          chainIndex: _chainIndex,
+          page: page,
+        );
+        _scrollModeInitialAlignment = 0.0;
+      }
+      _bumpScrollWidgetVersion();
+      // 列表重建会打断自动滚动，裁剪后按需恢复。
+      if (_autoScrollEnabled) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          oldController.dispose();
+          if (mounted && _autoScrollEnabled && !_isPageMode) {
+            _restartAutoScroll();
+          }
         });
-      } else if (_chain.isNotEmpty) {
-        if (viewportAnchor != null) {
-          final maxIndex = _scrollItems.isEmpty ? 0 : _scrollItems.length - 1;
-          _scrollModeInitialIndex =
-              (viewportAnchor.index - removedLeadingScrollItems).clamp(
-                0,
-                maxIndex,
-              );
-          _scrollModeInitialAlignment = viewportAnchor.alignment;
-        } else {
-          _scrollModeInitialIndex = _scrollItemIndexFor(
-            chainIndex: _chainIndex,
-            page: page,
-          );
-          _scrollModeInitialAlignment = 0.0;
-        }
-        _bumpScrollWidgetVersion();
-        // 列表重建会打断自动滚动，裁剪后按需恢复。
-        if (_autoScrollEnabled && !_isPageMode) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _autoScrollEnabled && !_isPageMode) {
-              _restartAutoScroll();
-            }
-          });
-        }
       }
     }
     return true;
+  }
+
+  /// 列表静止后补做被推迟的链首裁剪。
+  ///
+  /// 不在通知回调里直接裁剪，而是排到本帧结束后：
+  /// - `ScrollEndNotification` 可能在布局阶段派发（越界回弹收敛时），此刻
+  ///   setState 会撞上「build 期间 markNeedsBuild」；
+  /// - 抬手与最后一次位移可能同批到达，通知派发时 item 位置快照还停留在上
+  ///   一帧，按它还原锚点会差出这段位移。等本帧布局与位置上报都结束再裁剪，
+  ///   锚点即真实当前位置。
+  void _flushPendingChainPrune() {
+    if (!_chainPrunePending) return;
+    // addPostFrameCallback 自身不会调度新帧，静止时可能一直没有下一帧。
+    WidgetsBinding.instance.scheduleFrame();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_chainPrunePending || !_canRebuildScrollList) return;
+      _chainPrunePending = false;
+      if (_pruneChainWindow()) _setState(() {});
+    });
   }
 
   /// 视口中最靠近起始侧的可见项（leadingEdge 最小）。
@@ -228,18 +213,19 @@ extension _ReaderChain on _ReaderPageState {
     );
   }
 
-  /// 裁剪链头 [chapterCount] 章时，滚动列表会从开头删掉的 item 数量。
-  /// 必须在 `_rebuildChainStructure` 之前、基于旧结构计算。
-  int _leadingScrollItemCount(int chapterCount) {
-    if (chapterCount <= 0) return 0;
+  /// 当前章第一张图在滚动 item 列表中的索引（结构未建时先建）。
+  ///
+  /// 链首/链尾增删章前后各取一次，两者之差就是现存 item 的真实索引位移——
+  /// 它天然排除了「链首占位项被替换而非删除」这类结构差异。
+  int _currentChapterScrollStart() {
     if (_chapterScrollStarts.isEmpty) {
       _rebuildChainStructure();
     }
     if (_chapterScrollStarts.isEmpty) return 0;
-    if (chapterCount >= _chapterScrollStarts.length) {
-      return _scrollItems.length;
-    }
-    return _chapterScrollStarts[chapterCount];
+    return _chapterScrollStarts[_chainIndex.clamp(
+      0,
+      _chapterScrollStarts.length - 1,
+    )];
   }
 
   void _goChapter(String? uuid) {
@@ -321,12 +307,7 @@ extension _ReaderChain on _ReaderPageState {
       final viewportAnchor = !_isPageMode
           ? _captureLeadingScrollAnchor()
           : null;
-      final startBounds = _chapterScrollStarts.isEmpty
-          ? 0
-          : _chapterScrollStarts[_chainIndex.clamp(
-              0,
-              _chapterScrollStarts.length - 1,
-            )];
+      final startBounds = _currentChapterScrollStart();
       _setState(() {
         _chain.insert(0, prev);
         _chainIndex += 1;
@@ -378,6 +359,12 @@ extension _ReaderChain on _ReaderPageState {
 
   /// 根据全局图片位置更新当前所在章节，用于导航栏显示与历史记录。
   /// 返回章节是否发生变化（需要刷新评论缓存等）。
+  ///
+  /// 窗口裁剪的时机由阅读模式决定，不在此处统一处理：
+  /// - 翻页模式仍延后一帧——各调用点紧接着要用「裁剪前」算出的全局页索引跳
+  ///   PageController，同步裁剪会让它失效；调用点的 setState 保证有帧可等。
+  /// - 滚动模式由 `_onItemPositionsChangedContinuous` 在同一帧内裁剪——延后
+  ///   一帧会让视口锚点落后一帧的位移，还原时反而跳一下。
   bool _syncActiveChapterFromGlobal(int chapterIndex) {
     if (chapterIndex < 0 || chapterIndex >= _chain.length) return false;
     if (chapterIndex == _chainIndex) return false;
@@ -385,13 +372,14 @@ extension _ReaderChain on _ReaderPageState {
     _chainIndex = chapterIndex;
     _detail = newDetail;
     _currentUuid = newDetail.uuid;
-    // 章节切换后延后裁剪窗口，避免滚动过程中同步重建列表。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_pruneChainWindow()) {
-        _setState(() {});
-      }
-    });
+    if (_isPageMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_pruneChainWindow()) {
+          _setState(() {});
+        }
+      });
+    }
     return true;
   }
 }

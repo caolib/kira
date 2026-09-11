@@ -8,6 +8,9 @@ extension _ReaderScrollMode on _ReaderPageState {
     // 滚动模式的 PinchZoomable 不随版本号重建（控制器保持共享外置），
     // 缩放状态不会随列表重建自动复位，这里显式复位（连同惯性滑行）。
     _scrollZoomController.reset();
+    // 旧列表连同其滚动活动一起被销毁，不会再派发 ScrollEndNotification；
+    // 不复位「滚动中」标记的话，后续链首裁剪会被永久推迟。
+    _scrollInProgress = false;
   }
 
   void _handlePageZoomChanged(bool zoomed) {
@@ -128,10 +131,15 @@ extension _ReaderScrollMode on _ReaderPageState {
     final chapterChanged = _syncActiveChapterFromGlobal(bestChapterIndex);
     final page = bestLocalIndex + 1;
     if (page == _currentPage && !chapterChanged) return;
-    _setState(() => _currentPage = page);
+    _currentPage = page;
     _saveReadingHistory();
     _preloadChainImages(bestChapterIndex, bestLocalIndex);
     if (chapterChanged) _preloadComments();
+    // 章节切换后按「前1后1」裁剪窗口。必须排在上面的预加载之后：裁剪会前移
+    // _chainIndex，预加载用的是裁剪前的索引。滚动进行中只登记待办，由
+    // ScrollEndNotification 补做，不在惯性/拖动途中重建列表。
+    if (chapterChanged) _pruneChainWindow();
+    _setState(() {});
   }
 
   bool _shouldAutoAdvanceScrollChapter(ScrollNotification notification) {
@@ -323,6 +331,13 @@ extension _ReaderScrollMode on _ReaderPageState {
             if (n is UserScrollNotification && _autoScrollEnabled) {
               _onAutoScrollWheel();
             }
+            if (n is ScrollStartNotification) {
+              _scrollInProgress = true;
+            } else if (n is ScrollEndNotification) {
+              _scrollInProgress = false;
+              // 拖动/惯性结束：补做被推迟的链首裁剪。
+              _flushPendingChainPrune();
+            }
             if (_isDraggingSlider) return false;
             if (n is ScrollUpdateNotification && (n.scrollDelta ?? 0) != 0) {
               // 区分「手指仍在拖」与「抬手后的惯性」，供点击刹车判定使用。
@@ -385,7 +400,7 @@ extension _ReaderScrollMode on _ReaderPageState {
               itemCount: totalItems,
               separatorBuilder: (_, i) {
                 final item = items[i];
-                if (item.kind == _ScrollItemKind.image) {
+                if (item.kind == ChainScrollItemKind.image) {
                   return _isHorizontalScrollMode
                       ? SizedBox(width: _user.readerImageGap)
                       : SizedBox(height: _user.readerImageGap);
@@ -395,18 +410,18 @@ extension _ReaderScrollMode on _ReaderPageState {
               itemBuilder: (_, i) {
                 final item = items[i];
                 switch (item.kind) {
-                  case _ScrollItemKind.header:
+                  case ChainScrollItemKind.header:
                     return _FirstChapterHead(
                       isHorizontalScroll: _isHorizontalScrollMode,
                       tailExtent: _scrollModeTailExtent(context),
                     );
-                  case _ScrollItemKind.prevHead:
+                  case ChainScrollItemKind.prevHead:
                     return _PrevChapterHead(
                       isHorizontalScroll: _isHorizontalScrollMode,
                       tailExtent: _scrollModeTailExtent(context),
                       isLoading: _loadingPrevChainChapter,
                     );
-                  case _ScrollItemKind.chapterDivider:
+                  case ChainScrollItemKind.chapterDivider:
                     final chapter = item.chapter!;
                     return _ChapterDivider(
                       commentCount: _commentCountFor(chapter),
@@ -415,7 +430,7 @@ extension _ReaderScrollMode on _ReaderPageState {
                       onCatalog: () => Navigator.pop(context),
                       onComments: () => _showChapterComments(chapter: chapter),
                     );
-                  case _ScrollItemKind.image:
+                  case ChainScrollItemKind.image:
                     final image = _buildReaderImageGesture(
                       item.chapter!,
                       item.localIndex!,
@@ -435,7 +450,7 @@ extension _ReaderScrollMode on _ReaderPageState {
                       );
                     }
                     return image;
-                  case _ScrollItemKind.tail:
+                  case ChainScrollItemKind.tail:
                     final tailHasNext = _continuousReading
                         ? _chain.last.next != null
                         : _detail?.next != null;
@@ -458,7 +473,7 @@ extension _ReaderScrollMode on _ReaderPageState {
                             )
                           : null,
                     );
-                  case _ScrollItemKind.loadMore:
+                  case ChainScrollItemKind.loadMore:
                     // 「加载下一话」位置与章间分隔条渲染完全一致（仅按钮行，
                     // 不显示"继续滚动"提示），追加下一话完成替换时无视觉变化，
                     // 避免条内按钮跳位。

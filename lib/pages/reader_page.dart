@@ -39,6 +39,7 @@ import '../widgets/pinch_zoomable.dart';
 import '../widgets/reader_status_overlay.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
+import 'reader/chain_scroll_layout.dart';
 
 part 'reader/reader_auto_scroll.dart';
 part 'reader/reader_bottom_bar.dart';
@@ -50,7 +51,6 @@ part 'reader/reader_image_cache.dart';
 part 'reader/reader_image_pipeline.dart';
 part 'reader/reader_image_viewer.dart';
 part 'reader/reader_page_mode.dart';
-part 'reader/reader_scroll_item.dart';
 part 'reader/reader_scroll_mode.dart';
 part 'reader/reader_settings_panel.dart';
 part 'reader/reader_top_bar.dart';
@@ -201,6 +201,14 @@ class _ReaderPageState extends State<ReaderPage> {
   int _chainIndex = 0;
   bool _loadingNextChainChapter = false;
   bool _loadingPrevChainChapter = false;
+
+  /// 滚动列表是否正在滚动（拖动或惯性），由 ScrollStart/EndNotification 维护。
+  /// 滚动途中重建列表会打断手势，链首裁剪因此推迟到静止时执行。
+  bool _scrollInProgress = false;
+
+  /// 有待补做的链首裁剪（滚动途中被推迟）。
+  bool _chainPrunePending = false;
+
   final Map<int, int> _imageReloadVersions = {};
   final Map<int, int> _imageRetryCounts = {};
   final Map<int, String> _imageRetryTokens = {};
@@ -217,7 +225,7 @@ class _ReaderPageState extends State<ReaderPage> {
   final Map<String, int> _commentTotalCache = {};
 
   // 滚动列表结构缓存：仅在章节链变化时重建，避免每次 setState 全量 new 列表。
-  List<_ScrollItem> _scrollItems = const [];
+  List<ChainScrollItem> _scrollItems = const [];
   // 每章第一张图的全局图片索引 / 滚动 item 索引，支持 O(log n) 定位。
   final List<int> _chapterImageStarts = [];
   final List<int> _chapterScrollStarts = [];
@@ -508,7 +516,11 @@ class _ReaderPageState extends State<ReaderPage> {
                   }
                 },
                 onDragStart: () => _isDraggingSlider = true,
-                onDragEnd: () => _isDraggingSlider = false,
+                onDragEnd: () {
+                  _isDraggingSlider = false;
+                  // 拖进度条期间不允许重建列表，松手后补做被推迟的链首裁剪。
+                  _flushPendingChainPrune();
+                },
                 onPrevChapter: _detail!.prev != null
                     ? () => _goChapter(_detail!.prev)
                     : null,

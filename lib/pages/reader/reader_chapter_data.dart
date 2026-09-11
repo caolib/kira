@@ -86,6 +86,9 @@ extension _ReaderChapterData on _ReaderPageState {
         _chainIndex = 0;
         _loadingNextChainChapter = false;
         _loadingPrevChainChapter = false;
+        // 整章重置：丢弃上一章遗留的滚动状态与待裁剪登记。
+        _scrollInProgress = false;
+        _chainPrunePending = false;
         _rebuildChainStructure();
         // 整章切换：重建图片归属注册表（供阅读统计埋点反查）
         _registerChapterStatsUrls(detail, clearFirst: true);
