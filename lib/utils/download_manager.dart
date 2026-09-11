@@ -280,8 +280,6 @@ class DownloadManager extends ChangeNotifier {
   }) async {
     await init();
 
-    await _ensureComicStored(pathWord, comic);
-
     var added = 0;
     for (final chapter in chapters) {
       if (chapter.uuid.isEmpty || isDownloaded(pathWord, chapter.uuid)) {
@@ -299,11 +297,32 @@ class DownloadManager extends ChangeNotifier {
     }
 
     if (added > 0) {
+      // 章节先入队并立刻通知 UI，漫画元数据/封面在后台准备，
+      // 避免点击下载后因等待封面等网络请求产生停顿。
       notifyListeners();
       unawaited(_processQueue());
+      _scheduleComicPrepare(pathWord, comic);
     }
 
     return added;
+  }
+
+  /// 每部漫画串行执行元数据/封面准备，避免并发写 comic.json 与封面文件。
+  final Map<String, Future<void>> _comicPrepares = {};
+
+  void _scheduleComicPrepare(String pathWord, Comic comic) {
+    final previous = _comicPrepares[pathWord] ?? Future.value();
+    final task = previous.whenComplete(() {
+      return _ensureComicStored(pathWord, comic);
+    });
+    _comicPrepares[pathWord] = task;
+    unawaited(
+      task.whenComplete(() {
+        if (identical(_comicPrepares[pathWord], task)) {
+          _comicPrepares.remove(pathWord);
+        }
+      }),
+    );
   }
 
   Future<ChapterDetail?> getDownloadedChapterDetail(
@@ -646,9 +665,10 @@ class DownloadManager extends ChangeNotifier {
       final completedStart = existing.where((e) => e != null).length;
 
       // 重试时复用已保存的评论；全新下载且开关开启时才拉取评论。
-      final comments = (isRetry || !_downloadCommentsEnabled)
-          ? await _loadExistingComments(task.pathWord, task.chapter.uuid)
-          : await _downloadComments(task.chapter.uuid);
+      // 评论与图片互不依赖，与图片下载并行执行，避免拖慢进度显示。
+      final commentsFuture = (isRetry || !_downloadCommentsEnabled)
+          ? _loadExistingComments(task.pathWord, task.chapter.uuid)
+          : _downloadComments(task.chapter.uuid);
 
       _activeProgress = ChapterDownloadProgress(
         completed: completedStart,
@@ -661,6 +681,7 @@ class DownloadManager extends ChangeNotifier {
         chapterDir,
         existing: existing,
       );
+      final comments = await commentsFuture;
 
       // 处理结果：失败页记为空串，收集失败索引。
       final failedIndices = <int>[];
@@ -967,42 +988,54 @@ class DownloadManager extends ChangeNotifier {
     }
   }
 
+  /// 准备漫画元数据与封面。
+  ///
+  /// 先落盘 comic.json（尚无本地封面时封面暂用远程 URL），让下载队列立即
+  /// 能显示漫画名；封面文件随后在后台下载，完成后回填本地路径。
   Future<void> _ensureComicStored(String pathWord, Comic comic) async {
     final stored = _readLocalComicInfo(pathWord);
+    // _readLocalComicInfo 在封面文件缺失时会将 coverPath 置 null，
+    // 因此 coverPath 非空即代表本地封面可用。
+    final hasLocalCover = stored?.coverPath?.isNotEmpty ?? false;
+
+    await _comicDirectory(pathWord).create(recursive: true);
+    await _comicMetadataFile(pathWord).writeAsString(
+      jsonEncode(
+        LocalComicInfo(
+          comic: comic.copyWith(
+            cover: hasLocalCover ? stored!.coverPath : comic.cover,
+          ),
+          coverPath: hasLocalCover ? stored!.coverPath : null,
+          updatedAt: DateTime.now(),
+        ).toJson(),
+      ),
+    );
+    notifyListeners();
+
+    if (hasLocalCover) return;
+
     File? coverFile;
     try {
-      if (stored == null ||
-          stored.coverPath == null ||
-          !await File(stored.coverPath!).exists()) {
-        coverFile = await _downloadCoverIfNeeded(pathWord, comic.cover);
-      }
+      coverFile = await _downloadCoverIfNeeded(pathWord, comic.cover);
     } catch (e) {
       debugPrint('Download comic cover failed: $e');
-    }
-
-    if (stored == null) {
-      await _comicDirectory(pathWord).create(recursive: true);
-      final info = LocalComicInfo(
-        comic: comic.copyWith(cover: coverFile?.path ?? comic.cover),
-        coverPath: coverFile?.path,
-        updatedAt: DateTime.now(),
-      );
-      await _comicMetadataFile(
-        pathWord,
-      ).writeAsString(jsonEncode(info.toJson()));
       return;
     }
+    if (coverFile == null) return;
 
-    final nextInfo = LocalComicInfo(
-      comic: comic.copyWith(
-        cover: coverFile?.path ?? stored.coverPath ?? stored.comic.cover,
+    // 回填前重读元数据，避免覆盖期间 _touchLocalComic 刷新的 updatedAt。
+    final refreshed = _readLocalComicInfo(pathWord);
+    if (refreshed == null) return;
+    await _comicMetadataFile(pathWord).writeAsString(
+      jsonEncode(
+        LocalComicInfo(
+          comic: refreshed.comic.copyWith(cover: coverFile.path),
+          coverPath: coverFile.path,
+          updatedAt: refreshed.updatedAt,
+        ).toJson(),
       ),
-      coverPath: coverFile?.path ?? stored.coverPath,
-      updatedAt: DateTime.now(),
     );
-    await _comicMetadataFile(
-      pathWord,
-    ).writeAsString(jsonEncode(nextInfo.toJson()));
+    notifyListeners();
   }
 
   Future<File?> _downloadCoverIfNeeded(String pathWord, String coverUrl) async {
