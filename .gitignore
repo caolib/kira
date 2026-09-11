@@ -67,4 +67,8 @@ ref/
 .opencode
 .kimi-code
 .zcode
+.grok
+.omp
+.workbuddy
+
 skills-lock.json
