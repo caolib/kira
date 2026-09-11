@@ -226,7 +226,12 @@ class _GitHubAlertBox extends StatelessWidget {
                     onTapLink: onTapLink ?? _openMarkdownLink,
                     styleSheet: styleSheet.copyWith(
                       p: styleSheet.p?.copyWith(color: cs.onSurface),
+                      // Bold text inside the alert keeps normal weight and
+                      // adopts the alert color instead of the outer strong.
+                      strong: styleSheet.p?.copyWith(color: meta.color),
                       a: styleSheet.a?.copyWith(color: meta.color),
+                      // 默认 listIndent 24 对窄的警告框太宽，收紧一档。
+                      listIndent: AppSpacing.md,
                     ),
                   ),
                 ],

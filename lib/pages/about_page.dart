@@ -51,6 +51,9 @@ class _AboutPageState extends State<AboutPage> {
   final _user = UserManager();
 
   static const _repoUrl = 'https://github.com/caolib/kira';
+
+  /// QQ 群入口暂时隐藏；代码保留，恢复时改回 true。
+  static const bool _showQqGroupEntry = false;
   static const _qqGroupUrl = 'https://qm.qq.com/q/rezw7xWuK4';
   static const _qqGroupNumber = '1025321453';
 
@@ -506,19 +509,32 @@ class _AboutPageState extends State<AboutPage> {
                       ),
                       Expanded(
                         child: _LinkAction(
-                          icon: SvgPicture.asset(
-                            'assets/qq.svg',
-                            width: 24,
-                            height: 24,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFF1EBAFC),
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          label: l10n.aboutCommunityLabel,
-                          onTap: () => _showQQGroupDialog(context),
+                          icon: const Icon(Icons.bug_report_outlined),
+                          label: l10n.aboutLogTitle,
+                          onTap: () => context.pushNamed(AppRoutes.appLog),
                         ),
                       ),
+                      if (_showQqGroupEntry) ...[
+                        VerticalDivider(
+                          width: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                        Expanded(
+                          child: _LinkAction(
+                            icon: SvgPicture.asset(
+                              'assets/qq.svg',
+                              width: 24,
+                              height: 24,
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFF1EBAFC),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            label: l10n.aboutCommunityLabel,
+                            onTap: () => _showQQGroupDialog(context),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -585,7 +601,7 @@ class _AboutPageState extends State<AboutPage> {
     );
   }
 
-  /// 法律/致谢卡：免责声明 / 日志 / 鸣谢 / 许可证。
+  /// 法律/致谢卡：免责声明 / 鸣谢 / 许可证。
   Widget _buildLegalCard(ColorScheme cs, AppLocalizations l10n) {
     return Card(
       color: cs.surfaceContainerLow,
@@ -596,13 +612,6 @@ class _AboutPageState extends State<AboutPage> {
             title: Text(l10n.disclaimerTitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.pushNamed(AppRoutes.disclaimer),
-          ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          ListTile(
-            leading: const Icon(Icons.bug_report_outlined),
-            title: Text(l10n.aboutLogTitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.pushNamed(AppRoutes.appLog),
           ),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           ListTile(
@@ -680,6 +689,10 @@ class _UpdateCard extends StatefulWidget {
 class _UpdateCardState extends State<_UpdateCard> {
   /// Available-update body starts open so notes/actions are visible; user can fold to save space.
   bool _cardExpanded = true;
+
+  /// Current-version notes card (shown when no update) starts collapsed —
+  /// only the available-update card opens by default.
+  bool _currentNotesExpanded = false;
   late bool _useMirror;
   // Tracks the last install status we surfaced a toast for, so the error
   // toast fires once per failure instead of on every rebuild.
@@ -780,6 +793,21 @@ class _UpdateCardState extends State<_UpdateCard> {
     UserManager().setUseUpdateMirror(value);
   }
 
+  /// 内层说明滚动到顶/到底后，把剩余拖动量转给外层页面滚动，
+  /// 否则内层会"吃掉"拖动，只能从卡片外才能滚到下面的按钮。
+  bool _handOffOverscroll(OverscrollNotification n) {
+    final outer = Scrollable.maybeOf(context);
+    if (outer == null) return false;
+    final pos = outer.position;
+    pos.jumpTo(
+      (pos.pixels + n.overscroll).clamp(
+        pos.minScrollExtent,
+        pos.maxScrollExtent,
+      ),
+    );
+    return true;
+  }
+
   Widget _buildReleaseNotes(String notes, ColorScheme cs) {
     if (notes.trim().isEmpty) {
       return Text(
@@ -805,6 +833,8 @@ class _UpdateCardState extends State<_UpdateCard> {
     AppUpdateInfo info,
   ) {
     final l10n = AppLocalizations.of(context)!;
+    // Notes area scrolls up to 70% of screen height instead of a fixed cap.
+    final maxNotesHeight = MediaQuery.sizeOf(context).height * 0.7;
     return Card(
       color: cs.surfaceContainerLow,
       clipBehavior: Clip.antiAlias,
@@ -815,7 +845,8 @@ class _UpdateCardState extends State<_UpdateCard> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => setState(() => _cardExpanded = !_cardExpanded),
+              onTap: () =>
+                  setState(() => _currentNotesExpanded = !_currentNotesExpanded),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
                 child: Row(
@@ -857,7 +888,7 @@ class _UpdateCardState extends State<_UpdateCard> {
                       ),
                     ),
                     Icon(
-                      _cardExpanded
+                      _currentNotesExpanded
                           ? Icons.expand_less_rounded
                           : Icons.expand_more_rounded,
                       color: cs.onSurfaceVariant,
@@ -873,13 +904,17 @@ class _UpdateCardState extends State<_UpdateCard> {
             secondChild: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: SingleChildScrollView(
-                  child: _buildReleaseNotes(info.releaseNotes, cs),
+                constraints: BoxConstraints(maxHeight: maxNotesHeight),
+                child: NotificationListener<OverscrollNotification>(
+                  onNotification: _handOffOverscroll,
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: _buildReleaseNotes(info.releaseNotes, cs),
+                  ),
                 ),
               ),
             ),
-            crossFadeState: _cardExpanded
+            crossFadeState: _currentNotesExpanded
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 200),
