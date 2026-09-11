@@ -78,6 +78,13 @@ void main() {
   testWidgets('notice center is below AI config in the first settings group', (
     tester,
   ) async {
+    // 断言的是单列纵向排布（通知中心在 AI 配置与下载中心之间）。
+    // 测试默认表面逻辑宽 800 越过宽屏断点 720，会切成左右双列，
+    // 下载中心（右列顶部）反而排在通知中心（左列第 5 行）上方。
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.physicalSize = const Size(600 * 3, 1000 * 3);
+    addTearDown(tester.view.reset);
+
     await pumpProfilePage(tester);
 
     final aiTop = tester.getTopLeft(find.text('AI配置')).dy;
