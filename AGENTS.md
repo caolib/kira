@@ -139,26 +139,3 @@ don't update `docs/CHANGELOG.md`
 ## Persistence & Cache (on-demand)
 
 涉及持久化存储/缓存改动时（新增用户偏好、业务缓存、敏感凭据、阅读历史等），先读 `docs/persistence-and-cache.md`。该文档说明三层存储后端、键名前缀约定、`CachedRepository` 用法与决策流程。常用事实：业务缓存与用户偏好共用 SharedPreferences、仅靠 `cache_` 前缀隔离；`SecureCredentialStore` 已实现但尚未启用。
-
-## MCP Tools: code-review-graph
-
-This project ships a knowledge graph. **Use graph tools BEFORE Grep/Glob/Read** for exploring code — faster, cheaper, and gives callers/dependents/test-coverage context file scanning cannot.
-
-- **Explore / find symbols**: `semantic_search_nodes_tool` or `query_graph_tool` (patterns: callers_of, callees_of, imports_of, tests_for)
-- **Impact / blast radius**: `get_impact_radius_tool`, `get_affected_flows_tool`
-- **Code review**: `detect_changes_tool` (risk-scored) + `get_review_context_tool` (source snippets)
-- **Architecture**: `get_architecture_overview_tool` + `list_communities_tool`
-- **Refactor / dead code**: `refactor_tool`
-
-The graph auto-updates on file changes via hooks. Fall back to Grep/Glob/Read only when the graph doesn't cover what you need.
-
-<!-- CODEGRAPH_START -->
-## CodeGraph
-
-In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
-
-- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool search.
-- **Shell** (always works): `codegraph explore "<symbol names or question>"` prints the same output.
-
-If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
-<!-- CODEGRAPH_END -->
