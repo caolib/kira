@@ -669,12 +669,34 @@ class DownloadManager extends ChangeNotifier {
   /// 范围 [_minImageConcurrency]~[_maxImageConcurrency]。
   int get imageDownloadConcurrency => _imageDownloadConcurrency;
 
-  /// 加载持久化的并发下载数量（若未初始化则从 SharedPreferences 读取）。
-  Future<void> loadImageDownloadConcurrency() async {
+  /// 重新从 SharedPreferences 读取下载设置(导入备份 / 清除数据后调用)。
+  ///
+  /// 未初始化时等价于 [init]。队列有任务在飞时只刷新标量设置(并发数量、
+  /// 章节评论):此时重算根目录或替换队列会与运行中的 worker 争用文件路径,
+  /// 那部分交由下次启动生效。空闲时则做与冷启动等价的完整重载——根目录、
+  /// 清单、队列一起从 prefs 重建。
+  Future<void> reloadFromPrefs() async {
+    if (!_initialized) {
+      await init();
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
+    if (_processing || isBusy) {
+      _applyScalarSettings(prefs);
+      notifyListeners();
+      return;
+    }
+    await _loadFromPrefs(prefs);
+    notifyListeners();
+    _ensureProcessing();
+  }
+
+  /// 应用与运行态无关的标量设置,任何时刻都安全。
+  void _applyScalarSettings(SharedPreferences prefs) {
     _imageDownloadConcurrency = _clampConcurrency(
       prefs.getInt(_keyImageConcurrency),
     );
+    _downloadCommentsEnabled = prefs.getBool(_keyDownloadComments) ?? true;
   }
 
   /// 是否在下载章节时一并下载评论，默认开启。
@@ -852,6 +874,22 @@ class DownloadManager extends ChangeNotifier {
 
   Future<void> _initialize() async {
     final prefs = await SharedPreferences.getInstance();
+    await _loadFromPrefs(prefs);
+    _initialized = true;
+
+    // 重启后续传:恢复的队列立即继续下载(此前已暂停则保持暂停)。
+    _ensureProcessing();
+  }
+
+  /// 从 prefs 重建根目录、清单与队列,等价于一次冷启动的加载。
+  ///
+  /// 冷启动([_initialize])与导入备份后的重载([reloadFromPrefs])共用同一
+  /// 条路径:两者都必须把内存态当成空的重新填充,否则旧数据会残留。
+  Future<void> _loadFromPrefs(SharedPreferences prefs) async {
+    // 等待在途的持久化写入落盘,避免旧快照晚于本次重载写入。
+    await _queueStateWriteTail;
+    await _manifestWriteTail;
+
     _customSaveDirectory = normalizeDirectoryPath(
       prefs.getString(_keySaveDirectory),
     );
@@ -863,10 +901,20 @@ class DownloadManager extends ChangeNotifier {
         : await _rootDirectoryProvider();
     await _rootDirectory!.create(recursive: true);
 
-    await loadImageDownloadConcurrency();
-    final prefsForComments = await SharedPreferences.getInstance();
-    _downloadCommentsEnabled =
-        prefsForComments.getBool(_keyDownloadComments) ?? true;
+    _applyScalarSettings(prefs);
+
+    // 清空内存态:重载时必须从空的 manifest/队列重新填充,否则会与
+    // 导入进来的新数据混合。
+    _manifest.clear();
+    _queue.clear();
+    _queuedKeys.clear();
+    _pausedTaskKeys.clear();
+    _cancelledTaskKeys.clear();
+    _paused = false;
+    _batchRunFailures = [];
+    _batchFailures = const [];
+    _lastBatchSummary = null;
+    _batchSucceeded = 0;
 
     final manifestFile = _manifestFile;
     if (await manifestFile.exists()) {
@@ -900,11 +948,6 @@ class DownloadManager extends ChangeNotifier {
     }
 
     await _restoreQueueState(prefs);
-
-    _initialized = true;
-
-    // 重启后续传：恢复的队列立即继续下载（此前已暂停则保持暂停）。
-    _ensureProcessing();
   }
 
   /// 队列主循环：启动全局图片 worker 池与章节流水线调度，直到队列排空。

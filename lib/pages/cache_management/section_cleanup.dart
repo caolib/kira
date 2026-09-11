@@ -118,8 +118,9 @@ extension _CacheSectionCleanup on _CacheManagementPageState {
       }
       if (entries.any((entry) => entry.category == _CacheCategory.account)) {
         ApiClient().user.clearAuthState();
-        await UserManager().init();
       }
+      // 删除的键里可能含用户偏好(如 download_*),内存单例需一并刷新。
+      await reloadRuntimeSettings();
       _revealedSensitiveKeys.removeAll(keys);
       _selectedSectionIds.clear();
       _selectionMode = false;
@@ -248,8 +249,9 @@ extension _CacheSectionCleanup on _CacheManagementPageState {
       await Future.wait(keys.map(prefs.remove));
       if (section.entries.any((e) => e.category == _CacheCategory.account)) {
         ApiClient().user.clearAuthState();
-        await UserManager().init();
       }
+      // 删除的键里可能含用户偏好,内存单例需一并刷新。
+      await reloadRuntimeSettings();
       _revealedSensitiveKeys.removeAll(keys);
       if (mounted) {
         showToast(context, l10n.cacheSelectedDeletedToast);

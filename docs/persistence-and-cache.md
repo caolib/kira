@@ -188,10 +188,20 @@ Future<void> deleteAll();
 
 ## 7. 备份/恢复（设置迁移）
 
-`SettingsBackupService`（`lib/utils/settings_backup.dart:66`）：
-- 导出：序列化所有**非 `cache_` 前缀**的 prefs key 为 JSON。
-- 敏感 key（`user_token` / `saved_username` / `saved_password` / `saved_credentials` / `zhipu_api_key` / `ai_providers`）在 `includeSensitive=false` 时跳过。
-- 导入：清空已存在 key 再写入。
+`SettingsBackupService`(`lib/utils/settings_backup.dart:66`):
+- 导出:序列化所有**非 `cache_` 前缀**的 prefs key 为 JSON。
+- 敏感 key(`user_token` / `saved_username` / `saved_password` / `saved_credentials` / `zhipu_api_key` / `ai_providers`)在 `includeSensitive=false` 时跳过。
+- 导入:清空已存在 key 再写入。
+
+### 导入 / 清除后必须重载内存单例
+
+导入只改 prefs,而多数单例用 `_loaded` / `_initialized` / 内存 `_cache` 守卫只在进程内加载一次——不重载就会「导入成功但不生效,重启才恢复」。
+
+`reloadRuntimeSettings()`(`lib/utils/settings_reload.dart`)统一处理:`UserManager`、`DownloadManager`、`AiSettings`、`AppLogger`、`ReadingStats`、`FontManager`、`BookmarkStore`,并重新把选中字体载入引擎。各步骤独立容错,单个失败只记日志。
+
+调用点:`general_page`(导入 / 重置应用)、`cache_management`(删除单条 / 批量 / 分区)。
+
+**新增一次性加载的单例时必须同步登记进去**,否则该设置又会变成「要重启才生效」。此类单例应提供 `reloadFromPrefs()` 之类的重载入口,而不是仅暴露 `@visibleForTesting` 的 reset 方法。
 
 ## 8. 新增存储的决策流程
 

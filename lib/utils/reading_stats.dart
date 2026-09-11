@@ -45,7 +45,7 @@ class ReadingStats {
   static bool _dirty = false;
   static Timer? _debounceTimer;
 
-  /// 写入代际。`clear()`/`resetMemoryCache()` 递增；在途 `_flush()` 写盘前校验，
+  /// 写入代际。`clear()`/`reloadFromPrefs()` 递增;在途 `_flush()` 写盘前校验,
   /// 防止清除后旧数据被回写"复活"。
   static int _generation = 0;
 
@@ -124,10 +124,10 @@ class ReadingStats {
     return data.toSnapshot();
   }
 
-  /// 仅复位内存缓存，不读写 prefs。供测试在 `setMockInitialValues` 之后
-  /// 强制下次 `load()` 从新的 prefs 重新读取。
-  @visibleForTesting
-  static void resetMemoryCache() {
+  /// 丢弃内存缓存,使下次 [load] 重新从 prefs 读取。
+  ///
+  /// 导入备份 / 清除数据后调用:否则进程内会一直用旧快照,覆盖刚导入的值。
+  static void reloadFromPrefs() {
     _debounceTimer?.cancel();
     _debounceTimer = null;
     _generation++;
@@ -135,13 +135,9 @@ class ReadingStats {
     _dirty = false;
   }
 
-  /// 清除全部统计数据（不改变开关状态）。
+  /// 清除全部统计数据(不改变开关状态)。
   static Future<void> clear() async {
-    _debounceTimer?.cancel();
-    _debounceTimer = null;
-    _generation++;
-    _cache = null;
-    _dirty = false;
+    reloadFromPrefs();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_dataKey);
   }
@@ -186,8 +182,8 @@ class ReadingStats {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    // clear()/resetMemoryCache() 可能在等待期间执行：代际变化说明数据已被清除，
-    // 丢弃本次写，避免"复活"已删除的统计。
+    // clear()/reloadFromPrefs() 可能在等待期间执行:代际变化说明数据已被清除,
+    // 丢弃本次写,避免"复活"已删除的统计。
     if (gen != _generation) return;
     await prefs.setString(_dataKey, jsonEncode(data.toJson()));
     _dirty = false;

@@ -19,7 +19,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    ReadingStats.resetMemoryCache();
+    ReadingStats.reloadFromPrefs();
     ReaderSettings().resetPrefsCache();
     await ReaderSettings().initFromPrefs(await SharedPreferences.getInstance());
   });
@@ -47,7 +47,7 @@ void main() {
     });
     ReaderSettings().resetPrefsCache();
     await ReaderSettings().initFromPrefs(await SharedPreferences.getInstance());
-    ReadingStats.resetMemoryCache();
+    ReadingStats.reloadFromPrefs();
 
     await tester.pumpWidget(_buildTestApp(const StatsPage()));
     await tester.pumpAndSettle();
@@ -70,7 +70,7 @@ void main() {
     });
     ReaderSettings().resetPrefsCache();
     await ReaderSettings().initFromPrefs(await SharedPreferences.getInstance());
-    ReadingStats.resetMemoryCache();
+    ReadingStats.reloadFromPrefs();
 
     await tester.pumpWidget(_buildTestApp(const StatsPage()));
     await tester.pumpAndSettle();
@@ -95,7 +95,7 @@ void main() {
       await ReaderSettings().initFromPrefs(
         await SharedPreferences.getInstance(),
       );
-      ReadingStats.resetMemoryCache();
+      ReadingStats.reloadFromPrefs();
 
       await tester.pumpWidget(_buildTestApp(const StatsPage()));
       await tester.pumpAndSettle();

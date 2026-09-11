@@ -223,7 +223,13 @@ extension UserManagerInitPart on UserManager {
     await network.initFromPrefs(prefs);
 
     // Forward sub-store notifications so legacy listeners on UserManager
-    // still rebuild when domain settings change.
+    // still rebuild when domain settings change. init() may run more than once
+    // (导入备份 / 清除数据后重载),而 ChangeNotifier.addListener 会重复登记
+    // 同一闭包,故先移除再添加,避免通知被放大。
+    reader.removeListener(_onSubStoreChanged);
+    comment.removeListener(_onSubStoreChanged);
+    theme.removeListener(_onSubStoreChanged);
+    network.removeListener(_onSubStoreChanged);
     reader.addListener(_onSubStoreChanged);
     comment.addListener(_onSubStoreChanged);
     theme.addListener(_onSubStoreChanged);

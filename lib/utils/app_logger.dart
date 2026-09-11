@@ -184,6 +184,13 @@ class AppLogger {
     });
   }
 
+  /// 重新读取日志设置(导入备份 / 清除数据后调用)。
+  ///
+  /// [init] 把首次读取的结果记忆在 `_initFuture` 里,进程内不再重读;导入
+  /// 备份后 prefs 已变,必须走这条路径才能让内存态跟上。目录解析结果与
+  /// 日志文件无关,无需重建。
+  Future<void> reloadFromPrefs() => _loadSettings();
+
   Future<void> recordFlutterError(FlutterErrorDetails details) {
     final information = _collectFlutterInformation(details);
     return recordError(

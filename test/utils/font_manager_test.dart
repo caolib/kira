@@ -8,11 +8,11 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    FontManager().resetForTest();
+    FontManager().reloadFromPrefs();
   });
 
   tearDown(() {
-    FontManager().resetForTest();
+    FontManager().reloadFromPrefs();
   });
 
   group('FontManager remote catalog cache', () {
@@ -49,7 +49,7 @@ void main() {
       expect(custom.single.url, 'https://example.com/fonts/myfont.ttf');
       expect(custom.single.isCustom, isTrue);
 
-      manager.resetForTest();
+      manager.reloadFromPrefs();
       final reloaded = await FontManager().fetchAvailableFonts();
       expect(
         reloaded.any((font) => font.name == 'MyFont' && font.isCustom),

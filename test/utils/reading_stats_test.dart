@@ -215,7 +215,7 @@ void main() {
           daily: {_todayKey(): 5},
         ),
       });
-      ReadingStats.resetMemoryCache();
+      ReadingStats.reloadFromPrefs();
 
       await ReadingStats.clear();
       final prefs = await SharedPreferences.getInstance();

@@ -413,8 +413,11 @@ class FontManager {
     return result;
   }
 
-  /// Test-only: clear in-memory state so prefs can be re-read.
-  void resetForTest() {
+  /// 丢弃内存缓存(字体目录、远端目录、自定义字体列表)。
+  ///
+  /// 导入备份 / 清除数据后调用,或测试中在 `setMockInitialValues` 之后强制
+  /// 下次从新的 prefs 重读。
+  void reloadFromPrefs() {
     _remoteList = const [];
     _remoteListLoaded = false;
     _customList = const [];

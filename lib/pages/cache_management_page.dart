@@ -16,6 +16,7 @@ import '../utils/app_logger.dart';
 import '../utils/app_storage.dart';
 import '../utils/font_manager.dart';
 import '../utils/reading_history.dart';
+import '../utils/settings_reload.dart';
 import '../utils/toast.dart';
 
 part 'cache_management/cache_models.dart';
@@ -199,8 +200,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       await prefs.remove(entry.key);
       if (entry.category == _CacheCategory.account) {
         ApiClient().user.clearAuthState();
-        await UserManager().init();
       }
+      // 删除的可能是用户偏好(如 download_*),内存单例需一并刷新。
+      await reloadRuntimeSettings();
       _revealedSensitiveKeys.remove(entry.key);
       if (mounted) showToast(context, l10n.cacheEntryDeletedToast(entry.key));
       await _loadEntries();

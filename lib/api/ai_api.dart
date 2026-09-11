@@ -273,6 +273,18 @@ class AiSettings extends ChangeNotifier {
 
   Future<void> load() async {
     if (_loaded) return;
+    await _loadFromPrefs();
+    _loaded = true;
+    notifyListeners();
+  }
+
+  /// 重新从 SharedPreferences 读取全部 AI 设置(导入备份 / 清除数据后调用)。
+  ///
+  /// [load] 由 `_loaded` 守卫,进程内只生效一次;导入备份后 prefs 已变,
+  /// 必须走这条路径才能让内存态跟上。
+  Future<void> reloadFromPrefs() => _loadFromPrefs();
+
+  Future<void> _loadFromPrefs() async {
     final sp = await SharedPreferences.getInstance();
     _apiKey = sp.getString(_keyApiKey);
     _baseUrl = sp.getString(_keyBaseUrl) ?? defaultBaseUrl;
@@ -297,7 +309,6 @@ class AiSettings extends ChangeNotifier {
     await _loadProviders(sp);
     await _loadPresets(sp);
     _syncPrompt();
-    _loaded = true;
     notifyListeners();
   }
 

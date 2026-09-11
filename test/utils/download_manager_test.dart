@@ -61,6 +61,109 @@ void main() {
     });
   });
 
+  group('reloadFromPrefs', () {
+    late Directory root;
+
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      SharedPreferences.setMockInitialValues({});
+      root = await Directory.systemTemp.createTemp('kira_reload_test');
+    });
+
+    tearDown(() async {
+      try {
+        if (await root.exists()) await root.delete(recursive: true);
+      } on FileSystemException {
+        // 后台下载可能仍在写文件,清理失败不影响断言。
+      }
+    });
+
+    test('applies settings changed in prefs after init', () async {
+      final manager = DownloadManager.forTesting(rootDirectory: root);
+      await manager.init();
+      expect(manager.imageDownloadConcurrency, 8);
+      expect(manager.downloadCommentsEnabled, isTrue);
+
+      // 模拟导入备份:只改 prefs,不动内存。
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('download_image_concurrency', 20);
+      await prefs.setBool('download_chapter_comments', false);
+
+      await manager.reloadFromPrefs();
+
+      expect(manager.imageDownloadConcurrency, 20);
+      expect(manager.downloadCommentsEnabled, isFalse);
+    });
+
+    test('restores the queue persisted in prefs', () async {
+      final manager = DownloadManager.forTesting(
+        rootDirectory: root,
+        chapterDetailLoader: (pathWord, chapterUuid) async =>
+            _detail(chapterUuid),
+        imageDownloader: _writeFakeImage,
+      );
+      await manager.init();
+      expect(manager.tasks, isEmpty);
+
+      // 模拟导入一份带下载队列的备份:payload 由公开编码器生成。
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'download_queue_state_v1',
+        jsonEncode({
+          'version': 1,
+          'paused': true,
+          'paused_tasks': <String>[],
+          'tasks': [
+            DownloadManager.encodeQueueTaskJson(
+              pathWord: 'pw',
+              group: 'default',
+              chapter: Chapter(uuid: 'ch2', index: 2, name: '2'),
+              isRetry: false,
+              attempt: 1,
+            ),
+          ],
+          'succeeded': 0,
+          'batch_failures': <Object>[],
+        }),
+      );
+
+      await manager.reloadFromPrefs();
+
+      expect(manager.isQueued('pw', 'ch2'), isTrue);
+      expect(manager.paused, isTrue);
+      expect(manager.tasks.single.chapterUuid, 'ch2');
+    });
+
+    test('drops in-memory queue state that prefs no longer contains', () async {
+      final manager = DownloadManager.forTesting(
+        rootDirectory: root,
+        chapterDetailLoader: (pathWord, chapterUuid) async =>
+            _detail(chapterUuid),
+        imageDownloader: _writeFakeImage,
+      );
+      await manager.init();
+      manager.pauseDownloads();
+      await manager.enqueueChapters(
+        pathWord: 'pw',
+        comic: _comic(),
+        chapters: [Chapter(uuid: 'ch3', index: 3, name: '3')],
+      );
+      // 暂停后队列非空 → isBusy,reload 只刷新标量,队列保留。
+      await manager.reloadFromPrefs();
+      expect(manager.isQueued('pw', 'ch3'), isTrue);
+
+      // 恢复并清空后再次 reload:prefs 中已无该任务,内存队列也应清空。
+      await manager.deleteQueuedChapter('pw', 'ch3');
+      manager.resumeDownloads();
+      expect(manager.isBusy, isFalse);
+
+      await manager.reloadFromPrefs();
+
+      expect(manager.isQueued('pw', 'ch3'), isFalse);
+      expect(manager.tasks, isEmpty);
+    });
+  });
+
   group('pause controls', () {
     test('global pause/resume toggles the paused flag idempotently', () {
       final manager = DownloadManager()..resumeDownloads();
