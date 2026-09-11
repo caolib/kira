@@ -50,7 +50,7 @@ class _CopyCollapsibleSectionState extends State<_CopyCollapsibleSection> {
     return Padding(
       padding: EdgeInsets.fromLTRB(widget.hp, widget.topPadding, widget.hp, 12),
       child: Material(
-        color: cs.surfaceContainerLow,
+        color: cs.surfaceBright,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.smR,

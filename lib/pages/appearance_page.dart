@@ -13,17 +13,19 @@ import '../models/theme_settings.dart';
 import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_logger.dart';
 import '../utils/display_mode_preference.dart';
 import '../utils/font_manager.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
+import '../widgets/select_tile.dart';
+import '../widgets/setting_tile_group.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/text_controller_scope.dart';
 
 part 'appearance/appearance_app_font_card.dart';
 part 'appearance/appearance_controls.dart';
 part 'appearance/appearance_desktop_font_card.dart';
-part 'appearance/appearance_display_mode_sheet.dart';
 part 'appearance/appearance_font_picker_dialog.dart';
 
 class AppearancePage extends StatefulWidget {
@@ -37,6 +39,9 @@ class _AppearancePageState extends State<AppearancePage> {
   final _user = UserManager();
   double? _previewCoverBrightness;
   double? _previewCardShadowElevation;
+  List<int> _refreshRates = const [];
+  int? _activeRefreshRate;
+  bool _applyingRate = false;
 
   static const _navMeta = {
     'comic': (Icons.menu_book_outlined, Icons.menu_book),
@@ -57,6 +62,46 @@ class _AppearancePageState extends State<AppearancePage> {
   void initState() {
     super.initState();
     _user.addListener(_onChanged);
+    if (DisplayModePreference.isSupportedPlatform) {
+      unawaited(_loadRefreshRates());
+    }
+  }
+
+  Future<void> _loadRefreshRates() async {
+    try {
+      final data = await DisplayModePreference.load();
+      if (!mounted) return;
+      setState(() {
+        _refreshRates = DisplayModePreference.refreshRates(data.modes);
+        _activeRefreshRate = data.active.refreshRate.round();
+      });
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'appearance.refresh_rates',
+        ),
+      );
+    }
+  }
+
+  Future<void> _selectRefreshRate(int rate) async {
+    if (_applyingRate || rate == _user.displayModeRefreshRate) return;
+    setState(() => _applyingRate = true);
+    await _user.setDisplayModeRefreshRate(rate);
+    final applied = await DisplayModePreference.applyRefreshRate(rate);
+    if (!mounted) return;
+    setState(() => _applyingRate = false);
+    final l10n = AppLocalizations.of(context)!;
+    showToast(
+      context,
+      applied
+          ? l10n.appearanceRefreshRateRequested(
+              _formatRefreshRate(rate, l10n),
+            )
+          : l10n.appearanceRefreshRateSaved,
+    );
   }
 
   @override
@@ -76,15 +121,6 @@ class _AppearancePageState extends State<AppearancePage> {
     if (Platform.isAndroid || Platform.isIOS) {
       showToast(context, AppLocalizations.of(context)!.appearanceLogoChanged);
     }
-  }
-
-  Future<void> _showDisplayModeSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (_) => _DisplayModeSheet(user: _user),
-    );
   }
 
   Future<void> _showBottomNavLabelModeSheet(AppLocalizations l10n) async {
@@ -220,7 +256,6 @@ class _AppearancePageState extends State<AppearancePage> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final selectedVariant = _user.themeVariantOption;
     final coverBrightness =
         _previewCoverBrightness ?? _user.darkModeCoverBrightness;
     final coverBrightnessPercent = (coverBrightness * 100).round();
@@ -233,117 +268,118 @@ class _AppearancePageState extends State<AppearancePage> {
         ScreenLayout.contentWidth(screenWidth) >= ScreenLayout.wideBreakpoint;
 
     // 第一块卡片：底部导航标签模式 / 滑动切换 / 导航排序预览。
-    final navCard = Card(
-      color: cs.surfaceContainerLow,
-      child: Column(
-        children: [
-          ListTile(
-            leading: Icon(
-              Icons.text_fields_rounded,
-              color: cs.onSurfaceVariant,
-            ),
-            title: Text(l10n.appearanceBottomNavLabelMode),
-            subtitle: Text(
-              _bottomNavLabelModeLabel(_user.bottomNavLabelMode, l10n),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showBottomNavLabelModeSheet(l10n),
+    final navCard = SettingTileGroup(
+      children: [
+        ListTile(
+          leading: Icon(
+            Icons.text_fields_rounded,
+            color: cs.onSurfaceVariant,
           ),
-          const Divider(height: 1),
-          SwitchListTile(
-            secondary: Icon(Icons.swipe_outlined, color: cs.onSurfaceVariant),
-            title: Text(l10n.appearanceNavSwipeTitle),
-            subtitle: Text(
-              l10n.appearanceNavSwipeDesc,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            value: _user.theme.navSwipeEnabled,
-            onChanged: (value) =>
-                unawaited(_user.theme.setNavSwipeEnabled(value)),
+          title: Text(l10n.appearanceBottomNavLabelMode),
+          subtitle: Text(
+            _bottomNavLabelModeLabel(_user.bottomNavLabelMode, l10n),
           ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Icon(
-                    Icons.swap_vert,
-                    color: cs.onSurfaceVariant,
-                    size: 20,
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showBottomNavLabelModeSheet(l10n),
+        ),
+        SwitchListTile(
+          secondary: Icon(Icons.swipe_outlined, color: cs.onSurfaceVariant),
+          title: Text(l10n.appearanceNavSwipeTitle),
+          subtitle: Text(
+            l10n.appearanceNavSwipeDesc,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          value: _user.theme.navSwipeEnabled,
+          onChanged: (value) =>
+              unawaited(_user.theme.setNavSwipeEnabled(value)),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.swap_vert,
+                      color: cs.onSurfaceVariant,
+                      size: 20,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.appearanceNavOrder, style: tt.titleSmall),
-                      const SizedBox(height: 2),
-                      Text(
-                        l10n.appearanceNavOrderDragHint,
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
+                  const SizedBox(width: AppSpacing.lg),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l10n.appearanceNavOrder, style: tt.titleSmall),
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.appearanceNavOrderDragHint,
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: _user.bottomNavLabelMode == BottomNavLabelMode.always
-                ? 80
-                : 56,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final itemCount = _user.navOrder.length;
-                final widths = _navPreviewItemWidths(
-                  availableWidth: constraints.maxWidth,
-                  itemCount: itemCount,
-                  selectedIndex: _user.navOrder.indexOf(_user.lastNavKey),
-                  labelMode: _user.bottomNavLabelMode,
-                );
+                ],
+              ),
+              SizedBox(
+                height: _user.bottomNavLabelMode == BottomNavLabelMode.always
+                    ? 80
+                    : 56,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final itemCount = _user.navOrder.length;
+                    final widths = _navPreviewItemWidths(
+                      availableWidth: constraints.maxWidth,
+                      itemCount: itemCount,
+                      selectedIndex: _user.navOrder.indexOf(_user.lastNavKey),
+                      labelMode: _user.bottomNavLabelMode,
+                    );
 
-                return ReorderableListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  buildDefaultDragHandles: false,
-                  padding: EdgeInsets.zero,
-                  itemCount: itemCount,
-                  onReorderItem: (oldIndex, newIndex) {
-                    final order = List<String>.of(_user.navOrder);
-                    final item = order.removeAt(oldIndex);
-                    order.insert(newIndex, item);
-                    _user.setNavOrder(order);
-                  },
-                  itemBuilder: (context, index) {
-                    final key = _user.navOrder[index];
-                    final meta = _navMeta[key]!;
-                    return SizedBox(
-                      key: ValueKey(key),
-                      width: widths[index],
-                      child: ReorderableDragStartListener(
-                        index: index,
-                        child: _NavOrderDestination(
-                          icon: meta.$1,
-                          selectedIcon: meta.$2,
-                          label: _navLabel(key, l10n),
-                          selected: key == _user.lastNavKey,
-                          labelMode: _user.bottomNavLabelMode,
-                        ),
-                      ),
+                    return ReorderableListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      buildDefaultDragHandles: false,
+                      padding: EdgeInsets.zero,
+                      itemCount: itemCount,
+                      onReorderItem: (oldIndex, newIndex) {
+                        final order = List<String>.of(_user.navOrder);
+                        final item = order.removeAt(oldIndex);
+                        order.insert(newIndex, item);
+                        _user.setNavOrder(order);
+                      },
+                      itemBuilder: (context, index) {
+                        final key = _user.navOrder[index];
+                        final meta = _navMeta[key]!;
+                        return SizedBox(
+                          key: ValueKey(key),
+                          width: widths[index],
+                          child: ReorderableDragStartListener(
+                            index: index,
+                            child: _NavOrderDestination(
+                              icon: meta.$1,
+                              selectedIcon: meta.$2,
+                              label: _navLabel(key, l10n),
+                              selected: key == _user.lastNavKey,
+                              labelMode: _user.bottomNavLabelMode,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+            ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-        ],
-      ),
+        ),
+      ],
     );
 
     final desktopFontCard = isDesktop ? _DesktopFontCard(user: _user) : null;
@@ -395,106 +431,126 @@ class _AppearancePageState extends State<AppearancePage> {
     );
 
     final refreshRateCard = DisplayModePreference.isSupportedPlatform
-        ? Card(
-            color: cs.surfaceContainerLow,
-            child: SettingsTile(
-              icon: Icons.monitor_heart_outlined,
-              title: l10n.appearanceRefreshRateTitle,
-              onTap: _showDisplayModeSheet,
-            ),
+        ? SettingTileGroup(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.monitor_heart_outlined),
+                title: Text(l10n.appearanceRefreshRateTitle),
+                trailing: _refreshRates.isEmpty
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : SelectTile<int>(
+                        value: _user.displayModeRefreshRate,
+                        items: [
+                          SelectItem(
+                            0,
+                            l10n.appearanceAutoSystem,
+                            compactLabel: l10n.appearanceAutoShort,
+                          ),
+                          for (final rate in _refreshRates)
+                            SelectItem(
+                              rate,
+                              rate == _activeRefreshRate
+                                  ? l10n.appearanceRefreshRateCurrent(rate)
+                                  : '$rate Hz',
+                            ),
+                        ],
+                        onChanged:
+                            _applyingRate ? (_) {} : _selectRefreshRate,
+                      ),
+              ),
+            ],
           )
         : null;
 
-    final themeModeSection = SettingsSection(
-      icon: Icons.brightness_6,
-      title: l10n.appearanceThemeMode,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<ThemeMode>(
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  icon: const Icon(Icons.settings_brightness),
-                  label: Text(l10n.appearanceSystemMode),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  icon: const Icon(Icons.light_mode),
-                  label: Text(l10n.appearanceLightMode),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  icon: const Icon(Icons.dark_mode),
-                  label: Text(l10n.appearanceDarkMode),
-                ),
-              ],
-              selected: {_user.themeMode},
-              onSelectionChanged: (v) => _user.setThemeMode(v.first),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          const Divider(height: 1),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Icon(Icons.brightness_low_outlined, color: cs.onSurfaceVariant),
-              const SizedBox(width: AppSpacing.lg),
-              Text(l10n.appearanceDarkCoverBrightness),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            l10n.appearanceDarkCoverBrightnessDesc,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: Slider(
-                  value: coverBrightness,
-                  min: UserManager.minDarkModeCoverBrightness,
-                  divisions:
-                      ((UserManager.maxDarkModeCoverBrightness -
-                                  UserManager.minDarkModeCoverBrightness) /
-                              0.05)
-                          .round(),
-                  label: '$coverBrightnessPercent%',
-                  onChanged: (value) {
-                    setState(() => _previewCoverBrightness = value);
-                  },
-                  onChangeEnd: (value) {
-                    setState(() => _previewCoverBrightness = null);
-                    unawaited(_user.setDarkModeCoverBrightness(value));
-                  },
-                ),
+    final themeModeSection = SettingTileGroup(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.settings_brightness),
+          title: Text(l10n.appearanceThemeMode),
+          trailing: SelectTile<ThemeMode>(
+            value: _user.themeMode,
+            items: [
+              SelectItem(
+                ThemeMode.system,
+                l10n.appearanceSystemMode,
               ),
-              const SizedBox(width: AppSpacing.md),
-              SizedBox(
-                width: 52,
-                child: Text(
-                  '$coverBrightnessPercent%',
-                  textAlign: TextAlign.end,
-                  style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
-                ),
+              SelectItem(ThemeMode.light, l10n.appearanceLightMode),
+              SelectItem(ThemeMode.dark, l10n.appearanceDarkMode),
+            ],
+            onChanged: (v) => _user.setThemeMode(v),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.brightness_low_outlined,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: AppSpacing.lg),
+                  Text(l10n.appearanceDarkCoverBrightness),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                l10n.appearanceDarkCoverBrightnessDesc,
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: Slider(
+                      value: coverBrightness,
+                      min: UserManager.minDarkModeCoverBrightness,
+                      divisions:
+                          ((UserManager.maxDarkModeCoverBrightness -
+                                      UserManager.minDarkModeCoverBrightness) /
+                                  0.05)
+                              .round(),
+                      label: '$coverBrightnessPercent%',
+                      onChanged: (value) {
+                        setState(() => _previewCoverBrightness = value);
+                      },
+                      onChangeEnd: (value) {
+                        setState(() => _previewCoverBrightness = null);
+                        unawaited(_user.setDarkModeCoverBrightness(value));
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(
+                    width: 52,
+                    child: Text(
+                      '$coverBrightnessPercent%',
+                      textAlign: TextAlign.end,
+                      style: tt.labelLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
 
     final themeStyleSection = SettingsSection(
       icon: Icons.palette_outlined,
       title: l10n.appearanceThemeStyle,
-      description: l10n.appearanceCurrentStyle(
-        selectedVariant.localizedLabel(l10n),
-        selectedVariant.localizedDescription(l10n),
-      ),
-      child: Column(
+      child: _user.theme.useDynamicColor
+          ? const SizedBox.shrink()
+          : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
@@ -507,6 +563,7 @@ class _AppearancePageState extends State<AppearancePage> {
                   child: ChoiceChip(
                     label: Text(option.localizedLabel(l10n)),
                     selected: _user.themeVariant == option.variant,
+                    showCheckmark: false,
                     onSelected: (_) => _user.setThemeVariant(option.variant),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -514,16 +571,6 @@ class _AppearancePageState extends State<AppearancePage> {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text(
-            l10n.appearanceThemeColor,
-            style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            l10n.appearanceThemeColorDesc,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -543,6 +590,37 @@ class _AppearancePageState extends State<AppearancePage> {
           ),
         ],
       ),
+    );
+
+    final colorOptionsSection = SettingTileGroup(
+      children: [
+        SwitchListTile(
+          secondary: Icon(
+            Icons.colorize_rounded,
+            color: cs.onSurfaceVariant,
+          ),
+          title: Text(l10n.appearanceDynamicColor),
+          subtitle: Text(
+            l10n.appearanceDynamicColorDesc,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          value: _user.theme.useDynamicColor,
+          onChanged: (value) => unawaited(_user.theme.setUseDynamicColor(value)),
+        ),
+        SwitchListTile(
+          secondary: Icon(
+            Icons.contrast_rounded,
+            color: cs.onSurfaceVariant,
+          ),
+          title: Text(l10n.appearanceAmoledDark),
+          subtitle: Text(
+            l10n.appearanceAmoledDarkDesc,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          value: _user.theme.amoledDark,
+          onChanged: (value) => unawaited(_user.theme.setAmoledDark(value)),
+        ),
+      ],
     );
 
     List<Widget> spaced(Iterable<Widget> cards) => [
@@ -582,6 +660,7 @@ class _AppearancePageState extends State<AppearancePage> {
                     ?refreshRateCard,
                     themeModeSection,
                     themeStyleSection,
+                    colorOptionsSection,
                   ]),
                 ),
               ),
@@ -601,6 +680,7 @@ class _AppearancePageState extends State<AppearancePage> {
           ?refreshRateCard,
           themeModeSection,
           themeStyleSection,
+          colorOptionsSection,
         ]),
       );
     }

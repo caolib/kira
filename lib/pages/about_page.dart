@@ -16,6 +16,7 @@ import '../utils/app_update.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
 import '../widgets/github_markdown.dart';
+import '../widgets/setting_tile_group.dart';
 import '../widgets/text_controller_scope.dart';
 
 part 'about/update_card_actions.dart';
@@ -81,7 +82,7 @@ class _AboutPageState extends State<AboutPage> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
             children: [
-              // Compact horizontal brand header: logo + name/version.
+              // Compact horizontal brand header: logo + name/version/tagline.
               Row(
                 children: [
                   ClipRRect(
@@ -100,7 +101,7 @@ class _AboutPageState extends State<AboutPage> {
                       children: [
                         Text(
                           'Kira',
-                          style: tt.titleLarge?.copyWith(
+                          style: tt.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.2,
                             height: 1.15,
@@ -109,6 +110,14 @@ class _AboutPageState extends State<AboutPage> {
                         const SizedBox(height: AppSpacing.xs),
                         Text(
                           version,
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          l10n.aboutBrandTagline,
                           style: tt.bodySmall?.copyWith(
                             color: cs.onSurfaceVariant,
                             height: 1.2,
@@ -124,12 +133,18 @@ class _AboutPageState extends State<AboutPage> {
                 onCheckUpdate: () => AppUpdateService.checkAndPrompt(context),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Card(
-                color: cs.surfaceContainerLow,
-                child: IntrinsicHeight(
-                  child: Row(
-                    children: [
-                      Expanded(
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _LinkTile(
+                        background: cs.surfaceBright,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(AppRadius.lg),
+                          bottomLeft: Radius.circular(AppRadius.lg),
+                          topRight: Radius.circular(AppRadius.xs),
+                          bottomRight: Radius.circular(AppRadius.xs),
+                        ),
                         child: _LinkAction(
                           icon: SvgPicture.asset(
                             'assets/github.svg',
@@ -149,11 +164,14 @@ class _AboutPageState extends State<AboutPage> {
                           },
                         ),
                       ),
-                      VerticalDivider(
-                        width: 1,
-                        color: cs.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                      Expanded(
+                    ),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: _LinkTile(
+                        background: cs.surfaceBright,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(AppRadius.xs),
+                        ),
                         child: _LinkAction(
                           icon: const Icon(Icons.feedback_outlined),
                           label: l10n.aboutFeedbackLabel,
@@ -167,19 +185,25 @@ class _AboutPageState extends State<AboutPage> {
                           },
                         ),
                       ),
-                      VerticalDivider(
-                        width: 1,
-                        color: cs.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                      Expanded(
+                    ),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: _LinkTile(
+                        background: cs.surfaceBright,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(AppRadius.xs),
+                          bottomLeft: Radius.circular(AppRadius.xs),
+                          topRight: Radius.circular(AppRadius.lg),
+                          bottomRight: Radius.circular(AppRadius.lg),
+                        ),
                         child: _LinkAction(
                           icon: const Icon(Icons.bug_report_outlined),
                           label: l10n.aboutLogTitle,
                           onTap: () => context.pushNamed(AppRoutes.appLog),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -264,7 +288,7 @@ class _UpdateCardState extends State<_UpdateCard> {
 
     if (state.status == AppUpdateStatus.checking) {
       return Card(
-        color: cs.surfaceContainerLow,
+        color: cs.surfaceBright,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -288,7 +312,7 @@ class _UpdateCardState extends State<_UpdateCard> {
     if (state.status == AppUpdateStatus.failed) {
       final detail = state.errorDetail;
       return Card(
-        color: cs.surfaceContainerLow,
+        color: cs.surfaceBright,
         child: InkWell(
           onTap: widget.onCheckUpdate,
           borderRadius: AppRadius.mdR,
@@ -341,7 +365,7 @@ class _UpdateCardState extends State<_UpdateCard> {
         : assets.where((a) => !identical(a, deviceAsset)).toList();
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

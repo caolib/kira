@@ -260,7 +260,7 @@ class _AppFontCardState extends State<_AppFontCard> {
         _previewDefaultFontSize ?? widget.user.theme.defaultFontSize;
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

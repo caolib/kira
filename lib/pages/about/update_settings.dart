@@ -210,70 +210,60 @@ extension _AboutPageUpdateSettings on _AboutPageState {
 
   /// 更新设置卡：检查更新 / 自动检查 / 更新镜像。
   Widget _buildUpdateSettingsCard(ColorScheme cs, AppLocalizations l10n) {
-    return Card(
-      color: cs.surfaceContainerLow,
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.system_update_alt),
-            title: Text(l10n.aboutCheckUpdateTitle),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildUpdateChannelChip(cs, l10n),
-                const SizedBox(width: AppSpacing.xs),
-                const Icon(Icons.chevron_right),
-              ],
-            ),
-            onTap: () => AppUpdateService.checkAndPrompt(context),
+    return SettingTileGroup(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.system_update_alt),
+          title: Text(l10n.aboutCheckUpdateTitle),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildUpdateChannelChip(cs, l10n),
+              const SizedBox(width: AppSpacing.xs),
+              const Icon(Icons.chevron_right),
+            ],
           ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          SwitchListTile(
-            secondary: const Icon(Icons.autorenew),
-            title: Text(l10n.aboutAutoCheckUpdateTitle),
-            value: _user.autoCheckUpdate,
-            onChanged: _user.setAutoCheckUpdate,
-          ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          ListTile(
-            leading: const Icon(Icons.public),
-            title: Text(l10n.aboutMirrorPrefixTitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _editUpdateMirrorPrefix,
-          ),
-        ],
-      ),
+          onTap: () => AppUpdateService.checkAndPrompt(context),
+        ),
+        SwitchListTile(
+          secondary: const Icon(Icons.autorenew),
+          title: Text(l10n.aboutAutoCheckUpdateTitle),
+          value: _user.autoCheckUpdate,
+          onChanged: _user.setAutoCheckUpdate,
+        ),
+        ListTile(
+          leading: const Icon(Icons.public),
+          title: Text(l10n.aboutMirrorPrefixTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: _editUpdateMirrorPrefix,
+        ),
+      ],
     );
   }
 
   /// 法律/致谢卡：免责声明 / 鸣谢 / 许可证。
   Widget _buildLegalCard(ColorScheme cs, AppLocalizations l10n) {
-    return Card(
-      color: cs.surfaceContainerLow,
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.gavel_outlined),
-            title: Text(l10n.disclaimerTitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.pushNamed(AppRoutes.disclaimer),
-          ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          ListTile(
-            leading: const Icon(Icons.favorite_outline),
-            title: Text(l10n.aboutAcknowledgementTitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.pushNamed(AppRoutes.acknowledgement),
-          ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          ListTile(
-            leading: const Icon(Icons.copyright_outlined),
-            title: Text(l10n.aboutLicenseTitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.pushNamed(AppRoutes.license),
-          ),
-        ],
-      ),
+    return SettingTileGroup(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.gavel_outlined),
+          title: Text(l10n.disclaimerTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.disclaimer),
+        ),
+        ListTile(
+          leading: const Icon(Icons.favorite_outline),
+          title: Text(l10n.aboutAcknowledgementTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.acknowledgement),
+        ),
+        ListTile(
+          leading: const Icon(Icons.copyright_outlined),
+          title: Text(l10n.aboutLicenseTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.license),
+        ),
+      ],
     );
   }
 }

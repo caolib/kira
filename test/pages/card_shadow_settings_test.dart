@@ -7,6 +7,7 @@ import 'package:kira/pages/about_page.dart' show AboutPage;
 import 'package:kira/pages/appearance_page.dart';
 import 'package:kira/pages/profile_page.dart' show ProfilePage;
 import 'package:kira/utils/app_update.dart';
+import 'package:kira/widgets/setting_tile_group.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -94,8 +95,11 @@ void main() {
     await tester.pumpWidget(_buildTestApp(const AboutPage()));
     await tester.pumpAndSettle();
 
+    // 更新设置/法律等卡片组已改为 SettingTileGroup（自带阴影），不再用 Card；
+    // 页面上剩余的 Card（更新状态卡等）仍继承全局阴影。
     final cards = tester.widgetList<Card>(find.byType(Card)).toList();
-    expect(cards, isNotEmpty);
     expect(cards.every((card) => card.elevation == null), isTrue);
+    expect(tester.widgetList<SettingTileGroup>(find.byType(SettingTileGroup)),
+        isNotEmpty);
   });
 }

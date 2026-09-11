@@ -42,7 +42,7 @@ class _CommentSkeletonState extends State<_CommentSkeleton>
           bottomPadding,
         ),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerLow,
+          color: cs.surfaceBright,
           borderRadius: BorderRadius.circular(_commentCardCornerRadius),
         ),
         child: Column(

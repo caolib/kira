@@ -28,7 +28,7 @@ extension _UpdateCardBuilders on _UpdateCardState {
   ) {
     final l10n = AppLocalizations.of(context)!;
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,

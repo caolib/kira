@@ -25,7 +25,7 @@ class _ImageCacheSectionCard extends StatelessWidget {
     final subtitle = l10n.cacheFileCountSize(section.fileCount, sizeLabel);
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: selectionMode
           ? ListTile(
               enabled: !section.isEmpty,
@@ -77,7 +77,7 @@ class _FontCacheSectionCard extends StatelessWidget {
     final subtitle = l10n.cacheFileCountSize(section.fonts.length, sizeLabel);
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: selectionMode
           ? ListTile(
               enabled: !section.isEmpty,

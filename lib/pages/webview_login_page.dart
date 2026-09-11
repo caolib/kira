@@ -262,7 +262,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
                 ),
               Container(
                 width: double.infinity,
-                color: cs.surfaceContainerLow,
+                color: cs.surfaceBright,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.lg,
                   vertical: AppSpacing.sm,

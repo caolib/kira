@@ -6,7 +6,7 @@ extension _NetworkProxyCard on _NetworkPageState {
     final isManual = mode == NetworkProxyMode.manual;
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: Column(
         children: [
           Padding(
@@ -161,7 +161,7 @@ extension _NetworkProxyCard on _NetworkPageState {
     ColorScheme cs,
   ) {
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

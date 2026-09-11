@@ -78,7 +78,7 @@ class _DesktopFontCardState extends State<_DesktopFontCard> {
     final hasCustom = current.isNotEmpty;
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(

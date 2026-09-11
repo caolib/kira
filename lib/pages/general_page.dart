@@ -12,6 +12,8 @@ import '../utils/bookmark_store.dart';
 import '../utils/dialog_width.dart';
 import '../utils/settings_backup.dart';
 import '../utils/toast.dart';
+import '../widgets/select_tile.dart';
+import '../widgets/setting_tile_group.dart';
 
 class GeneralPage extends StatefulWidget {
   const GeneralPage({super.key});
@@ -236,156 +238,95 @@ class _GeneralPageState extends State<GeneralPage> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          Card(
-            color: cs.surfaceContainerLow,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(Icons.login_rounded),
-                    title: Text(l10n.autoLoginTitle),
-                    subtitle: Text(
-                      canAutoLogin
-                          ? l10n.autoLoginEnabledDesc
-                          : l10n.autoLoginUnavailableDesc,
-                      style: tt.bodySmall,
-                    ),
-                    value: canAutoLogin ? _user.autoLogin : false,
-                    onChanged: canAutoLogin ? _user.setAutoLogin : null,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.view_carousel_outlined),
-                    title: Text(l10n.bannerVisibleTitle),
-                    subtitle: Text(l10n.bannerVisibleDesc, style: tt.bodySmall),
-                    value: _user.bannerVisible,
-                    onChanged: _user.setBannerVisible,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.exit_to_app_rounded),
-                    title: Text(l10n.backExitConfirmTitle),
-                    subtitle: Text(
-                      l10n.backExitConfirmDesc,
-                      style: tt.bodySmall,
-                    ),
-                    value: _user.theme.backExitConfirm,
-                    onChanged: _user.theme.setBackExitConfirm,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.language_rounded),
-                    title: Text(l10n.languageTitle),
-                    subtitle: Text(switch (_user.locale) {
-                      'zh-Hant' => l10n.languageTraditional,
-                      'zh' => l10n.languageSimplified,
-                      _ => l10n.languageSystem,
-                    }, style: tt.bodySmall),
-                    trailing: PopupMenuButton<String>(
-                      icon: const Icon(Icons.arrow_drop_down),
-                      onSelected: _user.setLocale,
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem(
-                          value: '',
-                          child: Text(l10n.languageSystem),
-                        ),
-                        PopupMenuItem(
-                          value: 'zh',
-                          child: Text(l10n.languageSimplified),
-                        ),
-                        PopupMenuItem(
-                          value: 'zh-Hant',
-                          child: Text(l10n.languageTraditional),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.storage_rounded),
-                    title: Text(l10n.cacheManagementTitle),
-                    subtitle: Text(l10n.cacheManagementDesc),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      context.pushNamed(AppRoutes.cacheManagement);
-                    },
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.upload_file_rounded),
-                    title: Text(l10n.exportSettingsTitle),
-                    subtitle: Text(l10n.exportSettingsDesc),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _exportSettings,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.download_for_offline_rounded),
-                    title: Text(l10n.importSettingsTitle),
-                    subtitle: Text(l10n.importSettingsDesc),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _importSettings,
-                  ),
-                ],
+          SettingTileGroup(
+            children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.login_rounded),
+                title: Text(l10n.autoLoginTitle),
+                subtitle: Text(
+                  canAutoLogin
+                      ? l10n.autoLoginEnabledDesc
+                      : l10n.autoLoginUnavailableDesc,
+                  style: tt.bodySmall,
+                ),
+                value: canAutoLogin ? _user.autoLogin : false,
+                onChanged: canAutoLogin ? _user.setAutoLogin : null,
               ),
-            ),
+              SwitchListTile(
+                secondary: const Icon(Icons.view_carousel_outlined),
+                title: Text(l10n.bannerVisibleTitle),
+                subtitle: Text(l10n.bannerVisibleDesc, style: tt.bodySmall),
+                value: _user.bannerVisible,
+                onChanged: _user.setBannerVisible,
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.exit_to_app_rounded),
+                title: Text(l10n.backExitConfirmTitle),
+                subtitle: Text(
+                  l10n.backExitConfirmDesc,
+                  style: tt.bodySmall,
+                ),
+                value: _user.theme.backExitConfirm,
+                onChanged: _user.theme.setBackExitConfirm,
+              ),
+              ListTile(
+                leading: const Icon(Icons.language_rounded),
+                title: Text(l10n.languageTitle),
+                trailing: SelectTile<String>(
+                  value: _user.locale,
+                  items: [
+                    SelectItem('', l10n.languageSystem),
+                    SelectItem('zh', l10n.languageSimplified),
+                    SelectItem('zh-Hant', l10n.languageTraditional),
+                  ],
+                  onChanged: _user.setLocale,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.storage_rounded),
+                title: Text(l10n.cacheManagementTitle),
+                subtitle: Text(l10n.cacheManagementDesc),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  context.pushNamed(AppRoutes.cacheManagement);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.upload_file_rounded),
+                title: Text(l10n.exportSettingsTitle),
+                subtitle: Text(l10n.exportSettingsDesc),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _exportSettings,
+              ),
+              ListTile(
+                leading: const Icon(Icons.download_for_offline_rounded),
+                title: Text(l10n.importSettingsTitle),
+                subtitle: Text(l10n.importSettingsDesc),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _importSettings,
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Card(
-            color: cs.errorContainer.withValues(alpha: 0.7),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.restart_alt_rounded,
-                      color: cs.onErrorContainer,
-                    ),
-                    title: Text(
-                      l10n.resetAppTitle,
-                      style: tt.titleMedium?.copyWith(
-                        color: cs.onErrorContainer,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    subtitle: Text(
-                      l10n.resetAppDesc,
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onErrorContainer.withValues(alpha: 0.88),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _resetting ? null : _resetApp,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: cs.error,
-                          foregroundColor: cs.onError,
-                        ),
-                        icon: _resetting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.delete_sweep_rounded),
-                        label: Text(
-                          _resetting ? l10n.resettingApp : l10n.resetAppTitle,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+          SettingTileGroup(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.restart_alt_rounded),
+                title: Text(l10n.resetAppTitle),
+                subtitle: Text(
+                  l10n.resetAppDesc,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                trailing: _resetting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chevron_right),
+                onTap: _resetting ? null : _resetApp,
               ),
-            ),
+            ],
           ),
         ],
       ),

@@ -32,7 +32,7 @@ class DisclaimerPage extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           Card(
-            color: cs.surfaceContainerLow,
+            color: cs.surfaceBright,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(

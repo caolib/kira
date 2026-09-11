@@ -19,7 +19,7 @@ class ProjectLicensePage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Card(
-            color: cs.surfaceContainerLow,
+            color: cs.surfaceBright,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(

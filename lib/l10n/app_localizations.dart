@@ -1309,6 +1309,30 @@ abstract class AppLocalizations {
   /// **'点击颜色块切换主题色，带勾选的为当前配色。'**
   String get appearanceThemeColorDesc;
 
+  /// No description provided for @appearanceDynamicColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态颜色'**
+  String get appearanceDynamicColor;
+
+  /// No description provided for @appearanceDynamicColorDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'基于壁纸动态生成主题配色（Android 12+，开启后忽略上方主题配色）'**
+  String get appearanceDynamicColorDesc;
+
+  /// No description provided for @appearanceAmoledDark.
+  ///
+  /// In zh, this message translates to:
+  /// **'AMOLED 纯黑模式'**
+  String get appearanceAmoledDark;
+
+  /// No description provided for @appearanceAmoledDarkDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'在暗色主题中使用纯黑背景'**
+  String get appearanceAmoledDarkDesc;
+
   /// No description provided for @appearanceRefreshRateRequested.
   ///
   /// In zh, this message translates to:
@@ -1338,6 +1362,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'自动（跟随系统）'**
   String get appearanceAutoSystem;
+
+  /// No description provided for @appearanceAutoShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get appearanceAutoShort;
 
   /// No description provided for @appearanceRefreshRateCurrent.
   ///
@@ -2597,6 +2627,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'关于'**
   String get aboutTitle;
+
+  /// No description provided for @aboutBrandTagline.
+  ///
+  /// In zh, this message translates to:
+  /// **'Kira 是一个开源免费的漫画阅读 App'**
+  String get aboutBrandTagline;
 
   /// No description provided for @notLoggedInTitle.
   ///

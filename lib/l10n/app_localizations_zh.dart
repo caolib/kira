@@ -670,6 +670,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearanceThemeColorDesc => '点击颜色块切换主题色，带勾选的为当前配色。';
 
   @override
+  String get appearanceDynamicColor => '动态颜色';
+
+  @override
+  String get appearanceDynamicColorDesc =>
+      '基于壁纸动态生成主题配色（Android 12+，开启后忽略上方主题配色）';
+
+  @override
+  String get appearanceAmoledDark => 'AMOLED 纯黑模式';
+
+  @override
+  String get appearanceAmoledDarkDesc => '在暗色主题中使用纯黑背景';
+
+  @override
   String appearanceRefreshRateRequested(String rate) {
     return '已请求刷新率 $rate';
   }
@@ -687,6 +700,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appearanceAutoSystem => '自动（跟随系统）';
+
+  @override
+  String get appearanceAutoShort => '自动';
 
   @override
   String appearanceRefreshRateCurrent(int rate) {
@@ -1386,6 +1402,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTitle => '关于';
+
+  @override
+  String get aboutBrandTagline => 'Kira 是一个开源免费的漫画阅读 App';
 
   @override
   String get notLoggedInTitle => '未登录';
@@ -3775,6 +3794,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get appearanceThemeColorDesc => '點擊色塊切換主題色，帶勾選的為目前配色。';
 
   @override
+  String get appearanceDynamicColor => '動態顏色';
+
+  @override
+  String get appearanceDynamicColorDesc =>
+      '基於桌布動態生成主題配色（Android 12+，開啟後忽略上方主題配色）';
+
+  @override
+  String get appearanceAmoledDark => 'AMOLED 純黑模式';
+
+  @override
+  String get appearanceAmoledDarkDesc => '在暗色主題中使用純黑背景';
+
+  @override
   String appearanceRefreshRateRequested(String rate) {
     return '已請求重新整理率 $rate';
   }
@@ -3792,6 +3824,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get appearanceAutoSystem => '自動（跟隨系統）';
+
+  @override
+  String get appearanceAutoShort => '自動';
 
   @override
   String appearanceRefreshRateCurrent(int rate) {
@@ -4491,6 +4526,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get aboutTitle => '關於';
+
+  @override
+  String get aboutBrandTagline => 'Kira 是一個開源免費的漫畫閱讀 App';
 
   @override
   String get notLoggedInTitle => '未登入';

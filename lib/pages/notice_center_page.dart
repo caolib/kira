@@ -335,7 +335,7 @@ class _NoticeFoldSection extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
-                color: cs.surfaceContainerLow,
+                color: cs.surfaceBright,
                 borderRadius: AppRadius.smR,
                 border: Border.all(
                   color: cs.outlineVariant.withValues(alpha: 0.7),

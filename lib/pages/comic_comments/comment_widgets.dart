@@ -270,7 +270,7 @@ class _ComicCommentSkeleton extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
+        color: cs.surfaceBright,
         borderRadius: AppRadius.lgR,
       ),
       child: Column(

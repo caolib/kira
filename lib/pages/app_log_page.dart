@@ -570,7 +570,7 @@ class _LogEntryCardState extends State<_LogEntryCard> {
     final stackTrace = entry.stackTrace;
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: ExpansionTile(
         leading: Icon(
           _levelIcon(entry.level),

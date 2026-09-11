@@ -22,6 +22,36 @@ class SettingIcon extends StatelessWidget {
 
 // ── 关于页 ──
 
+/// A rounded [background] surface that clips its child to the tile shape,
+/// so the child's InkWell ripple stays within the corners. Used to give
+/// each link action its own pill against the page background instead of
+/// sharing one card with drawn dividers. Shadow follows the global
+/// [CardTheme] elevation, same as [Card].
+class _LinkTile extends StatelessWidget {
+  const _LinkTile({
+    required this.background,
+    this.borderRadius,
+    required this.child,
+  });
+
+  final Color background;
+  final BorderRadius? borderRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = borderRadius ?? AppRadius.lgR;
+    return Material(
+      color: background,
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      elevation: Theme.of(context).cardTheme.elevation ?? 0,
+      surfaceTintColor: Colors.transparent,
+      child: child,
+    );
+  }
+}
+
 class _LinkAction extends StatelessWidget {
   const _LinkAction({
     required this.icon,

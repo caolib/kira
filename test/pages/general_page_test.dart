@@ -34,9 +34,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final resetButton = find.widgetWithText(FilledButton, '重置应用');
-    await tester.scrollUntilVisible(resetButton, 100);
-    await tester.tap(resetButton);
+    // 重置应用入口从红色卡片按钮改为普通 ListTile，点击弹出确认对话框。
+    final resetTile = find.text('重置应用').first;
+    await tester.scrollUntilVisible(resetTile, 100);
+    await tester.tap(resetTile);
     await tester.pumpAndSettle();
 
     FilledButton button() =>

@@ -665,7 +665,7 @@ class _ComicQueueTaskCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return Card(
-      color: selected ? cs.primaryContainer : cs.surfaceContainerLow,
+      color: selected ? cs.primaryContainer : cs.surfaceBright,
       child: InkWell(
         borderRadius: AppRadius.mdR,
         onTap: selecting ? onToggleSelect : null,

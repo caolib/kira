@@ -54,6 +54,8 @@ class ThemeSettings extends PrefsStore {
   static const _keyDisplayModeRefreshRate = 'pref_display_mode_refresh_rate';
   static const _keyLogoIndex = 'logo_index';
   static const _keyBannerVisible = 'banner_visible';
+  static const _keyUseDynamicColor = 'use_dynamic_color';
+  static const _keyAmoledDark = 'amoled_dark';
 
   // ── Fields ─────────────────────────────────────────────────────────
 
@@ -74,6 +76,8 @@ class ThemeSettings extends PrefsStore {
   int _displayModeRefreshRate = defaultDisplayModeRefreshRate;
   int _logoIndex = 1;
   bool _bannerVisible = true;
+  bool _useDynamicColor = false;
+  bool _amoledDark = false;
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -102,6 +106,12 @@ class ThemeSettings extends PrefsStore {
   int get displayModeRefreshRate => _displayModeRefreshRate;
   int get logoIndex => _logoIndex;
   bool get bannerVisible => _bannerVisible;
+
+  /// Android 12+ Monet dynamic color from system wallpaper.
+  bool get useDynamicColor => _useDynamicColor;
+
+  /// Pure-black background in dark mode for OLED screens.
+  bool get amoledDark => _amoledDark;
 
   AppThemeOption get themeOption {
     if (_themeColor == customThemeOptionId) {
@@ -165,6 +175,8 @@ class ThemeSettings extends PrefsStore {
       appLogoPaths.length - 1,
     );
     _bannerVisible = prefs.getBool(_keyBannerVisible) ?? true;
+    _useDynamicColor = prefs.getBool(_keyUseDynamicColor) ?? false;
+    _amoledDark = prefs.getBool(_keyAmoledDark) ?? false;
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -309,6 +321,18 @@ class ThemeSettings extends PrefsStore {
     if (_bannerVisible == visible) return;
     _bannerVisible = visible;
     await setBool(_keyBannerVisible, visible);
+  }
+
+  Future<void> setUseDynamicColor(bool enabled) async {
+    if (_useDynamicColor == enabled) return;
+    _useDynamicColor = enabled;
+    await setBool(_keyUseDynamicColor, enabled);
+  }
+
+  Future<void> setAmoledDark(bool enabled) async {
+    if (_amoledDark == enabled) return;
+    _amoledDark = enabled;
+    await setBool(_keyAmoledDark, enabled);
   }
 
   // ── Normalizers ────────────────────────────────────────────────────

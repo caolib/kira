@@ -20,7 +20,7 @@ class DisclaimerPage extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           Card(
-            color: cs.surfaceContainerLow,
+            color: cs.surfaceBright,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -320,7 +320,7 @@ class _AboutPageState extends State<AboutPage> {
               ),
               const SizedBox(height: 32),
               Card(
-                color: cs.surfaceContainerLow,
+                color: cs.surfaceBright,
                 child: IntrinsicHeight(
                   child: Row(
                     children: [
@@ -368,7 +368,7 @@ class _AboutPageState extends State<AboutPage> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Card(
-                color: cs.surfaceContainerLow,
+                color: cs.surfaceBright,
                 child: Column(
                   children: [
                     ListTile(
@@ -409,7 +409,7 @@ class _AboutPageState extends State<AboutPage> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Card(
-                color: cs.surfaceContainerLow,
+                color: cs.surfaceBright,
                 child: Column(
                   children: [
                     ListTile(

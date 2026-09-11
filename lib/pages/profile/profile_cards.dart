@@ -5,138 +5,118 @@ extension _ProfileCards on _ProfilePageState {
   Widget _buildGeneralSettingsCard() {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          children: [
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.tune_rounded,
-                color: Color(0xFF6E9D5B),
-              ),
-              title: Text(l10n.generalTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.general),
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.palette_rounded,
-                color: Color(0xFF7C8CFF),
-              ),
-              title: Text(l10n.appearanceTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.appearance),
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.dns_rounded,
-                color: Color(0xFF2BB8A5),
-              ),
-              title: Text(l10n.networkTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.network),
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.smart_toy_outlined,
-                color: Color(0xFFE07AD0),
-              ),
-              title: Text(l10n.aiConfigTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.aiConfig),
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ValueListenableBuilder<int>(
-              valueListenable: RemoteNoticeService.unreadActiveCount,
-              builder: (context, count, _) {
-                return ListTile(
-                  leading: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const _SettingIcon(
-                        icon: Icons.notifications_active_outlined,
-                        color: _noticeCenterColor,
-                      ),
-                      if (count > 0)
-                        Positioned(
-                          right: -1,
-                          top: -1,
-                          child: _NoticeRedDot(
-                            color: _noticeCenterColor,
-                            borderColor: cs.surfaceContainerLow,
-                          ),
-                        ),
-                    ],
-                  ),
-                  title: Text(l10n.noticeCenterTitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.pushNamed(AppRoutes.noticeCenter),
-                );
-              },
-            ),
-          ],
+    return SettingTileGroup(
+      children: [
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.tune_rounded,
+            color: Color(0xFF6E9D5B),
+          ),
+          title: Text(l10n.generalTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.general),
         ),
-      ),
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.palette_rounded,
+            color: Color(0xFF7C8CFF),
+          ),
+          title: Text(l10n.appearanceTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.appearance),
+        ),
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.dns_rounded,
+            color: Color(0xFF2BB8A5),
+          ),
+          title: Text(l10n.networkTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.network),
+        ),
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.smart_toy_outlined,
+            color: Color(0xFFE07AD0),
+          ),
+          title: Text(l10n.aiConfigTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.aiConfig),
+        ),
+        ValueListenableBuilder<int>(
+          valueListenable: RemoteNoticeService.unreadActiveCount,
+          builder: (context, count, _) {
+            return ListTile(
+              leading: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const _SettingIcon(
+                    icon: Icons.notifications_active_outlined,
+                    color: _noticeCenterColor,
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: -1,
+                      top: -1,
+                      child: _NoticeRedDot(
+                        color: _noticeCenterColor,
+                        borderColor: cs.surfaceBright,
+                      ),
+                    ),
+                ],
+              ),
+              title: Text(l10n.noticeCenterTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.pushNamed(AppRoutes.noticeCenter),
+            );
+          },
+        ),
+      ],
     );
   }
 
   /// 第二块设置卡片：下载中心 / 浏览历史 / 书签 / 阅读统计。
   Widget _buildDataSettingsCard() {
     final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          children: [
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.download_done_rounded,
-                color: Color(0xFFFFA24C),
-              ),
-              title: Text(l10n.downloadCenterTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.downloadCenter),
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.history_rounded,
-                color: Color(0xFF9B7BFF),
-              ),
-              title: Text(l10n.browseHistoryTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.browseHistory),
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.bookmark_outline_rounded,
-                color: Color(0xFF4CAF7D),
-              ),
-              title: Text(l10n.bookmarksTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.bookmarks),
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: const _SettingIcon(
-                icon: Icons.bar_chart_rounded,
-                color: Color(0xFF5B8DEF),
-              ),
-              title: Text(l10n.statsTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.pushNamed(AppRoutes.stats),
-            ),
-          ],
+    return SettingTileGroup(
+      children: [
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.download_done_rounded,
+            color: Color(0xFFFFA24C),
+          ),
+          title: Text(l10n.downloadCenterTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.downloadCenter),
         ),
-      ),
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.history_rounded,
+            color: Color(0xFF9B7BFF),
+          ),
+          title: Text(l10n.browseHistoryTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.browseHistory),
+        ),
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.bookmark_outline_rounded,
+            color: Color(0xFF4CAF7D),
+          ),
+          title: Text(l10n.bookmarksTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.bookmarks),
+        ),
+        ListTile(
+          leading: const _SettingIcon(
+            icon: Icons.bar_chart_rounded,
+            color: Color(0xFF5B8DEF),
+          ),
+          title: Text(l10n.statsTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.stats),
+        ),
+      ],
     );
   }
 
@@ -144,11 +124,9 @@ extension _ProfileCards on _ProfilePageState {
   Widget _buildAboutCard() {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: ValueListenableBuilder<bool>(
+    return SettingTileGroup(
+      children: [
+        ValueListenableBuilder<bool>(
           valueListenable: AppUpdateService.hasUnseenUpdate,
           builder: (context, hasUnseenUpdate, _) {
             return ListTile(
@@ -165,7 +143,7 @@ extension _ProfileCards on _ProfilePageState {
                       top: -1,
                       child: _NoticeRedDot(
                         color: const Color(0xFF4FA8FF),
-                        borderColor: cs.surfaceContainerLow,
+                        borderColor: cs.surfaceBright,
                       ),
                     ),
                 ],
@@ -176,7 +154,7 @@ extension _ProfileCards on _ProfilePageState {
             );
           },
         ),
-      ),
+      ],
     );
   }
 
@@ -184,7 +162,7 @@ extension _ProfileCards on _ProfilePageState {
     final l10n = AppLocalizations.of(context)!;
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: InkWell(
         borderRadius: AppRadius.lgR,
         onTap: _goLogin,

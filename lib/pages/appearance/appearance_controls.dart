@@ -225,19 +225,6 @@ class _ThemeColorTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (selected)
-                    Positioned(
-                      top: 1,
-                      right: 1,
-                      child: Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: cs.onPrimary,
-                        shadows: const [
-                          Shadow(blurRadius: 6, color: Colors.black26),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),

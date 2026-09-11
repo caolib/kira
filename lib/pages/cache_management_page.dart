@@ -278,7 +278,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 Card(
-                  color: cs.surfaceContainerLow,
+                  color: cs.surfaceBright,
                   child: ListTile(
                     leading: const Icon(Icons.info_outline_rounded),
                     title: Text(
@@ -346,7 +346,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                 ),
                 if (_sections.isEmpty)
                   Card(
-                    color: cs.surfaceContainerLow,
+                    color: cs.surfaceBright,
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Center(child: Text(l10n.cacheNoLocalKeyValueData)),
@@ -357,7 +357,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                     (section) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Card(
-                        color: cs.surfaceContainerLow,
+                        color: cs.surfaceBright,
                         child: _selectionMode
                             ? ListTile(
                                 onTap: () => _toggleSectionSelected(section),

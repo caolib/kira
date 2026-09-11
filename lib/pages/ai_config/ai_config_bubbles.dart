@@ -129,7 +129,7 @@ extension _AiConfigBubbles on _AiConfigPageState {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerLow.withValues(alpha: 0.72),
+          color: cs.surfaceBright.withValues(alpha: 0.72),
           borderRadius: AppRadius.mdR,
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
         ),
@@ -189,7 +189,7 @@ extension _AiConfigBubbles on _AiConfigPageState {
       ),
       blockquote: base?.copyWith(color: cs.onSurfaceVariant),
       blockquoteDecoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
+        color: cs.surfaceBright,
         border: Border(left: BorderSide(color: cs.primary, width: 3)),
       ),
       blockquotePadding: const EdgeInsets.fromLTRB(10, 8, 10, 8),

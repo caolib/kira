@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_color_utilities/palettes/core_palettes.dart';
+import 'package:material_color_utilities/palettes/tonal_palette.dart';
 import 'package:system_fonts/system_fonts.dart';
 
 import 'api/copy_settings_auto_updater.dart';
@@ -157,11 +159,55 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
   /// 本次会话内已处理过的分享链接内存镜像，避免每次回前台都读 prefs。
   String? _lastHandledSharedPathWord;
 
-  CardThemeData get _cardTheme => CardThemeData(
+  /// Android 12+ 系统动态取色调色板（Monet），启动时异步获取一次。
+  ///
+  /// 与 dynamic_color 插件走同一个平台通道（依赖保留在 pubspec 里以注册
+  /// Android 端 handler），但直接解析返回的色调列表，避免其已废弃的
+  /// [CorePalette] API。
+  static const _dynamicColorChannel = OptionalMethodChannel(
+    'io.material.plugins/dynamic_color',
+  );
+
+  CorePalettes? _dynamicPalettes;
+
+  Future<void> _loadDynamicPalettes() async {
+    try {
+      final result = await _dynamicColorChannel.invokeMethod<List<dynamic>?>(
+        'getCorePalette',
+      );
+      if (result == null) return;
+      final colors = result.cast<int>();
+      final size = TonalPalette.commonSize;
+      if (colors.length != size * 5) return;
+      TonalPalette partition(int index) => TonalPalette.fromList(
+        colors.sublist(index * size, (index + 1) * size),
+      );
+      _dynamicPalettes = CorePalettes(
+        partition(0),
+        partition(1),
+        partition(2),
+        partition(3),
+        partition(4),
+      );
+      if (mounted) setState(() {});
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'dynamic_color.palette',
+        ),
+      );
+    }
+  }
+
+  CardThemeData _cardTheme(ColorScheme cs) => CardThemeData(
     clipBehavior: Clip.hardEdge,
     shape: RoundedRectangleBorder(borderRadius: AppRadius.lgR),
     elevation: _user.theme.cardShadowElevation,
     surfaceTintColor: Colors.transparent,
+    // 与全应用卡片色统一（SettingTileGroup 等同款）；显式指定颜色的卡片不受影响。
+    color: cs.surfaceBright,
   );
 
   // Router 必须只创建一次：若在 build() 里调用 createAppRouter()，
@@ -177,11 +223,72 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
     unawaited(
       DisplayModePreference.applyRefreshRate(_user.displayModeRefreshRate),
     );
+    unawaited(_loadDynamicPalettes());
     // 冷启动后检测一次剪贴板中的分享链接（浏览器/聊天 App 里点不开
     // kira:// 时，接收方可复制文本后打开 kira 跳转）。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkSharedLinkClipboard());
     });
+  }
+
+  /// 由系统 [CorePalettes] 构建 Flutter 的 [ColorScheme]。
+  ///
+  /// 色调映射遵循 Material 3 的 `Scheme.lightFromCorePalette` /
+  /// `Scheme.darkFromCorePalette`；`surfaceContainer*` 档位由中性色调
+  /// 推导，与 fromSeed 的梯度保持一致的明暗关系。
+  ColorScheme _dynamicColorScheme(CorePalettes palette, Brightness brightness) {
+    final light = brightness == Brightness.light;
+    final p = palette.primary;
+    final s = palette.secondary;
+    final t = palette.tertiary;
+    final n = palette.neutral;
+    final nv = palette.neutralVariant;
+
+    // 标准错误色（与 CorePalette 的固定 error 色调一致：hue 25, chroma 84）。
+    final e = TonalPalette.of(25, 84);
+    int tone(TonalPalette palette, int lightTone, int darkTone) =>
+        palette.get(light ? lightTone : darkTone);
+    final surfaceTone = tone(n, 98, 6);
+    Color container(int neutralToneLight, int neutralToneDark) =>
+        Color(tone(n, neutralToneLight, neutralToneDark));
+
+    return ColorScheme(
+      brightness: brightness,
+      primary: Color(tone(p, 40, 80)),
+      onPrimary: Color(tone(p, 100, 20)),
+      primaryContainer: Color(tone(p, 90, 30)),
+      onPrimaryContainer: Color(tone(p, 10, 90)),
+      secondary: Color(tone(s, 40, 80)),
+      onSecondary: Color(tone(s, 100, 20)),
+      secondaryContainer: Color(tone(s, 90, 30)),
+      onSecondaryContainer: Color(tone(s, 10, 90)),
+      tertiary: Color(tone(t, 40, 80)),
+      onTertiary: Color(tone(t, 100, 20)),
+      tertiaryContainer: Color(tone(t, 90, 30)),
+      onTertiaryContainer: Color(tone(t, 10, 90)),
+      error: Color(tone(e, 40, 80)),
+      onError: Color(tone(e, 100, 20)),
+      errorContainer: Color(tone(e, 90, 30)),
+      onErrorContainer: Color(tone(e, 10, 90)),
+      surface: Color(surfaceTone),
+      onSurface: Color(tone(n, 10, 90)),
+      surfaceDim: container(87, 11),
+      surfaceBright: container(98, 24),
+      surfaceContainerLowest: container(100, 4),
+      surfaceContainerLow: container(96, 10),
+      surfaceContainer: container(94, 12),
+      surfaceContainerHigh: container(92, 17),
+      surfaceContainerHighest: container(90, 22),
+      onSurfaceVariant: Color(tone(nv, 30, 80)),
+      outline: Color(tone(nv, 50, 60)),
+      outlineVariant: Color(tone(nv, 80, 30)),
+      shadow: Color(tone(n, 0, 0)),
+      scrim: Color(tone(n, 0, 0)),
+      inverseSurface: Color(tone(n, 20, 90)),
+      onInverseSurface: Color(tone(n, 95, 20)),
+      inversePrimary: Color(tone(p, 80, 40)),
+      surfaceTint: Color(tone(p, 40, 80)),
+    );
   }
 
   @override
@@ -247,7 +354,10 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
     if (mounted) setState(() {});
   }
 
-  ThemeData _buildTheme(Brightness brightness) {
+  ThemeData _buildTheme(
+    Brightness brightness, [
+    CorePalettes? dynamicPalette,
+  ]) {
     final seedColor = _user.themeOption.seedColor;
     var colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
@@ -255,8 +365,15 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
       dynamicSchemeVariant: _user.themeVariant,
     );
 
+    // Android 12+ Monet 动态取色：跟随系统壁纸配色。
+    // Android 12+ Monet 动态取色：跟随系统壁纸配色（仅 Android 且开关打开）。
+    if (_user.theme.useDynamicColor && dynamicPalette != null) {
+      colorScheme = _dynamicColorScheme(dynamicPalette, brightness);
+    }
+
     // 修复“彩虹”等变体会固定生成独立色相（例如粉色）且不随主题色变化的背景问题
-    if (_user.themeVariant == DynamicSchemeVariant.rainbow) {
+    if (_user.themeVariant == DynamicSchemeVariant.rainbow &&
+        !_user.theme.useDynamicColor) {
       final standardScheme = ColorScheme.fromSeed(
         seedColor: seedColor,
         brightness: brightness,
@@ -275,6 +392,18 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
       );
     }
 
+    // AMOLED 纯黑模式：暗色下把背景/表面压到纯黑，省电且无拖影。
+    if (brightness == Brightness.dark && _user.theme.amoledDark) {
+      const black = Color(0xFF000000);
+      colorScheme = colorScheme.copyWith(
+        surface: black,
+        surfaceDim: black,
+        surfaceContainerLowest: black,
+        surfaceContainerLow: black,
+        surfaceContainer: black,
+      );
+    }
+
     final appFont = _user.theme.appFontFamily;
     final desktopFont = _user.desktopFontFamily;
 
@@ -285,10 +414,23 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
       resolvedFont = desktopFont;
     }
 
+    // RikkaHub 式背景分层：亮色下页面背景用 surfaceContainer（比卡片的
+    // surfaceBright 深 4 档色调），阴影关掉也靠纯色对比区分层级；暗色下
+    // surface(T6) 与 surfaceBright(T24) 本就差 18 档，保持默认。
+    final pageColor = brightness == Brightness.light
+        ? colorScheme.surfaceContainer
+        : colorScheme.surface;
+
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
-      cardTheme: _cardTheme,
+      scaffoldBackgroundColor: pageColor,
+      appBarTheme: AppBarTheme(
+        backgroundColor: pageColor,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      cardTheme: _cardTheme(colorScheme),
       fontFamily: resolvedFont,
     );
   }
@@ -318,8 +460,8 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
       supportedLocales: AppLocalizations.supportedLocales,
       scrollBehavior: _AppScrollBehavior(),
       builder: _buildAppContent,
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: _buildTheme(Brightness.light, _dynamicPalettes),
+      darkTheme: _buildTheme(Brightness.dark, _dynamicPalettes),
       themeMode: _user.themeMode,
       routerConfig: _router,
       scaffoldMessengerKey: _messengerKey,

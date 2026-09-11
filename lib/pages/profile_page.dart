@@ -23,6 +23,7 @@ import '../utils/app_update.dart';
 import '../utils/remote_notice_service.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
+import '../widgets/setting_tile_group.dart';
 import '../widgets/text_controller_scope.dart';
 import 'register_page.dart' show RegisterPrefill;
 part 'profile/about_page.dart';
@@ -143,7 +144,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final l10n = AppLocalizations.of(context)!;
 
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: InkWell(
         borderRadius: AppRadius.lgR,
         onTap: () {

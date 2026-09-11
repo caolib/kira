@@ -412,6 +412,10 @@
   },
   "appearanceThemeColor": "主題配色",
   "appearanceThemeColorDesc": "點擊色塊切換主題色，帶勾選的為目前配色。",
+  "appearanceDynamicColor": "動態顏色",
+  "appearanceDynamicColorDesc": "基於桌布動態生成主題配色（Android 12+，開啟後忽略上方主題配色）",
+  "appearanceAmoledDark": "AMOLED 純黑模式",
+  "appearanceAmoledDarkDesc": "在暗色主題中使用純黑背景",
   "appearanceRefreshRateRequested": "已請求重新整理率 {rate}",
   "@appearanceRefreshRateRequested": {
     "placeholders": {
@@ -431,6 +435,7 @@
   },
   "appearanceUnknownError": "未知錯誤",
   "appearanceAutoSystem": "自動（跟隨系統）",
+  "appearanceAutoShort": "自動",
   "appearanceRefreshRateCurrent": "{rate}Hz（目前）",
   "@appearanceRefreshRateCurrent": {
     "placeholders": {
@@ -851,6 +856,7 @@
   },
   "bookmarksSwipeHint": "向左滑動書籤可以刪除",
   "aboutTitle": "關於",
+  "aboutBrandTagline": "Kira 是一個開源免費的漫畫閱讀 App",
   "notLoggedInTitle": "未登入",
   "loginPromptSubtitle": "點擊登入以使用書架等功能",
   "refreshUserButton": "重新整理使用者",

@@ -36,7 +36,7 @@ class SettingsSection extends StatelessWidget {
     final hasHeader = title != null || icon != null || description != null;
 
     return Card(
-      color: color ?? cs.surfaceContainerLow,
+      color: color ?? cs.surfaceBright,
       child: Padding(
         padding: padding,
         child: Column(

@@ -359,6 +359,7 @@ class _BookmarkGroupCard extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.zero,
+      color: cs.surfaceBright,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [

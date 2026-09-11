@@ -179,7 +179,7 @@ class _LoginPageState extends State<LoginPage> {
       decoration: BoxDecoration(
         color: isSelected
             ? cs.primaryContainer.withValues(alpha: 0.45)
-            : cs.surfaceContainerLow,
+            : cs.surfaceBright,
         borderRadius: AppRadius.lgR,
         border: Border.all(color: isSelected ? cs.primary : cs.outlineVariant),
         boxShadow: _profileCardShadow(cs),

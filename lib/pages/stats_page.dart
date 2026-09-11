@@ -358,7 +358,7 @@ class _StatsPageState extends State<StatsPage> {
             const SizedBox(height: AppSpacing.xl),
             // 记录内容说明卡
             Card(
-              color: cs.surfaceContainerLow,
+              color: cs.surfaceBright,
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
@@ -588,7 +588,7 @@ class _OverviewCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: IntrinsicHeight(
@@ -686,7 +686,7 @@ class _TagsCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final maxCount = tags.isEmpty ? 1 : tags.first.count;
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
@@ -787,7 +787,7 @@ class _ActivityChartCard extends StatelessWidget {
     final style = ReaderSettings().readingStatsChartStyle;
     final useBar = style == 1;
     return Card(
-      color: cs.surfaceContainerLow,
+      color: cs.surfaceBright,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
