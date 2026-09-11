@@ -4,7 +4,7 @@
         {
             "label": "adb connect MuMu",
             "type": "shell",
-            "command": "adb connect 127.0.0.1:16384",
+            "command": "adb connect 127.0.0.1:16416",
             "presentation": {
                 "reveal": "silent",
                 "close": true

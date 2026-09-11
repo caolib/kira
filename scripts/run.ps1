@@ -1,7 +1,7 @@
 ﻿# kira 一键启动脚本（psmux 托管，复用 run-kira driver）
 # 用法: .\scripts\run.ps1 [win|mumu|emu] [-Stop] [-Log]
 #   win   flutter run -d win --dart-define-from-file=.env
-#   mumu  启动 MuMu 模拟器 → adb connect 127.0.0.1:16384 → flutter run -d 127 --dart-define-from-file=.env
+#   mumu  启动 MuMu 模拟器 → adb connect 127.0.0.1:16416 → flutter run -d 127 --dart-define-from-file=.env
 #   emu   flutter emulators --launch Medium_Phone_API_36 → flutter run -d emu --dart-define-from-file=.env
 # 无参数: 打印用法
 
@@ -15,7 +15,8 @@ param(
 
 $SessionName = 'kira'
 $MuMuManager = 'C:\Program Files\Netease\MuMu\nx_main\MuMuManager.exe'
-$MuMuAdbAddr = '127.0.0.1:16384'
+$MuMuIndex = 1
+$MuMuAdbAddr = '127.0.0.1:16416'
 $EmulatorName = 'Medium_Phone_API_36'
 $Driver = '.claude/skills/run-kira/driver.mjs'
 
@@ -43,7 +44,7 @@ if (-not $Target) {
 用法: .\scripts\run.ps1 <win|mumu|emu> [-Stop] [-Log]
 
   win   Windows 桌面运行
-  mumu  MuMu 模拟器 (127.0.0.1:16384)
+  mumu  MuMu 模拟器 (127.0.0.1:16416)
   emu   Android emulator ($EmulatorName)
 
   -Stop 停止并清理 psmux session
@@ -69,7 +70,7 @@ $DeviceArg = switch ($Target) {
     'mumu' {
         Write-Host "启动 MuMu 模拟器..."
         if (-not (Test-Path $MuMuManager)) { throw "找不到 MuMuManager: $MuMuManager" }
-        & $MuMuManager control -v 0 launch | Out-Null
+        & $MuMuManager control -v 1 launch | Out-Null
         Write-Host "等待模拟器就绪并连接 adb $MuMuAdbAddr ..."
         $ok = $false
         for ($i = 0; $i -lt 24; $i++) {

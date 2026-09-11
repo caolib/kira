@@ -141,7 +141,6 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
   Future<void> _load({bool silent = false, bool force = false}) async {
     if (_refreshing && !force) return;
-    final l10n = AppLocalizations.of(context)!;
     final mode = _mode;
     _refreshing = true;
     final isInitial = _currentItemsEmpty;
@@ -173,7 +172,7 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
         });
       }
       if (!silent && mounted) {
-        showToast(context, l10n.refreshSuccess);
+        showToast(context, AppLocalizations.of(context)!.refreshSuccess);
       }
     } catch (e, stack) {
       unawaited(
@@ -187,7 +186,11 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
       if (_isUnauthorized(e)) {
         await _handleUnauthorized();
       } else if (!silent && mounted) {
-        showToast(context, l10n.refreshFailed, isError: true);
+        showToast(
+          context,
+          AppLocalizations.of(context)!.refreshFailed,
+          isError: true,
+        );
       }
     } finally {
       _refreshing = false;
@@ -400,11 +403,17 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                   ),
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(hp, 0, hp, 24),
-                  sliver: SliverList.builder(
-                    itemCount: 20,
-                    itemBuilder: (_, _) => const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: _HistoryCardSkeleton(),
+                  sliver: SliverToBoxAdapter(
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (var i = 0; i < 20; i++)
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 440),
+                            child: const _HistoryCardSkeleton(),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -506,59 +515,37 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
                       ),
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(hp, 0, hp, 24),
-                        // 宽屏双列：历史卡片为横向行卡，两列并排容纳更多条目。
-                        // 用「一行两卡」的 SliverList 而非 SliverGrid——
-                        // 卡片高度由内容撑起，网格的固定宽高比会拉伸变形。
-                        sliver: SliverLayoutBuilder(
-                          builder: (context, constraints) {
-                            final wide =
-                                constraints.crossAxisExtent >=
-                                ScreenLayout.wideBreakpoint;
-                            final rowCount = wide
-                                ? (_currentLength + 1) ~/ 2
-                                : _currentLength;
-                            return SliverList.builder(
-                              itemCount: rowCount,
-                              itemBuilder: (_, row) {
-                                final i = row * 2;
-                                final j = i + 1;
-                                final first = _isAnimeMode
-                                    ? _AnimeBrowseHistoryCard(
-                                        item: _animeItems[i],
-                                        onTap: () => _openAnime(_animeItems[i]),
-                                      )
-                                    : _ComicBrowseHistoryCard(
-                                        item: _comicItems[i],
-                                      );
-                                final second = wide && j < _currentLength
-                                    ? (_isAnimeMode
-                                          ? _AnimeBrowseHistoryCard(
-                                              item: _animeItems[j],
-                                              onTap: () =>
-                                                  _openAnime(_animeItems[j]),
-                                            )
-                                          : _ComicBrowseHistoryCard(
-                                              item: _comicItems[j],
-                                            ))
-                                    : null;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(child: first),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child:
-                                            second ?? const SizedBox.shrink(),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            );
-                          },
+                        sliver: SliverToBoxAdapter(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              // 宽屏：卡片宽度贴合文本内容，一行能容纳几张
+                              // 就排几张，列数随窗口宽度自适应；
+                              // 窄屏：卡片 Expanded 铺满单列。
+                              // 卡片为横向行卡、高度由内容撑起，
+                              // 不能用固定宽高比的 SliverGrid。
+                              final wide =
+                                  constraints.maxWidth >=
+                                  ScreenLayout.wideBreakpoint;
+                              Widget card(int i) => _isAnimeMode
+                                  ? _AnimeBrowseHistoryCard(
+                                      item: _animeItems[i],
+                                      onTap: () => _openAnime(_animeItems[i]),
+                                      hugText: wide,
+                                    )
+                                  : _ComicBrowseHistoryCard(
+                                      item: _comicItems[i],
+                                      hugText: wide,
+                                    );
+                              return Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  for (var i = 0; i < _currentLength; i++)
+                                    card(i),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
                       if (_offset < _total)
@@ -592,7 +579,8 @@ class _BrowseHistoryPageState extends State<BrowseHistoryPage> {
 
 class _ComicBrowseHistoryCard extends StatelessWidget {
   final BrowseHistoryItem item;
-  const _ComicBrowseHistoryCard({required this.item});
+  final bool hugText;
+  const _ComicBrowseHistoryCard({required this.item, this.hugText = false});
 
   @override
   Widget build(BuildContext context) {
@@ -615,6 +603,7 @@ class _ComicBrowseHistoryCard extends StatelessWidget {
           lastBrowseName: item.lastBrowseName,
         ),
       ),
+      hugText: hugText,
       cover: _hero(
         heroTagBase,
         ComicHeroTags.cover,
@@ -672,8 +661,13 @@ class _ComicBrowseHistoryCard extends StatelessWidget {
 class _AnimeBrowseHistoryCard extends StatelessWidget {
   final AnimeBrowseHistoryItem item;
   final VoidCallback onTap;
+  final bool hugText;
 
-  const _AnimeBrowseHistoryCard({required this.item, required this.onTap});
+  const _AnimeBrowseHistoryCard({
+    required this.item,
+    required this.onTap,
+    this.hugText = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -686,6 +680,7 @@ class _AnimeBrowseHistoryCard extends StatelessWidget {
 
     return _HistoryCardShell(
       onTap: onTap,
+      hugText: hugText,
       cover: _HistoryCover(imageUrl: anime.cover, icon: Icons.movie_outlined),
       title: anime.name,
       subtitle: subtitle.isEmpty ? null : subtitle,
@@ -722,6 +717,10 @@ class _HistoryCardShell extends StatelessWidget {
   final String? latestText;
   final List<Widget> chips;
 
+  /// 宽屏流式布局：文本列用宽松约束，卡片宽度随文本内容收缩，
+  /// 由外层 Wrap 决定一行排几张；窄屏保持 Expanded 铺满。
+  final bool hugText;
+
   const _HistoryCardShell({
     required this.onTap,
     required this.cover,
@@ -731,6 +730,7 @@ class _HistoryCardShell extends StatelessWidget {
     required this.lastBrowseIcon,
     this.latestText,
     required this.chips,
+    this.hugText = false,
   });
 
   @override
@@ -738,6 +738,65 @@ class _HistoryCardShell extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+
+    final textColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: tt.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        if (subtitle != null && subtitle!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            subtitle!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+        if ((lastBrowseName != null && lastBrowseName!.isNotEmpty) ||
+            (latestText != null && latestText!.isNotEmpty)) ...[
+          const SizedBox(height: 10),
+          // 「上次看到」与「最新一话」合并为一行，字号用原来最新一话的
+          // bodySmall；图标用 WidgetSpan 内联，整行作为一个 Text 自然
+          // 截断省略——拆成两个 Flexible 会各占一半宽度提前省略。
+          Text.rich(
+            TextSpan(
+              children: [
+                if (lastBrowseName != null && lastBrowseName!.isNotEmpty) ...[
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(lastBrowseIcon, size: 16, color: cs.primary),
+                    ),
+                  ),
+                  TextSpan(text: l10n.browseHistoryLastSeen(lastBrowseName!)),
+                ],
+                if (lastBrowseName != null &&
+                    lastBrowseName!.isNotEmpty &&
+                    latestText != null &&
+                    latestText!.isNotEmpty)
+                  const TextSpan(text: ' · '),
+                if (latestText != null && latestText!.isNotEmpty)
+                  TextSpan(
+                    text: latestText!,
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tt.bodySmall,
+          ),
+        ],
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: chips),
+      ],
+    );
 
     return Card(
       margin: EdgeInsets.zero,
@@ -747,6 +806,9 @@ class _HistoryCardShell extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
+            // hugText 时 min 让卡片收缩到内容宽度；
+            // 窄屏 Expanded(tight) 依然撑满，结果一致。
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
@@ -754,63 +816,9 @@ class _HistoryCardShell extends StatelessWidget {
                 child: AspectRatio(aspectRatio: 0.72, child: cover),
               ),
               const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    if (lastBrowseName != null &&
-                        lastBrowseName!.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(lastBrowseIcon, size: 16, color: cs.primary),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              l10n.browseHistoryLastSeen(lastBrowseName!),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: tt.bodyMedium,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (latestText != null && latestText!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        latestText!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    Wrap(spacing: 8, runSpacing: 8, children: chips),
-                  ],
-                ),
-              ),
+              hugText
+                  ? Flexible(child: textColumn)
+                  : Expanded(child: textColumn),
               const SizedBox(width: AppSpacing.sm),
               Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
             ],
