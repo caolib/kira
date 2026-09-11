@@ -13,8 +13,19 @@ extension DownloadManagerComicStorePart on DownloadManager {
     ),
   };
 
-  Future<void> _persistManifest() async {
-    await _manifestFile.writeAsString(jsonEncode(_manifestPayload()));
+  Future<void> _persistManifest() {
+    final payload = jsonEncode(_manifestPayload());
+    final previous = _manifestWriteTail;
+    final completed = Completer<void>();
+    _manifestWriteTail = completed.future;
+    return () async {
+      try {
+        await previous;
+        await _writeTextFileAtomically(_manifestFile, payload);
+      } finally {
+        if (!completed.isCompleted) completed.complete();
+      }
+    }();
   }
 
   Future<void> _removeDownloadedChapter(
@@ -52,15 +63,14 @@ extension DownloadManagerComicStorePart on DownloadManager {
     final hasLocalCover = stored?.coverPath?.isNotEmpty ?? false;
 
     await _comicDirectory(pathWord).create(recursive: true);
-    await _comicMetadataFile(pathWord).writeAsString(
-      jsonEncode(
-        LocalComicInfo(
-          comic: comic.copyWith(
-            cover: hasLocalCover ? stored!.coverPath : comic.cover,
-          ),
-          coverPath: hasLocalCover ? stored!.coverPath : null,
-          updatedAt: DateTime.now(),
-        ).toJson(),
+    await _writeComicMetadata(
+      pathWord,
+      LocalComicInfo(
+        comic: comic.copyWith(
+          cover: hasLocalCover ? stored!.coverPath : comic.cover,
+        ),
+        coverPath: hasLocalCover ? stored!.coverPath : null,
+        updatedAt: DateTime.now(),
       ),
     );
     _notifyListeners();
@@ -79,13 +89,12 @@ extension DownloadManagerComicStorePart on DownloadManager {
     // 回填前重读元数据，避免覆盖期间 _touchLocalComic 刷新的 updatedAt。
     final refreshed = _readLocalComicInfo(pathWord);
     if (refreshed == null) return;
-    await _comicMetadataFile(pathWord).writeAsString(
-      jsonEncode(
-        LocalComicInfo(
-          comic: refreshed.comic.copyWith(cover: coverFile.path),
-          coverPath: coverFile.path,
-          updatedAt: refreshed.updatedAt,
-        ).toJson(),
+    await _writeComicMetadata(
+      pathWord,
+      LocalComicInfo(
+        comic: refreshed.comic.copyWith(cover: coverFile.path),
+        coverPath: coverFile.path,
+        updatedAt: refreshed.updatedAt,
       ),
     );
     _notifyListeners();
@@ -130,10 +139,27 @@ extension DownloadManagerComicStorePart on DownloadManager {
       coverPath: info.coverPath,
       updatedAt: DateTime.now(),
     );
-    await _comicMetadataFile(
-      pathWord,
-    ).writeAsString(jsonEncode(nextInfo.toJson()));
+    await _writeComicMetadata(pathWord, nextInfo);
   }
+
+  Future<void> _writeComicMetadata(String pathWord, LocalComicInfo info) =>
+      _writeSerializedText(
+        _comicMetadataWriteTails,
+        pathWord,
+        _comicMetadataFile(pathWord),
+        jsonEncode(info.toJson()),
+      );
+
+  Future<void> _writeChapterMetadata(
+    String pathWord,
+    String chapterUuid,
+    ChapterDetail detail,
+  ) => _writeSerializedText(
+    _chapterMetadataWriteTails,
+    _taskKey(pathWord, chapterUuid),
+    _chapterMetadataFile(pathWord, chapterUuid),
+    jsonEncode(detail.toDownloadJson()),
+  );
 
   Future<void> _removeLocalComic(String pathWord) async {
     final dir = _comicDirectory(pathWord);

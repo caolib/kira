@@ -19,7 +19,42 @@ part 'download_manager_parts/queries.dart';
 class DownloadManager extends ChangeNotifier {
   static final DownloadManager _instance = DownloadManager._();
   factory DownloadManager() => _instance;
-  DownloadManager._();
+
+  DownloadManager._({
+    Future<Directory> Function()? rootDirectoryProvider,
+    Future<ChapterDetail> Function(String pathWord, String chapterUuid)?
+    chapterDetailLoader,
+    Future<({List<ChapterComment> list, int total})> Function(
+      String chapterUuid,
+    )?
+    chapterCommentsLoader,
+    Future<File> Function(String imageUrl, Directory chapterDir, int index)?
+    imageDownloader,
+  }) : _rootDirectoryProvider = rootDirectoryProvider,
+       _chapterDetailLoader = chapterDetailLoader,
+       _chapterCommentsLoader = chapterCommentsLoader,
+       _imageDownloader = imageDownloader,
+       _api = ApiClient(),
+       _httpClient = HttpClient()..connectionTimeout = _timeout;
+
+  /// Creates an isolated manager with injectable I/O for state-machine tests.
+  @visibleForTesting
+  DownloadManager.forTesting({
+    required Directory rootDirectory,
+    Future<ChapterDetail> Function(String pathWord, String chapterUuid)?
+    chapterDetailLoader,
+    Future<({List<ChapterComment> list, int total})> Function(
+      String chapterUuid,
+    )?
+    chapterCommentsLoader,
+    Future<File> Function(String imageUrl, Directory chapterDir, int index)?
+    imageDownloader,
+  }) : this._(
+         rootDirectoryProvider: () async => rootDirectory,
+         chapterDetailLoader: chapterDetailLoader,
+         chapterCommentsLoader: chapterCommentsLoader,
+         imageDownloader: imageDownloader,
+       );
 
   static const _manifestVersion = 1;
   static const _rootFolderName = 'comic_downloads';
@@ -58,9 +93,9 @@ class DownloadManager extends ChangeNotifier {
   static const int _minImageConcurrency = 1;
   static const int _maxImageConcurrency = 32;
 
-  /// 在飞章节数：1 章下载图片 + 1 章预取详情。图片任务严格按章节顺序
-  /// 派发（当前章全部页结束后下一章才开始传图），让最早的话尽快完整
-  /// 可读；详情预取只提前发 API 请求，不提前下载下一章的图片。
+  /// 在飞章节数上限。页任务按章节顺序进入全局队列：前面的章节优先
+  /// 占用 worker，有剩余立刻派发给后面的章节，不闲置并发额度；
+  /// 多持有 1 个在飞章节用于预取详情，消除章节间的请求空窗。
   static const int _maxChaptersInFlight = 2;
 
   /// 是否下载章节评论的持久化键。
@@ -68,6 +103,12 @@ class DownloadManager extends ChangeNotifier {
 
   /// 自定义下载根目录的持久化键；缺省/置空表示使用应用内部默认目录。
   static const _keySaveDirectory = 'download_save_directory';
+
+  /// 下载队列的持久化键：重启后恢复队列继续下载（含暂停状态与批次失败）。
+  static const _keyQueueState = 'download_queue_state_v1';
+
+  /// 队列持久化载荷结构版本，结构变更时递增使旧数据失效。
+  static const _queueStateVersion = 1;
 
   int _imageDownloadConcurrency = _defaultImageConcurrency;
   bool _downloadCommentsEnabled = true;
@@ -83,8 +124,17 @@ class DownloadManager extends ChangeNotifier {
     'image/vnd.microsoft.icon': '.ico',
   };
 
-  final ApiClient _api = ApiClient();
-  final HttpClient _httpClient = HttpClient()..connectionTimeout = _timeout;
+  final ApiClient _api;
+  final HttpClient _httpClient;
+  final Future<Directory> Function()? _rootDirectoryProvider;
+  final Future<ChapterDetail> Function(String pathWord, String chapterUuid)?
+  _chapterDetailLoader;
+  final Future<({List<ChapterComment> list, int total})> Function(
+    String chapterUuid,
+  )?
+  _chapterCommentsLoader;
+  final Future<File> Function(String imageUrl, Directory chapterDir, int index)?
+  _imageDownloader;
   final Map<String, Map<String, DownloadedChapterSummary>> _manifest = {};
   final List<_DownloadTask> _queue = [];
   final Set<String> _queuedKeys = {};
@@ -100,11 +150,20 @@ class DownloadManager extends ChangeNotifier {
   // 正在下载章节的实时进度，key 同 [_activeKeys]。
   final Map<String, ChapterDownloadProgress> _activeProgress = {};
 
-  // 在飞章节运行态，最多 [_maxChaptersInFlight] 个（1 传图 + 1 预取详情）。
+  // 在飞章节运行态，最多 [_maxChaptersInFlight] 个。
   final Map<String, _ChapterRun> _activeRuns = {};
 
-  // 当前持有传图权的章节 key；图片任务严格按章节串行派发。
-  String? _downloadingKey;
+  // 用户单独暂停的章节任务 key。
+  final Set<String> _pausedTaskKeys = {};
+
+  // 用户请求取消（删除）的章节任务 key；在飞任务在下个阶段边界退出。
+  final Set<String> _cancelledTaskKeys = {};
+
+  // 删除尚未完成时禁止同 key 重新入队，避免旧删除流程误删新任务文件。
+  final Set<String> _deletingTaskKeys = {};
+
+  // 全局暂停：不领取新任务，在飞的图片请求自然完成后停住。
+  bool _paused = false;
 
   // 全局图片任务队列，跨章节共享 worker 池，章节尾部不再闲置并发额度。
   final List<_ImageJob> _imageJobs = [];
@@ -113,6 +172,13 @@ class DownloadManager extends ChangeNotifier {
   // 章节调度器的等待点集合；任何章节完成/失败/新任务入队都会唤醒。
   final List<Completer<void>> _schedulerWaits = [];
   bool _schedulerDone = false;
+
+  // 持久化写入尾链，保证旧快照不会在新快照之后完成并覆盖新状态。
+  Future<void> _queueStateWriteTail = Future.value();
+  Future<void> _manifestWriteTail = Future.value();
+  Future<void> _deleteWriteTail = Future.value();
+  final Map<String, Future<void>> _comicMetadataWriteTails = {};
+  final Map<String, Future<void>> _chapterMetadataWriteTails = {};
 
   int _batchSucceeded = 0;
 
@@ -130,24 +196,453 @@ class DownloadManager extends ChangeNotifier {
 
   /// 清除批次失败汇总（用户关闭提示条后调用）。
   void clearBatchSummary() {
-    if (_lastBatchSummary == null && _batchFailures.isEmpty) return;
+    if (_lastBatchSummary == null &&
+        _batchFailures.isEmpty &&
+        _batchRunFailures.isEmpty) {
+      return;
+    }
     _batchFailures = const [];
+    _batchRunFailures = [];
     _lastBatchSummary = null;
     notifyListeners();
+    unawaited(_persistQueueState());
+  }
+
+  /// 是否已全局暂停下载。暂停状态随队列快照保存，重启后可继续。
+  bool get paused => _paused;
+
+  /// 暂停全部下载：在飞的图片请求自然完成后停止领取新任务。
+  void pauseDownloads() {
+    if (_paused) return;
+    _paused = true;
+    _signalScheduler();
+    notifyListeners();
+    unawaited(_persistQueueState());
+  }
+
+  /// 恢复全部下载。
+  void resumeDownloads() {
+    if (!_paused) return;
+    _paused = false;
+    _signalScheduler();
+    _wakeImageWorkers();
+    notifyListeners();
+    unawaited(_persistQueueState());
+    _ensureProcessing();
+  }
+
+  /// 单个章节是否被暂停。
+  bool isChapterPaused(String pathWord, String chapterUuid) =>
+      _pausedTaskKeys.contains(_taskKey(pathWord, chapterUuid));
+
+  /// 暂停单个章节：在飞的图片请求自然完成后停止领取新任务。
+  void pauseChapter(String pathWord, String chapterUuid) {
+    if (!_pausedTaskKeys.add(_taskKey(pathWord, chapterUuid))) return;
+    notifyListeners();
+    unawaited(_persistQueueState());
+  }
+
+  /// 恢复单个章节。
+  void resumeChapter(String pathWord, String chapterUuid) {
+    final key = _taskKey(pathWord, chapterUuid);
+    if (!_pausedTaskKeys.remove(key)) return;
+    _signalScheduler();
+    _wakeImageWorkers();
+    notifyListeners();
+    unawaited(_persistQueueState());
+  }
+
+  /// 从队列删除一个任务，并删除该章节已下载到本地的文件。
+  ///
+  /// 任务在队列中等待：直接移除。任务正在下载：图片请求自然完成后不再
+  /// 收尾保存，已下载的部分文件一并删除。任务不在队列（如批次失败记录）：
+  /// 仅清理对应记录。
+  Future<void> deleteQueuedChapter(String pathWord, String chapterUuid) async {
+    if (!_initialized) await init();
+    final key = _taskKey(pathWord, chapterUuid);
+    if (!_deletingTaskKeys.add(key)) return;
+    final previous = _deleteWriteTail;
+    final completed = Completer<void>();
+    _deleteWriteTail = completed.future;
+    try {
+      await _deleteQueuedChapter(
+        pathWord,
+        chapterUuid,
+        key,
+        previous: previous,
+      );
+    } finally {
+      _deletingTaskKeys.remove(key);
+      if (!completed.isCompleted) completed.complete();
+    }
+  }
+
+  Future<void> _deleteQueuedChapter(
+    String pathWord,
+    String chapterUuid,
+    String key, {
+    required Future<void> previous,
+  }) async {
+    final run = _activeRuns[key];
+
+    _pausedTaskKeys.remove(key);
+    // 先从 UI 队列移除；活动 run 保留 queued key，阻止删除完成前同 key 重入。
+    _queue.removeWhere(
+      (task) => _taskKey(task.pathWord, task.chapter.uuid) == key,
+    );
+    if (run != null) {
+      // 在飞：标记取消并丢弃尚未领取的页任务；删除流程会等待 run 终止。
+      _cancelledTaskKeys.add(key);
+      run.cancelled = true;
+      final removedJobs = _imageJobs
+          .where((job) => identical(job.run, run))
+          .length;
+      if (removedJobs > 0) {
+        _imageJobs.removeWhere((job) => identical(job.run, run));
+        run.remaining -= removedJobs;
+        if (run.remaining < 0) run.remaining = 0;
+      }
+      if (run.imageJobsDispatched && run.remaining <= 0 && !run.finalizing) {
+        _completeCancelledRun(run);
+      }
+    } else {
+      _queuedKeys.remove(key);
+    }
+
+    _batchFailures = _batchFailures
+        .where((f) => _taskKey(f.task.pathWord, f.task.chapter.uuid) != key)
+        .toList();
+    _batchRunFailures = _batchRunFailures
+        .where((f) => _taskKey(f.task.pathWord, f.task.chapter.uuid) != key)
+        .toList();
+    final summary = _lastBatchSummary;
+    if (summary != null &&
+        summary.failures.any(
+          (f) => f.pathWord == pathWord && f.chapterUuid == chapterUuid,
+        )) {
+      final remaining = summary.failures
+          .where(
+            (f) => !(f.pathWord == pathWord && f.chapterUuid == chapterUuid),
+          )
+          .toList();
+      _lastBatchSummary = remaining.isEmpty
+          ? null
+          : DownloadBatchSummary(
+              succeeded: summary.succeeded,
+              finishedAt: summary.finishedAt,
+              failures: remaining,
+            );
+    }
+
+    // 先落盘不含该任务的快照，避免进程在等待活动请求时把任务恢复回来。
+    notifyListeners();
+    await _persistQueueState();
+
+    if (run != null && !run.terminated) {
+      await run.done;
+    }
+
+    // 文件和 manifest 的清理按删除请求顺序执行；队列状态已经在上面立即反映。
+    await previous;
+
+    // 删除该章节已下载的文件与清单记录（无记录时不报错）。
+    await _removeDownloadedChapter(pathWord, chapterUuid, deleteFiles: true);
+    if (!_hasQueuedOrActiveTaskForComic(pathWord, excludingKey: key) &&
+        (_manifest[pathWord]?.isEmpty ?? true)) {
+      final prepare = _comicPrepares[pathWord];
+      if (prepare != null) {
+        try {
+          await prepare;
+        } catch (e, st) {
+          unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+        }
+      }
+      if (!_hasQueuedOrActiveTaskForComic(pathWord, excludingKey: key) &&
+          (_manifest[pathWord]?.isEmpty ?? true)) {
+        await _removeLocalComic(pathWord);
+      }
+    }
+    await _persistQueueState();
+    notifyListeners();
+    _signalScheduler();
+    _wakeImageWorkers();
+  }
+
+  /// 批量暂停多个章节任务。已在飞的任务在下个阶段边界停住。
+  void pauseChapters(Iterable<({String pathWord, String chapterUuid})> keys) {
+    var changed = false;
+    for (final key in keys) {
+      if (_pausedTaskKeys.add(_taskKey(key.pathWord, key.chapterUuid))) {
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    notifyListeners();
+    unawaited(_persistQueueState());
+  }
+
+  /// 批量恢复多个章节任务。
+  void resumeChapters(Iterable<({String pathWord, String chapterUuid})> keys) {
+    var changed = false;
+    for (final key in keys) {
+      if (_pausedTaskKeys.remove(_taskKey(key.pathWord, key.chapterUuid))) {
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    _signalScheduler();
+    _wakeImageWorkers();
+    notifyListeners();
+    unawaited(_persistQueueState());
+  }
+
+  /// 批量删除队列任务并删除已下载文件，内部逐个调用 [deleteQueuedChapter]。
+  ///
+  /// [onProgress] 在每个任务删除完成后回调（已完成数, 总数）。
+  Future<void> deleteQueuedChapters(
+    Iterable<({String pathWord, String chapterUuid})> keys, {
+    void Function(int completed, int total)? onProgress,
+  }) async {
+    final list = <({String pathWord, String chapterUuid})>[];
+    final seen = <String>{};
+    for (final key in keys) {
+      final id = '${key.pathWord}|||${key.chapterUuid}';
+      if (seen.add(id)) list.add(key);
+    }
+    var completed = 0;
+    Object? firstError;
+    StackTrace? firstStack;
+    for (final key in list) {
+      try {
+        await deleteQueuedChapter(key.pathWord, key.chapterUuid);
+      } catch (e, st) {
+        firstError ??= e;
+        firstStack ??= st;
+        unawaited(
+          AppLogger.instance.recordWarning(
+            'Delete queued chapter failed: ${key.pathWord}/${key.chapterUuid}',
+            stackTrace: st,
+          ),
+        );
+      }
+      completed++;
+      onProgress?.call(completed, list.length);
+    }
+    if (firstError != null) Error.throwWithStackTrace(firstError, firstStack!);
+  }
+
+  /// 当前队列状态快照：任务、全局/单独暂停状态与批次失败记录。
+  Map<String, dynamic> _encodeQueueState() => {
+    'version': _queueStateVersion,
+    'paused': _paused,
+    'paused_tasks': _pausedTaskKeys.toList(),
+    'tasks': [for (final task in _queue) _encodeTask(task)],
+    'succeeded': _batchSucceeded,
+    'batch_failures': [
+      for (final failure
+          in (_batchRunFailures.isNotEmpty
+              ? _batchRunFailures
+              : _batchFailures))
+        {
+          ..._encodeTask(failure.task),
+          'comic_name': failure.comicName,
+          'cover': failure.cover,
+        },
+    ],
+  };
+
+  /// 将队列快照写入 SharedPreferences。快照同步生成、写入异步，
+  /// 各状态变更点触发，最后一次写入生效。
+  Future<void> _persistQueueState() {
+    final payload = jsonEncode(_encodeQueueState());
+    final previous = _queueStateWriteTail;
+    final completed = Completer<void>();
+    _queueStateWriteTail = completed.future;
+    return () async {
+      try {
+        await previous;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_keyQueueState, payload);
+      } catch (e, st) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            'Persist download queue failed: $e',
+            stackTrace: st,
+          ),
+        );
+      } finally {
+        if (!completed.isCompleted) completed.complete();
+      }
+    }();
+  }
+
+  /// 从持久化恢复队列、暂停状态与批次失败记录（App 重启后续传）。
+  Future<void> _restoreQueueState(SharedPreferences prefs) async {
+    final raw = prefs.getString(_keyQueueState);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      final version = decoded['version'];
+      if (version is int && version != _queueStateVersion) return;
+
+      _paused = decoded['paused'] == true;
+      final pausedTasks = decoded['paused_tasks'];
+      if (pausedTasks is List) {
+        _pausedTaskKeys.addAll(pausedTasks.map((e) => e.toString()));
+      }
+
+      final tasks = decoded['tasks'];
+      if (tasks is List) {
+        for (final item in tasks) {
+          final restored = decodeQueueTaskJson(item);
+          if (restored == null) continue;
+          // 崩溃窗口内可能已完成下载：清单中已完整存在的全新任务不再重下。
+          final summary = _manifest[restored.pathWord]?[restored.chapter.uuid];
+          if (summary != null && !summary.isPartial && !restored.isRetry) {
+            continue;
+          }
+          final task = _taskFromRestored(
+            restored,
+            isRetry:
+                restored.isRetry ||
+                (_manifest[restored.pathWord]?[restored.chapter.uuid]
+                        ?.isPartial ??
+                    false),
+          );
+          final key = _taskKey(task.pathWord, task.chapter.uuid);
+          if (_queuedKeys.contains(key)) continue;
+          _queue.add(task);
+          _queuedKeys.add(key);
+        }
+      }
+
+      _pausedTaskKeys.removeWhere((key) => !_queuedKeys.contains(key));
+      _batchSucceeded = decoded['succeeded'] is int
+          ? decoded['succeeded'] as int
+          : 0;
+
+      final failures = decoded['batch_failures'];
+      final restoredFailures = <_BatchChapterFailure>[];
+      if (failures is List) {
+        for (final item in failures) {
+          if (item is! Map) continue;
+          final restored = decodeQueueTaskJson(item);
+          if (restored == null) continue;
+          restoredFailures.add(
+            _BatchChapterFailure(
+              task: _taskFromRestored(restored),
+              comicName: item['comic_name']?.toString() ?? restored.pathWord,
+              cover: item['cover']?.toString(),
+            ),
+          );
+        }
+      }
+      if (restoredFailures.isNotEmpty) {
+        _batchFailures = restoredFailures;
+        _lastBatchSummary = DownloadBatchSummary(
+          succeeded: decoded['succeeded'] is int
+              ? decoded['succeeded'] as int
+              : 0,
+          finishedAt: DateTime.now(),
+          failures: [
+            for (final failure in restoredFailures)
+              DownloadBatchFailure(
+                pathWord: failure.task.pathWord,
+                chapterUuid: failure.task.chapter.uuid,
+                chapterName: failure.task.chapter.name,
+                comicName: failure.comicName,
+                cover: failure.cover,
+                isRetry: failure.task.isRetry,
+              ),
+          ],
+        );
+      }
+    } catch (e, st) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          'Restore download queue failed: $e',
+          stackTrace: st,
+        ),
+      );
+    }
   }
 
   /// extension part 文件里的成员不是 DownloadManager 自身的成员，不能直接调用受
   /// 保护的 [notifyListeners]，统一经由这个转发方法。
   void _notifyListeners() => notifyListeners();
 
-  bool get isBusy => _queuedKeys.isNotEmpty;
+  bool get isBusy =>
+      _queuedKeys.isNotEmpty ||
+      _activeRuns.isNotEmpty ||
+      _comicPrepares.isNotEmpty ||
+      _deletingTaskKeys.isNotEmpty;
+
+  void _ensureProcessing() {
+    if (_initialized && !_paused && _queue.isNotEmpty && !_processing) {
+      unawaited(_processQueue());
+    }
+  }
+
+  bool _hasQueuedOrActiveTaskForComic(String pathWord, {String? excludingKey}) {
+    bool include(String key) => key != excludingKey;
+    return _queue.any(
+          (task) =>
+              task.pathWord == pathWord &&
+              include(_taskKey(task.pathWord, task.chapter.uuid)),
+        ) ||
+        _activeRuns.values.any(
+          (run) => run.task.pathWord == pathWord && include(run.key),
+        ) ||
+        _deletingTaskKeys.any((key) {
+          final decoded = _decodeTaskKey(key);
+          return decoded.pathWord == pathWord && include(key);
+        });
+  }
+
+  bool _isCancelledRun(_ChapterRun run) =>
+      run.cancelled || _cancelledTaskKeys.contains(run.key);
+
+  void _completeCancelledRun(_ChapterRun run) {
+    if (run.terminated) return;
+    _imageJobs.removeWhere((job) => identical(job.run, run));
+    _queue.removeWhere(
+      (task) => _taskKey(task.pathWord, task.chapter.uuid) == run.key,
+    );
+    _queuedKeys.remove(run.key);
+    _cancelledTaskKeys.remove(run.key);
+    if (identical(_activeRuns[run.key], run)) _activeRuns.remove(run.key);
+    _activeKeys.remove(run.key);
+    _activeProgress.remove(run.key);
+    run.terminated = true;
+    run.complete();
+    unawaited(_persistQueueState());
+    notifyListeners();
+    _signalScheduler();
+    _wakeImageWorkers();
+  }
+
+  void _completeRun(_ChapterRun run) {
+    if (run.terminated) return;
+    if (identical(_activeRuns[run.key], run)) _activeRuns.remove(run.key);
+    _activeKeys.remove(run.key);
+    _activeProgress.remove(run.key);
+    run.terminated = true;
+    run.complete();
+    notifyListeners();
+    _signalScheduler();
+  }
 
   /// 当前下载队列的任务信息列表，可供 UI 展示。
   List<ComicDownloadTaskInfo> get tasks {
     final result = <ComicDownloadTaskInfo>[];
     for (final task in _queue) {
       final key = _taskKey(task.pathWord, task.chapter.uuid);
-      final isActive = _activeKeys.contains(key);
+      final status = _paused || _pausedTaskKeys.contains(key)
+          ? ComicDownloadTaskStatus.paused
+          : _activeKeys.contains(key)
+          ? ComicDownloadTaskStatus.downloading
+          : ComicDownloadTaskStatus.pending;
       final info = getLocalComicInfo(task.pathWord);
       result.add(
         ComicDownloadTaskInfo(
@@ -156,9 +651,7 @@ class DownloadManager extends ChangeNotifier {
           chapterName: task.chapter.name,
           comicName: info?.comic.name ?? task.pathWord,
           cover: info?.comic.cover,
-          status: isActive
-              ? ComicDownloadTaskStatus.downloading
-              : ComicDownloadTaskStatus.pending,
+          status: status,
           progress: _activeProgress[key],
         ),
       );
@@ -240,13 +733,113 @@ class DownloadManager extends ChangeNotifier {
     return a.uuid.compareTo(b.uuid);
   }
 
+  /// 队列任务持久化编码（公开供单测覆盖编解码往返）。
+  @visibleForTesting
+  static Map<String, dynamic> encodeQueueTaskJson({
+    required String pathWord,
+    required String group,
+    required Chapter chapter,
+    required bool isRetry,
+    required int attempt,
+    DateTime? notBefore,
+  }) => {
+    'path_word': pathWord,
+    'group': group,
+    'chapter_uuid': chapter.uuid,
+    'chapter_index': chapter.index,
+    'chapter_name': chapter.name,
+    'chapter_order': chapter.ordered,
+    'is_retry': isRetry,
+    'attempt': attempt,
+    'not_before': notBefore?.toIso8601String(),
+  };
+
+  /// 解析持久化的队列任务；载荷非法或关键字段缺失时返回 null。
+  @visibleForTesting
+  static ({
+    String pathWord,
+    String group,
+    Chapter chapter,
+    bool isRetry,
+    int attempt,
+    DateTime? notBefore,
+  })?
+  decodeQueueTaskJson(Object? raw) {
+    if (raw is! Map) return null;
+    final pathWord = raw['path_word']?.toString() ?? '';
+    final chapterUuid = raw['chapter_uuid']?.toString() ?? '';
+    if (pathWord.isEmpty || chapterUuid.isEmpty) return null;
+    final chapterIndex = raw['chapter_index'] is int
+        ? raw['chapter_index'] as int
+        : int.tryParse('${raw['chapter_index']}') ?? 0;
+    final chapterOrder = raw['chapter_order'] is int
+        ? raw['chapter_order'] as int
+        : int.tryParse('${raw['chapter_order']}') ?? 0;
+    return (
+      pathWord: pathWord,
+      group: raw['group']?.toString().trim().isEmpty ?? true
+          ? 'default'
+          : raw['group'].toString(),
+      chapter: Chapter(
+        uuid: chapterUuid,
+        index: chapterIndex,
+        name: raw['chapter_name']?.toString() ?? '',
+        ordered: chapterOrder,
+      ),
+      isRetry: raw['is_retry'] == true,
+      attempt: raw['attempt'] is int
+          ? raw['attempt'] as int
+          : int.tryParse('${raw['attempt']}') ?? 1,
+      notBefore: DateTime.tryParse(raw['not_before']?.toString() ?? ''),
+    );
+  }
+
+  static Map<String, dynamic> _encodeTask(_DownloadTask task) =>
+      encodeQueueTaskJson(
+        pathWord: task.pathWord,
+        group: task.group,
+        chapter: task.chapter,
+        isRetry: task.isRetry,
+        attempt: task.attempt,
+        notBefore: task.notBefore,
+      );
+
+  static _DownloadTask _taskFromRestored(
+    ({
+      String pathWord,
+      String group,
+      Chapter chapter,
+      bool isRetry,
+      int attempt,
+      DateTime? notBefore,
+    })
+    restored, {
+    bool? isRetry,
+  }) => _DownloadTask(
+    pathWord: restored.pathWord,
+    group: restored.group,
+    chapter: restored.chapter,
+    isRetry: isRetry ?? restored.isRetry,
+    attempt: restored.attempt,
+    notBefore: restored.notBefore,
+  );
+
   final Map<String, Future<void>> _comicPrepares = {};
 
   void _scheduleComicPrepare(String pathWord, Comic comic) {
     final previous = _comicPrepares[pathWord] ?? Future.value();
-    final task = previous.whenComplete(() {
-      return _ensureComicStored(pathWord, comic);
-    });
+    final task = () async {
+      try {
+        await previous;
+      } catch (e, st) {
+        unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+      }
+      try {
+        await _ensureComicStored(pathWord, comic);
+      } catch (e, st) {
+        unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+      }
+    }();
     _comicPrepares[pathWord] = task;
     unawaited(
       task.whenComplete(() {
@@ -262,10 +855,12 @@ class DownloadManager extends ChangeNotifier {
     _customSaveDirectory = normalizeDirectoryPath(
       prefs.getString(_keySaveDirectory),
     );
-    _rootDirectory = await resolveRootDirectory(
-      customPath: _customSaveDirectory,
-      defaultParentPath: (await getApplicationDocumentsDirectory()).path,
-    );
+    _rootDirectory = _rootDirectoryProvider == null
+        ? await resolveRootDirectory(
+            customPath: _customSaveDirectory,
+            defaultParentPath: (await getApplicationDocumentsDirectory()).path,
+          )
+        : await _rootDirectoryProvider();
     await _rootDirectory!.create(recursive: true);
 
     await loadImageDownloadConcurrency();
@@ -304,7 +899,12 @@ class DownloadManager extends ChangeNotifier {
       }
     }
 
+    await _restoreQueueState(prefs);
+
     _initialized = true;
+
+    // 重启后续传：恢复的队列立即继续下载（此前已暂停则保持暂停）。
+    _ensureProcessing();
   }
 
   /// 队列主循环：启动全局图片 worker 池与章节流水线调度，直到队列排空。
@@ -326,12 +926,13 @@ class DownloadManager extends ChangeNotifier {
       await Future.wait(workers);
 
       if (_batchRunFailures.isNotEmpty) {
-        _batchFailures = _batchRunFailures;
+        final failures = List<_BatchChapterFailure>.of(_batchRunFailures);
+        _batchFailures = failures;
         _lastBatchSummary = DownloadBatchSummary(
           succeeded: _batchSucceeded,
           finishedAt: DateTime.now(),
           failures: [
-            for (final failure in _batchRunFailures)
+            for (final failure in failures)
               DownloadBatchFailure(
                 pathWord: failure.task.pathWord,
                 chapterUuid: failure.task.chapter.uuid,
@@ -343,30 +944,35 @@ class DownloadManager extends ChangeNotifier {
           ],
         );
       }
+      _batchRunFailures = [];
+      await _persistQueueState();
     } finally {
       _processing = false;
       notifyListeners();
+      // 新任务可能在 scheduler/worker 收尾窗口内入队；启动一个新的处理器，
+      // 避免入队调用恰好撞上旧处理器仍标记为 busy 而被吞掉。
+      _ensureProcessing();
     }
   }
 
-  /// 章节流水线调度：维持最多 [_maxChaptersInFlight] 个在飞章节——
-  /// 1 个在传图，1 个在预取详情。图片任务严格按章节顺序派发，
-  /// 让最早的话尽快完整可读；任务在下载期间保留在队列中供 UI 展示。
+  /// 章节流水线调度：维持最多 [_maxChaptersInFlight] 个在飞章节。
+  /// 任务在下载期间保留在队列中供 UI 展示；全局或单独暂停的章节不会被领取。
   Future<void> _runChapterScheduler() async {
     while (true) {
-      // 领取新任务，跳过已在飞的任务与未出退避窗口的自动重试。
-      while (_activeRuns.length < _maxChaptersInFlight) {
+      // 领取新任务，跳过已在飞、已暂停与未出退避窗口的任务。
+      while (!_paused && _activeRuns.length < _maxChaptersInFlight) {
         final now = DateTime.now();
         final index = _queue.indexWhere((task) {
           if (!task.isEligibleAt(now)) return false;
-          return !_activeRuns.containsKey(
-            _taskKey(task.pathWord, task.chapter.uuid),
-          );
+          final key = _taskKey(task.pathWord, task.chapter.uuid);
+          return !_activeRuns.containsKey(key) &&
+              !_pausedTaskKeys.contains(key);
         });
         if (index < 0) break;
 
         final task = _queue[index];
         final key = _taskKey(task.pathWord, task.chapter.uuid);
+        _cancelledTaskKeys.remove(key);
         final run = _ChapterRun(task: task, key: key);
         _activeRuns[key] = run;
         _activeKeys.add(key);
@@ -376,7 +982,7 @@ class DownloadManager extends ChangeNotifier {
 
       if (_activeRuns.isEmpty) {
         if (_queue.isEmpty) return;
-        // 剩余任务都在自动重试退避窗口内：等到最早到期或新任务入队。
+        // 剩余任务均不可领取（全局暂停、单独暂停或退避窗口内）：挂起等待。
         await _waitForNextEligible();
         continue;
       }
@@ -396,10 +1002,14 @@ class DownloadManager extends ChangeNotifier {
   Future<void> _startChapter(_ChapterRun run) async {
     final task = run.task;
     try {
-      final detail = await _api.manga.getChapterDetail(
-        task.pathWord,
-        task.chapter.uuid,
-      );
+      if (_isCancelledRun(run)) {
+        run.cancelled = true;
+        return;
+      }
+      final detail = _chapterDetailLoader == null
+          ? await _api.manga.getChapterDetail(task.pathWord, task.chapter.uuid)
+          : await _chapterDetailLoader(task.pathWord, task.chapter.uuid);
+      if (_isCancelledRun(run)) return;
       if (detail.contents.isEmpty) {
         throw const HttpException('Chapter has no images');
       }
@@ -412,6 +1022,7 @@ class DownloadManager extends ChangeNotifier {
       if (!task.isRetry) {
         await _resetDirectory(chapterDir);
       }
+      if (_isCancelledRun(run)) return;
 
       // 复用已下载页的本地路径，避免重复下载成功页（重试或崩溃恢复）。
       final existing = await _loadExistingPaths(
@@ -419,6 +1030,7 @@ class DownloadManager extends ChangeNotifier {
         task.chapter.uuid,
         run.total,
       );
+      if (_isCancelledRun(run)) return;
 
       // 重试时复用已保存的评论；全新下载且开关开启时才拉取评论。
       // 评论与图片互不依赖，与图片下载并行执行，避免拖慢进度显示。
@@ -445,46 +1057,38 @@ class DownloadManager extends ChangeNotifier {
         return;
       }
 
-      // 图片任务严格串章：当前已有章节在传图时只标记就绪，等它完成后
-      // 再派发（详情已就绪，无空窗）。
-      run.readyToDispatch = true;
-      _dispatchNextReadyChapter();
-    } catch (e, st) {
-      await _handleChapterFailure(run, e, st);
-    }
-  }
-
-  /// 派发下一个就绪章节的图片任务（当前无章节在传图时）。
-  void _dispatchNextReadyChapter() {
-    if (_downloadingKey != null) return;
-    for (final run in _activeRuns.values) {
-      if (!run.readyToDispatch || run.remaining <= 0) continue;
-      _downloadingKey = run.key;
+      // 页任务按章节顺序进入全局队列：前面的章节优先占用 worker，
+      // 有剩余的 worker 立即领取后面章节的页，不闲置并发额度。
+      if (_isCancelledRun(run)) return;
+      run.imageJobsDispatched = true;
       for (var i = 0; i < run.total; i++) {
         if (run.result[i] != null) continue;
-        _imageJobs.add(
-          _ImageJob(run: run, index: i, url: run.detail!.contents[i]),
-        );
+        _imageJobs.add(_ImageJob(run: run, index: i, url: detail.contents[i]));
       }
       _wakeImageWorkers();
-      return;
+    } catch (e, st) {
+      if (_isCancelledRun(run)) {
+        _completeCancelledRun(run);
+      } else {
+        await _handleChapterFailure(run, e, st);
+      }
+    } finally {
+      // 详情/准备阶段可能在取消后才返回，确保没有 image job 时也能释放 run。
+      if (_isCancelledRun(run) && !run.imageJobsDispatched && !run.finalizing) {
+        _completeCancelledRun(run);
+      }
     }
-  }
-
-  /// 章节结束传图（完成或失败）后释放传图权，并尝试派发下一章。
-  void _releaseImageSlot(_ChapterRun run) {
-    if (_downloadingKey == run.key) {
-      _downloadingKey = null;
-    }
-    _dispatchNextReadyChapter();
   }
 
   /// 章节收尾：等评论结果（失败降级）、写 chapter.json 与 manifest。
-  /// 全部页成功则记成功；写盘失败转入失败路径。
+  /// 全部页成功则记成功；写盘失败转入失败路径。任务被删除（取消）时
+  /// 跳过保存，由删除流程清理文件。
   Future<void> _finalizeChapter(_ChapterRun run) async {
     final task = run.task;
-    var failed = false;
+    if (run.terminated || run.finalizing) return;
+    run.finalizing = true;
     try {
+      if (_isCancelledRun(run)) return;
       // 评论拉取失败不连累整章：降级为已有评论或空评论，图片照常保存。
       var comments = (list: const <ChapterComment>[], total: 0);
       try {
@@ -501,6 +1105,7 @@ class DownloadManager extends ChangeNotifier {
           task.chapter.uuid,
         );
       }
+      if (_isCancelledRun(run)) return;
 
       // 处理结果：失败页记为空串，收集失败索引。
       final failedIndices = <int>[];
@@ -520,10 +1125,12 @@ class DownloadManager extends ChangeNotifier {
         comments: comments.list,
         commentTotal: comments.total,
       );
-      await _chapterMetadataFile(
+      await _writeChapterMetadata(
         task.pathWord,
         task.chapter.uuid,
-      ).writeAsString(jsonEncode(localDetail.toDownloadJson()));
+        localDetail,
+      );
+      if (_isCancelledRun(run)) return;
 
       _manifest.putIfAbsent(task.pathWord, () => {});
       _manifest[task.pathWord]![task.chapter.uuid] = DownloadedChapterSummary(
@@ -537,32 +1144,44 @@ class DownloadManager extends ChangeNotifier {
         failedIndices: failedIndices,
       );
       await _persistManifest();
+      if (_isCancelledRun(run)) return;
       await _touchLocalComic(task.pathWord);
+      if (_isCancelledRun(run)) return;
       // 注意：部分图片失败不抛错，章节以 partial 状态持久化，用户可重试补全。
 
       _queue.remove(task);
       _queuedKeys.remove(run.key);
       _batchSucceeded++;
+      await _persistQueueState();
     } catch (e, st) {
-      failed = true;
-      await _handleChapterFailure(run, e, st);
+      if (_isCancelledRun(run)) {
+        _completeCancelledRun(run);
+      } else {
+        await _handleChapterFailure(run, e, st);
+      }
     } finally {
-      _activeRuns.remove(run.key);
-      _activeKeys.remove(run.key);
-      _activeProgress.remove(run.key);
-      _releaseImageSlot(run);
-      notifyListeners();
+      run.finalizing = false;
+      if (_isCancelledRun(run)) {
+        _completeCancelledRun(run);
+      } else {
+        _completeRun(run);
+      }
     }
-    if (!failed) _signalScheduler();
   }
 
   /// 整章失败处理：尝试次数未耗尽则带退避重新入队（排到队尾，先放行
-  /// 后续章节）；耗尽后全新下载清理目录、记入批次失败。
+  /// 后续章节）；耗尽后全新下载清理目录、记入批次失败。任务被删除
+  /// （取消）时直接退出，由删除流程清理文件。
   Future<void> _handleChapterFailure(
     _ChapterRun run,
     Object error,
     StackTrace st,
   ) async {
+    if (_isCancelledRun(run)) {
+      _completeCancelledRun(run);
+      return;
+    }
+
     unawaited(
       AppLogger.instance.recordWarning(
         'Download chapter failed (attempt ${run.task.attempt}): '
@@ -571,52 +1190,81 @@ class DownloadManager extends ChangeNotifier {
       ),
     );
 
-    _activeRuns.remove(run.key);
-    _activeKeys.remove(run.key);
-    _activeProgress.remove(run.key);
-    _releaseImageSlot(run);
     _queue.remove(run.task);
-    _queuedKeys.remove(run.key);
     notifyListeners();
 
-    if (run.task.attempt < _chapterMaxAttempts) {
-      final retryAt = DateTime.now().add(chapterRetryDelay(run.task.attempt));
-      _queue.add(run.task.copyWithRetry(retryAt));
-      _queuedKeys.add(run.key);
-      notifyListeners();
-    } else {
-      // 手动补全(isRetry)失败保留 partial 记录，全新下载失败才清理。
-      if (!run.task.isRetry) {
-        await _removeDownloadedChapter(
-          run.task.pathWord,
-          run.task.chapter.uuid,
-          deleteFiles: true,
+    var requeued = false;
+    try {
+      if (run.task.attempt < _chapterMaxAttempts) {
+        final retryAt = DateTime.now().add(chapterRetryDelay(run.task.attempt));
+        if (_isCancelledRun(run)) return;
+        _queue.add(run.task.copyWithRetry(retryAt));
+        _queuedKeys.add(run.key);
+        requeued = true;
+        notifyListeners();
+      } else {
+        // 手动补全(isRetry)失败保留 partial 记录，全新下载失败才清理。
+        if (!run.task.isRetry) {
+          await _removeDownloadedChapter(
+            run.task.pathWord,
+            run.task.chapter.uuid,
+            deleteFiles: true,
+          );
+        }
+        if (_isCancelledRun(run)) return;
+        final info = getLocalComicInfo(run.task.pathWord);
+        _batchRunFailures.add(
+          _BatchChapterFailure(
+            task: run.task,
+            comicName: info?.comic.name ?? run.task.pathWord,
+            cover: info?.comic.cover,
+          ),
         );
       }
-      final info = getLocalComicInfo(run.task.pathWord);
-      _batchRunFailures.add(
-        _BatchChapterFailure(
-          task: run.task,
-          comicName: info?.comic.name ?? run.task.pathWord,
-          cover: info?.comic.cover,
-        ),
-      );
+      await _persistQueueState();
+    } finally {
+      if (_isCancelledRun(run)) {
+        _completeCancelledRun(run);
+      } else {
+        if (!requeued) _queuedKeys.remove(run.key);
+        _completeRun(run);
+      }
     }
-    _signalScheduler();
   }
 
   /// 全局图片 worker：跨章节领取页任务；队列排空且调度器收尾后退出。
+  /// 暂停（全局或所属章节）的任务留在队列中，恢复后继续。
   Future<void> _imageWorker() async {
     while (true) {
-      if (_imageJobs.isEmpty) {
-        if (_schedulerDone) return;
-        final wake = _jobWake ??= Completer<void>();
-        await wake.future;
+      final job = _nextImageJob();
+      if (job != null) {
+        try {
+          await _processImageJob(job);
+        } catch (e, st) {
+          if (_isCancelledRun(job.run)) {
+            _completeCancelledRun(job.run);
+          } else {
+            await _handleChapterFailure(job.run, e, st);
+          }
+        }
         continue;
       }
-      final job = _imageJobs.removeAt(0);
-      await _processImageJob(job);
+      if (_schedulerDone) return;
+      // 队列无可领取任务（已排空、全局暂停或章节暂停）：等待唤醒。
+      final wake = _jobWake ??= Completer<void>();
+      await wake.future;
+      continue;
     }
+  }
+
+  /// 取出下一个可领取的页任务；全局暂停或所属章节被暂停时返回 null。
+  _ImageJob? _nextImageJob() {
+    if (_paused) return null;
+    for (var i = 0; i < _imageJobs.length; i++) {
+      if (_pausedTaskKeys.contains(_imageJobs[i].run.key)) continue;
+      return _imageJobs.removeAt(i);
+    }
+    return null;
   }
 
   void _wakeImageWorkers() {
@@ -626,8 +1274,15 @@ class DownloadManager extends ChangeNotifier {
   }
 
   /// 处理单个页任务：下载并记录结果与进度；章节最后一页完成时触发收尾。
+  /// 任务被删除（取消）时跳过收尾，由删除流程清理文件。
   Future<void> _processImageJob(_ImageJob job) async {
     final run = job.run;
+    if (_isCancelledRun(run)) {
+      run.cancelled = true;
+      run.remaining--;
+      if (run.remaining <= 0 && !run.finalizing) _completeCancelledRun(run);
+      return;
+    }
     String? path;
     try {
       final file = await _downloadImage(
@@ -646,6 +1301,12 @@ class DownloadManager extends ChangeNotifier {
           stackTrace: st,
         ),
       );
+    }
+    if (_isCancelledRun(run)) {
+      run.cancelled = true;
+      run.remaining--;
+      if (run.remaining <= 0 && !run.finalizing) _completeCancelledRun(run);
+      return;
     }
     run.result[job.index] = path;
     run.remaining--;
@@ -677,24 +1338,35 @@ class DownloadManager extends ChangeNotifier {
     }
   }
 
-  /// 队列剩余任务全部处于自动重试退避窗口内时，等待最早到期时间；
-  /// 期间新任务入队（[_signalScheduler]）则提前返回。
+  /// 队列剩余任务均不可领取（处于退避窗口、被单独暂停或全局暂停）时
+  /// 挂起等待；最早退避到期、恢复下载或新任务入队时返回。
   Future<void> _waitForNextEligible() async {
     final now = DateTime.now();
     DateTime? earliest;
     for (final task in _queue) {
+      if (_pausedTaskKeys.contains(
+        _taskKey(task.pathWord, task.chapter.uuid),
+      )) {
+        continue;
+      }
       final notBefore = task.notBefore;
       if (notBefore == null || !notBefore.isAfter(now)) return;
       if (earliest == null || notBefore.isBefore(earliest)) {
         earliest = notBefore;
       }
     }
-    final wait = earliest?.difference(now);
-    if (wait == null || wait <= Duration.zero) return;
+
+    // 全局暂停：无超时等待，恢复或新任务入队时唤醒。
+    final wait = _paused ? null : earliest?.difference(now);
+    if (wait != null && wait <= Duration.zero) return;
 
     final wake = _newSchedulerWait();
     try {
-      await Future.any<void>([wake.future, Future<void>.delayed(wait)]);
+      if (wait == null) {
+        await wake.future;
+      } else {
+        await Future.any<void>([wake.future, Future<void>.delayed(wait)]);
+      }
     } finally {
       _schedulerWaits.remove(wake);
     }
@@ -732,6 +1404,58 @@ class DownloadManager extends ChangeNotifier {
   static String _joinPath(List<String> segments) => segments
       .where((segment) => segment.isNotEmpty)
       .join(Platform.pathSeparator);
+
+  Future<void> _writeTextFileAtomically(File file, String contents) async {
+    await file.parent.create(recursive: true);
+    final temporary = File(
+      '${file.path}.tmp.${DateTime.now().microsecondsSinceEpoch}',
+    );
+    try {
+      await temporary.writeAsString(contents, flush: true);
+      try {
+        await temporary.rename(file.path);
+      } on FileSystemException {
+        // Some Windows file systems do not replace an existing target on
+        // rename. Keep the temporary write, then use the portable fallback.
+        if (await file.exists()) await file.delete();
+        await temporary.rename(file.path);
+      }
+    } finally {
+      try {
+        if (await temporary.exists()) await temporary.delete();
+      } catch (e, st) {
+        unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+      }
+    }
+  }
+
+  Future<void> _writeSerializedText(
+    Map<String, Future<void>> tails,
+    String key,
+    File file,
+    String contents,
+  ) {
+    final previous = tails[key] ?? Future.value();
+    final completed = Completer<void>();
+    tails[key] = completed.future;
+    return () async {
+      try {
+        try {
+          await previous;
+        } catch (e, st) {
+          // A failed older write must not prevent a later state snapshot from
+          // being attempted.
+          unawaited(AppLogger.instance.recordWarning(e, stackTrace: st));
+        }
+        await _writeTextFileAtomically(file, contents);
+      } finally {
+        if (identical(tails[key], completed.future)) {
+          unawaited(tails.remove(key));
+        }
+        if (!completed.isCompleted) completed.complete();
+      }
+    }();
+  }
 
   static String _safePathSegment(String segment) {
     final sanitized = segment.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').trim();
@@ -1113,8 +1837,25 @@ class _ChapterRun {
   // 尚未完成的页任务数；归零时触发章节收尾。
   int remaining = 0;
 
-  // 详情已就绪、待派发图片任务；图片任务严格串章派发。
-  bool readyToDispatch = false;
+  // 用户删除了该任务：不再收尾保存，等待清理。
+  bool cancelled = false;
+
+  // 图片任务已经全部放入全局队列；之后的取消由 worker/删除流程收尾。
+  bool imageJobsDispatched = false;
+
+  // 章节正在等待评论或写入本地文件。
+  bool finalizing = false;
+
+  // run 已经从管理器的活动集合中终结。
+  bool terminated = false;
+
+  final Completer<void> _done = Completer<void>();
+
+  Future<void> get done => _done.future;
+
+  void complete() {
+    if (!_done.isCompleted) _done.complete();
+  }
 
   Future<({List<ChapterComment> list, int total})> commentsFuture =
       Future.value((list: const <ChapterComment>[], total: 0));
@@ -1178,6 +1919,9 @@ enum ComicDownloadTaskStatus {
 
   /// 等待中
   pending,
+
+  /// 已暂停（全局暂停或单独暂停）
+  paused,
 }
 
 /// 漫画下载队列中的任务信息，供 UI 展示。

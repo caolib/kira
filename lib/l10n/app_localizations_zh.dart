@@ -2651,6 +2651,59 @@ class AppLocalizationsZh extends AppLocalizations {
   String get waitingStatus => '等待中';
 
   @override
+  String get pausedStatus => '已暂停';
+
+  @override
+  String get downloadPauseButton => '暂停下载';
+
+  @override
+  String get downloadResumeButton => '继续下载';
+
+  @override
+  String get downloadQueueDeleteTitle => '删除下载任务';
+
+  @override
+  String downloadQueueDeleteContent(String chapter, int count) {
+    return '确定删除「$chapter」的下载任务吗？已下载的 $count 页文件将一并删除。';
+  }
+
+  @override
+  String downloadQueueDeleteBatchTitle(int count) {
+    return '删除 $count 个下载任务';
+  }
+
+  @override
+  String downloadQueueDeleteBatchContent(int count) {
+    return '已下载的 $count 页文件将一并删除。';
+  }
+
+  @override
+  String get downloadQueueSelect => '多选';
+
+  @override
+  String get downloadQueueSelectAll => '全选';
+
+  @override
+  String get downloadQueueDeselectAll => '取消全选';
+
+  @override
+  String get downloadQueueFilterAll => '全部';
+
+  @override
+  String get downloadQueueFilterDownloading => '下载中';
+
+  @override
+  String get downloadQueueFilterPaused => '已暂停';
+
+  @override
+  String get downloadQueueDeleteSelected => '删除所选';
+
+  @override
+  String downloadQueueBatchDeleted(int count) {
+    return '已删除 $count 个任务';
+  }
+
+  @override
   String downloadProgressCount(String percent, int completed, int total) {
     return '$percent% ($completed/$total)';
   }
@@ -5692,6 +5745,59 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get waitingStatus => '等待中';
+
+  @override
+  String get pausedStatus => '已暫停';
+
+  @override
+  String get downloadPauseButton => '暫停下載';
+
+  @override
+  String get downloadResumeButton => '繼續下載';
+
+  @override
+  String get downloadQueueDeleteTitle => '刪除下載任務';
+
+  @override
+  String downloadQueueDeleteContent(String chapter, int count) {
+    return '確定刪除「$chapter」的下載任務嗎？已下載的 $count 頁檔案將一併刪除。';
+  }
+
+  @override
+  String downloadQueueDeleteBatchTitle(int count) {
+    return '刪除 $count 個下載任務';
+  }
+
+  @override
+  String downloadQueueDeleteBatchContent(int count) {
+    return '已下載的 $count 頁檔案將一併刪除。';
+  }
+
+  @override
+  String get downloadQueueSelect => '多選';
+
+  @override
+  String get downloadQueueSelectAll => '全選';
+
+  @override
+  String get downloadQueueDeselectAll => '取消全選';
+
+  @override
+  String get downloadQueueFilterAll => '全部';
+
+  @override
+  String get downloadQueueFilterDownloading => '下載中';
+
+  @override
+  String get downloadQueueFilterPaused => '已暫停';
+
+  @override
+  String get downloadQueueDeleteSelected => '刪除所選';
+
+  @override
+  String downloadQueueBatchDeleted(int count) {
+    return '已刪除 $count 個任務';
+  }
 
   @override
   String downloadProgressCount(String percent, int completed, int total) {

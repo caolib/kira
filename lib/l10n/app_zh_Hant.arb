@@ -1720,6 +1720,42 @@
   "downloadQueueEmptyComicHint": "去漫畫詳情頁新增下載任務",
   "downloadingStatus": "下載中",
   "waitingStatus": "等待中",
+  "pausedStatus": "已暫停",
+  "downloadPauseButton": "暫停下載",
+  "downloadResumeButton": "繼續下載",
+  "downloadQueueDeleteTitle": "刪除下載任務",
+  "downloadQueueDeleteContent": "確定刪除「{chapter}」的下載任務嗎？已下載的 {count} 頁檔案將一併刪除。",
+  "downloadQueueDeleteBatchTitle": "刪除 {count} 個下載任務",
+  "@downloadQueueDeleteBatchTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueDeleteBatchContent": "已下載的 {count} 頁檔案將一併刪除。",
+  "@downloadQueueDeleteBatchContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueSelect": "多選",
+  "downloadQueueSelectAll": "全選",
+  "downloadQueueDeselectAll": "取消全選",
+  "downloadQueueFilterAll": "全部",
+  "downloadQueueFilterDownloading": "下載中",
+  "downloadQueueFilterPaused": "已暫停",
+  "downloadQueueDeleteSelected": "刪除所選",
+  "downloadQueueBatchDeleted": "已刪除 {count} 個任務",
+  "@downloadQueueBatchDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadProgressCount": "{percent}% ({completed}/{total})",
   "@downloadProgressCount": {
     "placeholders": {

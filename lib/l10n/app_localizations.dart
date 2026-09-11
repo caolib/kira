@@ -4859,6 +4859,96 @@ abstract class AppLocalizations {
   /// **'等待中'**
   String get waitingStatus;
 
+  /// No description provided for @pausedStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停'**
+  String get pausedStatus;
+
+  /// No description provided for @downloadPauseButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停下载'**
+  String get downloadPauseButton;
+
+  /// No description provided for @downloadResumeButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续下载'**
+  String get downloadResumeButton;
+
+  /// No description provided for @downloadQueueDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除下载任务'**
+  String get downloadQueueDeleteTitle;
+
+  /// No description provided for @downloadQueueDeleteContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{chapter}」的下载任务吗？已下载的 {count} 页文件将一并删除。'**
+  String downloadQueueDeleteContent(String chapter, int count);
+
+  /// No description provided for @downloadQueueDeleteBatchTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 {count} 个下载任务'**
+  String downloadQueueDeleteBatchTitle(int count);
+
+  /// No description provided for @downloadQueueDeleteBatchContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'已下载的 {count} 页文件将一并删除。'**
+  String downloadQueueDeleteBatchContent(int count);
+
+  /// No description provided for @downloadQueueSelect.
+  ///
+  /// In zh, this message translates to:
+  /// **'多选'**
+  String get downloadQueueSelect;
+
+  /// No description provided for @downloadQueueSelectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全选'**
+  String get downloadQueueSelectAll;
+
+  /// No description provided for @downloadQueueDeselectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消全选'**
+  String get downloadQueueDeselectAll;
+
+  /// No description provided for @downloadQueueFilterAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get downloadQueueFilterAll;
+
+  /// No description provided for @downloadQueueFilterDownloading.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载中'**
+  String get downloadQueueFilterDownloading;
+
+  /// No description provided for @downloadQueueFilterPaused.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停'**
+  String get downloadQueueFilterPaused;
+
+  /// No description provided for @downloadQueueDeleteSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除所选'**
+  String get downloadQueueDeleteSelected;
+
+  /// No description provided for @downloadQueueBatchDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 {count} 个任务'**
+  String downloadQueueBatchDeleted(int count);
+
   /// No description provided for @downloadProgressCount.
   ///
   /// In zh, this message translates to:

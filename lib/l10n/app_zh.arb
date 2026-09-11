@@ -1747,6 +1747,52 @@
   "downloadQueueEmptyComicHint": "去漫画详情页添加下载任务",
   "downloadingStatus": "下载中",
   "waitingStatus": "等待中",
+  "pausedStatus": "已暂停",
+  "downloadPauseButton": "暂停下载",
+  "downloadResumeButton": "继续下载",
+  "downloadQueueDeleteTitle": "删除下载任务",
+  "downloadQueueDeleteContent": "确定删除「{chapter}」的下载任务吗？已下载的 {count} 页文件将一并删除。",
+  "@downloadQueueDeleteContent": {
+    "placeholders": {
+      "chapter": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueDeleteBatchTitle": "删除 {count} 个下载任务",
+  "@downloadQueueDeleteBatchTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueDeleteBatchContent": "已下载的 {count} 页文件将一并删除。",
+  "@downloadQueueDeleteBatchContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadQueueSelect": "多选",
+  "downloadQueueSelectAll": "全选",
+  "downloadQueueDeselectAll": "取消全选",
+  "downloadQueueFilterAll": "全部",
+  "downloadQueueFilterDownloading": "下载中",
+  "downloadQueueFilterPaused": "已暂停",
+  "downloadQueueDeleteSelected": "删除所选",
+  "downloadQueueBatchDeleted": "已删除 {count} 个任务",
+  "@downloadQueueBatchDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadProgressCount": "{percent}% ({completed}/{total})",
   "@downloadProgressCount": {
     "placeholders": {

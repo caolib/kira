@@ -37,6 +37,8 @@ extension DownloadManagerContentDownloadPart on DownloadManager {
   Future<({List<ChapterComment> list, int total})> _downloadComments(
     String chapterUuid,
   ) async {
+    final loader = _chapterCommentsLoader;
+    if (loader != null) return loader(chapterUuid);
     final data = await _api.manga.getChapterComments(chapterUuid, limit: 100);
     return (list: data.list, total: data.total);
   }
@@ -46,6 +48,9 @@ extension DownloadManagerContentDownloadPart on DownloadManager {
     Directory chapterDir,
     int index,
   ) async {
+    final downloader = _imageDownloader;
+    if (downloader != null) return downloader(imageUrl, chapterDir, index);
+
     Object? lastError;
     for (
       var attempt = 0;

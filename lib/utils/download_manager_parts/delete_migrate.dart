@@ -7,21 +7,45 @@ extension DownloadManagerDeleteMigratePart on DownloadManager {
   ) async {
     await init();
     for (final chapterUuid in chapterUuids.toSet()) {
-      await _removeDownloadedChapter(pathWord, chapterUuid, deleteFiles: true);
+      await deleteQueuedChapter(pathWord, chapterUuid);
     }
-    if (_manifest[pathWord]?.isEmpty ?? true) {
+    if ((_manifest[pathWord]?.isEmpty ?? true) &&
+        !_hasQueuedOrActiveTaskForComic(pathWord)) {
       await _removeLocalComic(pathWord);
     }
+    await _persistQueueState();
     _notifyListeners();
   }
 
   Future<void> deleteLocalComics(Iterable<String> pathWords) async {
     await init();
     for (final pathWord in pathWords.toSet()) {
+      final chapterUuids = <String>{
+        ...?_manifest[pathWord]?.keys,
+        ..._queue
+            .where((task) => task.pathWord == pathWord)
+            .map((task) => task.chapter.uuid),
+        ..._activeRuns.values
+            .where((run) => run.task.pathWord == pathWord)
+            .map((run) => run.task.chapter.uuid),
+        ..._batchFailures
+            .where((failure) => failure.task.pathWord == pathWord)
+            .map((failure) => failure.task.chapter.uuid),
+        ..._batchRunFailures
+            .where((failure) => failure.task.pathWord == pathWord)
+            .map((failure) => failure.task.chapter.uuid),
+      };
+      for (final chapterUuid in chapterUuids) {
+        await deleteQueuedChapter(pathWord, chapterUuid);
+      }
       _manifest.remove(pathWord);
+      _pausedTaskKeys.removeWhere(
+        (key) => _decodeTaskKey(key).pathWord == pathWord,
+      );
       await _removeLocalComic(pathWord);
     }
     await _persistManifest();
+    await _persistQueueState();
     _notifyListeners();
   }
 

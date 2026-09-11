@@ -20,6 +20,7 @@ import 'theme/app_typography.dart';
 import 'utils/app_logger.dart';
 import 'utils/app_storage.dart';
 import 'utils/display_mode_preference.dart';
+import 'utils/download_manager.dart';
 import 'utils/font_manager.dart';
 import 'utils/kira_links.dart';
 import 'utils/network_proxy.dart';
@@ -79,6 +80,8 @@ void main() {
 
       await UserManager().init();
       await NetworkProxy.init();
+      // 恢复持久化的下载队列并自动续传（队列空时无操作）。
+      await DownloadManager().init();
       // 启动时若 COPY 高级设置过时（>1天），后台自动更新；失败静默。
       CopySettingsAutoUpdater.maybeUpdateOnStartup();
       unawaited(_clearExpiredCacheInBackground());

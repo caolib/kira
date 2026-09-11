@@ -98,7 +98,9 @@ extension DownloadManagerQueriesPart on DownloadManager {
     if (summary == null || !summary.isPartial) return false;
 
     final key = _taskKey(pathWord, chapterUuid);
-    if (_queuedKeys.contains(key)) return false;
+    if (_queuedKeys.contains(key) || _deletingTaskKeys.contains(key)) {
+      return false;
+    }
 
     final chapter = Chapter(
       uuid: summary.chapterUuid,
@@ -116,8 +118,9 @@ extension DownloadManagerQueriesPart on DownloadManager {
     );
     _queuedKeys.add(key);
     _notifyListeners();
+    unawaited(_persistQueueState());
     _signalScheduler();
-    unawaited(_processQueue());
+    _ensureProcessing();
     return true;
   }
 
@@ -125,6 +128,28 @@ extension DownloadManagerQueriesPart on DownloadManager {
     var count = 0;
     for (final key in _queuedKeys) {
       if (_decodeTaskKey(key).pathWord == pathWord) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// 该章节目录下已下载的图片文件数（用于删除任务前提示）。
+  /// 队列中未开始的任务返回 0。
+  Future<int> downloadedFileCountOf(String pathWord, String chapterUuid) async {
+    await init();
+    final dir = _chapterDirectory(pathWord, chapterUuid);
+    if (!await dir.exists()) return 0;
+    var count = 0;
+    await for (final entity in dir.list()) {
+      if (entity is! File) continue;
+      final name = entity.uri.pathSegments.last.toLowerCase();
+      if (name == DownloadManager._chapterMetaFileName) continue;
+      final dot = name.lastIndexOf('.');
+      if (dot > 0 &&
+          DownloadManager._imageExtensions.values.contains(
+            name.substring(dot),
+          )) {
         count++;
       }
     }
@@ -142,7 +167,9 @@ extension DownloadManagerQueriesPart on DownloadManager {
     for (final failure in _batchFailures) {
       final task = failure.task;
       final key = _taskKey(task.pathWord, task.chapter.uuid);
-      if (_queuedKeys.contains(key)) continue;
+      if (_queuedKeys.contains(key) || _deletingTaskKeys.contains(key)) {
+        continue;
+      }
       if (!task.isRetry && isDownloaded(task.pathWord, task.chapter.uuid)) {
         continue;
       }
@@ -162,9 +189,10 @@ extension DownloadManagerQueriesPart on DownloadManager {
     _batchFailures = const [];
     _lastBatchSummary = null;
     _notifyListeners();
+    unawaited(_persistQueueState());
     if (added > 0) {
       _signalScheduler();
-      unawaited(_processQueue());
+      _ensureProcessing();
     }
     return added;
   }
@@ -188,7 +216,9 @@ extension DownloadManagerQueriesPart on DownloadManager {
       }
 
       final key = _taskKey(pathWord, chapter.uuid);
-      if (_queuedKeys.contains(key)) continue;
+      if (_queuedKeys.contains(key) || _deletingTaskKeys.contains(key)) {
+        continue;
+      }
 
       _queue.add(
         _DownloadTask(pathWord: pathWord, group: group, chapter: chapter),
@@ -198,11 +228,14 @@ extension DownloadManagerQueriesPart on DownloadManager {
     }
 
     if (added > 0) {
+      _batchFailures = const [];
+      _lastBatchSummary = null;
       // 章节先入队并立刻通知 UI，漫画元数据/封面在后台准备，
       // 避免点击下载后因等待封面等网络请求产生停顿。
       _notifyListeners();
+      unawaited(_persistQueueState());
       _signalScheduler();
-      unawaited(_processQueue());
+      _ensureProcessing();
       _scheduleComicPrepare(pathWord, comic);
     }
 
