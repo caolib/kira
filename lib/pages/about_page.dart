@@ -690,9 +690,8 @@ class _UpdateCardState extends State<_UpdateCard> {
   /// Available-update body starts open so notes/actions are visible; user can fold to save space.
   bool _cardExpanded = true;
 
-  /// Current-version notes card (shown when no update) starts collapsed —
-  /// only the available-update card opens by default.
-  bool _currentNotesExpanded = false;
+  /// 非当前设备的安装包列表默认折叠。
+  bool _otherAssetsExpanded = false;
   late bool _useMirror;
   // Tracks the last install status we surfaced a toast for, so the error
   // toast fires once per failure instead of on every rebuild.
@@ -769,6 +768,17 @@ class _UpdateCardState extends State<_UpdateCard> {
   bool _canInstallInApp(ReleaseAsset asset) =>
       Platform.isAndroid && asset.platform == AssetPlatform.android;
 
+  /// 当前设备 ABI 对应的 Android 安装包；读不到 ABI 或没有匹配时为
+  /// null，调用方回退为全量展开展示。
+  ReleaseAsset? _deviceAsset(List<ReleaseAsset> assets) {
+    final abi = deviceAndroidAbi();
+    if (abi == null) return null;
+    for (final a in assets) {
+      if (a.platform == AssetPlatform.android && a.matchesAbi(abi)) return a;
+    }
+    return null;
+  }
+
   /// Beta / single-asset releases render their newest (or only) asset inline:
   /// install buttons for an Android APK, the regular asset tile (with
   /// GitHub/mirror browser-download buttons) otherwise.
@@ -793,8 +803,8 @@ class _UpdateCardState extends State<_UpdateCard> {
     UserManager().setUseUpdateMirror(value);
   }
 
-  /// 内层说明滚动到顶/到底后，把剩余拖动量转给外层页面滚动，
-  /// 否则内层会"吃掉"拖动，只能从卡片外才能滚到下面的按钮。
+  /// 内层安装包列表滚动到顶/到底后，把剩余拖动量转给外层页面滚动，
+  /// 否则内层会"吃掉"拖动，到边缘后无法继续滚动页面。
   bool _handOffOverscroll(OverscrollNotification n) {
     final outer = Scrollable.maybeOf(context);
     if (outer == null) return false;
@@ -806,6 +816,32 @@ class _UpdateCardState extends State<_UpdateCard> {
       ),
     );
     return true;
+  }
+
+  /// 全屏弹窗查看完整更新说明（不设内层限高，整页滚动）。
+  void _showNotesFullscreen(ColorScheme cs, String notes) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        backgroundColor: Theme.of(dialogContext).colorScheme.surface,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(AppLocalizations.of(context)!.updateViewNotes),
+            leading: IconButton(
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ),
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: _buildReleaseNotes(notes, cs),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildReleaseNotes(String notes, ColorScheme cs) {
@@ -826,101 +862,78 @@ class _UpdateCardState extends State<_UpdateCard> {
 
   /// Compact card showing the changelog for the *currently installed* version.
   /// Rendered when the update check found no update but still returned release
-  /// notes. No download/skip/mirror controls — just notes + release page link.
+  /// notes. Pure entry: tapping the card (or the 更新说明 button) opens the
+  /// notes in a fullscreen dialog — notes never render inline.
   Widget _buildCurrentVersionCard(
     ColorScheme cs,
     TextTheme tt,
     AppUpdateInfo info,
   ) {
     final l10n = AppLocalizations.of(context)!;
-    // Notes area scrolls up to 70% of screen height instead of a fixed cap.
-    final maxNotesHeight = MediaQuery.sizeOf(context).height * 0.7;
     return Card(
       color: cs.surfaceContainerLow,
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () =>
-                  setState(() => _currentNotesExpanded = !_currentNotesExpanded),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            l10n.updateCurrentVersionNotes,
-                            style: tt.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            info.latestVersion,
-                            style: tt.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showNotesFullscreen(cs, info.releaseNotes),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        l10n.updateCurrentVersionNotes,
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: l10n.updateOpenReleasePage,
-                      iconSize: 20,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _isInstalling
-                          ? null
-                          : () => _openUrl(info.releasePageUrl),
-                      icon: Icon(
-                        Icons.open_in_new,
-                        size: 20,
-                        color: cs.onSurfaceVariant,
+                      const SizedBox(height: 2),
+                      Text(
+                        info.latestVersion,
+                        style: tt.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    Icon(
-                      _currentNotesExpanded
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: maxNotesHeight),
-                child: NotificationListener<OverscrollNotification>(
-                  onNotification: _handOffOverscroll,
-                  child: SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    child: _buildReleaseNotes(info.releaseNotes, cs),
+                    ],
                   ),
                 ),
-              ),
+                TextButton(
+                  onPressed: () =>
+                      _showNotesFullscreen(cs, info.releaseNotes),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    textStyle: tt.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: Text(l10n.updateViewNotes),
+                ),
+                IconButton(
+                  tooltip: l10n.updateOpenReleasePage,
+                  iconSize: 20,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _isInstalling
+                      ? null
+                      : () => _openUrl(info.releasePageUrl),
+                  icon: Icon(
+                    Icons.open_in_new,
+                    size: 20,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
             ),
-            crossFadeState: _currentNotesExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
-            sizeCurve: Curves.easeInOut,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -986,19 +999,19 @@ class _UpdateCardState extends State<_UpdateCard> {
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: FilledButton.tonalIcon(
+          // 无浏览器 logo 资产，按需不显示图标，仅文字。
+          child: FilledButton.tonal(
             onPressed: disabled
                 ? null
                 : () => _openUrl(
                     _useMirror ? asset.mirrorUrl : asset.downloadUrl,
                   ),
-            icon: _sourceIcon(cs, cs.primary),
-            label: Text(l10n.updateManualDownload),
             style: FilledButton.styleFrom(
               visualDensity: VisualDensity.compact,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               textStyle: tt.labelMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
+            child: Text(l10n.updateManualDownload),
           ),
         ),
       ],
@@ -1026,10 +1039,14 @@ class _UpdateCardState extends State<_UpdateCard> {
     ReleaseAsset asset,
     ColorScheme cs,
     TextTheme tt, {
-    String? badge,
+    bool minimal = false,
   }) {
-    final subtitleParts = <String>[asset.platform.label];
-    if (asset.sizeLabel.isNotEmpty) subtitleParts.add(asset.sizeLabel);
+    // minimal：安装包列表统一紧凑样式——只显示文件名（小一号），
+    // 不显示平台 logo / 平台名 / 文件大小。
+    final subtitleParts = <String>[
+      if (!minimal) asset.platform.label,
+      if (!minimal && asset.sizeLabel.isNotEmpty) asset.sizeLabel,
+    ];
     final canInstallInApp = _canInstallInApp(asset);
 
     return Container(
@@ -1046,8 +1063,10 @@ class _UpdateCardState extends State<_UpdateCard> {
         children: [
           Row(
             children: [
-              Icon(asset.platform.icon, size: 20, color: cs.primary),
-              const SizedBox(width: 10),
+              if (!minimal) ...[
+                Icon(asset.platform.icon, size: 20, color: cs.primary),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1058,35 +1077,12 @@ class _UpdateCardState extends State<_UpdateCard> {
                         Flexible(
                           child: Text(
                             asset.name,
-                            style: tt.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: (minimal ? tt.bodySmall : tt.bodyMedium)
+                                ?.copyWith(fontWeight: FontWeight.w500),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (badge != null) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cs.primary,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              badge,
-                              style: tt.labelSmall?.copyWith(
-                                color: cs.onPrimary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                                height: 1.2,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                     if (subtitleParts.isNotEmpty)
@@ -1106,31 +1102,30 @@ class _UpdateCardState extends State<_UpdateCard> {
             _buildInstallButtons(asset, cs, tt),
           ] else ...[
             const SizedBox(height: AppSpacing.sm),
+            // 非当前平台包（如 Windows）：单个手动下载按钮，
+            // 下载源跟随「使用镜像」勾选。
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(
-                  tooltip: AppLocalizations.of(
-                    context,
-                  )!.animeDetailDownloadButton,
-                  visualDensity: VisualDensity.compact,
+                FilledButton.tonal(
                   onPressed: _isInstalling
                       ? null
-                      : () => _openUrl(asset.downloadUrl),
-                  icon: SvgPicture.asset(
-                    'assets/github.svg',
-                    width: 18,
-                    height: 18,
-                    colorFilter: ColorFilter.mode(cs.primary, BlendMode.srcIn),
+                      : () => _openUrl(
+                          _useMirror ? asset.mirrorUrl : asset.downloadUrl,
+                        ),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    textStyle: tt.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                IconButton(
-                  tooltip: AppLocalizations.of(context)!.updateMirrorDownload,
-                  visualDensity: VisualDensity.compact,
-                  onPressed: _isInstalling
-                      ? null
-                      : () => _openUrl(asset.mirrorUrl),
-                  icon: Icon(Icons.public, size: 20, color: cs.primary),
+                  child: Text(
+                    AppLocalizations.of(context)!.updateManualDownload,
+                  ),
                 ),
               ],
             ),
@@ -1237,6 +1232,11 @@ class _UpdateCardState extends State<_UpdateCard> {
         ? (isBeta ? l10n.updateCiBuildUnstable : l10n.updateNoReleaseNotes)
         : info.releaseNotes;
     final assets = info.assets;
+    // 当前设备可用的安装包置顶展示，其余默认折叠进「其他安装包」。
+    final deviceAsset = _deviceAsset(assets);
+    final otherAssets = deviceAsset == null
+        ? assets
+        : assets.where((a) => !identical(a, deviceAsset)).toList();
 
     return Card(
       color: cs.surfaceContainerLow,
@@ -1263,6 +1263,17 @@ class _UpdateCardState extends State<_UpdateCard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    ),
+                    TextButton(
+                      onPressed: () => _showNotesFullscreen(cs, notes),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        textStyle: tt.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      child: Text(l10n.updateViewNotes),
                     ),
                     IconButton(
                       tooltip: l10n.updateOpenReleasePage,
@@ -1292,18 +1303,12 @@ class _UpdateCardState extends State<_UpdateCard> {
           AnimatedCrossFade(
             firstChild: const SizedBox(width: double.infinity),
             secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 200),
-                    child: SingleChildScrollView(
-                      child: _buildReleaseNotes(notes, cs),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
+                  // 更新说明不再内联渲染，通过头部「更新说明」按钮全屏查看。
                   // Beta channel: don't list packages — just offer the newest
                   // build via the same install buttons stable uses for a
                   // single-asset release (browser links on non-Android).
@@ -1314,42 +1319,52 @@ class _UpdateCardState extends State<_UpdateCard> {
                     if (assets.isNotEmpty)
                       _buildInlineAsset(assets.first, cs, tt),
                   ] else ...[
-                    Text(
-                      l10n.updatePackages,
-                      style: tt.labelLarge?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
+                    if (deviceAsset != null) ...[
+                      _buildAssetTile(deviceAsset, cs, tt, minimal: true),
+                      AnimatedCrossFade(
+                        firstChild: const SizedBox(width: double.infinity),
+                        secondChild: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 260),
+                          child: NotificationListener<OverscrollNotification>(
+                            onNotification: _handOffOverscroll,
+                            child: SingleChildScrollView(
+                              physics: const ClampingScrollPhysics(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  for (final a in otherAssets)
+                                    _buildAssetTile(a, cs, tt, minimal: true),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        crossFadeState: _otherAssetsExpanded
+                            ? CrossFadeState.showSecond
+                            : CrossFadeState.showFirst,
+                        duration: const Duration(milliseconds: 200),
+                        sizeCurve: Curves.easeInOut,
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 260),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (final a in assets) _buildAssetTile(a, cs, tt),
-                          ],
+                    ] else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 260),
+                        child: NotificationListener<OverscrollNotification>(
+                          onNotification: _handOffOverscroll,
+                          child: SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (final a in assets)
+                                  _buildAssetTile(a, cs, tt, minimal: true),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
                   ],
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      _buildMirrorCheckbox(cs, tt),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: _isInstalling ? null : _skipVersion,
-                        child: Text(
-                          isBeta
-                              ? l10n.updateDisableAutoCheck
-                              : l10n.updateSkipVersion,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -1358,6 +1373,40 @@ class _UpdateCardState extends State<_UpdateCard> {
                 : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 200),
             sizeCurve: Curves.easeInOut,
+          ),
+          // 底部操作行常驻在折叠区之外：镜像 / 跳过 / 其他安装包折叠开关。
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
+            child: Row(
+              children: [
+                _buildMirrorCheckbox(cs, tt),
+                const Spacer(),
+                TextButton(
+                  onPressed: _isInstalling ? null : _skipVersion,
+                  child: Text(
+                    isBeta
+                        ? l10n.updateDisableAutoCheck
+                        : l10n.updateSkipVersion,
+                  ),
+                ),
+                // 仅「当前设备包 + 其他包」的分支显示；长按提示数量。
+                if (deviceAsset != null)
+                  IconButton(
+                    tooltip: l10n.updateOtherPackages(otherAssets.length),
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      _otherAssetsExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      size: 20,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    onPressed: () => setState(
+                      () => _otherAssetsExpanded = !_otherAssetsExpanded,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

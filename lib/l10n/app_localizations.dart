@@ -6520,6 +6520,12 @@ abstract class AppLocalizations {
   /// **'无法打开下载链接'**
   String get updateOpenDownloadFailed;
 
+  /// No description provided for @updateViewNotes.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新说明'**
+  String get updateViewNotes;
+
   /// No description provided for @updateNoReleaseNotes.
   ///
   /// In zh, this message translates to:
@@ -6579,6 +6585,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'安装包'**
   String get updatePackages;
+
+  /// No description provided for @updateOtherPackages.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他安装包（{count}）'**
+  String updateOtherPackages(int count);
 
   /// No description provided for @updateSkipVersion.
   ///

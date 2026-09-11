@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -25,6 +26,19 @@ enum AssetPlatform {
   final String label;
   final IconData icon;
   const AssetPlatform(this.label, this.icon);
+}
+
+/// 当前 Android 设备的主 ABI，读自 Dart VM 版本串里的 host 标识
+/// （形如 `on "android_arm64"`），返回与发布物文件名一致的写法
+/// （arm64-v8a / armeabi-v7a / x86_64）；非 Android 或无对应发布包
+/// （如 32 位 x86，CI 不出包）时为 null。
+String? deviceAndroidAbi() {
+  if (!Platform.isAndroid) return null;
+  final v = Platform.version;
+  if (v.contains('android_arm64')) return 'arm64-v8a';
+  if (v.contains('android_arm')) return 'armeabi-v7a';
+  if (v.contains('android_x64')) return 'x86_64';
+  return null;
 }
 
 class ReleaseAsset {
@@ -65,6 +79,10 @@ class ReleaseAsset {
     if (l10n == null) return TimeFormat.relativeFallback(createdAt);
     return TimeFormat.relative(createdAt, l10n);
   }
+
+  /// 文件名是否带 [abi] 标识（如 arm64-v8a / x86_64）。
+  bool matchesAbi(String abi) =>
+      name.toLowerCase().contains(abi.toLowerCase());
 }
 
 class AppUpdateInfo {
@@ -610,14 +628,23 @@ class ApkInstaller {
   }
 
   /// Returns true if the app is allowed to request package installs
-  /// (Android O+ "install unknown apps"). Always true on older Android.
+  /// (Android O+ "install unknown apps"). False on non-Android.
+  static Future<bool> canRequestInstallPackages() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      return await _channel.invokeMethod<bool>('canRequestInstallPackages') ==
+          true;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Like [canRequestInstallPackages], but jumps to the system
+  /// "install unknown apps" settings page when not granted yet.
   static Future<bool> ensureInstallPermission() async {
     if (!Platform.isAndroid) return false;
     try {
-      final granted = await _channel.invokeMethod<bool>(
-        'canRequestInstallPackages',
-      );
-      if (granted == true) return true;
+      if (await canRequestInstallPackages()) return true;
       await _channel.invokeMethod<void>('openInstallPermissionSettings');
       return false;
     } on PlatformException {
@@ -686,8 +713,10 @@ enum InstallStatus { idle, preparing, downloading, installing, done, error }
 /// App-wide singleton driving the in-app update install flow. Decoupled from
 /// widget lifecycle — download continues if the user leaves the About page,
 /// and the system installer is launched automatically on completion.
-class InAppInstaller {
-  InAppInstaller._();
+class InAppInstaller with WidgetsBindingObserver {
+  InAppInstaller._() {
+    WidgetsBinding.instance.addObserver(this);
+  }
   static final instance = InAppInstaller._();
 
   final ValueNotifier<InstallState> state = ValueNotifier(
@@ -695,6 +724,11 @@ class InAppInstaller {
   );
 
   bool _busy = false;
+
+  /// 记在权限跳设置页期间的待装任务：用户授权返回后自动续跑，
+  /// 避免下载完才被权限打断、需要重新下载。
+  ReleaseAsset? _pendingPermissionAsset;
+  bool _pendingPermissionUseMirror = false;
 
   /// Formats a byte count as a human-readable size.
   static String formatSize(int bytes) {
@@ -718,9 +752,8 @@ class InAppInstaller {
     return '';
   }
 
-  /// Runs the full download → permission → install pipeline. Safe to call
-  /// without a [BuildContext]; UI listens via [state]. Re-entrant calls are
-  /// ignored while a task is in flight.
+  /// 权限前置的安装入口：未授予「安装应用」权限时先跳系统设置，授权
+  /// 返回后由生命周期回调自动续跑下载+安装；已授予则直接开始。
   Future<void> downloadAndInstall(
     ReleaseAsset asset, {
     bool useMirror = false,
@@ -735,6 +768,21 @@ class InAppInstaller {
       );
       return;
     }
+    if (!await ApkInstaller.canRequestInstallPackages()) {
+      _pendingPermissionAsset = asset;
+      _pendingPermissionUseMirror = useMirror;
+      await ApkInstaller.ensureInstallPermission();
+      // 跳去系统设置后会被暂停；若授权，resumed 回调里续跑。
+      state.value = InstallState.error(asset.name, needsPermission: true);
+      return;
+    }
+    await _downloadAndInstallNow(asset, useMirror);
+  }
+
+  /// 授权后的实际 下载 → 安装 流水线。Re-entrant calls are ignored
+  /// while a task is in flight.
+  Future<void> _downloadAndInstallNow(ReleaseAsset asset, bool useMirror) async {
+    if (_busy) return;
     _busy = true;
     state.value = InstallState.preparing(asset.name);
     try {
@@ -750,13 +798,6 @@ class InAppInstaller {
         },
       );
       state.value = InstallState.installing(asset.name);
-      final granted = await ApkInstaller.ensureInstallPermission();
-      if (!granted) {
-        // Permission flow is async; user returns from settings later. Mark
-        // so UI can prompt; the download itself already finished.
-        state.value = InstallState.error(asset.name, needsPermission: true);
-        return;
-      }
       await ApkInstaller.install(path);
       state.value = const InstallState.done();
     } catch (e, st) {
@@ -774,9 +815,26 @@ class InAppInstaller {
     }
   }
 
+  /// 从设置页授权返回：待装任务存在且已授权时自动续跑。
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (_pendingPermissionAsset == null) return;
+    unawaited(_resumePendingInstall());
+  }
+
+  Future<void> _resumePendingInstall() async {
+    final asset = _pendingPermissionAsset;
+    if (asset == null) return;
+    if (!await ApkInstaller.canRequestInstallPackages()) return; // 仍未授权
+    _pendingPermissionAsset = null;
+    await _downloadAndInstallNow(asset, _pendingPermissionUseMirror);
+  }
+
   /// Resets to idle. Called when the user dismisses a finished/error state.
   void reset() {
     if (state.value.isBusy) return;
+    _pendingPermissionAsset = null;
     state.value = const InstallState.idle();
   }
 }

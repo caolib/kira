@@ -2383,6 +2383,7 @@
   "updateNoPackageForPlatform": "目前平台暫無安裝包",
   "updateCheckFailedRetryLater": "檢查更新失敗，請稍後重試",
   "updateOpenDownloadFailed": "無法開啟下載連結",
+  "updateViewNotes": "更新說明",
   "updateNoReleaseNotes": "暫無更新說明",
   "updateCurrentVersionNotes": "目前版本",
   "updateMirrorDownload": "鏡像下載",
@@ -2400,6 +2401,14 @@
   "updateOpenReleasePage": "開啟發布頁",
   "updatePackagesBeta": "安裝包",
   "updatePackages": "安裝包",
+  "updateOtherPackages": "其他安裝包（{count}）",
+  "@updateOtherPackages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "updateSkipVersion": "跳過此版本",
   "updateDisableAutoCheck": "取消自動檢查更新",
   "updateInstallInApp": "應用內安裝",

@@ -3587,6 +3587,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateOpenDownloadFailed => '无法打开下载链接';
 
   @override
+  String get updateViewNotes => '更新说明';
+
+  @override
   String get updateNoReleaseNotes => '暂无更新说明';
 
   @override
@@ -3617,6 +3620,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updatePackages => '安装包';
+
+  @override
+  String updateOtherPackages(int count) {
+    return '其他安装包（$count）';
+  }
 
   @override
   String get updateSkipVersion => '跳过此版本';
@@ -7544,6 +7552,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get updateOpenDownloadFailed => '無法開啟下載連結';
 
   @override
+  String get updateViewNotes => '更新說明';
+
+  @override
   String get updateNoReleaseNotes => '暫無更新說明';
 
   @override
@@ -7574,6 +7585,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get updatePackages => '安裝包';
+
+  @override
+  String updateOtherPackages(int count) {
+    return '其他安裝包（$count）';
+  }
 
   @override
   String get updateSkipVersion => '跳過此版本';

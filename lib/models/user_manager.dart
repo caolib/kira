@@ -249,7 +249,7 @@ class UserManager extends ChangeNotifier {
   String _updateMirrorPrefix = defaultUpdateMirrorPrefix;
   String _updateChannel = 'stable'; // stable | beta
   String? _lastBetaAssetName;
-  bool _useUpdateMirror = false;
+  bool _useUpdateMirror = true;
   bool _autoLogin = false;
   bool _disclaimerAccepted = false;
   String _loginSource = 'hotmanga';
@@ -596,7 +596,7 @@ class UserManager extends ChangeNotifier {
         ? 'beta'
         : 'stable';
     _lastBetaAssetName = prefs.getString(_keyLastBetaAssetName);
-    _useUpdateMirror = prefs.getBool(_keyUseUpdateMirror) ?? false;
+    _useUpdateMirror = prefs.getBool(_keyUseUpdateMirror) ?? true;
     _autoLogin = prefs.getBool(_keyAutoLogin) ?? false;
     _disclaimerAccepted = prefs.getBool(_keyDisclaimerAccepted) ?? false;
     _loginSource = prefs.getString(_keyLoginSource) ?? 'hotmanga';

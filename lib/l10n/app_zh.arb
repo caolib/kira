@@ -2412,6 +2412,7 @@
   "updateNoPackageForPlatform": "当前平台暂无安装包",
   "updateCheckFailedRetryLater": "检查更新失败，请稍后重试",
   "updateOpenDownloadFailed": "无法打开下载链接",
+  "updateViewNotes": "更新说明",
   "updateNoReleaseNotes": "暂无更新说明",
   "updateCurrentVersionNotes": "当前版本",
   "updateMirrorDownload": "镜像下载",
@@ -2429,6 +2430,14 @@
   "updateOpenReleasePage": "打开发布页",
   "updatePackagesBeta": "安装包",
   "updatePackages": "安装包",
+  "updateOtherPackages": "其他安装包（{count}）",
+  "@updateOtherPackages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "updateSkipVersion": "跳过此版本",
   "updateDisableAutoCheck": "取消自动检查更新",
   "updateInstallInApp": "应用内安装",
