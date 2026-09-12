@@ -794,6 +794,16 @@
   "browseHistoryTitle": "浏览记录",
   "bookmarksTitle": "书签",
   "statsTitle": "阅读统计",
+  "continueReadingTitle": "继续阅读",
+  "continueReadingPageLabel": "第 {page} 页",
+  "@continueReadingPageLabel": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "continueReadingChapterFallback": "未知章节",
   "statsEnableTitle": "阅读统计",
   "statsEnableButton": "开启",
   "statsDisableButton": "统计功能",

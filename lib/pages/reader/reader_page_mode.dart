@@ -281,7 +281,7 @@ extension _ReaderPageMode on _ReaderPageState {
             if (hasEndBlank && index == totalChapters) {
               if (!_autoAdvancingChapter) {
                 _autoAdvancingChapter = true;
-                Navigator.pop(context);
+                _exitToCatalog();
               }
               return;
             }
@@ -342,7 +342,7 @@ extension _ReaderPageMode on _ReaderPageState {
                   _PageModeEndActions(
                     hasNext: chapter.next != null,
                     commentCount: _commentCountFor(chapter),
-                    onCatalog: () => Navigator.pop(context),
+                    onCatalog: _exitToCatalog,
                     onComments: () => _showChapterComments(chapter: chapter),
                     onNextChapter: chapter.next != null
                         ? () => _goChapter(chapter.next)

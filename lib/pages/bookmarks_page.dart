@@ -195,6 +195,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
         group: bookmark.group.isNotEmpty ? bookmark.group : null,
         chapterName: bookmark.chapterName,
         initialPage: bookmark.page,
+        noCatalogBelow: true,
       ),
     );
     if (!mounted) return;

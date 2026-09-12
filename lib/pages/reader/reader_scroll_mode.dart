@@ -352,7 +352,7 @@ extension _ReaderScrollMode on _ReaderPageState {
               _maybePrependPrevChainOnScroll();
               if (_shouldScrollToCatalog(n)) {
                 _autoAdvancingChapter = true;
-                Navigator.pop(context);
+                _exitToCatalog();
               }
             } else {
               if (_shouldAutoAdvanceScrollChapter(n)) {
@@ -360,10 +360,10 @@ extension _ReaderScrollMode on _ReaderPageState {
               }
               if (_shouldScrollToCatalog(n)) {
                 _autoAdvancingChapter = true;
-                Navigator.pop(context);
+                _exitToCatalog();
               }
               if (_shouldScrollBackToDetail(n)) {
-                Navigator.pop(context);
+                _exitToCatalog();
               }
             }
             return false;
@@ -422,7 +422,7 @@ extension _ReaderScrollMode on _ReaderPageState {
                       commentCount: _commentCountFor(chapter),
                       isHorizontalScroll: _isHorizontalScrollMode,
                       tailExtent: _scrollModeTailExtent(context),
-                      onCatalog: () => Navigator.pop(context),
+                      onCatalog: _exitToCatalog,
                       onComments: () => _showChapterComments(chapter: chapter),
                     );
                   case ChainScrollItemKind.image:
@@ -456,7 +456,7 @@ extension _ReaderScrollMode on _ReaderPageState {
                       commentCount: _continuousReading
                           ? _commentCountFor(_chain.last)
                           : _commentCount,
-                      onCatalog: () => Navigator.pop(context),
+                      onCatalog: _exitToCatalog,
                       onComments: _continuousReading
                           ? () => _showChapterComments(chapter: _chain.last)
                           : _showChapterComments,
@@ -476,7 +476,7 @@ extension _ReaderScrollMode on _ReaderPageState {
                       commentCount: _commentCountFor(_chain.last),
                       isHorizontalScroll: _isHorizontalScrollMode,
                       tailExtent: _scrollModeTailExtent(context),
-                      onCatalog: () => Navigator.pop(context),
+                      onCatalog: _exitToCatalog,
                       onComments: () =>
                           _showChapterComments(chapter: _chain.last),
                     );

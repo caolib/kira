@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:gal/gal.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -20,6 +21,7 @@ import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
 import '../repositories/comic_detail_repository.dart';
+import '../routing/app_router.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/reader_chrome.dart';
@@ -78,6 +80,11 @@ class ReaderPage extends StatefulWidget {
   final int? chapterListPage;
   final int initialPage;
 
+  /// 栈底没有本漫画目录页（章节列表）时为 true，「我的」继续阅读、书签等
+  /// 直入入口使用；详情页入口保持 false。「返回目录」统一出口
+  /// [_ReaderPageState._exitToCatalog] 据此决定 pop 还是原地替换详情页。
+  final bool noCatalogBelow;
+
   const ReaderPage({
     super.key,
     required this.pathWord,
@@ -87,6 +94,7 @@ class ReaderPage extends StatefulWidget {
     required this.chapterName,
     this.chapterListPage,
     this.initialPage = 1,
+    this.noCatalogBelow = false,
   });
 
   @override
@@ -364,9 +372,35 @@ class _ReaderPageState extends State<ReaderPage> {
     super.dispose();
   }
 
+  /// 「返回目录」统一出口：顶栏、章末按钮、末尾空白页、滚动回顶、
+  /// 评论面板的返回目录全部收口到这里，新增触发点也应改此方法。
+  ///
+  /// 正常入口下目录（漫画详情页）在栈底，pop 即可；无目录页直入时 pop
+  /// 只会落回来源列表页，不符「目录」语义，改为原地替换成详情页。替换会
+  /// 触发本页 dispose 落盘阅读进度，详情页随后从本地历史恢复继续阅读位置。
+  void _exitToCatalog() {
+    if (!mounted) return;
+    if (!widget.noCatalogBelow) {
+      Navigator.pop(context);
+      return;
+    }
+    context.pushReplacementNamed(
+      AppRoutes.comicDetail,
+      pathParameters: {'pathWord': widget.pathWord},
+      extra: ComicDetailExtra(
+        lastBrowseId: widget.chapterUuid,
+        lastBrowseName: widget.chapterName,
+      ),
+    );
+  }
+
   /// 详情本地缓存中的选中分组（_comicMetaFromCache 顺带填充），
   /// 供 widget.group 为空时（书签入口）回退使用。
   String? _cachedSelectedGroup;
+
+  /// 详情本地缓存中的漫画名（_comicMetaFromCache 顺带填充），
+  /// 供阅读记录写入「继续阅读」副标题展示；widget.comicName 为空时回退。
+  String? _cachedComicName;
   void _onSettingsChanged() {
     final page = _currentPage;
     _updateVolumeIntercept();
@@ -555,7 +589,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 onPrevChapter: _detail!.prev != null
                     ? () => _goChapter(_detail!.prev)
                     : null,
-                onCatalog: () => Navigator.pop(context),
+                onCatalog: _exitToCatalog,
                 onToggleAutoScroll: () => _setAutoScroll(!_autoScrollEnabled),
                 onComments: _showChapterComments,
                 onSettings: _showSettingsPanel,

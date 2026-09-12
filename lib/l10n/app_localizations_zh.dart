@@ -1232,6 +1232,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statsTitle => '阅读统计';
 
   @override
+  String get continueReadingTitle => '继续阅读';
+
+  @override
+  String continueReadingPageLabel(int page) {
+    return '第 $page 页';
+  }
+
+  @override
+  String get continueReadingChapterFallback => '未知章节';
+
+  @override
   String get statsEnableTitle => '阅读统计';
 
   @override
@@ -4379,6 +4390,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get statsTitle => '閱讀統計';
+
+  @override
+  String get continueReadingTitle => '繼續閱讀';
+
+  @override
+  String continueReadingPageLabel(int page) {
+    return '第 $page 頁';
+  }
+
+  @override
+  String get continueReadingChapterFallback => '未知章節';
 
   @override
   String get statsEnableTitle => '閱讀統計';

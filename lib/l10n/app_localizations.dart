@@ -2304,6 +2304,24 @@ abstract class AppLocalizations {
   /// **'阅读统计'**
   String get statsTitle;
 
+  /// No description provided for @continueReadingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续阅读'**
+  String get continueReadingTitle;
+
+  /// No description provided for @continueReadingPageLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {page} 页'**
+  String continueReadingPageLabel(int page);
+
+  /// No description provided for @continueReadingChapterFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知章节'**
+  String get continueReadingChapterFallback;
+
   /// No description provided for @statsEnableTitle.
   ///
   /// In zh, this message translates to:

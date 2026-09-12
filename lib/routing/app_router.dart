@@ -93,12 +93,18 @@ class ReaderExtra {
   final int? chapterListPage;
   final int initialPage;
 
+  /// 阅读器栈底没有本漫画目录页（章节列表）时为 true，「我的」继续阅读、
+  /// 书签等直入入口使用。pop 落回的是来源列表页而非目录，
+  /// 阅读器统一出口 `_exitToCatalog` 据此改为原地替换成漫画详情页。
+  final bool noCatalogBelow;
+
   const ReaderExtra({
     this.comicName,
     this.group,
     required this.chapterName,
     this.chapterListPage,
     this.initialPage = 1,
+    this.noCatalogBelow = false,
   });
 }
 
@@ -220,6 +226,7 @@ GoRouter createAppRouter() {
             chapterName: extra?.chapterName ?? '',
             chapterListPage: extra?.chapterListPage,
             initialPage: extra?.initialPage ?? 1,
+            noCatalogBelow: extra?.noCatalogBelow ?? false,
           );
         },
       ),

@@ -251,6 +251,7 @@ extension _ReaderChapterData on _ReaderPageState {
       final cachedGroup = data?.selectedGroup.trim() ?? '';
       if (cachedGroup.isNotEmpty) _cachedSelectedGroup = cachedGroup;
       final name = comic?.name ?? '';
+      if (name.isNotEmpty) _cachedComicName = name;
       // 显式类别避免 ?. 链推断为 List<dynamic>
       var tags = const <String>[];
       if (comic != null) {
@@ -296,6 +297,9 @@ extension _ReaderChapterData on _ReaderPageState {
     ReadingHistory.save(
       pathWord: widget.pathWord,
       group: group,
+      comicName: widget.comicName?.trim().isNotEmpty == true
+          ? widget.comicName!.trim()
+          : _cachedComicName?.trim() ?? '',
       chapterUuid: _currentUuid,
       chapterName: _detail?.name ?? widget.chapterName,
       chapterListPage: widget.chapterListPage,

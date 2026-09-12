@@ -1,7 +1,7 @@
 part of '../profile_page.dart';
 
 extension _ProfileCards on _ProfilePageState {
-  /// 第一块设置卡片：通用 / 外观 / 网络 / AI 配置 / 通知中心。
+  /// 第一块设置卡片：通用 / 外观 / 网络 / 通知中心。
   Widget _buildGeneralSettingsCard() {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
@@ -24,12 +24,6 @@ extension _ProfileCards on _ProfilePageState {
           title: Text(l10n.networkTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.network),
-        ),
-        ListTile(
-          leading: const _SettingIcon(icon: Icons.smart_toy_outlined),
-          title: Text(l10n.aiConfigTitle),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.pushNamed(AppRoutes.aiConfig),
         ),
         ValueListenableBuilder<int>(
           valueListenable: RemoteNoticeService.unreadActiveCount,
@@ -60,7 +54,66 @@ extension _ProfileCards on _ProfilePageState {
     );
   }
 
-  /// 第二块设置卡片：下载中心 / 浏览历史 / 书签 / 阅读统计。
+  /// 「继续阅读」入口:与其它选项卡同款 ListTile,带副标题展示上次进度。
+  /// 无本地阅读记录时返回 null,调用方据此跳过。
+  Widget? _buildContinueReadingTile() {
+    final entry = _continueRecord;
+    if (entry == null) return null;
+    final l10n = AppLocalizations.of(context)!;
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final record = entry.record;
+    // 副标题：漫画名 · 章节名 · 第 N 页；任一段缺失就跳过,避免空段。
+    final parts = <String>[
+      if (entry.comicName.isNotEmpty) entry.comicName,
+      record.chapterName.trim().isNotEmpty
+          ? record.chapterName.trim()
+          : l10n.continueReadingChapterFallback,
+      l10n.continueReadingPageLabel(record.page),
+    ].where((s) => s.trim().isNotEmpty).toList();
+    return ListTile(
+      leading: const _SettingIcon(icon: Icons.auto_stories_rounded),
+      title: Text(l10n.continueReadingTitle),
+      subtitle: parts.isEmpty
+          ? null
+          : Text(
+              parts.join(' · '),
+              style: AppTypography.meta(
+                tt,
+              )?.copyWith(color: cs.onSurfaceVariant),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _continueReading(entry),
+    );
+  }
+
+  /// 跳转到阅读器,恢复上次阅读的章节与页码;返回后刷新记录。
+  Future<void> _continueReading(
+    ({String pathWord, ReadingRecord record, String comicName}) entry,
+  ) async {
+    final record = entry.record;
+    await context.pushNamed(
+      AppRoutes.reader,
+      pathParameters: {
+        'pathWord': entry.pathWord,
+        'chapterUuid': record.chapterUuid,
+      },
+      extra: ReaderExtra(
+        comicName: entry.comicName.isEmpty ? null : entry.comicName,
+        group: record.group,
+        chapterName: record.chapterName,
+        chapterListPage: record.chapterListPage,
+        initialPage: record.page,
+        noCatalogBelow: true,
+      ),
+    );
+    if (!mounted) return;
+    await _loadContinueRecord();
+  }
+
+  /// 第二块设置卡片：下载中心 / 浏览历史 / 书签 / 继续阅读 / 阅读统计。
   Widget _buildDataSettingsCard() {
     final l10n = AppLocalizations.of(context)!;
     return SettingTileGroup(
@@ -83,6 +136,7 @@ extension _ProfileCards on _ProfilePageState {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.bookmarks),
         ),
+        ?_buildContinueReadingTile(),
         ListTile(
           leading: const _SettingIcon(icon: Icons.bar_chart_rounded),
           title: Text(l10n.statsTitle),
@@ -93,12 +147,18 @@ extension _ProfileCards on _ProfilePageState {
     );
   }
 
-  /// 第三块设置卡片：关于。
+  /// 第三块设置卡片：AI 配置 / 关于。
   Widget _buildAboutCard() {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     return SettingTileGroup(
       children: [
+        ListTile(
+          leading: const _SettingIcon(icon: Icons.smart_toy_outlined),
+          title: Text(l10n.aiConfigTitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.pushNamed(AppRoutes.aiConfig),
+        ),
         ValueListenableBuilder<bool>(
           valueListenable: AppUpdateService.hasUnseenUpdate,
           builder: (context, hasUnseenUpdate, _) {

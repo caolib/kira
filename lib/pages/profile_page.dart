@@ -8,14 +8,19 @@ import 'package:go_router/go_router.dart';
 import '../api/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
+import '../repositories/comic_detail_repository.dart';
 import '../routing/app_router.dart';
+
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
 import '../utils/app_update.dart';
+import '../utils/reading_history.dart';
 import '../utils/remote_notice_service.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
+
 import '../widgets/setting_tile_group.dart';
 part 'profile/profile_account.dart';
 part 'profile/profile_cards.dart';
@@ -35,6 +40,11 @@ class _ProfilePageState extends State<ProfilePage> {
   final _user = UserManager();
   bool _userActionsExpanded = false;
 
+  /// 最近一次阅读记录,供「继续阅读」入口展示。null 表示无本地阅读记录。
+  ({String pathWord, ReadingRecord record, String comicName})?
+  _continueRecord;
+
+
   /// extension part 文件里的成员不是 State 子类成员，不能直接调用受保护的
   /// [setState]，统一经由这个转发方法。
   void _setState(VoidCallback fn) => setState(fn);
@@ -43,17 +53,64 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _user.addListener(_onUserChanged);
+    // 页面常驻于底部导航分支，initState 只在首次进入时跑一次；
+    // 阅读别处产生的新记录后回到本页，需要靠变更通知刷新「继续阅读」。
+    ReadingHistory.changes.addListener(_onReadingHistoryChanged);
+    unawaited(_loadContinueRecord());
   }
 
   @override
   void dispose() {
+    ReadingHistory.changes.removeListener(_onReadingHistoryChanged);
     _user.removeListener(_onUserChanged);
     super.dispose();
+  }
+
+  void _onReadingHistoryChanged() {
+    unawaited(_loadContinueRecord());
   }
 
   void _onUserChanged() {
     if (mounted) setState(() {});
   }
+
+  /// 载入最近一条本地阅读记录。记录里的漫画名可能为空(旧记录),
+  /// 此时回退到详情本地缓存取一次名字——避免「继续阅读」副标题缺名字。
+  Future<void> _loadContinueRecord() async {
+    final latest = await ReadingHistory.latestRecord();
+    final record = latest?.record;
+    if (latest == null || record == null) {
+      if (!mounted) return;
+      setState(() {
+        _continueRecord = null;
+      });
+      return;
+    }
+    var comicName = record.comicName;
+    if (comicName.isEmpty) {
+      try {
+        final data = await ComicDetailRepository(latest.pathWord).loadFromCache();
+        comicName = data?.comic.name ?? '';
+      } catch (e, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            e,
+            stackTrace: stack,
+            source: 'profile.load_continue_record',
+          ),
+        );
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _continueRecord = (
+        pathWord: latest.pathWord,
+        record: record,
+        comicName: comicName,
+      );
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {

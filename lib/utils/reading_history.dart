@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 本地阅读记录，记录每部漫画在各分组上次阅读到哪一话、章节列表页和图片页。
@@ -23,10 +24,18 @@ class ReadingHistory {
   static final Map<(String, String?), _PendingSave> _pending = {};
   static Timer? _debounceTimer;
 
+  /// 组键在键名里分隔 pathWord 与组名的标记。
+  /// [_pathWordOf] 反向还原 pathWord 时依赖同一个常量。
+  static const _groupMarker = '_group_';
+
+  /// 变更通知：每批记录落盘后递增。「继续阅读」这类展示页面监听它及时刷新，
+  /// 否则页面常驻（底部导航分支 State 不重建）时会一直停留在旧记录。
+  static final ValueNotifier<int> changes = ValueNotifier<int>(0);
+
   static String _legacyKey(String pathWord) => '$_prefix$pathWord';
 
   static String _groupKey(String pathWord, String group) =>
-      '${_legacyKey(pathWord)}_group_${Uri.encodeComponent(group)}';
+      '${_legacyKey(pathWord)}$_groupMarker${Uri.encodeComponent(group)}';
 
   static String? _normalizeGroup(String? group) {
     final trimmed = group?.trim();
@@ -40,6 +49,7 @@ class ReadingHistory {
   static Future<void> save({
     required String pathWord,
     String? group,
+    String? comicName,
     required String chapterUuid,
     required String chapterName,
     int? chapterListPage,
@@ -53,6 +63,9 @@ class ReadingHistory {
     ), () => _PendingSave(pathWord: pathWord, group: normalizedGroup));
     entry.chapterUuid = chapterUuid;
     entry.chapterName = chapterName;
+    // 有些入口(书签等)拿不到漫画名,空值不能把已知的名字抹掉。
+    final trimmedComicName = comicName?.trim() ?? '';
+    if (trimmedComicName.isNotEmpty) entry.comicName = trimmedComicName;
     entry.chapterListPage = chapterListPage;
     entry.page = page;
     entry.totalPage = totalPage;
@@ -79,6 +92,8 @@ class ReadingHistory {
     for (final entry in entries) {
       await _write(prefs, entry);
     }
+    // 落盘完成后再通知，保证监听方读到的是新数据。
+    changes.value++;
   }
 
   static Future<void> _write(
@@ -98,6 +113,10 @@ class ReadingHistory {
     }.toList()..sort();
     final data = jsonEncode({
       if (group != null && group.isNotEmpty) 'group': group,
+      if (entry.comicName.isNotEmpty)
+        'comicName': entry.comicName
+      else if (existing?.comicName.isNotEmpty == true)
+        'comicName': existing!.comicName,
       'chapterUuid': entry.chapterUuid,
       'chapterName': entry.chapterName,
       'chapterListPage': ?entry.chapterListPage,
@@ -156,6 +175,39 @@ class ReadingHistory {
     return latest;
   }
 
+  /// 获取全库最近更新的阅读记录,用于「继续阅读」入口。
+  ///
+  /// 返回 null 表示本地还没有任何阅读记录。同时带回 pathWord——
+  /// 键名里的 pathWord 是唯一的漫画标识,记录本身不重复存一份。
+  static Future<({String pathWord, ReadingRecord record})?>
+  latestRecord() async {
+    await flush();
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((key) => key.startsWith(_prefix));
+
+    ({String pathWord, ReadingRecord record})? latest;
+    for (final key in keys) {
+      final raw = prefs.getString(key);
+      if (raw == null) continue;
+      final record = _decode(raw);
+      if (record == null || record.chapterUuid.isEmpty) continue;
+      if (latest == null || _isRecordNewer(record, latest.record)) {
+        latest = (pathWord: _pathWordOf(key), record: record);
+      }
+    }
+    return latest;
+  }
+
+  /// 从 `reading_history_<pathWord>[_group_<g>]` 键名还原 pathWord。
+  ///
+  /// 组键的 pathWord 部分不含 [_groupMarker](pathWord 是站点的 slug/ID);
+  /// 若真出现该子串,取最后一次出现的位置,保证往返一致。
+  static String _pathWordOf(String key) {
+    final body = key.substring(_prefix.length);
+    final markerIndex = body.lastIndexOf(_groupMarker);
+    return markerIndex < 0 ? body : body.substring(0, markerIndex);
+  }
+
   static bool _isRecordNewer(ReadingRecord candidate, ReadingRecord current) {
     final candidateUpdatedAt = candidate.updatedAt;
     final currentUpdatedAt = current.updatedAt;
@@ -194,6 +246,7 @@ class ReadingHistory {
       return ReadingRecord(
         chapterUuid: chapterUuid,
         chapterName: map['chapterName']?.toString() ?? '',
+        comicName: map['comicName']?.toString() ?? '',
         chapterListPage: _readInt(map['chapterListPage']),
         page: _readInt(map['page']) ?? 1,
         totalPage: _readInt(map['totalPage']) ?? 0,
@@ -246,6 +299,7 @@ class _PendingSave {
 
   String chapterUuid = '';
   String chapterName = '';
+  String comicName = '';
   int? chapterListPage;
   int page = 1;
   int totalPage = 0;
@@ -262,7 +316,10 @@ class ReadingRecord {
   final String chapterUuid;
   final String chapterName;
 
-  /// 章节列表分页页码，0-based；旧记录可能为空。
+  /// 漫画名,仅用于「继续阅读」副标题展示;旧记录没有这个字段,可能为空。
+  final String comicName;
+
+  /// 章节列表分页页码,0-based;旧记录可能为空。
   final int? chapterListPage;
   final int page;
   final int totalPage;
@@ -273,6 +330,7 @@ class ReadingRecord {
   const ReadingRecord({
     required this.chapterUuid,
     required this.chapterName,
+    this.comicName = '',
     this.chapterListPage,
     required this.page,
     this.totalPage = 0,

@@ -178,4 +178,60 @@ void main() {
       'h-1',
     );
   });
+
+  test('latestRecord returns the most recently read comic across all', () async {
+    await ReadingHistory.save(
+      pathWord: 'comic-i',
+      group: ReadingHistory.defaultGroup,
+      comicName: '漫画I',
+      chapterUuid: 'i-1',
+      chapterName: '第1话',
+      page: 2,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    await ReadingHistory.save(
+      pathWord: 'comic-j',
+      group: 'tankobon',
+      comicName: '漫画J',
+      chapterUuid: 'j-1',
+      chapterName: '第1卷',
+      page: 5,
+    );
+
+    final latest = await ReadingHistory.latestRecord();
+
+    expect(latest?.pathWord, 'comic-j');
+    expect(latest?.record.chapterUuid, 'j-1');
+    expect(latest?.record.comicName, '漫画J');
+    expect(latest?.record.group, 'tankobon');
+  });
+
+  test('latestRecord returns null when there are no records', () async {
+    expect(await ReadingHistory.latestRecord(), isNull);
+  });
+
+  test('comicName survives across saves and falls back to existing', () async {
+    await ReadingHistory.save(
+      pathWord: 'comic-k',
+      group: ReadingHistory.defaultGroup,
+      comicName: '漫画K',
+      chapterUuid: 'k-1',
+      chapterName: '第1话',
+    );
+    // 后续保存未传漫画名,不应覆盖已有名字。
+    await ReadingHistory.save(
+      pathWord: 'comic-k',
+      group: ReadingHistory.defaultGroup,
+      chapterUuid: 'k-2',
+      chapterName: '第2话',
+    );
+
+    final record = await ReadingHistory.get(
+      'comic-k',
+      group: ReadingHistory.defaultGroup,
+    );
+
+    expect(record?.comicName, '漫画K');
+    expect(record?.chapterUuid, 'k-2');
+  });
 }

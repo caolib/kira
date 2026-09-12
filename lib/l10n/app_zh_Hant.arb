@@ -765,6 +765,16 @@
   "browseHistoryTitle": "瀏覽記錄",
   "bookmarksTitle": "書籤",
   "statsTitle": "閱讀統計",
+  "continueReadingTitle": "繼續閱讀",
+  "continueReadingPageLabel": "第 {page} 頁",
+  "@continueReadingPageLabel": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "continueReadingChapterFallback": "未知章節",
   "statsEnableTitle": "閱讀統計",
   "statsEnableButton": "開啟",
   "statsDisableButton": "統計功能",

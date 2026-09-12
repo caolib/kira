@@ -253,7 +253,7 @@ extension _ReaderCommentsData on _ReaderPageState {
 
     if (action == 'back_to_catalog') {
       // 返回目录会退出阅读页，无需恢复自动滚动
-      if (mounted) unawaited(Navigator.of(context).maybePop());
+      if (mounted) _exitToCatalog();
       return;
     }
     if (mounted) _resumeAutoScrollAfterOverlay();
