@@ -787,23 +787,11 @@ abstract class AppLocalizations {
   /// **'导出设置'**
   String get exportSettingsTitle;
 
-  /// No description provided for @exportSettingsDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'导出配置到 JSON 文件'**
-  String get exportSettingsDesc;
-
   /// No description provided for @importSettingsTitle.
   ///
   /// In zh, this message translates to:
   /// **'导入设置'**
   String get importSettingsTitle;
-
-  /// No description provided for @importSettingsDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'从 JSON 文件导入配置'**
-  String get importSettingsDesc;
 
   /// No description provided for @settingsExportedWithSensitive.
   ///
@@ -912,6 +900,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'确认导入'**
   String get confirmImportButton;
+
+  /// No description provided for @importingSettingsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在导入设置'**
+  String get importingSettingsTitle;
+
+  /// No description provided for @importingSettingsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在写入配置并重新加载,请稍候…'**
+  String get importingSettingsBody;
 
   /// No description provided for @settingsImportedToast.
   ///

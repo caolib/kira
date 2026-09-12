@@ -387,13 +387,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportSettingsTitle => '导出设置';
 
   @override
-  String get exportSettingsDesc => '导出配置到 JSON 文件';
-
-  @override
   String get importSettingsTitle => '导入设置';
-
-  @override
-  String get importSettingsDesc => '从 JSON 文件导入配置';
 
   @override
   String get settingsExportedWithSensitive => '设置已导出，包含敏感信息';
@@ -456,6 +450,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get confirmImportButton => '确认导入';
+
+  @override
+  String get importingSettingsTitle => '正在导入设置';
+
+  @override
+  String get importingSettingsBody => '正在写入配置并重新加载,请稍候…';
 
   @override
   String get settingsImportedToast => '配置已导入并覆盖本地设置';
@@ -3536,13 +3536,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get exportSettingsTitle => '匯出設定';
 
   @override
-  String get exportSettingsDesc => '匯出設定到 JSON 檔案';
-
-  @override
   String get importSettingsTitle => '匯入設定';
-
-  @override
-  String get importSettingsDesc => '從 JSON 檔案匯入設定';
 
   @override
   String get settingsExportedWithSensitive => '設定已匯出，包含敏感資訊';
@@ -3605,6 +3599,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get confirmImportButton => '確認匯入';
+
+  @override
+  String get importingSettingsTitle => '正在匯入設定';
+
+  @override
+  String get importingSettingsBody => '正在寫入設定並重新載入,請稍候…';
 
   @override
   String get settingsImportedToast => '設定已匯入並覆蓋本地設定';

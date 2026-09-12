@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/general_page.dart';
+import 'package:kira/widgets/setting_action_tile.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -52,5 +53,46 @@ void main() {
     await tester.enterText(find.byType(TextField).last, '重置应用');
     await tester.pump();
     expect(button().onPressed, isNotNull);
+  });
+
+  testWidgets('export and import sit on the same row', (tester) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await UserManager().init();
+
+    await tester.pumpWidget(
+      wrapWithApp(const GeneralPage(), wrapInScaffold: false),
+    );
+    await tester.pumpAndSettle();
+
+    final exportTile = find.ancestor(
+      of: find.text('导出设置'),
+      matching: find.byType(SettingActionTile),
+    );
+    final importTile = find.ancestor(
+      of: find.text('导入设置'),
+      matching: find.byType(SettingActionTile),
+    );
+    expect(exportTile, findsOneWidget);
+    expect(importTile, findsOneWidget);
+
+    final exportRect = tester.getRect(exportTile);
+    final importRect = tester.getRect(importTile);
+
+    // 同一行并排:纵向对齐、横向不重叠,且导出在导入左侧。
+    expect(exportRect.top, closeTo(importRect.top, 0.01));
+    expect(exportRect.height, closeTo(importRect.height, 0.01));
+    expect(exportRect.right, lessThanOrEqualTo(importRect.left + 0.01));
+
+    // 两项不再作为带副标题的 ListTile 各占一行。
+    expect(
+      find.ancestor(of: find.text('导出设置'), matching: find.byType(ListTile)),
+      findsNothing,
+    );
   });
 }

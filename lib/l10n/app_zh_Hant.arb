@@ -242,9 +242,7 @@
   "cacheManagementTitle": "快取管理",
   "cacheManagementDesc": "檢視和刪除本地快取、歷史和帳號資料",
   "exportSettingsTitle": "匯出設定",
-  "exportSettingsDesc": "匯出設定到 JSON 檔案",
   "importSettingsTitle": "匯入設定",
-  "importSettingsDesc": "從 JSON 檔案匯入設定",
   "settingsExportedWithSensitive": "設定已匯出，包含敏感資訊",
   "settingsExportedWithoutSensitive": "設定已匯出，未包含敏感資訊",
   "exportFailed": "匯出失敗：{error}",
@@ -294,6 +292,8 @@
     }
   },
   "confirmImportButton": "確認匯入",
+  "importingSettingsTitle": "正在匯入設定",
+  "importingSettingsBody": "正在寫入設定並重新載入,請稍候…",
   "settingsImportedToast": "設定已匯入並覆蓋本地設定",
   "resetAppTitle": "重設應用",
   "resetAppDesc": "清除本地設定、帳號、閱讀記錄和快取，不會刪除已下載的本地漫畫檔案",

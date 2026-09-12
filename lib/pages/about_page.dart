@@ -16,6 +16,7 @@ import '../utils/app_update.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
 import '../widgets/github_markdown.dart';
+import '../widgets/setting_action_tile.dart';
 import '../widgets/setting_tile_group.dart';
 import '../widgets/text_controller_scope.dart';
 
@@ -129,78 +130,45 @@ class _AboutPageState extends State<AboutPage> {
                 onCheckUpdate: () => AppUpdateService.checkAndPrompt(context),
               ),
               const SizedBox(height: AppSpacing.lg),
-              IntrinsicHeight(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _LinkTile(
-                        background: cs.surfaceBright,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(AppRadius.lg),
-                          bottomLeft: Radius.circular(AppRadius.lg),
-                          topRight: Radius.circular(AppRadius.xs),
-                          bottomRight: Radius.circular(AppRadius.xs),
-                        ),
-                        child: _LinkAction(
-                          icon: SvgPicture.asset(
-                            'assets/github.svg',
-                            width: 24,
-                            height: 24,
-                            colorFilter: ColorFilter.mode(
-                              cs.onSurfaceVariant,
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          label: l10n.aboutRepositoryLabel,
-                          onTap: () async {
-                            await launchUrl(
-                              Uri.parse(_repoUrl),
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
-                        ),
+              SettingTileGroup(
+                axis: Axis.horizontal,
+                children: [
+                  SettingActionTile(
+                    icon: SvgPicture.asset(
+                      'assets/github.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(
+                        cs.onSurfaceVariant,
+                        BlendMode.srcIn,
                       ),
                     ),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: _LinkTile(
-                        background: cs.surfaceBright,
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(AppRadius.xs),
+                    label: l10n.aboutRepositoryLabel,
+                    onTap: () async {
+                      await launchUrl(
+                        Uri.parse(_repoUrl),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                  ),
+                  SettingActionTile(
+                    icon: const Icon(Icons.feedback_outlined),
+                    label: l10n.aboutFeedbackLabel,
+                    onTap: () async {
+                      await launchUrl(
+                        Uri.parse(
+                          'https://github.com/caolib/kira/issues/new/choose',
                         ),
-                        child: _LinkAction(
-                          icon: const Icon(Icons.feedback_outlined),
-                          label: l10n.aboutFeedbackLabel,
-                          onTap: () async {
-                            await launchUrl(
-                              Uri.parse(
-                                'https://github.com/caolib/kira/issues/new/choose',
-                              ),
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: _LinkTile(
-                        background: cs.surfaceBright,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(AppRadius.xs),
-                          bottomLeft: Radius.circular(AppRadius.xs),
-                          topRight: Radius.circular(AppRadius.lg),
-                          bottomRight: Radius.circular(AppRadius.lg),
-                        ),
-                        child: _LinkAction(
-                          icon: const Icon(Icons.bug_report_outlined),
-                          label: l10n.aboutLogTitle,
-                          onTap: () => context.pushNamed(AppRoutes.appLog),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                  ),
+                  SettingActionTile(
+                    icon: const Icon(Icons.bug_report_outlined),
+                    label: l10n.aboutLogTitle,
+                    onTap: () => context.pushNamed(AppRoutes.appLog),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.lg),
               // 宽屏：更新设置与法律/致谢两卡双列并排；窄屏纵向堆叠。

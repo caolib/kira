@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -15,6 +16,7 @@ import '../utils/settings_backup.dart';
 import '../utils/settings_reload.dart';
 import '../utils/toast.dart';
 import '../widgets/select_tile.dart';
+import '../widgets/setting_action_tile.dart';
 import '../widgets/setting_tile_group.dart';
 
 class GeneralPage extends StatefulWidget {
@@ -28,6 +30,10 @@ class _GeneralPageState extends State<GeneralPage> {
   final _user = UserManager();
   final _settingsBackup = SettingsBackupService();
   bool _resetting = false;
+  bool _importing = false;
+
+  /// 导入进度框自己的 [BuildContext],用于精确关闭它(见 [_dismissImportProgress])。
+  BuildContext? _importDialogContext;
 
   @override
   void initState() {
@@ -103,6 +109,7 @@ class _GeneralPageState extends State<GeneralPage> {
   }
 
   Future<void> _importSettings() async {
+    if (_importing) return;
     final l10n = AppLocalizations.of(context)!;
     final PlatformFile? file;
     try {
@@ -171,9 +178,13 @@ class _GeneralPageState extends State<GeneralPage> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
+    // 写入 + 重载各内存单例需要时间,期间给出遮罩与进度提示;
+    // 否则对话框一关用户会以为已经导入完成。
+    setState(() => _importing = true);
     try {
+      await _showImportProgress();
       await _settingsBackup.importPlainText(text);
       ApiClient().user.clearAuthState();
       await reloadRuntimeSettings();
@@ -187,7 +198,54 @@ class _GeneralPageState extends State<GeneralPage> {
             : e.toString();
         showToast(context, l10n.importFailed(error), isError: true);
       }
+    } finally {
+      _dismissImportProgress();
+      if (mounted) setState(() => _importing = false);
     }
+  }
+
+  /// 弹出不可取消的导入进度框,直到 [_dismissImportProgress] 关闭。
+  ///
+  /// 与下载目录迁移的进度弹窗同款:barrierDismissible 关掉返回键与点外关闭,
+  /// 让「正在导入」的状态不会被误触打断。
+  Future<void> _showImportProgress() async {
+    final l10n = AppLocalizations.of(context)!;
+    _importDialogContext = null;
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          // 记下进度框自己的 context:关闭时经它 pop,保证 pop 的是这个
+          // 对话框而不是页面本身(用 canPop 判断会在对话框未入栈时误伤页面)。
+          _importDialogContext = ctx;
+          return AlertDialog(
+            title: Text(l10n.importingSettingsTitle),
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Flexible(child: Text(l10n.importingSettingsBody)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    // 让对话框先完成一帧绘制,避免导入极快时闪一下又消失。
+    await WidgetsBinding.instance.endOfFrame;
+  }
+
+  void _dismissImportProgress() {
+    final dialogContext = _importDialogContext;
+    _importDialogContext = null;
+    if (dialogContext == null || !dialogContext.mounted) return;
+    Navigator.of(dialogContext).pop();
   }
 
   Future<void> _resetApp() async {
@@ -306,19 +364,28 @@ class _GeneralPageState extends State<GeneralPage> {
                   context.pushNamed(AppRoutes.cacheManagement);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.upload_file_rounded),
-                title: Text(l10n.exportSettingsTitle),
-                subtitle: Text(l10n.exportSettingsDesc),
-                trailing: const Icon(Icons.chevron_right),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // 导出 / 导入并排一行,与关于页「仓库 / 反馈 / 日志」同款布局。
+          SettingTileGroup(
+            axis: Axis.horizontal,
+            children: [
+              SettingActionTile(
+                icon: const Icon(Icons.upload_file_rounded),
+                label: l10n.exportSettingsTitle,
                 onTap: _exportSettings,
               ),
-              ListTile(
-                leading: const Icon(Icons.download_for_offline_rounded),
-                title: Text(l10n.importSettingsTitle),
-                subtitle: Text(l10n.importSettingsDesc),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _importSettings,
+              SettingActionTile(
+                icon: _importing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_for_offline_rounded),
+                label: l10n.importSettingsTitle,
+                onTap: _importing ? null : _importSettings,
               ),
             ],
           ),

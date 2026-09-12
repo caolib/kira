@@ -16,12 +16,19 @@ import '../theme/app_radius.dart';
 ///
 /// Wrap each child in a [ListTile] / [SwitchListTile] (or any widget whose
 /// ink you want clipped to the tile shape).
+///
+/// Pass [axis] = [Axis.horizontal] to lay tiles out side by side — for rows of
+/// equal-weight actions such as the about page's「仓库 / 反馈 / 日志」. Children
+/// are wrapped in [Expanded], so they must be inside a bounded-width parent.
 class SettingTileGroup extends StatelessWidget {
   final List<Widget> children;
   final Color? color;
   final double gap;
   final double outerRadius;
   final double innerRadius;
+
+  /// [Axis.vertical] stacks tiles (default); [Axis.horizontal] puts them in a row.
+  final Axis axis;
 
   const SettingTileGroup({
     super.key,
@@ -30,6 +37,7 @@ class SettingTileGroup extends StatelessWidget {
     this.gap = 2,
     this.outerRadius = AppRadius.lg,
     this.innerRadius = AppRadius.xs,
+    this.axis = Axis.vertical,
   });
 
   BorderRadius _radiusFor(int index, int count, Axis axis) {
@@ -61,6 +69,27 @@ class SettingTileGroup extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final bg = color ?? cs.surfaceBright;
     final count = children.length;
+    if (axis == Axis.horizontal) {
+      // IntrinsicHeight + stretch 让各 tile 等高:内容行高不同(如仅一方有
+      // 两行文字)时,背景块仍对齐成一条。
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int i = 0; i < count; i++) ...[
+              Expanded(
+                child: _SettingTile(
+                  background: bg,
+                  borderRadius: _radiusFor(i, count, Axis.horizontal),
+                  child: children[i],
+                ),
+              ),
+              if (i != count - 1) SizedBox(width: gap),
+            ],
+          ],
+        ),
+      );
+    }
     return Column(
       children: [
         for (int i = 0; i < count; i++) ...[

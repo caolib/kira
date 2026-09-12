@@ -242,9 +242,7 @@
   "cacheManagementTitle": "缓存管理",
   "cacheManagementDesc": "查看和删除本地缓存、历史和账号数据",
   "exportSettingsTitle": "导出设置",
-  "exportSettingsDesc": "导出配置到 JSON 文件",
   "importSettingsTitle": "导入设置",
-  "importSettingsDesc": "从 JSON 文件导入配置",
   "settingsExportedWithSensitive": "设置已导出，包含敏感信息",
   "settingsExportedWithoutSensitive": "设置已导出，未包含敏感信息",
   "exportFailed": "导出失败：{error}",
@@ -294,6 +292,8 @@
     }
   },
   "confirmImportButton": "确认导入",
+  "importingSettingsTitle": "正在导入设置",
+  "importingSettingsBody": "正在写入配置并重新加载,请稍候…",
   "settingsImportedToast": "配置已导入并覆盖本地设置",
   "resetAppTitle": "重置应用",
   "resetAppDesc": "清除本地设置、账号、阅读记录和缓存，不会删除已下载的本地漫画文件",
