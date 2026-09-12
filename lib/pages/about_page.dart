@@ -36,10 +36,6 @@ class _AboutPageState extends State<AboutPage> {
 
   static const _repoUrl = 'https://github.com/caolib/kira';
 
-  /// extension part 文件里的成员不是 State 子类成员，不能直接调用受保护的
-  /// [setState]，统一经由这个转发方法。
-  void _setState(VoidCallback fn) => setState(fn);
-
   @override
   void initState() {
     super.initState();
