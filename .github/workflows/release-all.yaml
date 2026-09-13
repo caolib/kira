@@ -57,13 +57,7 @@ jobs:
         run: flutter pub get
 
       - name: Build APK (arm64-v8a)
-        env:
-          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
-          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
-        run: >
-          flutter build apk --release --target-platform android-arm64
-          --dart-define=DANDANPLAY_APP_ID="${DANDANPLAY_APP_ID}"
-          --dart-define=DANDANPLAY_APP_SECRET="${DANDANPLAY_APP_SECRET}"
+        run: flutter build apk --release --target-platform android-arm64
 
       - name: Rename APK
         shell: bash
@@ -96,13 +90,7 @@ jobs:
 
       - name: Build Windows
         shell: pwsh
-        env:
-          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
-          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
-        run: |
-          flutter build windows --release `
-            --dart-define=DANDANPLAY_APP_ID="$env:DANDANPLAY_APP_ID" `
-            --dart-define=DANDANPLAY_APP_SECRET="$env:DANDANPLAY_APP_SECRET"
+        run: flutter build windows --release
 
       - name: Package Windows ZIP
         shell: pwsh
@@ -221,13 +209,7 @@ jobs:
         run: flutter pub get
 
       - name: Build macOS
-        env:
-          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
-          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
-        run: >
-          flutter build macos --release
-          --dart-define=DANDANPLAY_APP_ID="${DANDANPLAY_APP_ID}"
-          --dart-define=DANDANPLAY_APP_SECRET="${DANDANPLAY_APP_SECRET}"
+        run: flutter build macos --release
 
       - name: Package macOS ZIP
         shell: bash
@@ -270,13 +252,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux
-        env:
-          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
-          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
-        run: >
-          flutter build linux --release
-          --dart-define=DANDANPLAY_APP_ID="${DANDANPLAY_APP_ID}"
-          --dart-define=DANDANPLAY_APP_SECRET="${DANDANPLAY_APP_SECRET}"
+        run: flutter build linux --release
 
       - name: Package Linux tar.gz
         shell: bash

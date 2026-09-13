@@ -97,22 +97,6 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Create .env
-        shell: bash
-        env:
-          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
-          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
-        run: |
-          set -euo pipefail
-
-          test -n "$DANDANPLAY_APP_ID"
-          test -n "$DANDANPLAY_APP_SECRET"
-
-          cat > .env <<EOF
-          DANDANPLAY_APP_ID=$DANDANPLAY_APP_ID
-          DANDANPLAY_APP_SECRET=$DANDANPLAY_APP_SECRET
-          EOF
-
       - name: Build APK
         shell: pwsh
         run: scripts/build_apk.ps1 -TargetPlatform ${{ matrix.target-platform }} -Abi ${{ matrix.abi }}
@@ -139,19 +123,6 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Create .env
-        shell: pwsh
-        env:
-          DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
-          DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:DANDANPLAY_APP_ID)) { throw 'DANDANPLAY_APP_ID secret 未配置' }
-          if ([string]::IsNullOrWhiteSpace($env:DANDANPLAY_APP_SECRET)) { throw 'DANDANPLAY_APP_SECRET secret 未配置' }
-          Set-Content -Path .env -Value @(
-            "DANDANPLAY_APP_ID=$env:DANDANPLAY_APP_ID"
-            "DANDANPLAY_APP_SECRET=$env:DANDANPLAY_APP_SECRET"
-          )
 
       - name: Setup Inno Setup
         shell: pwsh
