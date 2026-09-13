@@ -11,6 +11,9 @@
   <img alt="GitHub License" src="https://img.shields.io/github/license/caolib/kira">
   <img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/caolib/kira">
   <img src="https://img.shields.io/github/stars/caolib/kira" alt="Stars"/>
+  <img src="https://img.shields.io/badge/Android-grey?logo=android">
+  <img src="https://img.shields.io/badge/Windows-white">
+  <img src="https://img.shields.io/github/downloads/caolib/kira/latest/total">
   <a href="https://qm.qq.com/q/rezw7xWuK4"><img src="https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E7%BE%A4-white?logo=QQ" alt="QQ Group"/></a>
 </p>
 
@@ -61,7 +64,7 @@ git clone https://github.com/caolib/kira.git
 cd kira
 ```
 
-如果是移动端设备，第一次使用先 build 一次，后续如果 clean 了需要重新 build
+如果是移动端设备，第一次调试先 build 一次，后续如果 clean 了需要重新 build
 ```sh
 flutter build apk --debug
 ```
