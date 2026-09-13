@@ -181,9 +181,7 @@ jobs:
 
           ls -lh artifacts/
 
-          # --draft: 仅创建起草版本，人工核对产物后再发布
           gh release create "$RELEASE_TAG" artifacts/* \
             --repo="$GITHUB_REPOSITORY" \
             --title="App $RELEASE_TAG" \
-            --notes-file docs/CHANGELOG.md \
-            --draft
+            --notes-file docs/CHANGELOG.md
