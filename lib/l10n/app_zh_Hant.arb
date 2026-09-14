@@ -668,15 +668,9 @@
   "aiConfigNewChat": "新對話",
   "aiConfigProvidersTitle": "AI 供應商",
   "aiConfigAdd": "新增",
-  "aiConfigProvidersDescription": "支援任何 OpenAI 相容介面；智譜清言作為內建預設保留，可為不同供應商分別儲存 Base URL、API Key、模型和介面格式。",
-  "aiConfigEnabled": "已啟用",
-  "aiConfigDisabled": "已停用",
-  "aiConfigProviderSummary": "{status} · {count} 個模型 · {format}\n{baseUrl}",
+  "aiConfigProviderSummary": "{count} 個模型 · {format}\n{baseUrl}",
   "@aiConfigProviderSummary": {
     "placeholders": {
-      "status": {
-        "type": "String"
-      },
       "count": {
         "type": "int"
       },
@@ -703,7 +697,7 @@
     }
   },
   "aiConfigNoAvailableModels": "未獲取到可用模型",
-  "aiConfigSelectModel": "選擇模型",
+  "aiConfigSearchModel": "搜尋模型",
   "aiConfigAddSelected": "新增所選",
   "aiConfigAddProvider": "新增供應商",
   "aiConfigEditProvider": "編輯供應商",
@@ -713,9 +707,11 @@
   "aiConfigApiFormatLabel": "介面格式",
   "aiConfigDefaultModelLabel": "預設模型",
   "aiConfigNoSelection": "未選擇",
-  "aiConfigFetch": "獲取",
+  "aiConfigFetch": "獲取模型",
   "aiConfigClear": "清空",
   "aiConfigGetZhipuApiKey": "獲取智譜 API 金鑰",
+  "aiConfigAgnesName": "Agnes CN",
+  "aiConfigGetAgnesApiKey": "獲取 Agnes API 金鑰",
   "aiConfigProviderSaved": "供應商已儲存",
   "aiConfigConfigureBaseUrlAndApiKey": "請先設定 Base URL 和 API 金鑰",
   "aiConfigModelReturnedEmpty": "(模型未返回內容)",
@@ -750,6 +746,7 @@
     }
   },
   "aiConfigDeleteSession": "刪除會話",
+  "aiConfigClearSessions": "清空會話",
   "aiConfigProviderConfig": "介面設定",
   "aiConfigClearChat": "清空對話",
   "aiConfigInputHint": "說點什麼…",

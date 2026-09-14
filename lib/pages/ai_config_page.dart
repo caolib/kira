@@ -313,6 +313,22 @@ class _AiConfigPageState extends State<AiConfigPage> {
                           icon: const Icon(Icons.add, size: 18),
                           label: Text(l10n.aiConfigNewSession),
                         ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            setState(() {
+                              _sessions.clear();
+                              _activeSessionId = null;
+                              _messages.clear();
+                            });
+                            setLocal(() {});
+                            await _saveSessions();
+                          },
+                          icon: const Icon(
+                            Icons.delete_sweep_outlined,
+                            size: 18,
+                          ),
+                          label: Text(l10n.aiConfigClearSessions),
+                        ),
                         IconButton(
                           tooltip: l10n.closeButton,
                           icon: const Icon(Icons.close),

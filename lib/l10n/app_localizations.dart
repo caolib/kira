@@ -1999,34 +1999,11 @@ abstract class AppLocalizations {
   /// **'新增'**
   String get aiConfigAdd;
 
-  /// No description provided for @aiConfigProvidersDescription.
-  ///
-  /// In zh, this message translates to:
-  /// **'支持任何 OpenAI 兼容接口；智谱清言作为内置预设保留，可为不同供应商分别保存 Base URL、API Key、模型和接口格式。'**
-  String get aiConfigProvidersDescription;
-
-  /// No description provided for @aiConfigEnabled.
-  ///
-  /// In zh, this message translates to:
-  /// **'已启用'**
-  String get aiConfigEnabled;
-
-  /// No description provided for @aiConfigDisabled.
-  ///
-  /// In zh, this message translates to:
-  /// **'已禁用'**
-  String get aiConfigDisabled;
-
   /// No description provided for @aiConfigProviderSummary.
   ///
   /// In zh, this message translates to:
-  /// **'{status} · {count} 个模型 · {format}\n{baseUrl}'**
-  String aiConfigProviderSummary(
-    String status,
-    int count,
-    String format,
-    String baseUrl,
-  );
+  /// **'{count} 个模型 · {format}\n{baseUrl}'**
+  String aiConfigProviderSummary(int count, String format, String baseUrl);
 
   /// No description provided for @aiConfigEdit.
   ///
@@ -2076,11 +2053,11 @@ abstract class AppLocalizations {
   /// **'未获取到可用模型'**
   String get aiConfigNoAvailableModels;
 
-  /// No description provided for @aiConfigSelectModel.
+  /// No description provided for @aiConfigSearchModel.
   ///
   /// In zh, this message translates to:
-  /// **'选择模型'**
-  String get aiConfigSelectModel;
+  /// **'搜索模型'**
+  String get aiConfigSearchModel;
 
   /// No description provided for @aiConfigAddSelected.
   ///
@@ -2139,7 +2116,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiConfigFetch.
   ///
   /// In zh, this message translates to:
-  /// **'获取'**
+  /// **'获取模型'**
   String get aiConfigFetch;
 
   /// No description provided for @aiConfigClear.
@@ -2153,6 +2130,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'获取智谱 API 密钥'**
   String get aiConfigGetZhipuApiKey;
+
+  /// No description provided for @aiConfigAgnesName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Agnes CN'**
+  String get aiConfigAgnesName;
+
+  /// No description provided for @aiConfigGetAgnesApiKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取 Agnes API 密钥'**
+  String get aiConfigGetAgnesApiKey;
 
   /// No description provided for @aiConfigProviderSaved.
   ///
@@ -2213,6 +2202,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'删除会话'**
   String get aiConfigDeleteSession;
+
+  /// No description provided for @aiConfigClearSessions.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空会话'**
+  String get aiConfigClearSessions;
 
   /// No description provided for @aiConfigProviderConfig.
   ///

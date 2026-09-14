@@ -1063,23 +1063,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiConfigAdd => '新增';
 
   @override
-  String get aiConfigProvidersDescription =>
-      '支持任何 OpenAI 兼容接口；智谱清言作为内置预设保留，可为不同供应商分别保存 Base URL、API Key、模型和接口格式。';
-
-  @override
-  String get aiConfigEnabled => '已启用';
-
-  @override
-  String get aiConfigDisabled => '已禁用';
-
-  @override
-  String aiConfigProviderSummary(
-    String status,
-    int count,
-    String format,
-    String baseUrl,
-  ) {
-    return '$status · $count 个模型 · $format\n$baseUrl';
+  String aiConfigProviderSummary(int count, String format, String baseUrl) {
+    return '$count 个模型 · $format\n$baseUrl';
   }
 
   @override
@@ -1109,7 +1094,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiConfigNoAvailableModels => '未获取到可用模型';
 
   @override
-  String get aiConfigSelectModel => '选择模型';
+  String get aiConfigSearchModel => '搜索模型';
 
   @override
   String get aiConfigAddSelected => '添加所选';
@@ -1139,13 +1124,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiConfigNoSelection => '未选择';
 
   @override
-  String get aiConfigFetch => '获取';
+  String get aiConfigFetch => '获取模型';
 
   @override
   String get aiConfigClear => '清空';
 
   @override
   String get aiConfigGetZhipuApiKey => '获取智谱 API 密钥';
+
+  @override
+  String get aiConfigAgnesName => 'Agnes CN';
+
+  @override
+  String get aiConfigGetAgnesApiKey => '获取 Agnes API 密钥';
 
   @override
   String get aiConfigProviderSaved => '供应商已保存';
@@ -1182,6 +1173,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiConfigDeleteSession => '删除会话';
+
+  @override
+  String get aiConfigClearSessions => '清空会话';
 
   @override
   String get aiConfigProviderConfig => '接口配置';
@@ -4223,23 +4217,8 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aiConfigAdd => '新增';
 
   @override
-  String get aiConfigProvidersDescription =>
-      '支援任何 OpenAI 相容介面；智譜清言作為內建預設保留，可為不同供應商分別儲存 Base URL、API Key、模型和介面格式。';
-
-  @override
-  String get aiConfigEnabled => '已啟用';
-
-  @override
-  String get aiConfigDisabled => '已停用';
-
-  @override
-  String aiConfigProviderSummary(
-    String status,
-    int count,
-    String format,
-    String baseUrl,
-  ) {
-    return '$status · $count 個模型 · $format\n$baseUrl';
+  String aiConfigProviderSummary(int count, String format, String baseUrl) {
+    return '$count 個模型 · $format\n$baseUrl';
   }
 
   @override
@@ -4269,7 +4248,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aiConfigNoAvailableModels => '未獲取到可用模型';
 
   @override
-  String get aiConfigSelectModel => '選擇模型';
+  String get aiConfigSearchModel => '搜尋模型';
 
   @override
   String get aiConfigAddSelected => '新增所選';
@@ -4299,13 +4278,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aiConfigNoSelection => '未選擇';
 
   @override
-  String get aiConfigFetch => '獲取';
+  String get aiConfigFetch => '獲取模型';
 
   @override
   String get aiConfigClear => '清空';
 
   @override
   String get aiConfigGetZhipuApiKey => '獲取智譜 API 金鑰';
+
+  @override
+  String get aiConfigAgnesName => 'Agnes CN';
+
+  @override
+  String get aiConfigGetAgnesApiKey => '獲取 Agnes API 金鑰';
 
   @override
   String get aiConfigProviderSaved => '供應商已儲存';
@@ -4342,6 +4327,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get aiConfigDeleteSession => '刪除會話';
+
+  @override
+  String get aiConfigClearSessions => '清空會話';
 
   @override
   String get aiConfigProviderConfig => '介面設定';

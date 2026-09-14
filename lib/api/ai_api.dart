@@ -54,8 +54,8 @@ enum OpenAiApiFormat { chatCompletions, responses }
 
 extension OpenAiApiFormatLabel on OpenAiApiFormat {
   String get label => switch (this) {
-    OpenAiApiFormat.chatCompletions => 'Chat Completions',
-    OpenAiApiFormat.responses => 'Responses',
+    OpenAiApiFormat.chatCompletions => 'chat',
+    OpenAiApiFormat.responses => 'responses',
   };
 }
 

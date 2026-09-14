@@ -35,15 +35,6 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    l10n.aiConfigProvidersDescription,
-                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
                 const Divider(height: 24),
                 Flexible(
                   child: ListView.builder(
@@ -65,9 +56,6 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
                         title: Text(provider.name),
                         subtitle: Text(
                           l10n.aiConfigProviderSummary(
-                            provider.enabled
-                                ? l10n.aiConfigEnabled
-                                : l10n.aiConfigDisabled,
                             provider.models.length,
                             provider.apiFormat.label,
                             provider.baseUrl,
@@ -120,15 +108,15 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
     final isNew = provider == null;
     const customPreset = 'custom';
     const zhipuPreset = AiSettings.builtInZhipuProviderId;
+    const agnesPreset = 'agnes';
+    const agnesBaseUrl = 'https://api.agnes-ai.cn/v1';
     var providerPreset =
         !isNew && editing.id == AiSettings.builtInZhipuProviderId
         ? zhipuPreset
         : customPreset;
-    final nameCtrl = TextEditingController(
-      text: isNew ? l10n.aiConfigCustomProvider : editing.name,
-    );
+    final nameCtrl = TextEditingController(text: isNew ? '' : editing.name);
     final baseUrlCtrl = TextEditingController(
-      text: isNew ? 'https://api.openai.com/v1' : editing.baseUrl,
+      text: isNew ? '' : editing.baseUrl,
     );
     final apiKeyCtrl = TextEditingController(
       text: isNew ? '' : editing.apiKey ?? '',
@@ -155,6 +143,20 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
         selectedModel = AiSettings.defaultModel;
       });
     }
+
+    void applyAgnesPreset(StateSetter setLocal) {
+      setLocal(() {
+        providerPreset = agnesPreset;
+        nameCtrl.text = l10n.aiConfigAgnesName;
+        baseUrlCtrl.text = agnesBaseUrl;
+        apiFormat = OpenAiApiFormat.chatCompletions;
+        models = [];
+        selectedModel = '';
+      });
+    }
+
+    bool canFetch() =>
+        baseUrlCtrl.text.trim().isNotEmpty && apiKeyCtrl.text.trim().isNotEmpty;
 
     Future<void> addModel(StateSetter setLocal) async {
       final ctrl = TextEditingController();
@@ -217,68 +219,90 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
         return;
       }
 
+      var modelFilter = '';
       final selected = models.toSet();
       final result = await showDialog<Set<String>>(
         context: context,
         builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setDialog) => AlertDialog(
-            title: Text(l10n.aiConfigSelectModel),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CheckboxListTile(
-                    dense: true,
-                    value: selected.length == fetched.length,
-                    tristate:
-                        selected.isNotEmpty && selected.length < fetched.length,
-                    title: Text(l10n.selectAll),
-                    onChanged: (checked) {
-                      setDialog(() {
-                        selected.clear();
-                        if (checked == true) selected.addAll(fetched);
-                      });
-                    },
+          builder: (ctx, setDialog) {
+            final visibleModels = fetched
+                .where(
+                  (model) => model.toLowerCase().contains(
+                    modelFilter.trim().toLowerCase(),
                   ),
-                  const Divider(height: 1),
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: fetched.length,
-                      itemBuilder: (_, index) {
-                        final model = fetched[index];
-                        return CheckboxListTile(
-                          dense: true,
-                          value: selected.contains(model),
-                          title: Text(model),
-                          onChanged: (checked) {
-                            setDialog(() {
-                              if (checked == true) {
-                                selected.add(model);
-                              } else {
-                                selected.remove(model);
-                              }
-                            });
-                          },
-                        );
+                )
+                .toList();
+            return AlertDialog(
+              title: Text(l10n.aiConfigAddModel),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      decoration: InputDecoration(
+                        hintText: l10n.aiConfigSearchModel,
+                        prefixIcon: const Icon(Icons.search),
+                        isDense: true,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (value) =>
+                          setDialog(() => modelFilter = value),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    CheckboxListTile(
+                      dense: true,
+                      value: selected.length == fetched.length,
+                      tristate:
+                          selected.isNotEmpty &&
+                          selected.length < fetched.length,
+                      title: Text(l10n.selectAll),
+                      onChanged: (checked) {
+                        setDialog(() {
+                          selected.clear();
+                          if (checked == true) selected.addAll(fetched);
+                        });
                       },
                     ),
-                  ),
-                ],
+                    const Divider(height: 1),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: visibleModels.length,
+                        itemBuilder: (_, index) {
+                          final model = visibleModels[index];
+                          return CheckboxListTile(
+                            dense: true,
+                            value: selected.contains(model),
+                            title: Text(model),
+                            onChanged: (checked) {
+                              setDialog(() {
+                                if (checked == true) {
+                                  selected.add(model);
+                                } else {
+                                  selected.remove(model);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(l10n.cancelButton),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, selected),
-                child: Text(l10n.aiConfigAddSelected),
-              ),
-            ],
-          ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancelButton),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, selected),
+                  child: Text(l10n.aiConfigAddSelected),
+                ),
+              ],
+            );
+          },
         ),
       );
       if (result == null || result.isEmpty) return;
@@ -314,20 +338,28 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
                       value: zhipuPreset,
                       child: Text(l10n.aiConfigZhipuName),
                     ),
+                    DropdownMenuItem(
+                      value: agnesPreset,
+                      child: Text(l10n.aiConfigAgnesName),
+                    ),
                   ],
                   onChanged: (value) {
                     if (value == null) return;
                     if (value == zhipuPreset) {
                       applyZhipuPreset(setLocal);
+                    } else if (value == agnesPreset) {
+                      applyAgnesPreset(setLocal);
                     } else {
                       setLocal(() {
                         providerPreset = customPreset;
-                        baseUrlCtrl.text = 'https://api.openai.com/v1';
+                        baseUrlCtrl.text = '';
                         models = [];
                         selectedModel = '';
-                        if (nameCtrl.text.trim().isEmpty ||
-                            nameCtrl.text.trim() == l10n.aiConfigZhipuName) {
-                          nameCtrl.text = l10n.aiConfigCustomProvider;
+                        final name = nameCtrl.text.trim();
+                        if (name.isEmpty ||
+                            name == l10n.aiConfigZhipuName ||
+                            name == l10n.aiConfigAgnesName) {
+                          nameCtrl.text = '';
                         }
                       });
                     }
@@ -347,12 +379,52 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
                 const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: baseUrlCtrl,
+                  onChanged: (_) => setLocal(() {}),
                   decoration: const InputDecoration(
                     labelText: 'Base URL',
                     hintText: 'https://api.openai.com/v1',
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: AppSpacing.md),
+                TextField(
+                  controller: apiKeyCtrl,
+                  onChanged: (_) => setLocal(() {}),
+                  obscureText: obscure,
+                  decoration: InputDecoration(
+                    labelText: 'API Key',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscure ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () => setLocal(() => obscure = !obscure),
+                    ),
+                  ),
+                ),
+                if (providerPreset == zhipuPreset ||
+                    providerPreset == agnesPreset) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => launchUrl(
+                        Uri.parse(
+                          providerPreset == zhipuPreset
+                              ? 'https://open.bigmodel.cn/apikey/platform'
+                              : 'https://platform.agnes-ai.cn/settings/apiKeys',
+                        ),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                      icon: const Icon(Icons.open_in_new, size: 14),
+                      label: Text(
+                        providerPreset == zhipuPreset
+                            ? l10n.aiConfigGetZhipuApiKey
+                            : l10n.aiConfigGetAgnesApiKey,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<OpenAiApiFormat>(
                   initialValue: apiFormat,
@@ -382,7 +454,8 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
                     border: const OutlineInputBorder(),
                   ),
                   items: [
-                    DropdownMenuItem(child: Text(l10n.aiConfigNoSelection)),
+                    if (models.isEmpty)
+                      DropdownMenuItem(child: Text(l10n.aiConfigNoSelection)),
                     ...models.map(
                       (model) =>
                           DropdownMenuItem(value: model, child: Text(model)),
@@ -392,43 +465,42 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
                     setLocal(() => selectedModel = value ?? '');
                   },
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                if (models.isNotEmpty) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final model in models)
+                          InputChip(
+                            label: Text(model),
+                            onDeleted: () => setLocal(() {
+                              models = models
+                                  .where((item) => item != model)
+                                  .toList();
+                              if (selectedModel == model) {
+                                selectedModel = models.isEmpty
+                                    ? ''
+                                    : models.first;
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 4,
                     children: [
-                      for (final model in models)
-                        InputChip(
-                          label: Text(model),
-                          selected: model == selectedModel,
-                          onSelected: (_) => setLocal(() {
-                            selectedModel = model;
-                          }),
-                          onDeleted: () => setLocal(() {
-                            models = models
-                                .where((item) => item != model)
-                                .toList();
-                            if (selectedModel == model) {
-                              selectedModel = models.isEmpty
-                                  ? ''
-                                  : models.first;
-                            }
-                          }),
-                        ),
                       ActionChip(
                         avatar: const Icon(Icons.add, size: 18),
                         label: Text(l10n.aiConfigAdd),
                         onPressed: () => addModel(setLocal),
-                      ),
-                      ActionChip(
-                        avatar: const Icon(
-                          Icons.cloud_download_outlined,
-                          size: 18,
-                        ),
-                        label: Text(l10n.aiConfigFetch),
-                        onPressed: () => fetchModels(setLocal),
                       ),
                       if (models.isNotEmpty)
                         ActionChip(
@@ -439,38 +511,22 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
                             selectedModel = '';
                           }),
                         ),
+                      ActionChip(
+                        avatar: const Icon(
+                          Icons.cloud_download_outlined,
+                          size: 18,
+                        ),
+                        label: Text(l10n.aiConfigFetch),
+                        backgroundColor: canFetch()
+                            ? Theme.of(ctx).colorScheme.primaryContainer
+                            : null,
+                        onPressed: canFetch()
+                            ? () => fetchModels(setLocal)
+                            : null,
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                TextField(
-                  controller: apiKeyCtrl,
-                  obscureText: obscure,
-                  decoration: InputDecoration(
-                    labelText: 'API Key',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscure ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () => setLocal(() => obscure = !obscure),
-                    ),
-                  ),
-                ),
-                if (providerPreset == zhipuPreset) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () => launchUrl(
-                        Uri.parse('https://open.bigmodel.cn/apikey/platform'),
-                        mode: LaunchMode.externalApplication,
-                      ),
-                      icon: const Icon(Icons.open_in_new, size: 14),
-                      label: Text(l10n.aiConfigGetZhipuApiKey),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -480,32 +536,39 @@ extension _AiConfigProviderDialogs on _AiConfigPageState {
               child: Text(l10n.cancelButton),
             ),
             FilledButton(
-              onPressed: () {
-                final model = selectedModel.trim();
-                final name = providerPreset == zhipuPreset
-                    ? l10n.aiConfigZhipuName
-                    : nameCtrl.text.trim().isEmpty
-                    ? (isNew ? l10n.aiConfigCustomProvider : editing.name)
-                    : nameCtrl.text.trim();
-                Navigator.pop(
-                  ctx,
-                  AiProviderConfig(
-                    id: isNew
-                        ? 'custom_${DateTime.now().millisecondsSinceEpoch}'
-                        : editing.id,
-                    name: name,
-                    baseUrl: baseUrlCtrl.text.trim(),
-                    apiKey: apiKeyCtrl.text.trim().isEmpty
-                        ? null
-                        : apiKeyCtrl.text.trim(),
-                    apiFormat: apiFormat,
-                    model: model,
-                    models: {...models, if (model.isNotEmpty) model}.toList(),
-                    isBuiltIn: isNew ? false : editing.isBuiltIn,
-                    enabled: isNew ? true : editing.enabled,
-                  ),
-                );
-              },
+              onPressed: models.isEmpty
+                  ? null
+                  : () {
+                      final model = selectedModel.trim();
+                      final name = providerPreset == zhipuPreset
+                          ? l10n.aiConfigZhipuName
+                          : providerPreset == agnesPreset
+                          ? l10n.aiConfigAgnesName
+                          : nameCtrl.text.trim().isEmpty
+                          ? (isNew ? l10n.aiConfigCustomProvider : editing.name)
+                          : nameCtrl.text.trim();
+                      Navigator.pop(
+                        ctx,
+                        AiProviderConfig(
+                          id: isNew
+                              ? 'custom_${DateTime.now().millisecondsSinceEpoch}'
+                              : editing.id,
+                          name: name,
+                          baseUrl: baseUrlCtrl.text.trim(),
+                          apiKey: apiKeyCtrl.text.trim().isEmpty
+                              ? null
+                              : apiKeyCtrl.text.trim(),
+                          apiFormat: apiFormat,
+                          model: model,
+                          models: {
+                            ...models,
+                            if (model.isNotEmpty) model,
+                          }.toList(),
+                          isBuiltIn: isNew ? false : editing.isBuiltIn,
+                          enabled: isNew ? true : editing.enabled,
+                        ),
+                      );
+                    },
               child: Text(l10n.commentSettingsSaveButton),
             ),
           ],
