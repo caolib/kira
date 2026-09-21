@@ -11,7 +11,8 @@ class _SearchTab extends StatefulWidget {
   State<_SearchTab> createState() => _SearchTabState();
 }
 
-class _SearchTabState extends State<_SearchTab> {
+class _SearchTabState extends State<_SearchTab>
+    with AutomaticKeepAliveClientMixin {
   static const _kHotSearchExpanded = 'search_hot_search_expanded';
 
   final _api = ApiClient();
@@ -36,6 +37,11 @@ class _SearchTabState extends State<_SearchTab> {
   String? _searchQuery;
 
   bool get _hasResults => _comics.isNotEmpty;
+
+  /// TabBarView 会销毁离屏 tab 的 State（底部导航栏那种保活不适用于这里），
+  /// 不声明保活的话切到「发现」再切回来，搜索结果与滚动位置就没了。
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -190,6 +196,7 @@ class _SearchTabState extends State<_SearchTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 要求
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;

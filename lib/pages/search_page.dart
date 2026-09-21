@@ -47,15 +47,31 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage>
     with SingleTickerProviderStateMixin {
+  final _user = UserManager();
   late final TabController _tabController = TabController(
     length: 2,
+    // 冷启动回到上次停留的标签（「发现」页用得多的用户不必每次手动切）。
+    initialIndex: _user.searchTabIndex,
     vsync: this,
   );
 
   @override
+  void initState() {
+    super.initState();
+    _tabController.addListener(_onTabChanged);
+  }
+
+  @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  /// 只在滑动/切换真正停下时落盘，避免 [TabController] 动画期间频繁写入。
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    unawaited(_user.setSearchTabIndex(_tabController.index));
   }
 
   @override

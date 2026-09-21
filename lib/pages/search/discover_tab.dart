@@ -11,7 +11,8 @@ class _DiscoverTab extends StatefulWidget {
   State<_DiscoverTab> createState() => _DiscoverTabState();
 }
 
-class _DiscoverTabState extends State<_DiscoverTab> {
+class _DiscoverTabState extends State<_DiscoverTab>
+    with AutomaticKeepAliveClientMixin {
   final _api = ApiClient();
   final _user = UserManager();
   final _scrollController = ScrollController();
@@ -42,6 +43,11 @@ class _DiscoverTabState extends State<_DiscoverTab> {
 
   bool get _isCopySource => _user.mangaHomeSource == 'copy';
   bool get _hasResults => _comics.isNotEmpty;
+
+  /// 同 [_SearchTabState.wantKeepAlive]：切到「搜索」再切回来时，
+  /// 保留已选 tag、漫画列表与滚动位置，不被重置成空白态。
+  @override
+  bool get wantKeepAlive => true;
 
   /// 是否有可重置的筛选（大分类 / 题材 / 非默认排序）。
   bool get _canResetFilters =>
@@ -343,6 +349,7 @@ class _DiscoverTabState extends State<_DiscoverTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 要求
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;

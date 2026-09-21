@@ -140,6 +140,18 @@ extension UserManagerAppSettingsPart on UserManager {
     _notifyListeners();
   }
 
+  /// 记住搜索页停留的标签，下次冷启动直接回到这一页。
+  ///
+  /// 不调 [_notifyListeners]：这个值只被 [SearchPage] 初次建
+  /// [TabController] 时读一次，切 tab 时通知全体监听者重建没有意义。
+  Future<void> setSearchTabIndex(int index) async {
+    final next = index.clamp(0, 1);
+    if (_searchTabIndex == next) return;
+    _searchTabIndex = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(UserManager._keySearchTabIndex, next);
+  }
+
   Future<void> setCopyApiHost(String value) async {
     final normalized = UserManager.normalizeCopyApiHost(value);
     if (_copyApiHost == normalized) return;
