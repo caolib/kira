@@ -2,6 +2,7 @@
   "@@locale": "zh",
   "comicTabLabel": "漫画",
   "searchTabLabel": "搜索",
+  "discoverTabLabel": "发现",
   "bookshelfTabLabel": "书架",
   "profileTabLabel": "我的",
   "disclaimerTitle": "免责声明",
@@ -34,6 +35,8 @@
   "switchToCopyHome": "切换到 COPY 首页",
   "homeSourceHot": "热辣",
   "homeSourceCopy": "拷贝",
+  "switchToHotSource": "切换到热辣源",
+  "switchToCopySource": "切换到拷贝源",
   "localComicsTitle": "本地漫画",
   "noLocalComicsTitle": "还没有本地漫画",
   "noLocalComicsSubtitle": "去漫画详情页下载章节后，这里会显示离线内容",
@@ -176,6 +179,9 @@
   "searchClearTooltip": "清空搜索内容",
   "hotSearchTitle": "热门搜索",
   "allTagsTitle": "全部标签",
+  "expandAllButton": "展开",
+  "tagsExpandAll": "展开全部",
+  "tagsCollapseAll": "收起",
   "tagCount": "{count} 个",
   "@tagCount": {
     "placeholders": {

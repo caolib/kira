@@ -2,6 +2,7 @@
   "@@locale": "zh_Hant",
   "comicTabLabel": "漫畫",
   "searchTabLabel": "搜尋",
+  "discoverTabLabel": "發現",
   "bookshelfTabLabel": "書架",
   "profileTabLabel": "我的",
   "disclaimerTitle": "免責聲明",
@@ -34,6 +35,8 @@
   "switchToCopyHome": "切換到 COPY 首頁",
   "homeSourceHot": "熱辣",
   "homeSourceCopy": "拷貝",
+  "switchToHotSource": "切換到熱辣源",
+  "switchToCopySource": "切換到拷貝源",
   "localComicsTitle": "本地漫畫",
   "noLocalComicsTitle": "還沒有本地漫畫",
   "noLocalComicsSubtitle": "去漫畫詳情頁下載章節後，這裡會顯示離線內容",
@@ -176,6 +179,9 @@
   "searchClearTooltip": "清空搜尋內容",
   "hotSearchTitle": "熱門搜尋",
   "allTagsTitle": "全部標籤",
+  "expandAllButton": "展開",
+  "tagsExpandAll": "展開全部",
+  "tagsCollapseAll": "收起",
   "tagCount": "{count} 個",
   "@tagCount": {
     "placeholders": {

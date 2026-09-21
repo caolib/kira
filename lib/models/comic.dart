@@ -237,6 +237,36 @@ class Theme {
   Map<String, dynamic> toJson() => _$ThemeToJson(this);
 }
 
+/// COPY 源 `/api/v3/h5/filter/comic/tags` 的筛选项集合。
+///
+/// 三项都复用 [Theme]（name + path_word，题材项另带 count）。[tops] 是
+/// 大分类（日漫/韓漫/美漫/已完結），其中「日漫」在服务端等价于不过滤——
+/// COPY 站以日漫为主体，它会返回全量，这是预期行为而非接口异常。
+class CopyFilterOptions {
+  final List<Theme> themes;
+  final List<Theme> tops;
+
+  const CopyFilterOptions({this.themes = const [], this.tops = const []});
+
+  factory CopyFilterOptions.fromJson(Map<String, dynamic> json) {
+    List<Theme> parse(String key) => (json[key] is List)
+        ? (json[key] as List)
+              .whereType<Map>()
+              .map((e) => Theme.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+        : const [];
+    return CopyFilterOptions(themes: parse('theme'), tops: parse('top'));
+  }
+
+  /// 与 [fromJson] 的键一一对应，供缓存读写往返。
+  Map<String, dynamic> toJson() => {
+    'theme': themes.map((t) => t.toJson()).toList(),
+    'top': tops.map((t) => t.toJson()).toList(),
+  };
+
+  static const empty = CopyFilterOptions();
+}
+
 @JsonSerializable(fieldRename: FieldRename.snake)
 class ComicGroup {
   @JsonKey(defaultValue: '')

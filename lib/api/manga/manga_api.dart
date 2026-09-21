@@ -123,6 +123,77 @@ class MangaApi {
     return _parseCopyNestedComicResult(data);
   }
 
+  /// COPY source: all comic tags (same taxonomy as the hot source).
+  Future<List<Theme>> getCopyComicTags() async {
+    final data = await _copyGet(
+      '/api/v3/theme/comic/count',
+      params: {'free_type': 1, 'limit': 500, 'offset': 0, 'platform': 3},
+      errorMessage: 'Failed to load COPY tags',
+    );
+    return _mapList(data, 'list', Theme.fromJson);
+  }
+
+  /// COPY source: search comics (mirrors [searchComics] on the copy host).
+  ///
+  /// Unlike the hot source, COPY has no hot-keywords endpoint, so the search
+  /// page shows tags only when this source is active.
+  Future<({List<Comic> list, int total})> searchCopyComics(
+    String query, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final data = await _copyGet(
+      '/api/v3/search/comic',
+      params: {
+        'platform': 3,
+        'q': query,
+        'limit': limit,
+        'offset': offset,
+        'free_type': 1,
+      },
+      errorMessage: 'Failed to search COPY comics',
+    );
+    return _parseCopyDirectComicResult(data);
+  }
+
+  /// 从 `/api/v3/h5/filter/comic/tags` 取 COPY 源的筛选项：题材 + 大分类 + 排序。
+  ///
+  /// 返回的 `top` 里只有 `korea` / `west` / `finish` 在服务端真正生效——
+  /// `japan` 实测与不传等价（返回全量），调用方需要按此过滤可选项。
+  Future<CopyFilterOptions> getCopyFilterOptions() async {
+    final data = await _copyGet(
+      '/api/v3/h5/filter/comic/tags',
+      params: {'type': 1, 'platform': 3},
+      errorMessage: 'Failed to load COPY filter options',
+    );
+    return CopyFilterOptions.fromJson(data);
+  }
+
+  /// COPY source: comic list by tag/ordering/category (mirrors [getComicList]).
+  Future<({List<Comic> list, int total})> getCopyComicList({
+    String ordering = ApiOrdering.popular,
+    int limit = 21,
+    int offset = 0,
+    String? theme,
+    String? top,
+  }) async {
+    final params = <String, dynamic>{
+      'free_type': 1,
+      'limit': limit,
+      'offset': offset,
+      'ordering': ordering,
+      'platform': 3,
+    };
+    if (theme != null) params['theme'] = theme;
+    if (top != null) params['top'] = top;
+    final data = await _copyGet(
+      '/api/v3/comics',
+      params: params,
+      errorMessage: 'Failed to load COPY comics',
+    );
+    return _parseCopyDirectComicResult(data);
+  }
+
   /// Fetches latest COPY app version automatically.
   Future<String> fetchCopyLatestAppVersion() async {
     final resp = await _copyMinimalDio().get(

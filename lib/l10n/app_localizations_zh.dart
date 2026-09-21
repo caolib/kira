@@ -15,6 +15,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchTabLabel => '搜索';
 
   @override
+  String get discoverTabLabel => '发现';
+
+  @override
   String get bookshelfTabLabel => '书架';
 
   @override
@@ -110,6 +113,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeSourceCopy => '拷贝';
+
+  @override
+  String get switchToHotSource => '切换到热辣源';
+
+  @override
+  String get switchToCopySource => '切换到拷贝源';
 
   @override
   String get localComicsTitle => '本地漫画';
@@ -290,6 +299,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get allTagsTitle => '全部标签';
+
+  @override
+  String get expandAllButton => '展开';
+
+  @override
+  String get tagsExpandAll => '展开全部';
+
+  @override
+  String get tagsCollapseAll => '收起';
 
   @override
   String tagCount(int count) {
@@ -3492,6 +3510,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get searchTabLabel => '搜尋';
 
   @override
+  String get discoverTabLabel => '發現';
+
+  @override
   String get bookshelfTabLabel => '書架';
 
   @override
@@ -3587,6 +3608,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get homeSourceCopy => '拷貝';
+
+  @override
+  String get switchToHotSource => '切換到熱辣源';
+
+  @override
+  String get switchToCopySource => '切換到拷貝源';
 
   @override
   String get localComicsTitle => '本地漫畫';
@@ -3767,6 +3794,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get allTagsTitle => '全部標籤';
+
+  @override
+  String get expandAllButton => '展開';
+
+  @override
+  String get tagsExpandAll => '展開全部';
+
+  @override
+  String get tagsCollapseAll => '收起';
 
   @override
   String tagCount(int count) {

@@ -109,6 +109,12 @@ abstract class AppLocalizations {
   /// **'搜索'**
   String get searchTabLabel;
 
+  /// No description provided for @discoverTabLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现'**
+  String get discoverTabLabel;
+
   /// No description provided for @bookshelfTabLabel.
   ///
   /// In zh, this message translates to:
@@ -300,6 +306,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'拷贝'**
   String get homeSourceCopy;
+
+  /// No description provided for @switchToHotSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换到热辣源'**
+  String get switchToHotSource;
+
+  /// No description provided for @switchToCopySource.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换到拷贝源'**
+  String get switchToCopySource;
 
   /// No description provided for @localComicsTitle.
   ///
@@ -612,6 +630,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'全部标签'**
   String get allTagsTitle;
+
+  /// No description provided for @expandAllButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开'**
+  String get expandAllButton;
+
+  /// No description provided for @tagsExpandAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开全部'**
+  String get tagsExpandAll;
+
+  /// No description provided for @tagsCollapseAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起'**
+  String get tagsCollapseAll;
 
   /// No description provided for @tagCount.
   ///
