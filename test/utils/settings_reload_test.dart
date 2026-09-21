@@ -10,9 +10,9 @@ import 'package:kira/utils/download_manager.dart';
 import 'package:kira/utils/font_manager.dart';
 import 'package:kira/utils/reading_stats.dart';
 import 'package:kira/utils/settings_backup.dart';
-import 'package:kira/utils/settings_reload.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../backup/backup_test_support.dart';
 import '../test_helpers.dart';
 
 /// 回归测试:导入备份后,内存单例必须跟上 prefs。
@@ -71,8 +71,10 @@ void main() {
   Future<void> importAndReload(
     Map<String, Map<String, Object>> overrides,
   ) async {
-    await SettingsBackupService().importPlainText(backupWith(overrides));
-    await reloadRuntimeSettings();
+    final document = BackupDocument.parse(backupWith(overrides));
+    await SettingsBackupService(
+      journal: MemoryBackupJournal(),
+    ).restore(document, document.categories);
   }
 
   test('import applies download concurrency to the manager', () async {

@@ -70,5 +70,6 @@ ref/
 .grok
 .omp
 .workbuddy
+.codebuddy
 
 skills-lock.json

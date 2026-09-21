@@ -5800,6 +5800,630 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'图片 {done}/{total}'**
   String downloadForegroundImages(int done, int total);
+
+  /// No description provided for @backupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份与同步'**
+  String get backupTitle;
+
+  /// No description provided for @backupEntryDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地文件与 WebDAV 备份'**
+  String get backupEntryDescription;
+
+  /// No description provided for @backupContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份内容'**
+  String get backupContent;
+
+  /// No description provided for @backupCategorySettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用设置'**
+  String get backupCategorySettings;
+
+  /// No description provided for @backupCategoryHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读历史'**
+  String get backupCategoryHistory;
+
+  /// No description provided for @backupCategoryStatistics.
+  ///
+  /// In zh, this message translates to:
+  /// **'阅读统计'**
+  String get backupCategoryStatistics;
+
+  /// No description provided for @backupCategoryBookmarks.
+  ///
+  /// In zh, this message translates to:
+  /// **'书签'**
+  String get backupCategoryBookmarks;
+
+  /// No description provided for @backupCategoryAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号信息'**
+  String get backupCategoryAccount;
+
+  /// No description provided for @backupCategoryAiConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 配置'**
+  String get backupCategoryAiConnection;
+
+  /// No description provided for @backupEncryption.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件加密'**
+  String get backupEncryption;
+
+  /// No description provided for @backupEncryptedFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件已加密'**
+  String get backupEncryptedFormat;
+
+  /// No description provided for @backupUnencryptedFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件未加密'**
+  String get backupUnencryptedFormat;
+
+  /// No description provided for @backupPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份密码'**
+  String get backupPassword;
+
+  /// No description provided for @backupPasswordNotSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置'**
+  String get backupPasswordNotSet;
+
+  /// No description provided for @backupPasswordRemembered.
+  ///
+  /// In zh, this message translates to:
+  /// **'已记住'**
+  String get backupPasswordRemembered;
+
+  /// No description provided for @backupPasswordSessionOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'已设置'**
+  String get backupPasswordSessionOnly;
+
+  /// No description provided for @backupPasswordExplanation.
+  ///
+  /// In zh, this message translates to:
+  /// **'请记好密码，旧备份仍需使用原来的密码。'**
+  String get backupPasswordExplanation;
+
+  /// No description provided for @backupConfirmPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'再次输入密码'**
+  String get backupConfirmPassword;
+
+  /// No description provided for @backupPasswordMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'两次输入的密码不一致'**
+  String get backupPasswordMismatch;
+
+  /// No description provided for @backupRememberPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'记住密码'**
+  String get backupRememberPassword;
+
+  /// No description provided for @backupDecryptPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入此备份的密码'**
+  String get backupDecryptPassword;
+
+  /// No description provided for @backupLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地文件'**
+  String get backupLocal;
+
+  /// No description provided for @backupWebDav.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV'**
+  String get backupWebDav;
+
+  /// No description provided for @backupSaveLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出到文件'**
+  String get backupSaveLocal;
+
+  /// No description provided for @backupImportLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'从文件恢复'**
+  String get backupImportLocal;
+
+  /// No description provided for @backupPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份预览'**
+  String get backupPreview;
+
+  /// No description provided for @backupCategorySize.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 项 · {bytes} · {percent}%'**
+  String backupCategorySize(int count, String bytes, String percent);
+
+  /// No description provided for @backupFinalSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件大小：{size}'**
+  String backupFinalSize(String size);
+
+  /// No description provided for @backupSensitiveWarningTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件未加密？'**
+  String get backupSensitiveWarningTitle;
+
+  /// No description provided for @backupSensitiveWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'这份备份包含账号或 AI 连接信息，拿到文件的人和服务器管理员都能读取其中的账号和密钥。仍要继续吗？'**
+  String get backupSensitiveWarning;
+
+  /// No description provided for @backupAcceptRisk.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍然继续'**
+  String get backupAcceptRisk;
+
+  /// No description provided for @backupRestoreTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择恢复内容'**
+  String get backupRestoreTitle;
+
+  /// No description provided for @backupRestoreWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'将覆盖所选内容，其他数据保持不变。'**
+  String get backupRestoreWarning;
+
+  /// No description provided for @backupCategoryCountSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 项 · {bytes}'**
+  String backupCategoryCountSize(int count, String bytes);
+
+  /// No description provided for @backupLegacyWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'已跳过 {count} 项不适用的数据。'**
+  String backupLegacyWarning(int count);
+
+  /// No description provided for @backupRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复'**
+  String get backupRestore;
+
+  /// No description provided for @backupRestored.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复完成'**
+  String get backupRestored;
+
+  /// No description provided for @backupSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件已保存'**
+  String get backupSaved;
+
+  /// No description provided for @backupUploaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份已上传'**
+  String get backupUploaded;
+
+  /// No description provided for @backupDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'远端备份已删除'**
+  String get backupDeleted;
+
+  /// No description provided for @backupWebDavConfiguration.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接设置'**
+  String get backupWebDavConfiguration;
+
+  /// No description provided for @backupWebDavServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器地址'**
+  String get backupWebDavServer;
+
+  /// No description provided for @backupWebDavServerRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写服务器地址'**
+  String get backupWebDavServerRequired;
+
+  /// No description provided for @backupWebDavPresetTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'常用服务器'**
+  String get backupWebDavPresetTitle;
+
+  /// No description provided for @backupWebDavPresetJianguoyun.
+  ///
+  /// In zh, this message translates to:
+  /// **'坚果云'**
+  String get backupWebDavPresetJianguoyun;
+
+  /// No description provided for @backupWebDavDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件夹（可选）'**
+  String get backupWebDavDirectory;
+
+  /// No description provided for @backupWebDavDirectoryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则保存到服务器根目录'**
+  String get backupWebDavDirectoryHint;
+
+  /// No description provided for @backupWebDavUsername.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户名'**
+  String get backupWebDavUsername;
+
+  /// No description provided for @backupWebDavUsernameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写用户名'**
+  String get backupWebDavUsernameRequired;
+
+  /// No description provided for @backupWebDavPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码'**
+  String get backupWebDavPassword;
+
+  /// No description provided for @backupWebDavPasswordRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写密码'**
+  String get backupWebDavPasswordRequired;
+
+  /// No description provided for @backupSaveConfiguration.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get backupSaveConfiguration;
+
+  /// No description provided for @backupWebDavNotConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置服务器'**
+  String get backupWebDavNotConfigured;
+
+  /// No description provided for @backupSchedule.
+  ///
+  /// In zh, this message translates to:
+  /// **'定时备份'**
+  String get backupSchedule;
+
+  /// No description provided for @backupSchedulePasswordRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先设置备份密码'**
+  String get backupSchedulePasswordRequired;
+
+  /// No description provided for @backupScheduleInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份间隔'**
+  String get backupScheduleInterval;
+
+  /// No description provided for @backupScheduleMinutes.
+  ///
+  /// In zh, this message translates to:
+  /// **'分钟'**
+  String get backupScheduleMinutes;
+
+  /// No description provided for @backupScheduleHours.
+  ///
+  /// In zh, this message translates to:
+  /// **'小时'**
+  String get backupScheduleHours;
+
+  /// No description provided for @backupScheduleDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'天'**
+  String get backupScheduleDays;
+
+  /// No description provided for @backupTestConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试'**
+  String get backupTestConnection;
+
+  /// No description provided for @backupTestSucceeded.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接正常'**
+  String get backupTestSucceeded;
+
+  /// No description provided for @backupUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传'**
+  String get backupUpload;
+
+  /// No description provided for @backupNoRemoteFiles.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无备份'**
+  String get backupNoRemoteFiles;
+
+  /// No description provided for @backupRemoteFilesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新以查看备份'**
+  String get backupRemoteFilesHint;
+
+  /// No description provided for @backupDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除远端备份？'**
+  String get backupDeleteTitle;
+
+  /// No description provided for @backupDeleteWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{name}」？删除后无法找回。'**
+  String backupDeleteWarning(String name);
+
+  /// No description provided for @backupHttpWarningTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续使用此地址？'**
+  String get backupHttpWarningTitle;
+
+  /// No description provided for @backupHttpWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'此连接无法保护你的账号和密码，仍要继续吗？'**
+  String get backupHttpWarning;
+
+  /// No description provided for @backupReading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取…'**
+  String get backupReading;
+
+  /// No description provided for @backupCompressing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在准备备份…'**
+  String get backupCompressing;
+
+  /// No description provided for @backupEncrypting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在加密备份…'**
+  String get backupEncrypting;
+
+  /// No description provided for @backupDecoding.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取备份…'**
+  String get backupDecoding;
+
+  /// No description provided for @backupTesting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在测试连接…'**
+  String get backupTesting;
+
+  /// No description provided for @backupListing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取备份列表…'**
+  String get backupListing;
+
+  /// No description provided for @backupUploading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在上传…'**
+  String get backupUploading;
+
+  /// No description provided for @backupDownloading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在下载…'**
+  String get backupDownloading;
+
+  /// No description provided for @backupRestoring.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在恢复，请勿关闭应用…'**
+  String get backupRestoring;
+
+  /// No description provided for @backupDeleting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在删除…'**
+  String get backupDeleting;
+
+  /// No description provided for @backupCancelling.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在取消…'**
+  String get backupCancelling;
+
+  /// No description provided for @backupCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作已取消'**
+  String get backupCancelled;
+
+  /// No description provided for @backupTooLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件不得超过 16 MiB，解压内容不得超过 64 MiB。'**
+  String get backupTooLarge;
+
+  /// No description provided for @backupPasswordRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入备份密码'**
+  String get backupPasswordRequired;
+
+  /// No description provided for @backupAuthenticationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码不正确，或文件已损坏。'**
+  String get backupAuthenticationFailed;
+
+  /// No description provided for @backupInvalidEncryptionParameters.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取这份备份，请检查文件是否完整。'**
+  String get backupInvalidEncryptionParameters;
+
+  /// No description provided for @backupSelectCategory.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择要备份或恢复的内容'**
+  String get backupSelectCategory;
+
+  /// No description provided for @backupBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'已有备份操作正在进行'**
+  String get backupBusy;
+
+  /// No description provided for @backupWriteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复失败，已还原原有数据。请检查可用空间后重试。'**
+  String get backupWriteFailed;
+
+  /// No description provided for @backupRecoveryRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据恢复尚未完成。请解锁设备、检查可用空间后重试。'**
+  String get backupRecoveryRequired;
+
+  /// No description provided for @backupRecoveryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复本机数据'**
+  String get backupRecoveryTitle;
+
+  /// No description provided for @backupOperationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作失败，请检查文件权限和可用空间后重试。'**
+  String get backupOperationFailed;
+
+  /// No description provided for @backupWebDavInvalidConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'请检查服务器地址、用户名和文件夹路径。'**
+  String get backupWebDavInvalidConfig;
+
+  /// No description provided for @backupWebDavAuthentication.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录失败，请检查用户名和密码。'**
+  String get backupWebDavAuthentication;
+
+  /// No description provided for @backupWebDavForbidden.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有操作权限，请检查服务器设置。'**
+  String get backupWebDavForbidden;
+
+  /// No description provided for @backupWebDavNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到备份，请刷新后重试。'**
+  String get backupWebDavNotFound;
+
+  /// No description provided for @backupWebDavMoveUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'此服务器暂不支持备份上传，请更换服务器。'**
+  String get backupWebDavMoveUnsupported;
+
+  /// No description provided for @backupWebDavMethodUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'此地址无法用于备份，请检查服务器设置。'**
+  String get backupWebDavMethodUnsupported;
+
+  /// No description provided for @backupWebDavRedirectRefused.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接地址已变更，请填写新的服务器地址。'**
+  String get backupWebDavRedirectRefused;
+
+  /// No description provided for @backupWebDavUnsafePath.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法访问这份备份，请检查文件夹设置。'**
+  String get backupWebDavUnsafePath;
+
+  /// No description provided for @backupWebDavInvalidResponse.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取服务器上的备份，请检查连接设置。'**
+  String get backupWebDavInvalidResponse;
+
+  /// No description provided for @backupWebDavConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法连接服务器，请检查网络和连接设置。'**
+  String get backupWebDavConnection;
+
+  /// No description provided for @backupWebDavTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接超时，请重试。'**
+  String get backupWebDavTimeout;
+
+  /// No description provided for @backupWebDavConflict.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法保存到此文件夹，原有备份未被覆盖。'**
+  String get backupWebDavConflict;
+
+  /// No description provided for @backupPreviewContents.
+  ///
+  /// In zh, this message translates to:
+  /// **'内容占比（压缩前）'**
+  String get backupPreviewContents;
+
+  /// No description provided for @backupEmptyCategory.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有内容，恢复后将清空'**
+  String get backupEmptyCategory;
 }
 
 class _AppLocalizationsDelegate

@@ -1,7 +1,7 @@
 part of '../user_manager.dart';
 
 extension UserManagerInitPart on UserManager {
-  Future<void> init() async {
+  Future<void> init({bool persistMigrations = true}) async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(UserManager._keyToken);
     _username = prefs.getString(UserManager._keyUsername);
@@ -13,6 +13,7 @@ extension UserManagerInitPart on UserManager {
     final savedCredentialsRaw = prefs.getString(
       UserManager._keySavedCredentials,
     );
+    _savedCredentials = [];
     if (savedCredentialsRaw != null && savedCredentialsRaw.isNotEmpty) {
       try {
         final decoded = jsonDecode(savedCredentialsRaw);
@@ -36,10 +37,12 @@ extension UserManagerInitPart on UserManager {
       _savedCredentials = [
         SavedCredential(username: _savedUsername!, password: _savedPassword!),
       ];
-      await prefs.setString(
-        UserManager._keySavedCredentials,
-        jsonEncode(_savedCredentials.map((e) => e.toJson()).toList()),
-      );
+      if (persistMigrations) {
+        await prefs.setString(
+          UserManager._keySavedCredentials,
+          jsonEncode(_savedCredentials.map((e) => e.toJson()).toList()),
+        );
+      }
     }
     _themeMode = ThemeMode.values[prefs.getInt(UserManager._keyThemeMode) ?? 0];
     final savedThemeColor = prefs.getString(UserManager._keyThemeColor);
@@ -59,13 +62,16 @@ extension UserManagerInitPart on UserManager {
     _bottomNavLabelMode = UserManager._loadBottomNavLabelMode(prefs);
     final savedNavOrder = prefs.getStringList(UserManager._keyNavOrder);
     _navOrder = UserManager._normalizeNavOrder(savedNavOrder);
-    if (savedNavOrder != null &&
+    if (persistMigrations &&
+        savedNavOrder != null &&
         savedNavOrder.join('\u0000') != _navOrder.join('\u0000')) {
       await prefs.setStringList(UserManager._keyNavOrder, _navOrder);
     }
     final savedLastNavKey = prefs.getString(UserManager._keyLastNavKey);
     _lastNavKey = UserManager._normalizeNavKey(savedLastNavKey);
-    if (savedLastNavKey != null && savedLastNavKey != _lastNavKey) {
+    if (persistMigrations &&
+        savedLastNavKey != null &&
+        savedLastNavKey != _lastNavKey) {
       await prefs.setString(UserManager._keyLastNavKey, _lastNavKey);
     }
     _desktopFontFamily =
@@ -219,8 +225,8 @@ extension UserManagerInitPart on UserManager {
     // Initialize domain-specific sub-stores with the same prefs instance.
     await reader.initFromPrefs(prefs);
     await comment.initFromPrefs(prefs);
-    await theme.initFromPrefs(prefs);
-    await network.initFromPrefs(prefs);
+    await theme.initFromPrefs(prefs, persistMigrations: persistMigrations);
+    await network.initFromPrefs(prefs, persistMigrations: persistMigrations);
 
     // Forward sub-store notifications so legacy listeners on UserManager
     // still rebuild when domain settings change. init() may run more than once

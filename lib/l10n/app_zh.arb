@@ -2053,5 +2053,160 @@
         "type": "int"
       }
     }
-  }
+  },
+  "backupTitle": "备份与同步",
+  "backupEntryDescription": "本地文件与 WebDAV 备份",
+  "backupContent": "备份内容",
+  "backupCategorySettings": "应用设置",
+  "backupCategoryHistory": "阅读历史",
+  "backupCategoryStatistics": "阅读统计",
+  "backupCategoryBookmarks": "书签",
+  "backupCategoryAccount": "账号信息",
+  "backupCategoryAiConnection": "AI 配置",
+  "backupEncryption": "备份文件加密",
+  "backupEncryptedFormat": "备份文件已加密",
+  "backupUnencryptedFormat": "备份文件未加密",
+  "backupPassword": "备份密码",
+  "backupPasswordNotSet": "未设置",
+  "backupPasswordRemembered": "已记住",
+  "backupPasswordSessionOnly": "已设置",
+  "backupPasswordExplanation": "请记好密码，旧备份仍需使用原来的密码。",
+  "backupConfirmPassword": "再次输入密码",
+  "backupPasswordMismatch": "两次输入的密码不一致",
+  "backupRememberPassword": "记住密码",
+  "backupDecryptPassword": "输入此备份的密码",
+  "backupLocal": "本地文件",
+  "backupWebDav": "WebDAV",
+  "backupSaveLocal": "导出到文件",
+  "backupImportLocal": "从文件恢复",
+  "backupPreview": "备份预览",
+  "backupCategorySize": "{count} 项 · {bytes} · {percent}%",
+  "@backupCategorySize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "bytes": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "backupFinalSize": "文件大小：{size}",
+  "@backupFinalSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "backupSensitiveWarningTitle": "备份文件未加密？",
+  "backupSensitiveWarning": "这份备份包含账号或 AI 连接信息，拿到文件的人和服务器管理员都能读取其中的账号和密钥。仍要继续吗？",
+  "backupAcceptRisk": "仍然继续",
+  "backupRestoreTitle": "选择恢复内容",
+  "backupRestoreWarning": "将覆盖所选内容，其他数据保持不变。",
+  "backupCategoryCountSize": "{count} 项 · {bytes}",
+  "@backupCategoryCountSize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "bytes": {
+        "type": "String"
+      }
+    }
+  },
+  "@backupRestoreCategoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupLegacyWarning": "已跳过 {count} 项不适用的数据。",
+  "@backupLegacyWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupRestore": "恢复",
+  "backupRestored": "恢复完成",
+  "backupSaved": "备份文件已保存",
+  "backupUploaded": "备份已上传",
+  "backupDeleted": "远端备份已删除",
+  "backupWebDavConfiguration": "连接设置",
+  "backupWebDavServer": "服务器地址",
+  "backupWebDavServerRequired": "请填写服务器地址",
+  "backupWebDavPresetTitle": "常用服务器",
+  "backupWebDavPresetJianguoyun": "坚果云",
+  "backupWebDavDirectory": "备份文件夹（可选）",
+  "backupWebDavDirectoryHint": "留空则保存到服务器根目录",
+  "backupWebDavUsername": "用户名",
+  "backupWebDavUsernameRequired": "请填写用户名",
+  "backupWebDavPassword": "密码",
+  "backupWebDavPasswordRequired": "请填写密码",
+  "backupSaveConfiguration": "保存",
+  "backupWebDavNotConfigured": "未设置服务器",
+  "backupSchedule": "定时备份",
+  "backupSchedulePasswordRequired": "请先设置备份密码",
+  "backupScheduleInterval": "备份间隔",
+  "backupScheduleMinutes": "分钟",
+  "backupScheduleHours": "小时",
+  "backupScheduleDays": "天",
+  "backupTestConnection": "测试",
+  "backupTestSucceeded": "连接正常",
+  "backupUpload": "上传",
+  "backupNoRemoteFiles": "暂无备份",
+  "backupRemoteFilesHint": "刷新以查看备份",
+  "backupDeleteTitle": "删除远端备份？",
+  "backupDeleteWarning": "确定删除「{name}」？删除后无法找回。",
+  "@backupDeleteWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "backupHttpWarningTitle": "继续使用此地址？",
+  "backupHttpWarning": "此连接无法保护你的账号和密码，仍要继续吗？",
+  "backupReading": "正在读取…",
+  "backupCompressing": "正在准备备份…",
+  "backupEncrypting": "正在加密备份…",
+  "backupDecoding": "正在读取备份…",
+  "backupTesting": "正在测试连接…",
+  "backupListing": "正在读取备份列表…",
+  "backupUploading": "正在上传…",
+  "backupDownloading": "正在下载…",
+  "backupRestoring": "正在恢复，请勿关闭应用…",
+  "backupDeleting": "正在删除…",
+  "backupCancelling": "正在取消…",
+  "backupCancelled": "操作已取消",
+  "backupTooLarge": "备份文件不得超过 16 MiB，解压内容不得超过 64 MiB。",
+  "backupPasswordRequired": "请输入备份密码",
+  "backupAuthenticationFailed": "密码不正确，或文件已损坏。",
+  "backupInvalidEncryptionParameters": "无法读取这份备份，请检查文件是否完整。",
+  "backupSelectCategory": "请选择要备份或恢复的内容",
+  "backupBusy": "已有备份操作正在进行",
+  "backupWriteFailed": "恢复失败，已还原原有数据。请检查可用空间后重试。",
+  "backupRecoveryRequired": "数据恢复尚未完成。请解锁设备、检查可用空间后重试。",
+  "backupRecoveryTitle": "恢复本机数据",
+  "backupOperationFailed": "操作失败，请检查文件权限和可用空间后重试。",
+  "backupWebDavInvalidConfig": "请检查服务器地址、用户名和文件夹路径。",
+  "backupWebDavAuthentication": "登录失败，请检查用户名和密码。",
+  "backupWebDavForbidden": "没有操作权限，请检查服务器设置。",
+  "backupWebDavNotFound": "找不到备份，请刷新后重试。",
+  "backupWebDavMoveUnsupported": "此服务器暂不支持备份上传，请更换服务器。",
+  "backupWebDavMethodUnsupported": "此地址无法用于备份，请检查服务器设置。",
+  "backupWebDavRedirectRefused": "连接地址已变更，请填写新的服务器地址。",
+  "backupWebDavUnsafePath": "无法访问这份备份，请检查文件夹设置。",
+  "backupWebDavInvalidResponse": "无法读取服务器上的备份，请检查连接设置。",
+  "backupWebDavConnection": "无法连接服务器，请检查网络和连接设置。",
+  "backupWebDavTimeout": "连接超时，请重试。",
+  "backupWebDavConflict": "无法保存到此文件夹，原有备份未被覆盖。",
+  "backupPreviewContents": "内容占比（压缩前）",
+  "backupEmptyCategory": "没有内容，恢复后将清空"
 }

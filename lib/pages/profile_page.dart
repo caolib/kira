@@ -41,9 +41,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _userActionsExpanded = false;
 
   /// 最近一次阅读记录,供「继续阅读」入口展示。null 表示无本地阅读记录。
-  ({String pathWord, ReadingRecord record, String comicName})?
-  _continueRecord;
-
+  ({String pathWord, ReadingRecord record, String comicName})? _continueRecord;
 
   /// extension part 文件里的成员不是 State 子类成员，不能直接调用受保护的
   /// [setState]，统一经由这个转发方法。
@@ -89,7 +87,9 @@ class _ProfilePageState extends State<ProfilePage> {
     var comicName = record.comicName;
     if (comicName.isEmpty) {
       try {
-        final data = await ComicDetailRepository(latest.pathWord).loadFromCache();
+        final data = await ComicDetailRepository(
+          latest.pathWord,
+        ).loadFromCache();
         comicName = data?.comic.name ?? '';
       } catch (e, stack) {
         unawaited(
@@ -110,7 +110,6 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     });
   }
-
 
   @override
   Widget build(BuildContext context) {

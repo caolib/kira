@@ -54,6 +54,7 @@ extension _CacheEntryFormat on _CacheManagementPageState {
       'banner_',
       'download_',
       'local_bookshelf_',
+      'backup_',
     ];
     return settingPrefixes.any(key.startsWith);
   }

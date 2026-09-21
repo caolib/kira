@@ -3156,6 +3156,329 @@ class AppLocalizationsZh extends AppLocalizations {
   String downloadForegroundImages(int done, int total) {
     return '图片 $done/$total';
   }
+
+  @override
+  String get backupTitle => '备份与同步';
+
+  @override
+  String get backupEntryDescription => '本地文件与 WebDAV 备份';
+
+  @override
+  String get backupContent => '备份内容';
+
+  @override
+  String get backupCategorySettings => '应用设置';
+
+  @override
+  String get backupCategoryHistory => '阅读历史';
+
+  @override
+  String get backupCategoryStatistics => '阅读统计';
+
+  @override
+  String get backupCategoryBookmarks => '书签';
+
+  @override
+  String get backupCategoryAccount => '账号信息';
+
+  @override
+  String get backupCategoryAiConnection => 'AI 配置';
+
+  @override
+  String get backupEncryption => '备份文件加密';
+
+  @override
+  String get backupEncryptedFormat => '备份文件已加密';
+
+  @override
+  String get backupUnencryptedFormat => '备份文件未加密';
+
+  @override
+  String get backupPassword => '备份密码';
+
+  @override
+  String get backupPasswordNotSet => '未设置';
+
+  @override
+  String get backupPasswordRemembered => '已记住';
+
+  @override
+  String get backupPasswordSessionOnly => '已设置';
+
+  @override
+  String get backupPasswordExplanation => '请记好密码，旧备份仍需使用原来的密码。';
+
+  @override
+  String get backupConfirmPassword => '再次输入密码';
+
+  @override
+  String get backupPasswordMismatch => '两次输入的密码不一致';
+
+  @override
+  String get backupRememberPassword => '记住密码';
+
+  @override
+  String get backupDecryptPassword => '输入此备份的密码';
+
+  @override
+  String get backupLocal => '本地文件';
+
+  @override
+  String get backupWebDav => 'WebDAV';
+
+  @override
+  String get backupSaveLocal => '导出到文件';
+
+  @override
+  String get backupImportLocal => '从文件恢复';
+
+  @override
+  String get backupPreview => '备份预览';
+
+  @override
+  String backupCategorySize(int count, String bytes, String percent) {
+    return '$count 项 · $bytes · $percent%';
+  }
+
+  @override
+  String backupFinalSize(String size) {
+    return '文件大小：$size';
+  }
+
+  @override
+  String get backupSensitiveWarningTitle => '备份文件未加密？';
+
+  @override
+  String get backupSensitiveWarning =>
+      '这份备份包含账号或 AI 连接信息，拿到文件的人和服务器管理员都能读取其中的账号和密钥。仍要继续吗？';
+
+  @override
+  String get backupAcceptRisk => '仍然继续';
+
+  @override
+  String get backupRestoreTitle => '选择恢复内容';
+
+  @override
+  String get backupRestoreWarning => '将覆盖所选内容，其他数据保持不变。';
+
+  @override
+  String backupCategoryCountSize(int count, String bytes) {
+    return '$count 项 · $bytes';
+  }
+
+  @override
+  String backupLegacyWarning(int count) {
+    return '已跳过 $count 项不适用的数据。';
+  }
+
+  @override
+  String get backupRestore => '恢复';
+
+  @override
+  String get backupRestored => '恢复完成';
+
+  @override
+  String get backupSaved => '备份文件已保存';
+
+  @override
+  String get backupUploaded => '备份已上传';
+
+  @override
+  String get backupDeleted => '远端备份已删除';
+
+  @override
+  String get backupWebDavConfiguration => '连接设置';
+
+  @override
+  String get backupWebDavServer => '服务器地址';
+
+  @override
+  String get backupWebDavServerRequired => '请填写服务器地址';
+
+  @override
+  String get backupWebDavPresetTitle => '常用服务器';
+
+  @override
+  String get backupWebDavPresetJianguoyun => '坚果云';
+
+  @override
+  String get backupWebDavDirectory => '备份文件夹（可选）';
+
+  @override
+  String get backupWebDavDirectoryHint => '留空则保存到服务器根目录';
+
+  @override
+  String get backupWebDavUsername => '用户名';
+
+  @override
+  String get backupWebDavUsernameRequired => '请填写用户名';
+
+  @override
+  String get backupWebDavPassword => '密码';
+
+  @override
+  String get backupWebDavPasswordRequired => '请填写密码';
+
+  @override
+  String get backupSaveConfiguration => '保存';
+
+  @override
+  String get backupWebDavNotConfigured => '未设置服务器';
+
+  @override
+  String get backupSchedule => '定时备份';
+
+  @override
+  String get backupSchedulePasswordRequired => '请先设置备份密码';
+
+  @override
+  String get backupScheduleInterval => '备份间隔';
+
+  @override
+  String get backupScheduleMinutes => '分钟';
+
+  @override
+  String get backupScheduleHours => '小时';
+
+  @override
+  String get backupScheduleDays => '天';
+
+  @override
+  String get backupTestConnection => '测试';
+
+  @override
+  String get backupTestSucceeded => '连接正常';
+
+  @override
+  String get backupUpload => '上传';
+
+  @override
+  String get backupNoRemoteFiles => '暂无备份';
+
+  @override
+  String get backupRemoteFilesHint => '刷新以查看备份';
+
+  @override
+  String get backupDeleteTitle => '删除远端备份？';
+
+  @override
+  String backupDeleteWarning(String name) {
+    return '确定删除「$name」？删除后无法找回。';
+  }
+
+  @override
+  String get backupHttpWarningTitle => '继续使用此地址？';
+
+  @override
+  String get backupHttpWarning => '此连接无法保护你的账号和密码，仍要继续吗？';
+
+  @override
+  String get backupReading => '正在读取…';
+
+  @override
+  String get backupCompressing => '正在准备备份…';
+
+  @override
+  String get backupEncrypting => '正在加密备份…';
+
+  @override
+  String get backupDecoding => '正在读取备份…';
+
+  @override
+  String get backupTesting => '正在测试连接…';
+
+  @override
+  String get backupListing => '正在读取备份列表…';
+
+  @override
+  String get backupUploading => '正在上传…';
+
+  @override
+  String get backupDownloading => '正在下载…';
+
+  @override
+  String get backupRestoring => '正在恢复，请勿关闭应用…';
+
+  @override
+  String get backupDeleting => '正在删除…';
+
+  @override
+  String get backupCancelling => '正在取消…';
+
+  @override
+  String get backupCancelled => '操作已取消';
+
+  @override
+  String get backupTooLarge => '备份文件不得超过 16 MiB，解压内容不得超过 64 MiB。';
+
+  @override
+  String get backupPasswordRequired => '请输入备份密码';
+
+  @override
+  String get backupAuthenticationFailed => '密码不正确，或文件已损坏。';
+
+  @override
+  String get backupInvalidEncryptionParameters => '无法读取这份备份，请检查文件是否完整。';
+
+  @override
+  String get backupSelectCategory => '请选择要备份或恢复的内容';
+
+  @override
+  String get backupBusy => '已有备份操作正在进行';
+
+  @override
+  String get backupWriteFailed => '恢复失败，已还原原有数据。请检查可用空间后重试。';
+
+  @override
+  String get backupRecoveryRequired => '数据恢复尚未完成。请解锁设备、检查可用空间后重试。';
+
+  @override
+  String get backupRecoveryTitle => '恢复本机数据';
+
+  @override
+  String get backupOperationFailed => '操作失败，请检查文件权限和可用空间后重试。';
+
+  @override
+  String get backupWebDavInvalidConfig => '请检查服务器地址、用户名和文件夹路径。';
+
+  @override
+  String get backupWebDavAuthentication => '登录失败，请检查用户名和密码。';
+
+  @override
+  String get backupWebDavForbidden => '没有操作权限，请检查服务器设置。';
+
+  @override
+  String get backupWebDavNotFound => '找不到备份，请刷新后重试。';
+
+  @override
+  String get backupWebDavMoveUnsupported => '此服务器暂不支持备份上传，请更换服务器。';
+
+  @override
+  String get backupWebDavMethodUnsupported => '此地址无法用于备份，请检查服务器设置。';
+
+  @override
+  String get backupWebDavRedirectRefused => '连接地址已变更，请填写新的服务器地址。';
+
+  @override
+  String get backupWebDavUnsafePath => '无法访问这份备份，请检查文件夹设置。';
+
+  @override
+  String get backupWebDavInvalidResponse => '无法读取服务器上的备份，请检查连接设置。';
+
+  @override
+  String get backupWebDavConnection => '无法连接服务器，请检查网络和连接设置。';
+
+  @override
+  String get backupWebDavTimeout => '连接超时，请重试。';
+
+  @override
+  String get backupWebDavConflict => '无法保存到此文件夹，原有备份未被覆盖。';
+
+  @override
+  String get backupPreviewContents => '内容占比（压缩前）';
+
+  @override
+  String get backupEmptyCategory => '没有内容，恢复后将清空';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -6310,4 +6633,327 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String downloadForegroundImages(int done, int total) {
     return '圖片 $done/$total';
   }
+
+  @override
+  String get backupTitle => '備份與同步';
+
+  @override
+  String get backupEntryDescription => '本機檔案與 WebDAV 備份';
+
+  @override
+  String get backupContent => '備份內容';
+
+  @override
+  String get backupCategorySettings => '應用程式設定';
+
+  @override
+  String get backupCategoryHistory => '閱讀歷史';
+
+  @override
+  String get backupCategoryStatistics => '閱讀統計';
+
+  @override
+  String get backupCategoryBookmarks => '書籤';
+
+  @override
+  String get backupCategoryAccount => '帳號資訊';
+
+  @override
+  String get backupCategoryAiConnection => 'AI 設定';
+
+  @override
+  String get backupEncryption => '備份檔案加密';
+
+  @override
+  String get backupEncryptedFormat => '備份檔案已加密';
+
+  @override
+  String get backupUnencryptedFormat => '備份檔案未加密';
+
+  @override
+  String get backupPassword => '備份密碼';
+
+  @override
+  String get backupPasswordNotSet => '未設定';
+
+  @override
+  String get backupPasswordRemembered => '已記住';
+
+  @override
+  String get backupPasswordSessionOnly => '已設定';
+
+  @override
+  String get backupPasswordExplanation => '請記好密碼，舊備份仍需使用原來的密碼。';
+
+  @override
+  String get backupConfirmPassword => '再次輸入密碼';
+
+  @override
+  String get backupPasswordMismatch => '兩次輸入的密碼不一致';
+
+  @override
+  String get backupRememberPassword => '記住密碼';
+
+  @override
+  String get backupDecryptPassword => '輸入此備份的密碼';
+
+  @override
+  String get backupLocal => '本機檔案';
+
+  @override
+  String get backupWebDav => 'WebDAV';
+
+  @override
+  String get backupSaveLocal => '匯出至檔案';
+
+  @override
+  String get backupImportLocal => '從檔案還原';
+
+  @override
+  String get backupPreview => '備份預覽';
+
+  @override
+  String backupCategorySize(int count, String bytes, String percent) {
+    return '$count 項 · $bytes · $percent%';
+  }
+
+  @override
+  String backupFinalSize(String size) {
+    return '檔案大小：$size';
+  }
+
+  @override
+  String get backupSensitiveWarningTitle => '備份檔案未加密？';
+
+  @override
+  String get backupSensitiveWarning =>
+      '這份備份包含帳號或 AI 連線資訊，拿到檔案的人和伺服器管理員都能讀取其中的帳號和金鑰。仍要繼續嗎？';
+
+  @override
+  String get backupAcceptRisk => '仍然繼續';
+
+  @override
+  String get backupRestoreTitle => '選擇還原內容';
+
+  @override
+  String get backupRestoreWarning => '將覆蓋所選內容，其他資料保持不變。';
+
+  @override
+  String backupCategoryCountSize(int count, String bytes) {
+    return '$count 項 · $bytes';
+  }
+
+  @override
+  String backupLegacyWarning(int count) {
+    return '已略過 $count 項不適用的資料。';
+  }
+
+  @override
+  String get backupRestore => '還原';
+
+  @override
+  String get backupRestored => '還原完成';
+
+  @override
+  String get backupSaved => '備份檔案已儲存';
+
+  @override
+  String get backupUploaded => '備份已上傳';
+
+  @override
+  String get backupDeleted => '遠端備份已刪除';
+
+  @override
+  String get backupWebDavConfiguration => '連線設定';
+
+  @override
+  String get backupWebDavServer => '伺服器位址';
+
+  @override
+  String get backupWebDavServerRequired => '請填寫伺服器位址';
+
+  @override
+  String get backupWebDavPresetTitle => '常用伺服器';
+
+  @override
+  String get backupWebDavPresetJianguoyun => '堅果雲';
+
+  @override
+  String get backupWebDavDirectory => '備份資料夾（選填）';
+
+  @override
+  String get backupWebDavDirectoryHint => '留空則儲存到伺服器根目錄';
+
+  @override
+  String get backupWebDavUsername => '使用者名稱';
+
+  @override
+  String get backupWebDavUsernameRequired => '請填寫使用者名稱';
+
+  @override
+  String get backupWebDavPassword => '密碼';
+
+  @override
+  String get backupWebDavPasswordRequired => '請填寫密碼';
+
+  @override
+  String get backupSaveConfiguration => '儲存';
+
+  @override
+  String get backupWebDavNotConfigured => '未設定伺服器';
+
+  @override
+  String get backupSchedule => '定時備份';
+
+  @override
+  String get backupSchedulePasswordRequired => '請先設定備份密碼';
+
+  @override
+  String get backupScheduleInterval => '備份間隔';
+
+  @override
+  String get backupScheduleMinutes => '分鐘';
+
+  @override
+  String get backupScheduleHours => '小時';
+
+  @override
+  String get backupScheduleDays => '天';
+
+  @override
+  String get backupTestConnection => '測試';
+
+  @override
+  String get backupTestSucceeded => '連線正常';
+
+  @override
+  String get backupUpload => '上傳';
+
+  @override
+  String get backupNoRemoteFiles => '暫無備份';
+
+  @override
+  String get backupRemoteFilesHint => '重新整理以查看備份';
+
+  @override
+  String get backupDeleteTitle => '刪除遠端備份？';
+
+  @override
+  String backupDeleteWarning(String name) {
+    return '確定刪除「$name」？刪除後無法找回。';
+  }
+
+  @override
+  String get backupHttpWarningTitle => '繼續使用此位址？';
+
+  @override
+  String get backupHttpWarning => '此連線無法保護你的帳號和密碼，仍要繼續嗎？';
+
+  @override
+  String get backupReading => '正在讀取…';
+
+  @override
+  String get backupCompressing => '正在準備備份…';
+
+  @override
+  String get backupEncrypting => '正在加密備份…';
+
+  @override
+  String get backupDecoding => '正在讀取備份…';
+
+  @override
+  String get backupTesting => '正在測試連線…';
+
+  @override
+  String get backupListing => '正在讀取備份清單…';
+
+  @override
+  String get backupUploading => '正在上傳…';
+
+  @override
+  String get backupDownloading => '正在下載…';
+
+  @override
+  String get backupRestoring => '正在還原，請勿關閉應用程式…';
+
+  @override
+  String get backupDeleting => '正在刪除…';
+
+  @override
+  String get backupCancelling => '正在取消…';
+
+  @override
+  String get backupCancelled => '操作已取消';
+
+  @override
+  String get backupTooLarge => '備份檔案不得超過 16 MiB，解壓內容不得超過 64 MiB。';
+
+  @override
+  String get backupPasswordRequired => '請輸入備份密碼';
+
+  @override
+  String get backupAuthenticationFailed => '密碼不正確，或檔案已損壞。';
+
+  @override
+  String get backupInvalidEncryptionParameters => '無法讀取這份備份，請檢查檔案是否完整。';
+
+  @override
+  String get backupSelectCategory => '請選擇要備份或還原的內容';
+
+  @override
+  String get backupBusy => '已有備份操作正在進行';
+
+  @override
+  String get backupWriteFailed => '還原失敗，已回復原有資料。請檢查可用空間後重試。';
+
+  @override
+  String get backupRecoveryRequired => '資料還原尚未完成。請解鎖裝置、檢查可用空間後重試。';
+
+  @override
+  String get backupRecoveryTitle => '回復本機資料';
+
+  @override
+  String get backupOperationFailed => '操作失敗，請檢查檔案權限和可用空間後重試。';
+
+  @override
+  String get backupWebDavInvalidConfig => '請檢查伺服器位址、使用者名稱和資料夾路徑。';
+
+  @override
+  String get backupWebDavAuthentication => '登入失敗，請檢查使用者名稱和密碼。';
+
+  @override
+  String get backupWebDavForbidden => '沒有操作權限，請檢查伺服器設定。';
+
+  @override
+  String get backupWebDavNotFound => '找不到備份，請重新整理後重試。';
+
+  @override
+  String get backupWebDavMoveUnsupported => '此伺服器暫不支援備份上傳，請更換伺服器。';
+
+  @override
+  String get backupWebDavMethodUnsupported => '此位址無法用於備份，請檢查伺服器設定。';
+
+  @override
+  String get backupWebDavRedirectRefused => '連線位址已變更，請填寫新的伺服器位址。';
+
+  @override
+  String get backupWebDavUnsafePath => '無法存取這份備份，請檢查資料夾設定。';
+
+  @override
+  String get backupWebDavInvalidResponse => '無法讀取伺服器上的備份，請檢查連線設定。';
+
+  @override
+  String get backupWebDavConnection => '無法連線伺服器，請檢查網路和連線設定。';
+
+  @override
+  String get backupWebDavTimeout => '連線逾時，請重試。';
+
+  @override
+  String get backupWebDavConflict => '無法儲存至此資料夾，原有備份未被覆蓋。';
+
+  @override
+  String get backupPreviewContents => '內容占比（壓縮前）';
+
+  @override
+  String get backupEmptyCategory => '沒有內容，還原後將清空';
 }

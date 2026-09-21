@@ -282,9 +282,10 @@ class AiSettings extends ChangeNotifier {
   ///
   /// [load] 由 `_loaded` 守卫,进程内只生效一次;导入备份后 prefs 已变,
   /// 必须走这条路径才能让内存态跟上。
-  Future<void> reloadFromPrefs() => _loadFromPrefs();
+  Future<void> reloadFromPrefs({bool persistMigrations = true}) =>
+      _loadFromPrefs(persistMigrations: persistMigrations);
 
-  Future<void> _loadFromPrefs() async {
+  Future<void> _loadFromPrefs({bool persistMigrations = true}) async {
     final sp = await SharedPreferences.getInstance();
     _apiKey = sp.getString(_keyApiKey);
     _baseUrl = sp.getString(_keyBaseUrl) ?? defaultBaseUrl;
@@ -304,11 +305,14 @@ class AiSettings extends ChangeNotifier {
     // Seed built-in models into the custom model list on first use.
     if (_customModels.isEmpty) {
       _customModels = List.from(availableModels);
-      await sp.setStringList(_keyCustomModels, _customModels);
+      if (persistMigrations) {
+        await sp.setStringList(_keyCustomModels, _customModels);
+      }
     }
-    await _loadProviders(sp);
-    await _loadPresets(sp);
+    await _loadProviders(sp, persistMigrations: persistMigrations);
+    await _loadPresets(sp, persistMigrations: persistMigrations);
     _syncPrompt();
+    _loaded = true;
     notifyListeners();
   }
 
@@ -330,7 +334,10 @@ class AiSettings extends ChangeNotifier {
     return parseApiFormatName(value);
   }
 
-  Future<void> _loadPresets(SharedPreferences sp) async {
+  Future<void> _loadPresets(
+    SharedPreferences sp, {
+    bool persistMigrations = true,
+  }) async {
     final raw = sp.getString(_keyPresets);
     var migrated = false;
     if (raw != null && raw.isNotEmpty) {
@@ -372,7 +379,7 @@ class AiSettings extends ChangeNotifier {
       _activePresetId = presetBasicId;
       migrated = true;
     }
-    if (migrated) {
+    if (migrated && persistMigrations) {
       await sp.setString(
         _keyPresets,
         jsonEncode(_presets.map((e) => e.toJson()).toList()),

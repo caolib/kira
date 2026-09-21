@@ -31,6 +31,9 @@ class SecureCredentialStore {
   static const _keyPassword = 'saved_password';
   static const _keyCredentials = 'saved_credentials';
   static const _keyMigrated = 'credentials_migrated_to_secure';
+  static const _keyWebDavCredentials = 'backup_webdav_credentials_v1';
+  static const _keyBackupPassword = 'backup_password_v1';
+  static const _keyBackupRollbackKey = 'backup_rollback_key_v1';
 
   // ── Read ───────────────────────────────────────────────────────────
 
@@ -49,6 +52,20 @@ class SecureCredentialStore {
   Future<String?> readUsername() => doRead(_keyUsername);
 
   Future<String?> readPassword() => doRead(_keyPassword);
+
+  Future<String?> readWebDavCredentials() => doRead(_keyWebDavCredentials);
+  Future<String?> readBackupPassword() => doRead(_keyBackupPassword);
+  Future<String?> readBackupRollbackKey() => doRead(_keyBackupRollbackKey);
+
+  Future<void> writeWebDavCredentials(String? value) =>
+      _writeOptional(_keyWebDavCredentials, value);
+  Future<void> writeBackupPassword(String? value) =>
+      _writeOptional(_keyBackupPassword, value);
+  Future<void> writeBackupRollbackKey(String? value) =>
+      _writeOptional(_keyBackupRollbackKey, value);
+
+  Future<void> _writeOptional(String key, String? value) =>
+      value == null ? doDelete(key) : doWrite(key, value);
 
   Future<List<SavedCredential>> readCredentials() async {
     final raw = await doRead(_keyCredentials);
@@ -101,6 +118,9 @@ class SecureCredentialStore {
     await doDelete(_keyUsername);
     await doDelete(_keyPassword);
     await doDelete(_keyCredentials);
+    await doDelete(_keyWebDavCredentials);
+    await doDelete(_keyBackupPassword);
+    await doDelete(_keyBackupRollbackKey);
   }
 
   // ── Migration ──────────────────────────────────────────────────────

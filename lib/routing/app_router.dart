@@ -6,6 +6,7 @@ import '../pages/about_page.dart' show AboutPage;
 import '../pages/ai_config_page.dart';
 import '../pages/app_log_page.dart';
 import '../pages/appearance_page.dart';
+import '../pages/backup_page.dart';
 import '../pages/bookmarks_page.dart';
 import '../pages/bookshelf_page.dart';
 import '../pages/browse_history_page.dart';
@@ -55,6 +56,7 @@ final class AppRoutes {
   static const register = 'register';
   static const webviewLogin = 'webview_login';
   static const general = 'general';
+  static const backup = 'backup';
   static const appearance = 'appearance';
   static const network = 'network';
   static const aiConfig = 'ai_config';
@@ -292,6 +294,11 @@ GoRouter createAppRouter() {
         path: '/general',
         name: AppRoutes.general,
         builder: (_, _) => const GeneralPage(),
+      ),
+      GoRoute(
+        path: '/general/backup',
+        name: AppRoutes.backup,
+        builder: (_, _) => const BackupPage(),
       ),
       GoRoute(
         path: '/appearance',

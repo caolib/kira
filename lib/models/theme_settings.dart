@@ -129,7 +129,10 @@ class ThemeSettings extends PrefsStore {
 
   // ── Init ───────────────────────────────────────────────────────────
 
-  Future<void> initFromPrefs(SharedPreferences prefs) async {
+  Future<void> initFromPrefs(
+    SharedPreferences prefs, {
+    bool persistMigrations = true,
+  }) async {
     _themeMode = ThemeMode.values[prefs.getInt(_keyThemeMode) ?? 0];
     final savedThemeColor = prefs.getString(_keyThemeColor);
     _themeColor = savedThemeColor == customThemeOptionId
@@ -154,7 +157,8 @@ class ThemeSettings extends PrefsStore {
     _bottomNavLabelMode = _loadBottomNavLabelMode(prefs);
     final savedNavOrder = prefs.getStringList(_keyNavOrder);
     _navOrder = _normalizeNavOrder(savedNavOrder);
-    if (savedNavOrder != null &&
+    if (persistMigrations &&
+        savedNavOrder != null &&
         savedNavOrder.join('\u0000') != _navOrder.join('\u0000')) {
       await prefs.setStringList(_keyNavOrder, _navOrder);
     }
@@ -162,7 +166,9 @@ class ThemeSettings extends PrefsStore {
     _backExitConfirm = prefs.getBool(_keyBackExitConfirm) ?? true;
     final savedLastNavKey = prefs.getString(_keyLastNavKey);
     _lastNavKey = _normalizeNavKey(savedLastNavKey);
-    if (savedLastNavKey != null && savedLastNavKey != _lastNavKey) {
+    if (persistMigrations &&
+        savedLastNavKey != null &&
+        savedLastNavKey != _lastNavKey) {
       await prefs.setString(_keyLastNavKey, _lastNavKey);
     }
     _desktopFontFamily = prefs.getString(_keyDesktopFontFamily) ?? '';

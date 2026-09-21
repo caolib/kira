@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:system_fonts/system_fonts.dart';
 
 import '../api/ai_api.dart';
+import '../backup/backup_category.dart';
+import '../backup/backup_error.dart';
 import '../models/user_manager.dart';
 import 'app_logger.dart';
 import 'bookmark_store.dart';
@@ -20,35 +22,84 @@ import 'reading_stats.dart';
 ///
 /// 每个子系统独立容错:任一个失败只记日志,不阻断其余部分——否则用户刚
 /// 导入的其余设置会一起失效。
-Future<void> reloadRuntimeSettings() async {
-  await _reloadStep('user_manager', () => UserManager().init());
-  await _reloadStep(
-    'download_manager',
-    () => DownloadManager().reloadFromPrefs(),
-  );
-  await _reloadStep('ai_settings', () => AiSettings().reloadFromPrefs());
-  await _reloadStep('app_logger', () => AppLogger.instance.reloadFromPrefs());
-  await _reloadStep(
-    'reading_stats',
-    () async => ReadingStats.reloadFromPrefs(),
-  );
-  await _reloadStep(
-    'font_manager',
-    () async => FontManager().reloadFromPrefs(),
-  );
-  await _reloadStep('bookmarks', () => BookmarkStore().reload());
-  await _reloadStep('fonts', _reapplyFonts);
+Future<void> reloadRuntimeSettings({
+  Set<BackupCategory>? categories,
+  bool strict = false,
+}) async {
+  bool includes(BackupCategory category) =>
+      categories == null || categories.contains(category);
+  final settings = includes(BackupCategory.settings);
+  if (settings || includes(BackupCategory.account)) {
+    await _reloadStep(
+      'user_manager',
+      () => UserManager().init(persistMigrations: categories == null),
+      strict: strict,
+    );
+  }
+  if (settings) {
+    await _reloadStep(
+      'download_manager',
+      () => categories == null
+          ? DownloadManager().reloadFromPrefs()
+          : DownloadManager().reloadScalarSettings(),
+      strict: strict,
+    );
+  }
+  if (settings || includes(BackupCategory.aiConnection)) {
+    await _reloadStep(
+      'ai_settings',
+      () => AiSettings().reloadFromPrefs(persistMigrations: categories == null),
+      strict: strict,
+    );
+  }
+  if (settings) {
+    await _reloadStep(
+      'app_logger',
+      () => AppLogger.instance.reloadFromPrefs(),
+      strict: strict,
+    );
+    await _reloadStep(
+      'font_manager',
+      () async => FontManager().reloadFromPrefs(),
+      strict: strict,
+    );
+  }
+  if (includes(BackupCategory.readingStatistics)) {
+    await _reloadStep(
+      'reading_stats',
+      () async => ReadingStats.reloadFromPrefs(),
+      strict: strict,
+    );
+  }
+  if (includes(BackupCategory.bookmarks)) {
+    await _reloadStep(
+      'bookmarks',
+      () => BookmarkStore().reload(),
+      strict: strict,
+    );
+  }
+  // A missing desktop font is not a storage-transaction failure.
+  if (settings) await _reloadStep('fonts', _reapplyFonts);
 }
 
-Future<void> _reloadStep(String source, Future<void> Function() step) async {
+Future<void> _reloadStep(
+  String source,
+  Future<void> Function() step, {
+  bool strict = false,
+}) async {
   try {
     await step();
   } catch (e, stack) {
     await AppLogger.instance.recordWarning(
-      e,
+      strict
+          ? const SettingsBackupException(SettingsBackupErrorCode.writeFailed)
+          : e,
       stackTrace: stack,
       source: 'settings_reload.$source',
     );
+    if (strict) {
+      throw const SettingsBackupException(SettingsBackupErrorCode.writeFailed);
+    }
   }
 }
 

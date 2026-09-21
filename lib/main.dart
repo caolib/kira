@@ -16,6 +16,7 @@ import 'api/copy_settings_auto_updater.dart';
 import 'l10n/app_localizations.dart';
 import 'models/theme_settings.dart';
 import 'models/user_manager.dart';
+import 'providers/backup_providers.dart';
 import 'routing/app_router.dart';
 import 'theme/app_radius.dart';
 import 'theme/app_typography.dart';
@@ -27,6 +28,8 @@ import 'utils/download_manager.dart';
 import 'utils/font_manager.dart';
 import 'utils/kira_links.dart';
 import 'utils/network_proxy.dart';
+import 'utils/settings_backup.dart';
+import 'widgets/backup_recovery_app.dart';
 
 bool get isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
@@ -63,6 +66,21 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      final backups = SettingsBackupService();
+      try {
+        await backups.recoverPendingRestore();
+      } catch (_) {
+        final recovered = Completer<void>();
+        runApp(
+          BackupRecoveryApp(
+            onRetry: () async {
+              await backups.recoverPendingRestore();
+              if (!recovered.isCompleted) recovered.complete();
+            },
+          ),
+        );
+        await recovered.future;
+      }
       await AppLogger.instance.init();
 
       FlutterError.onError = (details) {
@@ -223,6 +241,8 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
     super.initState();
     _user.addListener(_onChanged);
     WidgetsBinding.instance.addObserver(this);
+    // 定时备份只在应用运行期间生效：启动后复查一次是否已到期。
+    ref.read(backupSchedulerProvider).start();
     unawaited(
       DisplayModePreference.applyRefreshRate(_user.displayModeRefreshRate),
     );

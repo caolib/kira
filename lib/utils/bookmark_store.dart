@@ -86,6 +86,8 @@ class BookmarkStore extends ChangeNotifier {
 
   final List<ComicBookmark> _bookmarks = [];
   bool _loaded = false;
+  bool _restoring = false;
+  final Set<Future<void>> _writes = {};
 
   List<ComicBookmark> get bookmarks => List.unmodifiable(_bookmarks);
 
@@ -125,6 +127,7 @@ class BookmarkStore extends ChangeNotifier {
     required int page,
   }) async {
     await ensureLoaded();
+    if (_restoring) return isBookmarked(chapterUuid, page);
     final index = _bookmarks.indexWhere(
       (b) => b.chapterUuid == chapterUuid && b.page == page,
     );
@@ -155,6 +158,7 @@ class BookmarkStore extends ChangeNotifier {
 
   Future<void> remove(String id) async {
     await ensureLoaded();
+    if (_restoring) return;
     final index = _bookmarks.indexWhere((b) => b.id == id);
     if (index < 0) return;
     _bookmarks.removeAt(index);
@@ -164,6 +168,7 @@ class BookmarkStore extends ChangeNotifier {
   /// 删除某部漫画的全部书签，返回被删除的书签（用于撤销）。
   Future<List<ComicBookmark>> removeForComic(String pathWord) async {
     await ensureLoaded();
+    if (_restoring) return const [];
     final removed = _bookmarks.where((b) => b.pathWord == pathWord).toList();
     if (removed.isEmpty) return const [];
     _bookmarks.removeWhere((b) => b.pathWord == pathWord);
@@ -174,6 +179,7 @@ class BookmarkStore extends ChangeNotifier {
   /// 清空全部书签，返回被删除的书签（用于撤销）。
   Future<List<ComicBookmark>> clear() async {
     await ensureLoaded();
+    if (_restoring) return const [];
     if (_bookmarks.isEmpty) return const [];
     final removed = List<ComicBookmark>.of(_bookmarks);
     _bookmarks.clear();
@@ -184,6 +190,7 @@ class BookmarkStore extends ChangeNotifier {
   /// 批量恢复书签（撤销删除），按标记时间倒序归并。
   Future<void> restoreAll(List<ComicBookmark> items) async {
     await ensureLoaded();
+    if (_restoring) return;
     final existing = _bookmarks.map((b) => b.id).toSet();
     _bookmarks.addAll(items.where((b) => !existing.contains(b.id)));
     _bookmarks.sort(_byNewest);
@@ -203,6 +210,16 @@ class BookmarkStore extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
+    final writing = _write();
+    _writes.add(writing);
+    try {
+      await writing;
+    } finally {
+      _writes.remove(writing);
+    }
+  }
+
+  Future<void> _write() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _key,
@@ -210,6 +227,15 @@ class BookmarkStore extends ChangeNotifier {
     );
     notifyListeners();
   }
+
+  Future<void> pauseForRestore() async {
+    _restoring = true;
+    await flush();
+  }
+
+  Future<void> flush() => Future.wait(_writes.toList());
+
+  void resumeAfterRestore() => _restoring = false;
 
   /// 从磁盘重新加载。导入备份或重置应用覆写了 SharedPreferences 后调用，
   /// 使内存副本与磁盘一致。

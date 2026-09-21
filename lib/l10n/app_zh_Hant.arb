@@ -2029,5 +2029,153 @@
         "type": "int"
       }
     }
-  }
+  },
+  "backupTitle": "備份與同步",
+  "backupEntryDescription": "本機檔案與 WebDAV 備份",
+  "backupContent": "備份內容",
+  "backupCategorySettings": "應用程式設定",
+  "backupCategoryHistory": "閱讀歷史",
+  "backupCategoryStatistics": "閱讀統計",
+  "backupCategoryBookmarks": "書籤",
+  "backupCategoryAccount": "帳號資訊",
+  "backupCategoryAiConnection": "AI 設定",
+  "backupEncryption": "備份檔案加密",
+  "backupEncryptedFormat": "備份檔案已加密",
+  "backupUnencryptedFormat": "備份檔案未加密",
+  "backupPassword": "備份密碼",
+  "backupPasswordNotSet": "未設定",
+  "backupPasswordRemembered": "已記住",
+  "backupPasswordSessionOnly": "已設定",
+  "backupPasswordExplanation": "請記好密碼，舊備份仍需使用原來的密碼。",
+  "backupConfirmPassword": "再次輸入密碼",
+  "backupPasswordMismatch": "兩次輸入的密碼不一致",
+  "backupRememberPassword": "記住密碼",
+  "backupDecryptPassword": "輸入此備份的密碼",
+  "backupLocal": "本機檔案",
+  "backupWebDav": "WebDAV",
+  "backupSaveLocal": "匯出至檔案",
+  "backupImportLocal": "從檔案還原",
+  "backupPreview": "備份預覽",
+  "backupCategorySize": "{count} 項 · {bytes} · {percent}%",
+  "@backupCategorySize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "bytes": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "backupFinalSize": "檔案大小：{size}",
+  "@backupFinalSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "backupSensitiveWarningTitle": "備份檔案未加密？",
+  "backupSensitiveWarning": "這份備份包含帳號或 AI 連線資訊，拿到檔案的人和伺服器管理員都能讀取其中的帳號和金鑰。仍要繼續嗎？",
+  "backupAcceptRisk": "仍然繼續",
+  "backupRestoreTitle": "選擇還原內容",
+  "backupRestoreWarning": "將覆蓋所選內容，其他資料保持不變。",
+  "backupCategoryCountSize": "{count} 項 · {bytes}",
+  "@backupCategoryCountSize": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "bytes": {
+        "type": "String"
+      }
+    }
+  },
+  "backupLegacyWarning": "已略過 {count} 項不適用的資料。",
+  "@backupLegacyWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupRestore": "還原",
+  "backupRestored": "還原完成",
+  "backupSaved": "備份檔案已儲存",
+  "backupUploaded": "備份已上傳",
+  "backupDeleted": "遠端備份已刪除",
+  "backupWebDavConfiguration": "連線設定",
+  "backupWebDavServer": "伺服器位址",
+  "backupWebDavServerRequired": "請填寫伺服器位址",
+  "backupWebDavPresetTitle": "常用伺服器",
+  "backupWebDavPresetJianguoyun": "堅果雲",
+  "backupWebDavDirectory": "備份資料夾（選填）",
+  "backupWebDavDirectoryHint": "留空則儲存到伺服器根目錄",
+  "backupWebDavUsername": "使用者名稱",
+  "backupWebDavUsernameRequired": "請填寫使用者名稱",
+  "backupWebDavPassword": "密碼",
+  "backupWebDavPasswordRequired": "請填寫密碼",
+  "backupSaveConfiguration": "儲存",
+  "backupWebDavNotConfigured": "未設定伺服器",
+  "backupSchedule": "定時備份",
+  "backupSchedulePasswordRequired": "請先設定備份密碼",
+  "backupScheduleInterval": "備份間隔",
+  "backupScheduleMinutes": "分鐘",
+  "backupScheduleHours": "小時",
+  "backupScheduleDays": "天",
+  "backupTestConnection": "測試",
+  "backupTestSucceeded": "連線正常",
+  "backupUpload": "上傳",
+  "backupNoRemoteFiles": "暫無備份",
+  "backupRemoteFilesHint": "重新整理以查看備份",
+  "backupDeleteTitle": "刪除遠端備份？",
+  "backupDeleteWarning": "確定刪除「{name}」？刪除後無法找回。",
+  "@backupDeleteWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "backupHttpWarningTitle": "繼續使用此位址？",
+  "backupHttpWarning": "此連線無法保護你的帳號和密碼，仍要繼續嗎？",
+  "backupReading": "正在讀取…",
+  "backupCompressing": "正在準備備份…",
+  "backupEncrypting": "正在加密備份…",
+  "backupDecoding": "正在讀取備份…",
+  "backupTesting": "正在測試連線…",
+  "backupListing": "正在讀取備份清單…",
+  "backupUploading": "正在上傳…",
+  "backupDownloading": "正在下載…",
+  "backupRestoring": "正在還原，請勿關閉應用程式…",
+  "backupDeleting": "正在刪除…",
+  "backupCancelling": "正在取消…",
+  "backupCancelled": "操作已取消",
+  "backupTooLarge": "備份檔案不得超過 16 MiB，解壓內容不得超過 64 MiB。",
+  "backupPasswordRequired": "請輸入備份密碼",
+  "backupAuthenticationFailed": "密碼不正確，或檔案已損壞。",
+  "backupInvalidEncryptionParameters": "無法讀取這份備份，請檢查檔案是否完整。",
+  "backupSelectCategory": "請選擇要備份或還原的內容",
+  "backupBusy": "已有備份操作正在進行",
+  "backupWriteFailed": "還原失敗，已回復原有資料。請檢查可用空間後重試。",
+  "backupRecoveryRequired": "資料還原尚未完成。請解鎖裝置、檢查可用空間後重試。",
+  "backupRecoveryTitle": "回復本機資料",
+  "backupOperationFailed": "操作失敗，請檢查檔案權限和可用空間後重試。",
+  "backupWebDavInvalidConfig": "請檢查伺服器位址、使用者名稱和資料夾路徑。",
+  "backupWebDavAuthentication": "登入失敗，請檢查使用者名稱和密碼。",
+  "backupWebDavForbidden": "沒有操作權限，請檢查伺服器設定。",
+  "backupWebDavNotFound": "找不到備份，請重新整理後重試。",
+  "backupWebDavMoveUnsupported": "此伺服器暫不支援備份上傳，請更換伺服器。",
+  "backupWebDavMethodUnsupported": "此位址無法用於備份，請檢查伺服器設定。",
+  "backupWebDavRedirectRefused": "連線位址已變更，請填寫新的伺服器位址。",
+  "backupWebDavUnsafePath": "無法存取這份備份，請檢查資料夾設定。",
+  "backupWebDavInvalidResponse": "無法讀取伺服器上的備份，請檢查連線設定。",
+  "backupWebDavConnection": "無法連線伺服器，請檢查網路和連線設定。",
+  "backupWebDavTimeout": "連線逾時，請重試。",
+  "backupWebDavConflict": "無法儲存至此資料夾，原有備份未被覆蓋。",
+  "backupPreviewContents": "內容占比（壓縮前）",
+  "backupEmptyCategory": "沒有內容，還原後將清空"
 }

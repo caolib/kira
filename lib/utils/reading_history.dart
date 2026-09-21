@@ -23,6 +23,8 @@ class ReadingHistory {
   /// 用 record 作键，值相等语义由语言保证，省去手工拼接分隔符的歧义。
   static final Map<(String, String?), _PendingSave> _pending = {};
   static Timer? _debounceTimer;
+  static Future<void>? _flushing;
+  static bool _restoring = false;
 
   /// 组键在键名里分隔 pathWord 与组名的标记。
   /// [_pathWordOf] 反向还原 pathWord 时依赖同一个常量。
@@ -56,6 +58,7 @@ class ReadingHistory {
     int page = 1,
     int totalPage = 0,
   }) async {
+    if (_restoring) return;
     final normalizedGroup = _normalizeGroup(group);
     final entry = _pending.putIfAbsent((
       pathWord,
@@ -81,13 +84,27 @@ class ReadingHistory {
 
   /// 立即落盘全部待写进度。无待写数据时为无开销的空操作。
   static Future<void> flush() async {
+    // Join an already-running disk write, rather than observing an empty
+    // pending map while the previous batch is still in flight.
+    while (_flushing != null) {
+      await _flushing;
+    }
     _debounceTimer?.cancel();
     _debounceTimer = null;
     if (_pending.isEmpty) return;
 
     final entries = _pending.values.toList(growable: false);
     _pending.clear();
+    final writing = _writeBatch(entries);
+    _flushing = writing;
+    try {
+      await writing;
+    } finally {
+      _flushing = null;
+    }
+  }
 
+  static Future<void> _writeBatch(List<_PendingSave> entries) async {
     final prefs = await SharedPreferences.getInstance();
     for (final entry in entries) {
       await _write(prefs, entry);
@@ -95,6 +112,15 @@ class ReadingHistory {
     // 落盘完成后再通知，保证监听方读到的是新数据。
     changes.value++;
   }
+
+  static Future<void> pauseForRestore() async {
+    _restoring = true;
+    await flush();
+  }
+
+  static void resumeAfterRestore() => _restoring = false;
+
+  static void notifyRestored() => changes.value++;
 
   static Future<void> _write(
     SharedPreferences prefs,
@@ -126,12 +152,22 @@ class ReadingHistory {
       if (readChapterUuids.isNotEmpty) 'readChapterUuids': readChapterUuids,
     });
     if (group == null || group.isEmpty) {
-      await prefs.setString(_legacyKey(entry.pathWord), data);
+      await _setString(prefs, _legacyKey(entry.pathWord), data);
       return;
     }
-    await prefs.setString(_groupKey(entry.pathWord, group), data);
+    await _setString(prefs, _groupKey(entry.pathWord, group), data);
     if (group == defaultGroup) {
-      await prefs.setString(_legacyKey(entry.pathWord), data);
+      await _setString(prefs, _legacyKey(entry.pathWord), data);
+    }
+  }
+
+  static Future<void> _setString(
+    SharedPreferences prefs,
+    String key,
+    String value,
+  ) async {
+    if (!await prefs.setString(key, value)) {
+      throw StateError('reading_history persistence failed');
     }
   }
 

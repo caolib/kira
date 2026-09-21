@@ -55,14 +55,18 @@ class NetworkSettings extends PrefsStore {
 
   // ── Init ───────────────────────────────────────────────────────────
 
-  Future<void> initFromPrefs(SharedPreferences prefs) async {
+  Future<void> initFromPrefs(
+    SharedPreferences prefs, {
+    bool persistMigrations = true,
+  }) async {
     // 锁定后续 setter 使用的 prefs 与本次 init 读取的为同一实例,
     // 避免在测试 mock 切换场景下 setter 写到与 init 读到不同步的另一份 prefs。
     syncPrefs(prefs);
     _apiRoute = prefs.getInt(_keyApiRoute) ?? 0;
     _selectionMode = _normalizeSelectionMode(prefs.getInt(_keySelectionMode));
     // 若旧版本持久化的是已删除的 automatic(索引 2),自动回落为 route,并修正持久化。
-    if (_selectionMode == NetworkSelectionMode.route &&
+    if (persistMigrations &&
+        _selectionMode == NetworkSelectionMode.route &&
         prefs.getInt(_keySelectionMode) == 2) {
       await prefs.setInt(_keySelectionMode, _selectionMode.index);
     }

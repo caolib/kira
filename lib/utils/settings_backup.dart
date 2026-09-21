@@ -1,49 +1,21 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
-import '../l10n/app_localizations.dart';
-import 'reading_history.dart';
+import '../backup/backup_category.dart';
+import '../backup/backup_codec.dart';
+import '../backup/backup_document.dart';
+import '../backup/backup_error.dart';
+import '../backup/backup_journal.dart';
+import '../backup/backup_preferences.dart';
+import '../backup/backup_runtime.dart';
+import '../models/secure_credential_store.dart';
+import 'app_logger.dart';
 
-enum SettingsBackupErrorCode {
-  emptyFile,
-  invalidJson,
-  invalidFormat,
-  wrongApp,
-  unsupportedVersion,
-  missingContent,
-  unsupportedField,
-  invalidFieldFormat,
-  unsupportedFieldType,
-}
-
-class SettingsBackupException implements Exception {
-  final SettingsBackupErrorCode code;
-
-  const SettingsBackupException(this.code);
-
-  String localizedMessage(AppLocalizations l10n) {
-    return switch (code) {
-      SettingsBackupErrorCode.emptyFile => l10n.settingsBackupEmptyFile,
-      SettingsBackupErrorCode.invalidJson => l10n.settingsBackupInvalidJson,
-      SettingsBackupErrorCode.invalidFormat => l10n.settingsBackupInvalidFormat,
-      SettingsBackupErrorCode.wrongApp => l10n.settingsBackupWrongApp,
-      SettingsBackupErrorCode.unsupportedVersion =>
-        l10n.settingsBackupUnsupportedVersion,
-      SettingsBackupErrorCode.missingContent =>
-        l10n.settingsBackupMissingContent,
-      SettingsBackupErrorCode.unsupportedField =>
-        l10n.settingsBackupUnsupportedField,
-      SettingsBackupErrorCode.invalidFieldFormat =>
-        l10n.settingsBackupInvalidFieldFormat,
-      SettingsBackupErrorCode.unsupportedFieldType =>
-        l10n.settingsBackupUnsupportedFieldType,
-    };
-  }
-
-  @override
-  String toString() => code.name;
-}
+export '../backup/backup_category.dart';
+export '../backup/backup_document.dart';
+export '../backup/backup_error.dart';
 
 class SettingsBackupSummary {
   final int preferenceCount;
@@ -55,296 +27,241 @@ class SettingsBackupSummary {
     required this.sensitivePreferenceCount,
     required this.exportedAt,
   });
+
+  factory SettingsBackupSummary.fromDocument(BackupDocument document) =>
+      SettingsBackupSummary(
+        preferenceCount: document.preferences.length,
+        sensitivePreferenceCount: document.preferences.keys
+            .where((key) => BackupSchema.categoryOf(key)?.isSensitive == true)
+            .length,
+        exportedAt: document.exportedAt,
+      );
 }
 
 class SettingsBackupOptions {
+  final Set<BackupCategory> categories;
   final bool includeSensitive;
 
-  const SettingsBackupOptions({this.includeSensitive = false});
+  const SettingsBackupOptions({
+    this.categories = const {BackupCategory.settings},
+    this.includeSensitive = false,
+  });
+
+  Set<BackupCategory> get selected => {
+    ...categories,
+    if (includeSensitive) ...{
+      BackupCategory.account,
+      BackupCategory.aiConnection,
+    },
+  };
 }
 
+/// Snapshot/filter and transactional category replacement; encoding and
+/// transport live separately. No restore path clears "all non-cache keys".
 class SettingsBackupService {
-  static const _app = 'kira';
-  static const _kind = 'settings_backup';
-  static const _version = 1;
-  static const _cachePrefix = 'cache_';
-  static const _excludedPreferenceKeys = <String>{
-    'local_bookshelf_show_update_only',
-    'bookshelf_show_update_only',
-  };
-  static const _sensitivePreferenceKeys = <String>{
-    'user_token',
-    'saved_username',
-    'saved_password',
-    'saved_credentials',
-    'zhipu_api_key',
-    'ai_providers',
-  };
+  final BackupPreferences _preferences;
+  final BackupJournal _journal;
+  final BackupRuntime _runtime;
+  static bool _restoring = false;
+  static bool _recoveryRequired = false;
+
+  SettingsBackupService({
+    BackupPreferences? preferences,
+    BackupJournal? journal,
+    BackupRuntime? runtime,
+  }) : _preferences = preferences ?? SharedBackupPreferences(),
+       _journal = journal ?? EncryptedBackupJournal(),
+       _runtime = runtime ?? SettingsBackupRuntime();
+
+  Future<BackupDocument> capture() async {
+    _ensureAvailable();
+    await _runtime.flush();
+    final snapshot = await _preferences.readAll();
+    return _documentFrom(snapshot, BackupCategory.values.toSet());
+  }
+
+  BackupDocument _documentFrom(
+    Map<String, Object> snapshot,
+    Set<BackupCategory> categories,
+  ) => BackupDocument(
+    categories: categories,
+    preferences: {
+      for (final entry in snapshot.entries)
+        if (categories.contains(BackupSchema.categoryOf(entry.key)))
+          entry.key: _preferenceOf(entry),
+    },
+    exportedAt: DateTime.now().toUtc(),
+  );
+
+  /// One unsupported value type aborts the whole capture, so name the key and
+  /// its runtime type instead of leaving the generic error to stand alone.
+  /// Only the key and type are reported, never the value.
+  BackupPreference _preferenceOf(MapEntry<String, Object> entry) {
+    try {
+      final preference = BackupPreference.fromValue(entry.value);
+      // [BackupDocument.validate] would catch this too, but only here is the
+      // offending key still known.
+      if (preference.type != BackupSchema.typeOf(entry.key)) {
+        throw const SettingsBackupException(
+          SettingsBackupErrorCode.unsupportedFieldType,
+        );
+      }
+      return preference;
+    } catch (error, stack) {
+      final type = entry.value.runtimeType.toString();
+      debugPrint('Backup capture rejected ${entry.key}: $type');
+      unawaited(
+        AppLogger.instance.recordWarning(
+          const SettingsBackupException(
+            SettingsBackupErrorCode.unsupportedFieldType,
+          ),
+          stackTrace: stack,
+          source: 'backup.capture',
+          context: {'key': entry.key, 'type': type},
+        ),
+      );
+      rethrow;
+    }
+  }
 
   Future<String> exportPlainText({
     SettingsBackupOptions options = const SettingsBackupOptions(),
   }) async {
-    // 阅读进度是防抖写入的，导出前先落盘，否则最近读的章节会漏备份。
-    await ReadingHistory.flush();
-    final prefs = await SharedPreferences.getInstance();
-    final entries = <String, Map<String, dynamic>>{};
-    final skippedSensitiveKeys = <String>[];
-    final keys = prefs.getKeys().where(_isUserPreferenceKey).toList()..sort();
-
-    for (final key in keys) {
-      if (!options.includeSensitive && _isSensitivePreferenceKey(key)) {
-        skippedSensitiveKeys.add(key);
-        continue;
-      }
-      final entry = _encodePreference(prefs.get(key));
-      if (entry != null) {
-        entries[key] = entry;
-      }
-    }
-
-    return const JsonEncoder.withIndent('  ').convert({
-      'app': _app,
-      'kind': _kind,
-      'version': _version,
-      'exported_at': DateTime.now().toUtc().toIso8601String(),
-      'includes_sensitive': options.includeSensitive,
-      'skipped_sensitive_count': skippedSensitiveKeys.length,
-      'warning': options.includeSensitive
-          ? 'This backup is plain text and may contain tokens, accounts, passwords, API keys, and reading history.'
-          : 'This backup is plain text and excludes known tokens, passwords, and API keys.',
-      'preferences': entries,
-    });
+    final document = (await capture()).select(options.selected);
+    return jsonEncode(document.toJson());
   }
 
-  SettingsBackupSummary inspectPlainText(String raw) {
-    final backup = _parseBackup(raw);
-    return SettingsBackupSummary(
-      preferenceCount: backup.preferences.length,
-      sensitivePreferenceCount: backup.sensitivePreferenceCount,
-      exportedAt: backup.exportedAt,
+  SettingsBackupSummary inspectPlainText(String raw) =>
+      SettingsBackupSummary.fromDocument(_parseLegacyInput(raw));
+
+  Future<SettingsBackupSummary> importPlainText(
+    String raw, {
+    Set<BackupCategory>? categories,
+  }) async {
+    final document = _parseLegacyInput(raw);
+    // Compatibility API is safe by default too; sensitive groups always need
+    // an explicit selection. The new page handles all formats via BackupCodec.
+    return restore(
+      document,
+      categories ?? document.categories.intersection({BackupCategory.settings}),
     );
   }
 
-  Future<SettingsBackupSummary> importPlainText(String raw) async {
-    final backup = _parseBackup(raw);
-    // 先冲刷待写的阅读进度：否则它会在下方清空之后才落盘，把刚导入的记录盖掉。
-    await ReadingHistory.flush();
-    final prefs = await SharedPreferences.getInstance();
-    final existingKeys = prefs.getKeys().where(_isUserPreferenceKey).toList();
-
-    for (final key in existingKeys) {
-      await prefs.remove(key);
+  BackupDocument _parseLegacyInput(String raw) {
+    if (utf8.encode(raw).length > BackupCodec.maxFileBytes) {
+      throw const SettingsBackupException(SettingsBackupErrorCode.tooLarge);
     }
+    return BackupDocument.parse(raw);
+  }
 
-    for (final entry in backup.preferences.entries) {
-      await _writePreference(prefs, entry.key, entry.value);
+  Future<SettingsBackupSummary> restore(
+    BackupDocument document,
+    Set<BackupCategory> categories,
+  ) async {
+    _ensureAvailable();
+    final replacement = document.select(categories);
+    replacement.validate();
+    _restoring = true;
+    var mayResume = true;
+    try {
+      // Pause first, then drain: no older asynchronous reading write can land
+      // after this point, including writes already removed from debounce maps.
+      await _runtime.pause();
+      final original = _documentFrom(
+        await _preferences.readAll(),
+        replacement.categories,
+      );
+      await _journal.save(original);
+      try {
+        await _replace(replacement);
+        await _runtime.reload(replacement.categories);
+        // Journal deletion is the commit point. A crash before it causes
+        // startup recovery; a crash after it leaves the fully written backup.
+        await _journal.clear();
+      } catch (_) {
+        try {
+          await _replace(original);
+          await _runtime.reload(replacement.categories);
+          await _journal.clear();
+        } catch (_) {
+          mayResume = false;
+          _recoveryRequired = true;
+          throw const SettingsBackupException(
+            SettingsBackupErrorCode.recoveryRequired,
+          );
+        }
+        throw const SettingsBackupException(
+          SettingsBackupErrorCode.writeFailed,
+        );
+      }
+      return SettingsBackupSummary.fromDocument(replacement);
+    } finally {
+      if (mayResume) _runtime.resume();
+      _restoring = false;
     }
+  }
 
-    return SettingsBackupSummary(
-      preferenceCount: backup.preferences.length,
-      sensitivePreferenceCount: backup.sensitivePreferenceCount,
-      exportedAt: backup.exportedAt,
-    );
+  Future<void> _replace(BackupDocument document) async {
+    final current = await _preferences.readAll();
+    for (final key in current.keys) {
+      if (document.categories.contains(BackupSchema.categoryOf(key))) {
+        await _preferences.remove(key);
+      }
+    }
+    for (final entry in document.preferences.entries) {
+      await _preferences.write(entry.key, entry.value.value);
+    }
+  }
+
+  /// Called before ANY preference-backed singleton is initialized.
+  /// Recovery is idempotent; failures leave the encrypted journal in place.
+  Future<bool> recoverPendingRestore() async {
+    if (_restoring) {
+      throw const SettingsBackupException(SettingsBackupErrorCode.busy);
+    }
+    _restoring = true;
+    try {
+      final original = await _journal.read();
+      if (original == null) return false;
+      await _replace(original);
+      await _journal.clear();
+      _recoveryRequired = false;
+      return true;
+    } catch (_) {
+      _recoveryRequired = true;
+      throw const SettingsBackupException(
+        SettingsBackupErrorCode.recoveryRequired,
+      );
+    } finally {
+      _restoring = false;
+    }
   }
 
   Future<int> clearAllPreferences() async {
-    // 同上：不先落盘的话，待写的阅读进度会在清空之后写回，记录“复活”。
-    await ReadingHistory.flush();
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().toList();
-
-    for (final key in keys) {
-      await prefs.remove(key);
-    }
-
-    return keys.length;
-  }
-
-  static bool _isUserPreferenceKey(String key) =>
-      !key.startsWith(_cachePrefix) && !_excludedPreferenceKeys.contains(key);
-
-  static bool _isSensitivePreferenceKey(String key) {
-    if (_sensitivePreferenceKeys.contains(key)) return true;
-
-    final normalized = key.toLowerCase();
-    return normalized.contains('password') ||
-        normalized.contains('token') ||
-        normalized.contains('api_key') ||
-        normalized.contains('apikey') ||
-        normalized.contains('secret') ||
-        normalized.contains('credential');
-  }
-
-  static Map<String, dynamic>? _encodePreference(Object? value) {
-    if (value is String) {
-      return {'type': 'string', 'value': value};
-    }
-    if (value is bool) {
-      return {'type': 'bool', 'value': value};
-    }
-    if (value is int) {
-      return {'type': 'int', 'value': value};
-    }
-    if (value is double) {
-      return {'type': 'double', 'value': value};
-    }
-    if (value is List<String>) {
-      return {'type': 'string_list', 'value': value};
-    }
-    return null;
-  }
-
-  static _ParsedSettingsBackup _parseBackup(String raw) {
-    final normalized = _normalizeInput(raw);
-    if (normalized.isEmpty) {
-      throw const SettingsBackupException(SettingsBackupErrorCode.emptyFile);
-    }
-
-    final Object? decoded;
+    _ensureAvailable();
+    _restoring = true;
     try {
-      decoded = jsonDecode(normalized);
-    } catch (_) {
-      throw const SettingsBackupException(SettingsBackupErrorCode.invalidJson);
+      await _runtime.pause();
+      final keys = (await _preferences.readAll()).keys.toList();
+      await SecureCredentialStore().deleteAll();
+      for (final key in keys) {
+        await _preferences.remove(key);
+      }
+      return keys.length;
+    } finally {
+      _runtime.resume();
+      _restoring = false;
     }
+  }
 
-    if (decoded is! Map) {
+  void _ensureAvailable() {
+    if (_recoveryRequired) {
       throw const SettingsBackupException(
-        SettingsBackupErrorCode.invalidFormat,
+        SettingsBackupErrorCode.recoveryRequired,
       );
     }
-
-    final map = Map<String, dynamic>.from(decoded);
-    if (map['app'] != _app || map['kind'] != _kind) {
-      throw const SettingsBackupException(SettingsBackupErrorCode.wrongApp);
-    }
-    if (map['version'] != _version) {
-      throw const SettingsBackupException(
-        SettingsBackupErrorCode.unsupportedVersion,
-      );
-    }
-
-    final rawPreferences = map['preferences'];
-    if (rawPreferences is! Map) {
-      throw const SettingsBackupException(
-        SettingsBackupErrorCode.missingContent,
-      );
-    }
-
-    final preferences = <String, _PreferenceValue>{};
-    var sensitivePreferenceCount = 0;
-    for (final rawEntry in rawPreferences.entries) {
-      final key = rawEntry.key.toString();
-      if (key.isEmpty || key.startsWith(_cachePrefix)) {
-        throw const SettingsBackupException(
-          SettingsBackupErrorCode.unsupportedField,
-        );
-      }
-      if (_excludedPreferenceKeys.contains(key)) {
-        continue;
-      }
-      final rawValue = rawEntry.value;
-      if (rawValue is! Map) {
-        throw const SettingsBackupException(
-          SettingsBackupErrorCode.invalidFieldFormat,
-        );
-      }
-      if (_isSensitivePreferenceKey(key)) {
-        sensitivePreferenceCount += 1;
-      }
-      preferences[key] = _decodePreference(Map<String, dynamic>.from(rawValue));
-    }
-
-    final exportedAtRaw = map['exported_at'];
-    final exportedAt = exportedAtRaw == null
-        ? null
-        : DateTime.tryParse(exportedAtRaw.toString());
-
-    return _ParsedSettingsBackup(
-      preferences: preferences,
-      sensitivePreferenceCount: sensitivePreferenceCount,
-      exportedAt: exportedAt,
-    );
-  }
-
-  static _PreferenceValue _decodePreference(Map<String, dynamic> entry) {
-    final type = entry['type'];
-    final value = entry['value'];
-
-    switch (type) {
-      case 'string':
-        if (value is String) return _PreferenceValue(type, value);
-        break;
-      case 'bool':
-        if (value is bool) return _PreferenceValue(type, value);
-        break;
-      case 'int':
-        if (value is int) return _PreferenceValue(type, value);
-        break;
-      case 'double':
-        if (value is num) return _PreferenceValue(type, value.toDouble());
-        break;
-      case 'string_list':
-        if (value is List && value.every((item) => item is String)) {
-          return _PreferenceValue(type, List<String>.from(value));
-        }
-        break;
-    }
-
-    throw const SettingsBackupException(
-      SettingsBackupErrorCode.unsupportedFieldType,
-    );
-  }
-
-  static Future<void> _writePreference(
-    SharedPreferences prefs,
-    String key,
-    _PreferenceValue preference,
-  ) async {
-    switch (preference.type) {
-      case 'string':
-        await prefs.setString(key, preference.value as String);
-        return;
-      case 'bool':
-        await prefs.setBool(key, preference.value as bool);
-        return;
-      case 'int':
-        await prefs.setInt(key, preference.value as int);
-        return;
-      case 'double':
-        await prefs.setDouble(key, preference.value as double);
-        return;
-      case 'string_list':
-        await prefs.setStringList(key, preference.value as List<String>);
-        return;
+    if (_restoring) {
+      throw const SettingsBackupException(SettingsBackupErrorCode.busy);
     }
   }
-
-  static String _normalizeInput(String input) {
-    final text = input.trim();
-    if (!text.startsWith('```')) return text;
-
-    final lines = const LineSplitter().convert(text);
-    if (lines.length < 2 || lines.last.trim() != '```') return text;
-
-    return lines.sublist(1, lines.length - 1).join('\n').trim();
-  }
-}
-
-class _ParsedSettingsBackup {
-  final Map<String, _PreferenceValue> preferences;
-  final int sensitivePreferenceCount;
-  final DateTime? exportedAt;
-
-  const _ParsedSettingsBackup({
-    required this.preferences,
-    required this.sensitivePreferenceCount,
-    required this.exportedAt,
-  });
-}
-
-class _PreferenceValue {
-  final String type;
-  final Object value;
-
-  const _PreferenceValue(this.type, this.value);
 }

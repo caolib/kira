@@ -39,7 +39,10 @@ extension _AiSettingsProviders on AiSettings {
     return result.isEmpty ? [AiSettings.defaultModel] : result;
   }
 
-  Future<void> _loadProviders(SharedPreferences sp) async {
+  Future<void> _loadProviders(
+    SharedPreferences sp, {
+    bool persistMigrations = true,
+  }) async {
     final raw = sp.getString(AiSettings._keyProviders);
     var providers = <AiProviderConfig>[];
     if (raw != null && raw.isNotEmpty) {
@@ -86,7 +89,7 @@ extension _AiSettingsProviders on AiSettings {
           _providers.first.id;
     }
     _syncActiveProviderFields();
-    await _saveProviders(sp);
+    if (persistMigrations) await _saveProviders(sp);
   }
 
   void _syncActiveProviderFields() {

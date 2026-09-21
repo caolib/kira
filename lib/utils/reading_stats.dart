@@ -44,6 +44,8 @@ class ReadingStats {
 
   static bool _dirty = false;
   static Timer? _debounceTimer;
+  static Future<void>? _flushing;
+  static bool _restoring = false;
 
   /// 写入代际。`clear()`/`reloadFromPrefs()` 递增;在途 `_flush()` 写盘前校验,
   /// 防止清除后旧数据被回写"复活"。
@@ -80,10 +82,12 @@ class ReadingStats {
     String? comicName,
     List<String>? tags,
   }) async {
-    if (!isEnabled) return;
+    if (_restoring || !isEnabled) return;
     if (pathWord.isEmpty || chapterUuid.isEmpty) return;
 
+    final generation = _generation;
     final data = await _loadCache();
+    if (_restoring || generation != _generation) return;
     final today = _todayKey();
 
     // comicMeta 增量更新
@@ -135,6 +139,17 @@ class ReadingStats {
     _dirty = false;
   }
 
+  static Future<void> flush() => _flush();
+
+  static Future<void> pauseForRestore() async {
+    _restoring = true;
+    await _flush();
+    // Invalidate recordImageLoad calls that were waiting on _loadCache.
+    _generation++;
+  }
+
+  static void resumeAfterRestore() => _restoring = false;
+
   /// 清除全部统计数据(不改变开关状态)。
   static Future<void> clear() async {
     reloadFromPrefs();
@@ -146,7 +161,9 @@ class ReadingStats {
 
   static Future<_StatsData> _loadCache() async {
     if (_cache != null) return _cache!;
+    final generation = _generation;
     final prefs = await SharedPreferences.getInstance();
+    if (generation != _generation) return _StatsData.empty();
     final raw = prefs.getString(_dataKey);
     if (raw == null || raw.isEmpty) {
       return _cache = _StatsData.empty();
@@ -172,6 +189,9 @@ class ReadingStats {
   }
 
   static Future<void> _flush() async {
+    while (_flushing != null) {
+      await _flushing;
+    }
     _debounceTimer?.cancel();
     _debounceTimer = null;
     if (!_dirty) return;
@@ -181,12 +201,25 @@ class ReadingStats {
       _dirty = false;
       return;
     }
+    final writing = _writeCache(data, gen);
+    _flushing = writing;
+    try {
+      await writing;
+    } finally {
+      _flushing = null;
+    }
+  }
+
+  static Future<void> _writeCache(_StatsData data, int gen) async {
     final prefs = await SharedPreferences.getInstance();
     // clear()/reloadFromPrefs() 可能在等待期间执行:代际变化说明数据已被清除,
     // 丢弃本次写,避免"复活"已删除的统计。
     if (gen != _generation) return;
-    await prefs.setString(_dataKey, jsonEncode(data.toJson()));
     _dirty = false;
+    if (!await prefs.setString(_dataKey, jsonEncode(data.toJson()))) {
+      _dirty = true;
+      throw StateError('reading_stats persistence failed');
+    }
   }
 
   static void _pruneDaily(_StatsData data) {

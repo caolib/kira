@@ -691,6 +691,13 @@ class DownloadManager extends ChangeNotifier {
     _ensureProcessing();
   }
 
+  /// Portable backups never replace paths or queues. Avoid restarting workers
+  /// or touching local manifests when applying just the two scalar preferences.
+  Future<void> reloadScalarSettings() async {
+    _applyScalarSettings(await SharedPreferences.getInstance());
+    notifyListeners();
+  }
+
   /// 应用与运行态无关的标量设置,任何时刻都安全。
   void _applyScalarSettings(SharedPreferences prefs) {
     _imageDownloadConcurrency = _clampConcurrency(

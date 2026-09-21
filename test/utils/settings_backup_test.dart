@@ -1,16 +1,27 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/backup/backup_runtime.dart';
 import 'package:kira/utils/reading_history.dart';
 import 'package:kira/utils/settings_backup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../backup/backup_test_support.dart';
+import '../test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    setupSecureCredentialStoreForTest();
   });
+  tearDown(teardownSecureCredentialStoreForTest);
+
+  SettingsBackupService createService() => SettingsBackupService(
+    journal: MemoryBackupJournal(),
+    runtime: TestBackupRuntime(delegate: SettingsBackupRuntime()),
+  );
 
   Map<String, dynamic> decodeBackup(String backup) {
     final decoded = jsonDecode(backup);
@@ -25,7 +36,7 @@ void main() {
   }
 
   test(
-    'exports persistent settings excluding cache and sensitive data by default',
+    'exports only portable app settings by default',
     () async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_token', 'token-1');
@@ -48,19 +59,18 @@ void main() {
         totalPage: 20,
       );
 
-      final backup = await SettingsBackupService().exportPlainText();
+      final backup = await createService().exportPlainText();
       final decoded = decodeBackup(backup);
       final preferences = preferencesOf(decoded);
 
-      expect(decoded['includes_sensitive'], isFalse);
-      expect(decoded['skipped_sensitive_count'], 3);
+      expect(decoded['categories'], ['settings']);
       expect(preferences.containsKey('user_token'), isFalse);
       expect(preferences.containsKey('saved_password'), isFalse);
       expect(preferences.containsKey('zhipu_api_key'), isFalse);
-      expect(preferences['auto_login']?['value'], true);
+      expect(preferences.containsKey('auto_login'), isFalse);
       expect(preferences['image_viewer_auto_rotate_landscape']?['value'], true);
       expect(preferences['image_viewer_landscape_rotation']?['value'], -1);
-      expect(preferences.containsKey('reading_history_comic-a'), isTrue);
+      expect(preferences.containsKey('reading_history_comic-a'), isFalse);
       expect(preferences.containsKey('cache_home'), isFalse);
       expect(
         preferences.containsKey(
@@ -79,21 +89,20 @@ void main() {
     await prefs.setString(
       'ai_providers',
       jsonEncode([
-        {'name': 'OpenAI', 'apiKey': 'provider-api-key'},
+        {'id': 'openai', 'name': 'OpenAI', 'apiKey': 'provider-api-key'},
       ]),
     );
     await prefs.setBool('auto_login', true);
 
-    final backup = await SettingsBackupService().exportPlainText(
+    final backup = await createService().exportPlainText(
       options: const SettingsBackupOptions(includeSensitive: true),
     );
     final decoded = decodeBackup(backup);
     final preferences = preferencesOf(decoded);
-    final summary = SettingsBackupService().inspectPlainText(backup);
+    final summary = createService().inspectPlainText(backup);
 
-    expect(decoded['includes_sensitive'], isTrue);
-    expect(decoded['skipped_sensitive_count'], 0);
-    expect(summary.sensitivePreferenceCount, 4);
+    expect(decoded['categories'], containsAll(['account', 'aiConnection']));
+    expect(summary.sensitivePreferenceCount, 5);
     expect(preferences['user_token']?['value'], 'token-1');
     expect(preferences['saved_password']?['value'], 'password-1');
     expect(preferences['zhipu_api_key']?['value'], 'api-key-1');
@@ -102,7 +111,7 @@ void main() {
   });
 
   test('inspect rejects empty, fenced-only, and non-JSON input', () {
-    final service = SettingsBackupService();
+    final service = createService();
     expect(
       () => service.inspectPlainText(''),
       throwsA(
@@ -167,7 +176,14 @@ void main() {
       },
     });
 
-    final summary = await SettingsBackupService().importPlainText(backup);
+    final summary = await createService().importPlainText(
+      backup,
+      categories: {
+        BackupCategory.settings,
+        BackupCategory.account,
+        BackupCategory.readingHistory,
+      },
+    );
     final record = await ReadingHistory.get('comic-b');
 
     expect(summary.preferenceCount, 5);
@@ -198,7 +214,7 @@ void main() {
         totalPage: 18,
       );
 
-      final removedCount = await SettingsBackupService().clearAllPreferences();
+      final removedCount = await createService().clearAllPreferences();
 
       expect(removedCount, 3);
       expect(prefs.getKeys(), isEmpty);
