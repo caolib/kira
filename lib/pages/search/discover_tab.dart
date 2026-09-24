@@ -3,9 +3,12 @@ part of '../search_page.dart';
 /// 「发现」标签页：按题材 tag / 大分类浏览漫画，可切换 HOT / COPY 两个源。
 ///
 /// 没有搜索框——关键字搜索走的是另一个接口（见 [_SearchTab]）。
-/// 两个源的数据源设置与首页共用 [UserManager.mangaHomeSource]。
+/// 数据源独立于首页，用 [UserManager.discoverSource] 单独持久化。
 class _DiscoverTab extends StatefulWidget {
-  const _DiscoverTab();
+  const _DiscoverTab({required this.api, required this.initRepository});
+
+  final ApiClient api;
+  final SearchInitRepository initRepository;
 
   @override
   State<_DiscoverTab> createState() => _DiscoverTabState();
@@ -13,43 +16,53 @@ class _DiscoverTab extends StatefulWidget {
 
 class _DiscoverTabState extends State<_DiscoverTab>
     with AutomaticKeepAliveClientMixin {
-  final _api = ApiClient();
   final _user = UserManager();
   final _scrollController = ScrollController();
 
-  // 当前生效的数据源（'hot' / 'copy'），与首页共用同一个设置。
-  late String _source = _user.mangaHomeSource;
-  late SearchInitRepository _initRepo = SearchInitRepository(source: _source);
+  // 请求与界面都使用同一个源快照，不在设置通知到达前混用新旧源。
+  late String _source = _user.discoverSource;
+  late SearchInitRepository _initRepo = _repositoryForSource(_source);
+  late final _copyFilterRepo = CopyFilterRepository(api: widget.api);
 
   List<m.Theme> _tags = [];
   List<Comic> _comics = [];
-  // COPY 源的大分类筛选项（全部/日漫/韓漫/美漫/已完結），hot 源为空。
   m.CopyFilterOptions _copyFilters = m.CopyFilterOptions.empty;
-  final _copyFilterRepo = CopyFilterRepository();
 
   String? _selectedTag;
   String? _selectedTop;
   String _ordering = ApiOrdering.popular;
-  // 全部题材网格是否展开。空白态（还没筛选、没结果）默认展开填满页面；
-  // 一旦有了筛选或结果就自动收起，把纵向空间让给漫画列表。
-  bool _tagsExpanded = true;
+  bool _tagsExpanded = false;
   bool _loadingMore = false;
   bool _searching = false;
   bool _canScrollUp = false;
-  bool _refreshing = false;
+  bool _metadataLoading = false;
+  bool _tagsFailed = false;
+  bool _copyFiltersFailed = false;
+  bool _listFailed = false;
+  bool _loadMoreFailed = false;
+  bool _hasMore = false;
   int _offset = 0;
   int _total = 0;
-  int _loadEpoch = 0;
 
-  bool get _isCopySource => _user.mangaHomeSource == 'copy';
+  // 元数据不受筛选变化影响；列表的每次首屏请求则使旧首屏和分页一起失效。
+  int _metadataEpoch = 0;
+  int _listEpoch = 0;
+
+  bool get _isCopySource => _source == 'copy';
   bool get _hasResults => _comics.isNotEmpty;
+  bool get _metadataFailed => _tagsFailed || _copyFiltersFailed;
+  bool get _canLoadMore =>
+      _hasResults &&
+      _hasMore &&
+      !_searching &&
+      !_loadingMore &&
+      !_listFailed &&
+      !_loadMoreFailed;
 
-  /// 同 [_SearchTabState.wantKeepAlive]：切到「搜索」再切回来时，
-  /// 保留已选 tag、漫画列表与滚动位置，不被重置成空白态。
+  /// 切到「搜索」再切回来时保留筛选、漫画列表与滚动位置。
   @override
   bool get wantKeepAlive => true;
 
-  /// 是否有可重置的筛选（大分类 / 题材 / 非默认排序）。
   bool get _canResetFilters =>
       _selectedTop != null ||
       _selectedTag != null ||
@@ -59,8 +72,7 @@ class _DiscoverTabState extends State<_DiscoverTab>
   void initState() {
     super.initState();
     _user.addListener(_onUserChanged);
-    _loadInit();
-    _loadCopyFilters();
+    unawaited(_reload());
   }
 
   @override
@@ -70,73 +82,129 @@ class _DiscoverTabState extends State<_DiscoverTab>
     super.dispose();
   }
 
+  SearchInitRepository _repositoryForSource(String source) =>
+      widget.initRepository.source == source
+      ? widget.initRepository
+      : SearchInitRepository(source: source, api: widget.api);
+
+  bool _isCurrentMetadata(int epoch, String source) =>
+      mounted &&
+      epoch == _metadataEpoch &&
+      source == _source &&
+      source == _user.discoverSource;
+
+  bool _isCurrentList(int epoch, String source) =>
+      mounted &&
+      epoch == _listEpoch &&
+      source == _source &&
+      source == _user.discoverSource;
+
   void _onUserChanged() {
     if (!mounted) return;
-    final source = _user.mangaHomeSource;
-    if (source != _source) {
-      _switchSource(source);
-      return;
-    }
-    setState(() {});
+    final source = _user.discoverSource;
+    if (source != _source) unawaited(_switchSource(source));
   }
 
-  /// 切换数据源：重建 init 仓库（缓存按源隔离），重置筛选并重载标签。
-  /// [_loadEpoch] 自增使旧源的飞行中请求作废，避免其回包覆盖新源结果。
-  void _switchSource(String source) {
-    _source = source;
-    _initRepo = SearchInitRepository(source: source);
-    _loadEpoch++;
+  /// 先同步页面快照再启动请求，避免设置异步落盘/通知期间刷新到旧源。
+  Future<void> _selectSource(String source) async {
+    if (source == _source) return;
+    final saveSource = _user.setDiscoverSource(source);
+    unawaited(_switchSource(source));
+    try {
+      await saveSource;
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'discover_tab.set_source',
+        ),
+      );
+    }
+  }
+
+  Future<void> _switchSource(String source, {bool forceRefresh = false}) {
     setState(() {
+      _source = source;
+      _initRepo = _repositoryForSource(source);
       _tags = [];
-      _comics = [];
       _copyFilters = m.CopyFilterOptions.empty;
       _selectedTag = null;
       _selectedTop = null;
-      _tagsExpanded = true;
-      _searching = false;
-      _loadingMore = false;
-      _offset = 0;
-      _total = 0;
       _ordering = ApiOrdering.popular;
+      _tagsExpanded = false;
     });
-    _loadInit();
-    _loadCopyFilters();
+    final reload = _reload(forceRefresh: forceRefresh);
+    unawaited(_scrollToTop());
+    return reload;
   }
 
-  /// 重置筛选：清空题材、大分类与排序，回到初始浏览视图。
-  /// [_loadEpoch] 自增让在途的结果请求作废，避免它回包后又把列表填上。
+  /// 列表与筛选元数据并行更新，刷新手势会等到两者都完成。
+  Future<void> _reload({
+    bool forceRefresh = false,
+    bool keepResults = false,
+  }) async {
+    await Future.wait<void>([
+      _loadMetadata(forceRefresh: forceRefresh),
+      _loadComics(keepResults: keepResults),
+    ]);
+  }
+
+  Future<void> _refresh() {
+    final source = _user.discoverSource;
+    if (source != _source) {
+      return _switchSource(source, forceRefresh: true);
+    }
+    return _reload(forceRefresh: true, keepResults: true);
+  }
+
+  /// 重置仍然展示「全部 + 热度」列表，不再退回只有题材的空白态。
   void _resetFilters() {
-    _loadEpoch++;
     setState(() {
       _selectedTop = null;
       _selectedTag = null;
-      // 回到空白态：重新铺开全部题材，与刚进页面时一致。
-      _tagsExpanded = true;
-      _comics = [];
-      _searching = false;
-      _loadingMore = false;
-      _offset = 0;
-      _total = 0;
       _ordering = ApiOrdering.popular;
     });
+    unawaited(_loadComics());
+    unawaited(_scrollToTop());
   }
 
-  /// 读取题材标签。TTL 内命中缓存直接返回；[forceRefresh] 用于下拉刷新，
-  /// 绕过缓存强制拉取。
-  Future<void> _loadInit({bool forceRefresh = false}) async {
-    final epoch = _loadEpoch;
-    // 刷新时不显示整屏 loading（列表还在，只是重新拉标签）。
-    if (!forceRefresh && !_refreshing) setState(() => _refreshing = true);
+  Future<void> _loadMetadata({bool forceRefresh = false}) async {
+    final epoch = ++_metadataEpoch;
+    final source = _source;
+    final repository = _initRepo;
+    setState(() {
+      _metadataLoading = true;
+      _tagsFailed = false;
+      _copyFiltersFailed = false;
+    });
+    try {
+      await Future.wait<void>([
+        _loadInit(repository, epoch, source, forceRefresh: forceRefresh),
+        if (source == 'copy')
+          _loadCopyFilters(epoch, source, forceRefresh: forceRefresh),
+      ]);
+    } finally {
+      if (_isCurrentMetadata(epoch, source)) {
+        setState(() => _metadataLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadInit(
+    SearchInitRepository repository,
+    int epoch,
+    String source, {
+    required bool forceRefresh,
+  }) async {
     try {
       final data = forceRefresh
-          ? await _initRepo.forceRefreshApi()
-          : await _initRepo.load();
-      if (!mounted || epoch != _loadEpoch) return;
-      setState(() {
-        _tags = data.tags;
-        _refreshing = false;
-      });
+          ? await repository.forceRefreshApi()
+          : await repository.load();
+      if (!_isCurrentMetadata(epoch, source)) return;
+      setState(() => _tags = data.tags);
     } catch (e, stack) {
+      if (!_isCurrentMetadata(epoch, source)) return;
       unawaited(
         AppLogger.instance.recordWarning(
           e,
@@ -144,24 +212,40 @@ class _DiscoverTabState extends State<_DiscoverTab>
           source: 'discover_tab.load_init',
         ),
       );
-      if (mounted && epoch == _loadEpoch) {
-        setState(() => _refreshing = false);
+      // 刷新可能使尚未显示的缓存回包失效；失败后在当前代次恢复缓存。
+      if (_tags.isEmpty) {
+        try {
+          final cached = await repository.loadFromCache();
+          if (!_isCurrentMetadata(epoch, source)) return;
+          if (cached != null) setState(() => _tags = cached.tags);
+        } catch (cacheError, cacheStack) {
+          if (!_isCurrentMetadata(epoch, source)) return;
+          unawaited(
+            AppLogger.instance.recordWarning(
+              cacheError,
+              stackTrace: cacheStack,
+              source: 'discover_tab.restore_tags_cache',
+            ),
+          );
+        }
       }
+      setState(() => _tagsFailed = true);
     }
   }
 
-  /// COPY 源专用：拉取大分类筛选项。hot 源不调（它的维度是题材 tag）。
-  ///
-  /// 走 [CopyFilterRepository]，TTL 内直接命中缓存不发请求——这些分类是
-  /// 服务端固定枚举，没必要每次进页面都拉一遍。
-  Future<void> _loadCopyFilters() async {
-    if (!_isCopySource) return;
-    final epoch = _loadEpoch;
+  Future<void> _loadCopyFilters(
+    int epoch,
+    String source, {
+    required bool forceRefresh,
+  }) async {
     try {
-      final options = await _copyFilterRepo.load();
-      if (!mounted || epoch != _loadEpoch) return;
+      final options = forceRefresh
+          ? await _copyFilterRepo.forceRefreshApi()
+          : await _copyFilterRepo.load();
+      if (!_isCurrentMetadata(epoch, source)) return;
       setState(() => _copyFilters = options);
     } catch (e, stack) {
+      if (!_isCurrentMetadata(epoch, source)) return;
       unawaited(
         AppLogger.instance.recordWarning(
           e,
@@ -169,49 +253,81 @@ class _DiscoverTabState extends State<_DiscoverTab>
           source: 'discover_tab.load_copy_filters',
         ),
       );
+      if (_copyFilters.tops.isEmpty) {
+        try {
+          final cached = await _copyFilterRepo.loadFromCache();
+          if (!_isCurrentMetadata(epoch, source)) return;
+          if (cached != null) setState(() => _copyFilters = cached);
+        } catch (cacheError, cacheStack) {
+          if (!_isCurrentMetadata(epoch, source)) return;
+          unawaited(
+            AppLogger.instance.recordWarning(
+              cacheError,
+              stackTrace: cacheStack,
+              source: 'discover_tab.restore_copy_filters_cache',
+            ),
+          );
+        }
+      }
+      setState(() => _copyFiltersFailed = true);
     }
   }
 
-  Future<void> _loadComics({bool reset = true}) async {
-    final epoch = _loadEpoch;
-    final isCopy = _isCopySource;
-    if (reset) {
-      setState(() {
+  Future<({List<Comic> list, int total})> _fetchComicPage({
+    required String source,
+    required String ordering,
+    required int offset,
+    required String? tag,
+    required String? top,
+  }) => source == 'copy'
+      ? widget.api.manga.getCopyComicList(
+          ordering: ordering,
+          offset: offset,
+          theme: tag,
+          top: top,
+        )
+      : widget.api.manga.getComicList(
+          ordering: ordering,
+          offset: offset,
+          theme: tag,
+        );
+
+  Future<void> _loadComics({bool keepResults = false}) async {
+    final epoch = ++_listEpoch;
+    final source = _source;
+    final ordering = _ordering;
+    final tag = _selectedTag;
+    final top = _selectedTop;
+    setState(() {
+      if (!keepResults) {
+        _comics = [];
         _offset = 0;
         _total = 0;
-        _comics = [];
-        _searching = true;
-        // 一旦要出结果列表就收起全部题材网格，把纵向空间让给漫画。
-        // 判据是「是否加载了结果」而不是「选的是不是全部」——点「全部」
-        // 同样会拉出列表，那时也该收起。
+        _hasMore = false;
         _tagsExpanded = false;
-      });
-    }
+      }
+      _searching = true;
+      _loadingMore = false;
+      _listFailed = false;
+      _loadMoreFailed = false;
+    });
     try {
-      final result = isCopy
-          ? await _api.manga.getCopyComicList(
-              ordering: _ordering,
-              offset: _offset,
-              theme: _selectedTag,
-              top: _selectedTop,
-            )
-          : await _api.manga.getComicList(
-              ordering: _ordering,
-              offset: _offset,
-              theme: _selectedTag,
-            );
-      if (!mounted || epoch != _loadEpoch) return;
+      final result = await _fetchComicPage(
+        source: source,
+        ordering: ordering,
+        offset: 0,
+        tag: tag,
+        top: top,
+      );
+      if (!_isCurrentList(epoch, source)) return;
       setState(() {
-        if (reset) {
-          _comics = result.list;
-        } else {
-          _comics.addAll(result.list);
-        }
+        _comics = List.of(result.list);
         _total = result.total;
-        _offset = _comics.length;
-        _searching = false;
+        _offset = result.list.length;
+        _hasMore = result.list.isNotEmpty && _offset < _total;
       });
     } catch (e, stack) {
+      if (!_isCurrentList(epoch, source)) return;
       unawaited(
         AppLogger.instance.recordWarning(
           e,
@@ -219,24 +335,62 @@ class _DiscoverTabState extends State<_DiscoverTab>
           source: 'discover_tab.load_comics',
         ),
       );
-      if (mounted && epoch == _loadEpoch) {
+      setState(() => _listFailed = true);
+    } finally {
+      if (_isCurrentList(epoch, source)) {
         setState(() => _searching = false);
       }
     }
   }
 
-  Future<void> _loadMore() async {
-    if (_loadingMore || _offset >= _total) return;
-    final epoch = _loadEpoch;
-    setState(() => _loadingMore = true);
+  Future<void> _loadMore({bool retry = false}) async {
+    if (_searching ||
+        _loadingMore ||
+        !_hasResults ||
+        !_hasMore ||
+        _listFailed ||
+        (_loadMoreFailed && !retry)) {
+      return;
+    }
+    final epoch = _listEpoch;
+    final source = _source;
+    final ordering = _ordering;
+    final tag = _selectedTag;
+    final top = _selectedTop;
+    final offset = _offset;
+    setState(() {
+      _loadingMore = true;
+      _loadMoreFailed = false;
+    });
     try {
-      await _loadComics(reset: false);
-      if (!mounted || epoch != _loadEpoch) return;
+      final result = await _fetchComicPage(
+        source: source,
+        ordering: ordering,
+        offset: offset,
+        tag: tag,
+        top: top,
+      );
+      if (!_isCurrentList(epoch, source)) return;
+      setState(() {
+        _comics.addAll(result.list);
+        _offset = offset + result.list.length;
+        _total = result.total;
+        // 某些源的 total 会滞后；空页必须终止，不能反复请求同一 offset。
+        _hasMore = result.list.isNotEmpty && _offset < _total;
+      });
+    } catch (e, stack) {
+      if (!_isCurrentList(epoch, source)) return;
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'discover_tab.load_more',
+        ),
+      );
+      setState(() => _loadMoreFailed = true);
     } finally {
-      if (mounted) {
+      if (_isCurrentList(epoch, source)) {
         setState(() => _loadingMore = false);
-      } else {
-        _loadingMore = false;
       }
     }
   }
@@ -244,42 +398,21 @@ class _DiscoverTabState extends State<_DiscoverTab>
   void _setOrdering(String value) {
     if (_ordering == value) return;
     setState(() => _ordering = value);
-    _loadComics();
-    _scrollToTop();
+    unawaited(_loadComics());
+    unawaited(_scrollToTop());
   }
 
-  /// 选中题材 tag；传 null（点「全部」）即取消题材筛选，两者都重新拉列表。
-  ///
-  /// 与地区行是**可叠加**的维度（服务端实测 `top` + `theme` 同时生效），
-  /// 所以这里不动 [_selectedTop]。收起网格由 [_loadComics] 统一处理。
+  /// 题材与 COPY 地区可叠加；null 表示「全部」。
   void _selectTag(String? tagPathWord) {
-    setState(() {
-      _selectedTag = tagPathWord;
-      _searching = true;
-      _offset = 0;
-      _total = 0;
-      _comics = [];
-    });
-    _loadComics();
+    setState(() => _selectedTag = tagPathWord);
+    unawaited(_loadComics());
+    unawaited(_scrollToTop());
   }
 
-  /// 选中 / 切换 COPY 源的大分类（全部/日漫/韓漫/美漫/已完結），重新拉列表。
-  ///
-  /// 传 null（点「全部」）即不传 `top`，返回全量结果。
-  /// 服务端的「日漫」本身也等价于不过滤——COPY 站以日漫为主体。
-  ///
-  /// 大分类与题材 tag 是**可叠加**的维度（服务端实测 `top` + `theme` 同时生效），
-  /// 所以这里不动 [_selectedTag]，两者一起传下去。
-  /// 收起网格由 [_loadComics] 统一处理。
   void _selectTop(String? topPathWord) {
-    setState(() {
-      _selectedTop = topPathWord;
-      _searching = true;
-      _offset = 0;
-      _total = 0;
-      _comics = [];
-    });
-    _loadComics();
+    setState(() => _selectedTop = topPathWord);
+    unawaited(_loadComics());
+    unawaited(_scrollToTop());
   }
 
   Future<void> _scrollToTop() async {
@@ -291,18 +424,13 @@ class _DiscoverTabState extends State<_DiscoverTab>
     );
   }
 
-  /// 展开 / 收起全部题材网格。
   void _toggleTagsExpanded() {
     setState(() => _tagsExpanded = !_tagsExpanded);
   }
 
-  /// 地区行选项：首位「全部」（值空串 = 不传 `top`）。
-  ///
-  /// 服务端的「日漫」本身也等价于不过滤（COPY 站以日漫为主体），但保留
-  /// 「全部」作为语义明确的默认项。
   List<_ChipOption> _topOptions(AppLocalizations l10n) => [
     _ChipOption(
-      label: l10n.downloadQueueFilterAll,
+      label: l10n.searchFilterAll,
       value: '',
       icon: Icons.public,
       selected: _selectedTop == null,
@@ -315,10 +443,9 @@ class _DiscoverTabState extends State<_DiscoverTab>
       ),
   ];
 
-  /// 题材行选项：首位「全部」。不显示数量——横向单行里长数字会挤掉别的 tag。
   List<_ChipOption> _tagOptions(AppLocalizations l10n) => [
     _ChipOption(
-      label: l10n.downloadQueueFilterAll,
+      label: l10n.searchFilterAll,
       value: '',
       icon: Icons.local_offer_outlined,
       selected: _selectedTag == null,
@@ -331,7 +458,6 @@ class _DiscoverTabState extends State<_DiscoverTab>
       ),
   ];
 
-  /// 排序行选项：热度 / 更新时间（必选其一，没有「全部」）。
   List<_ChipOption> _orderingOptions(AppLocalizations l10n) => [
     _ChipOption(
       label: l10n.popularOrder,
@@ -347,9 +473,89 @@ class _DiscoverTabState extends State<_DiscoverTab>
     ),
   ];
 
+  Widget _buildFilters(BuildContext context, double hp) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(hp, AppSpacing.md, hp, AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_metadataLoading || (_searching && _hasResults)) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          if (_metadataFailed)
+            _DiscoverRetryNotice(
+              message: l10n.discoverFiltersFailed,
+              onRetry: () => unawaited(_loadMetadata(forceRefresh: true)),
+            ),
+          if (_isCopySource && _copyFilters.tops.isNotEmpty) ...[
+            _FilterChipRow(
+              options: _topOptions(l10n),
+              onTap: (o) => _selectTop(o.value.isEmpty ? null : o.value),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          // 展开时只渲染下面的题材网格，不再重复一条横向 chip 行。
+          if (_tags.isNotEmpty && !_tagsExpanded) ...[
+            _FilterChipRow(
+              options: _tagOptions(l10n),
+              onTap: (o) => _selectTag(o.value.isEmpty ? null : o.value),
+              trailing: TextButton.icon(
+                onPressed: _toggleTagsExpanded,
+                icon: const Icon(Icons.expand_more, size: AppIconSize.lg),
+                label: Text(l10n.tagsExpandAll),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          _FilterChipRow(
+            options: _orderingOptions(l10n),
+            onTap: (o) => _setOrdering(o.value),
+            // 行尾固定：数据源切换在左，重置在右（重置只在有筛选时出现）。
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _SourceToggle(
+                  isCopy: _isCopySource,
+                  onPressed: () =>
+                      unawaited(_selectSource(_isCopySource ? 'hot' : 'copy')),
+                ),
+                if (_canResetFilters)
+                  TextButton.icon(
+                    onPressed: _resetFilters,
+                    icon: const Icon(Icons.restart_alt, size: AppIconSize.lg),
+                    label: Text(l10n.resetButton),
+                  ),
+              ],
+            ),
+          ),
+          if (_tagsExpanded && _tags.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SectionHeader(
+              title: l10n.allTagsTitle,
+              trailing: TextButton.icon(
+                onPressed: _toggleTagsExpanded,
+                icon: const Icon(Icons.expand_less, size: AppIconSize.lg),
+                label: Text(l10n.tagsCollapseAll),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _AllTagsGrid(
+              tags: _tags,
+              selectedTag: _selectedTag,
+              onSelected: _selectTag,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    super.build(context); // AutomaticKeepAliveClientMixin 要求
+    super.build(context);
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -359,215 +565,142 @@ class _DiscoverTabState extends State<_DiscoverTab>
 
     return Stack(
       children: [
-        Column(
-          children: [
-            // 三行筛选固定在顶部、不参与滚动：地区（仅 COPY 源）/ 题材 / 排序。
-            // 每行横向滚动、首项都是「全部」，选中态直接可见。
-            Padding(
-              padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
-              child: Column(
-                children: [
-                  if (_copyFilters.tops.isNotEmpty) ...[
-                    _FilterChipRow(
-                      options: _topOptions(l10n),
-                      onTap: (o) =>
-                          _selectTop(o.value.isEmpty ? null : o.value),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                  if (_tags.isNotEmpty) ...[
-                    _FilterChipRow(
-                      options: _tagOptions(l10n),
-                      onTap: (o) =>
-                          _selectTag(o.value.isEmpty ? null : o.value),
-                      // 行尾展开/收起：题材有几十个，单行横向滚动只适合快速
-                      // 切换常用项，找具体 tag 要铺开看（网格带数量）。
-                      trailing: _tagsExpanded
-                          ? null
-                          : TextButton.icon(
-                              onPressed: _toggleTagsExpanded,
-                              icon: const Icon(Icons.expand_more, size: 20),
-                              label: Text(l10n.tagsExpandAll),
-                              style: TextButton.styleFrom(
-                                foregroundColor: cs.primary,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                minimumSize: const Size(0, 34),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                  _FilterChipRow(
-                    options: _orderingOptions(l10n),
-                    onTap: (o) => _setOrdering(o.value),
-                    // 重置放在排序行尾（行内固定，不随 chips 滚动）。
-                    trailing: _canResetFilters
-                        ? TextButton.icon(
-                            onPressed: _resetFilters,
-                            icon: const Icon(Icons.restart_alt, size: 20),
-                            label: Text(l10n.resetButton),
-                            style: TextButton.styleFrom(
-                              foregroundColor: cs.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
-                              minimumSize: const Size(0, 34),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                          )
-                        : null,
+        RefreshIndicator(
+          onRefresh: _refresh,
+          child: ResultScrollListener(
+            canScrollUp: _canScrollUp,
+            onCanScrollUpChanged: (value) =>
+                setState(() => _canScrollUp = value),
+            onLoadMore: _canLoadMore ? _loadMore : null,
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // 全部筛选和题材网格一起滚出视口，只有外层 TabBar 固定。
+                SliverToBoxAdapter(child: _buildFilters(context, hp)),
+                if (_searching && !_hasResults)
+                  SliverComicGridSkeleton(
+                    horizontalPadding: hp,
+                    cardExtent: cardExtent,
                   ),
-                ],
-              ),
+                if (!_searching && _listFailed && !_hasResults)
+                  SliverErrorRetryView(
+                    message: l10n.discoverRequestFailed,
+                    onRetry: () => unawaited(_loadComics()),
+                  ),
+                if (!_searching && !_listFailed && !_hasResults)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Padding(
+                      padding: EdgeInsets.all(hp),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.auto_stories_outlined,
+                            size: AppIconSize.empty,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            l10n.discoverEmptyResults,
+                            textAlign: TextAlign.center,
+                            style: tt.bodyLarge?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (_hasResults)
+                  _ComicGrid(
+                    comics: _comics,
+                    hp: hp,
+                    cardExtent: cardExtent,
+                    loadingMore: _loadingMore,
+                    scope: 'discover',
+                    onOpen: (comic, heroTagBase) => context.pushNamed(
+                      AppRoutes.comicDetail,
+                      pathParameters: {'pathWord': comic.pathWord},
+                      extra: ComicDetailExtra(
+                        initialComic: comic,
+                        heroTagBase: heroTagBase,
+                      ),
+                    ),
+                  ),
+                if (_listFailed && _hasResults)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: hp),
+                      child: _DiscoverRetryNotice(
+                        message: l10n.discoverRequestFailed,
+                        onRetry: () =>
+                            unawaited(_loadComics(keepResults: true)),
+                      ),
+                    ),
+                  ),
+                if (_loadMoreFailed)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: hp),
+                      child: _DiscoverRetryNotice(
+                        message: l10n.searchLoadMoreFailed,
+                        onRetry: () => unawaited(_loadMore(retry: true)),
+                      ),
+                    ),
+                  )
+                else if (_hasResults && _hasMore && !_listFailed && !_searching)
+                  SliverToBoxAdapter(
+                    child: LoadMoreFooter(
+                      loading: _loadingMore,
+                      onPressed: _loadMore,
+                      label: l10n.loadMoreProgress(_offset, _total),
+                      horizontalPadding: hp,
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 72)),
+              ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => _loadInit(forceRefresh: true),
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (n) {
-                    if (n.metrics.axis != Axis.vertical) return false;
-                    final canScrollUp =
-                        n.metrics.pixels > n.metrics.minScrollExtent &&
-                        n.metrics.maxScrollExtent > n.metrics.minScrollExtent;
-                    if (canScrollUp != _canScrollUp) {
-                      setState(() => _canScrollUp = canScrollUp);
-                    }
-                    if (_hasResults &&
-                        n.metrics.pixels > 0 &&
-                        n.metrics.pixels > n.metrics.maxScrollExtent - 300) {
-                      _loadMore();
-                    }
-                    return false;
-                  },
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    slivers: [
-                      if (_refreshing && _tags.isEmpty)
-                        const SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: Center(child: ExpressiveLoadingIndicator()),
-                        ),
-                      // 全部题材网格：展开时铺在列表上方（带数量）。
-                      if (_tagsExpanded && _tags.isNotEmpty)
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(hp, 8, hp, 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        l10n.allTagsTitle,
-                                        style: tt.titleSmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: _toggleTagsExpanded,
-                                      icon: const Icon(
-                                        Icons.expand_less,
-                                        size: AppIconSize.lg,
-                                      ),
-                                      label: Text(l10n.tagsCollapseAll),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: cs.primary,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                        ),
-                                        minimumSize: const Size(0, 34),
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                _AllTagsGrid(
-                                  tags: _tags,
-                                  selectedTag: _selectedTag,
-                                  onSelected: _selectTag,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (_searching)
-                        SliverPadding(
-                          padding: EdgeInsets.fromLTRB(hp, 8, hp, 0),
-                          sliver: SliverGrid(
-                            delegate: SliverChildBuilderDelegate(
-                              (_, _) => const ComicCardSkeleton(),
-                              childCount: 21,
-                            ),
-                            gridDelegate:
-                                SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: cardExtent,
-                                  childAspectRatio: 0.55,
-                                  mainAxisSpacing: 12,
-                                  crossAxisSpacing: 12,
-                                ),
-                          ),
-                        ),
-                      if (_comics.isNotEmpty)
-                        _ComicGrid(
-                          comics: _comics,
-                          hp: hp,
-                          cardExtent: cardExtent,
-                          loadingMore: _loadingMore,
-                          scope: 'discover',
-                          onOpen: (comic, heroTagBase) => context.pushNamed(
-                            AppRoutes.comicDetail,
-                            pathParameters: {'pathWord': comic.pathWord},
-                            extra: ComicDetailExtra(
-                              initialComic: comic,
-                              heroTagBase: heroTagBase,
-                            ),
-                          ),
-                        ),
-                      if (_hasResults && _offset < _total)
-                        SliverToBoxAdapter(
-                          child: LoadMoreFooter(
-                            loading: _loadingMore,
-                            onPressed: _loadMore,
-                            label: l10n.loadMoreProgress(_offset, _total),
-                            horizontalPadding: hp,
-                          ),
-                        ),
-                      // 底部留白：给悬浮按钮让位，并保证结果少时列表仍可滚动。
-                      const SliverToBoxAdapter(child: SizedBox(height: 72)),
-                    ],
-                  ),
-                ),
-              ),
+          ),
+        ),
+        if (_canScrollUp)
+          Positioned(
+            right: AppSpacing.md,
+            bottom: AppSpacing.md,
+            child: _BackToTopButton(onPressed: _scrollToTop),
+          ),
+      ],
+    );
+  }
+}
+
+/// 非阻断错误：保留已有筛选/漫画，且只有显式点击才会重试。
+class _DiscoverRetryNotice extends StatelessWidget {
+  const _DiscoverRetryNotice({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Semantics(
+        liveRegion: true,
+        child: Row(
+          children: [
+            Expanded(child: Text(message)),
+            const SizedBox(width: AppSpacing.sm),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: AppIconSize.lg),
+              label: Text(l10n.retryButton),
             ),
           ],
         ),
-        // 右下角：回到顶部（列表可向上滚动时）。
-        // tag / 排序 / 重置都在顶部固定区可见可点，这里不再重复。
-        if (_canScrollUp)
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: _BackToTopButton(onPressed: _scrollToTop),
-          ),
-        // 左下角常驻：数据源切换（与首页共用设置，默认 hot 并持久化）。
-        Positioned(
-          left: 16,
-          bottom: 16,
-          child: _SourceFab(
-            isCopy: _isCopySource,
-            onPressed: () =>
-                _user.setMangaHomeSource(_isCopySource ? 'hot' : 'copy'),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

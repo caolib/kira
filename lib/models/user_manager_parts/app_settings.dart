@@ -140,6 +140,15 @@ extension UserManagerAppSettingsPart on UserManager {
     _notifyListeners();
   }
 
+  /// 「发现」页的数据源与首页独立：在发现页切源不改变首页。
+  Future<void> setDiscoverSource(String source) async {
+    if (_discoverSource == source) return;
+    _discoverSource = source;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(UserManager._keyDiscoverSource, source);
+    _notifyListeners();
+  }
+
   /// 记住搜索页停留的标签，下次冷启动直接回到这一页。
   ///
   /// 不调 [_notifyListeners]：这个值只被 [SearchPage] 初次建

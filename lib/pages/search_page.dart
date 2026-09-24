@@ -17,13 +17,16 @@ import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
-import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
 import '../utils/screen_layout.dart';
+import '../utils/search_history.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
+import '../widgets/error_retry_view.dart';
 import '../widgets/load_more_footer.dart';
+import '../widgets/result_scroll_listener.dart';
 import '../widgets/section_header.dart';
+import '../widgets/sliver_comic_grid_skeleton.dart';
 import 'home_page.dart' show ComicCard;
 
 part 'search/discover_tab.dart';
@@ -39,7 +42,10 @@ part 'search/search_widgets.dart';
 /// 这个接口差异是硬约束——`/api/v3/search/comic` 不认 `theme` / `top`，
 /// 而 `/api/v3/comics` 不认关键字，所以两者无法合并成一个界面。
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({super.key, this.api, this.initRepository});
+
+  final ApiClient? api;
+  final SearchInitRepository? initRepository;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -48,6 +54,9 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage>
     with SingleTickerProviderStateMixin {
   final _user = UserManager();
+  late final _api = widget.api ?? ApiClient();
+  late final _initRepository =
+      widget.initRepository ?? SearchInitRepository(api: _api);
   late final TabController _tabController = TabController(
     length: 2,
     // 冷启动回到上次停留的标签（「发现」页用得多的用户不必每次手动切）。
@@ -96,7 +105,12 @@ class _SearchPageState extends State<SearchPage>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [_SearchTab(), _DiscoverTab()],
+              // 横滑留给主导航，内部标签通过顶部 TabBar 切换。
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _SearchTab(api: _api, initRepository: _initRepository),
+                _DiscoverTab(api: _api, initRepository: _initRepository),
+              ],
             ),
           ),
         ],

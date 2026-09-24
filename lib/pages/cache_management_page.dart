@@ -16,6 +16,7 @@ import '../utils/app_logger.dart';
 import '../utils/app_storage.dart';
 import '../utils/font_manager.dart';
 import '../utils/reading_history.dart';
+import '../utils/search_history.dart';
 import '../utils/settings_reload.dart';
 import '../utils/toast.dart';
 
@@ -96,9 +97,8 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     });
 
     try {
-      // 阅读进度防抖写入，先落盘再统计，否则刚读的章节不会出现在列表里，
-      // 删除后也会被延迟写回。
-      await ReadingHistory.flush();
+      // 先落盘再统计，避免刚产生的记录缺席或在删除后被延迟写回。
+      await Future.wait([ReadingHistory.flush(), SearchHistory.flush()]);
       final prefs = await AppStorage.sharedPreferences();
       final entries =
           prefs.getKeys().where((key) => !_isAiConfigKey(key)).map((key) {
@@ -196,6 +196,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     if (confirmed != true) return;
 
     try {
+      if (entry.category == _CacheCategory.searchHistory) {
+        await SearchHistory.flush();
+      }
       final prefs = await AppStorage.sharedPreferences();
       await prefs.remove(entry.key);
       if (entry.category == _CacheCategory.account) {

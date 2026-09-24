@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../utils/app_logger.dart';
 import '../utils/app_storage.dart';
 
 /// A generic repository that unifies the "cache-then-load" pattern used
@@ -56,6 +57,7 @@ abstract class CachedRepository<T> {
   /// this every caller issued its own API request (cache stampede). Callers
   /// that arrive while a load is running await the same future instead.
   Future<T>? _inFlight;
+  Future<T>? _refreshInFlight;
 
   CachedRepository({
     required this.cacheKey,
@@ -87,7 +89,7 @@ abstract class CachedRepository<T> {
   /// Concurrent calls share a single in-flight request; the returned future
   /// completes with the same value (or error) for every caller.
   Future<T> load() {
-    final pending = _inFlight;
+    final pending = _refreshInFlight ?? _inFlight;
     if (pending != null) return pending;
 
     final future = _loadOnce();
@@ -105,6 +107,38 @@ abstract class CachedRepository<T> {
       if (cached != null) return cached;
     }
 
+    final data = await fetchFromApi();
+    await saveToCache(data);
+    return data;
+  }
+
+  /// 等待旧请求完成后绕过缓存刷新；并发刷新合并，失败时保留旧缓存。
+  Future<T> forceRefreshApi() {
+    final pending = _refreshInFlight;
+    if (pending != null) return pending;
+
+    final future = _refreshOnce();
+    _refreshInFlight = future;
+    return future.whenComplete(() {
+      if (identical(_refreshInFlight, future)) _refreshInFlight = null;
+    });
+  }
+
+  Future<T> _refreshOnce() async {
+    final pending = _inFlight;
+    if (pending != null) {
+      try {
+        await pending;
+      } catch (error, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            error,
+            stackTrace: stack,
+            source: 'cached_repository.wait_before_refresh',
+          ),
+        );
+      }
+    }
     final data = await fetchFromApi();
     await saveToCache(data);
     return data;

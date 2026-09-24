@@ -154,8 +154,11 @@ extension UserManagerInitPart on UserManager {
     _bannerVisible = prefs.getBool(UserManager._keyBannerVisible) ?? true;
     _mangaHomeSource =
         prefs.getString(UserManager._keyMangaHomeSource) ?? 'hot';
-    _searchTabIndex = (prefs.getInt(UserManager._keySearchTabIndex) ?? 0)
-        .clamp(0, 1);
+    _discoverSource = prefs.getString(UserManager._keyDiscoverSource) ?? 'hot';
+    _searchTabIndex = (prefs.getInt(UserManager._keySearchTabIndex) ?? 0).clamp(
+      0,
+      1,
+    );
     _copyApiHost = UserManager.normalizeCopyApiHost(
       prefs.getString(UserManager._keyCopyApiHost),
     );

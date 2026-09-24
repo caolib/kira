@@ -1,6 +1,6 @@
 part of '../search_page.dart';
 
-/// 右下角「回到顶部」方形按钮，与「发现」页工具条里那颗同款。
+/// 两个标签页共用的右下角「回到顶部」按钮。
 class _BackToTopButton extends StatelessWidget {
   final VoidCallback onPressed;
 
@@ -32,6 +32,43 @@ class _BackToTopButton extends StatelessWidget {
   }
 }
 
+/// 排序行行尾的数据源切换按钮（仅「发现」页用，搜索页固定 HOT 源）。
+///
+/// 显示**当前**源名称，点击后切到另一个源。只影响「发现」页，
+/// 与首页各自独立。
+class _SourceToggle extends StatelessWidget {
+  final bool isCopy;
+  final VoidCallback onPressed;
+
+  const _SourceToggle({required this.isCopy, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final tt = Theme.of(context).textTheme;
+
+    return Tooltip(
+      message: isCopy ? l10n.switchToHotSource : l10n.switchToCopySource,
+      child: FilledButton.tonalIcon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.swap_horiz, size: AppIconSize.lg),
+        label: Text(
+          isCopy ? l10n.homeSourceCopy : l10n.homeSourceHot,
+          style: tt.labelLarge,
+        ),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          minimumSize: const Size(0, 34),
+          // 与同行筛选 chip 一致的圆角矩形，而非按钮默认的胶囊形。
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+    );
+  }
+}
+
 /// 筛选 chip 行里的一个选项。
 class _ChipOption {
   final String label;
@@ -49,10 +86,9 @@ class _ChipOption {
   });
 }
 
-/// 一条可横向滚动的筛选 chip 行，「发现」页顶部固定区复用。
+/// 一条可横向滚动的筛选 chip 行，用于「发现」页筛选区。
 ///
-/// 用横向滚动而非换行：COPY 源的题材有 69 个，换行铺开会占满整个屏幕。
-/// 高度固定 34，保证顶部固定区总高度可预期。
+/// COPY 源题材较多，收起时横向浏览，展开时改用换行网格。
 /// [trailing] 固定在行尾（不随 chips 滚动），用于「重置」这类常驻操作。
 class _FilterChipRow extends StatelessWidget {
   final List<_ChipOption> options;
@@ -161,11 +197,7 @@ class _ComicGrid extends StatelessWidget {
   }
 }
 
-/// 全部题材的换行网格（内联，非弹层）：带数量、选中项高亮。
-///
-/// 用在「发现」页的空白态——此时列表还没内容，把全部题材铺出来既填满页面
-/// 又让用户一眼看到有什么可选，比只留一行横向滚动好找。选了题材、出结果
-/// 之后收成单行，把纵向空间让给漫画列表。
+/// 展开后的全部题材网格（内联，非弹层），与横向题材行互斥显示。
 class _AllTagsGrid extends StatelessWidget {
   final List<m.Theme> tags;
   final String? selectedTag;
@@ -199,7 +231,7 @@ class _AllTagsGrid extends StatelessWidget {
       runSpacing: 8,
       children: [
         FilterChip(
-          label: Text(l10n.downloadQueueFilterAll),
+          label: Text(l10n.searchFilterAll),
           selected: selectedTag == null,
           showCheckmark: false,
           onSelected: (_) => onSelected(null),
@@ -229,49 +261,6 @@ class _AllTagsGrid extends StatelessWidget {
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
       ],
-    );
-  }
-}
-
-/// 左下角常驻的数据源切换按钮（仅「发现」页用，搜索页固定 HOT 源）。
-///
-/// 显示**当前**源名称，点击后切到另一个源，与首页的源切换共用同一设置。
-class _SourceFab extends StatelessWidget {
-  final bool isCopy;
-  final VoidCallback onPressed;
-
-  const _SourceFab({required this.isCopy, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-
-    return SafeArea(
-      top: false,
-      child: Tooltip(
-        message: isCopy ? l10n.switchToHotSource : l10n.switchToCopySource,
-        child: FilledButton.icon(
-          style: FilledButton.styleFrom(
-            backgroundColor: cs.primaryContainer,
-            foregroundColor: cs.onPrimaryContainer,
-            elevation: 6,
-            shadowColor: AppShadows.floatingTint(0.22),
-            minimumSize: const Size(0, 44),
-            maximumSize: const Size.fromHeight(44),
-            fixedSize: const Size.fromHeight(44),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          onPressed: onPressed,
-          icon: const Icon(Icons.swap_horiz, size: 20),
-          label: Text(
-            isCopy ? l10n.homeSourceCopy : l10n.homeSourceHot,
-            style: AppTypography.fabLabel(Theme.of(context).textTheme),
-          ),
-        ),
-      ),
     );
   }
 }

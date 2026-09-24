@@ -178,6 +178,7 @@ class UserManager extends ChangeNotifier {
   static const _keyLocale = 'locale';
   static const _keyBannerVisible = 'banner_visible';
   static const _keyMangaHomeSource = 'manga_home_source';
+  static const _keyDiscoverSource = 'discover_source';
   static const _keySearchTabIndex = 'search_tab_index';
   static const _keyCopyApiHost = 'copy_api_host';
   static const _keyCopyLoginHost = 'copy_login_host';
@@ -252,6 +253,10 @@ class UserManager extends ChangeNotifier {
   String _locale = '';
   bool _bannerVisible = true;
   String _mangaHomeSource = 'hot';
+
+  /// 「发现」页自己的数据源，与首页互不影响。
+  String _discoverSource = 'hot';
+
   /// 搜索页当前标签：0 = 搜索，1 = 发现。与 [lastNavKey] 同理，冷启动恢复。
   int _searchTabIndex = 0;
   String _copyApiHost = defaultCopyApiHost;
@@ -373,6 +378,9 @@ class UserManager extends ChangeNotifier {
   String get locale => _locale;
   bool get bannerVisible => _bannerVisible;
   String get mangaHomeSource => _mangaHomeSource;
+
+  /// 「发现」页当前数据源，独立于 [mangaHomeSource]。
+  String get discoverSource => _discoverSource;
 
   /// 搜索页上次停留的标签（0 = 搜索，1 = 发现）。
   int get searchTabIndex => _searchTabIndex;

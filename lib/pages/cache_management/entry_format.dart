@@ -16,6 +16,7 @@ extension _CacheEntryFormat on _CacheManagementPageState {
         key.startsWith('user_')) {
       return _CacheCategory.account;
     }
+    if (key.startsWith('search_history_')) return _CacheCategory.searchHistory;
     if (key.startsWith('reading_history_')) return _CacheCategory.mangaHistory;
     if (key.startsWith('reading_stats_')) return _CacheCategory.mangaHistory;
     if (key.startsWith('comic_bookmarks')) return _CacheCategory.mangaHistory;

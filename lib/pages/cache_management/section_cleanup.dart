@@ -101,6 +101,7 @@ extension _CacheSectionCleanup on _CacheManagementPageState {
     if (confirmed != true) return;
 
     try {
+      await SearchHistory.flush();
       final prefs = await AppStorage.sharedPreferences();
       if (keys.isNotEmpty) {
         await Future.wait(keys.map(prefs.remove));
@@ -244,6 +245,7 @@ extension _CacheSectionCleanup on _CacheManagementPageState {
     if (confirmed != true) return;
 
     try {
+      await SearchHistory.flush();
       final prefs = await AppStorage.sharedPreferences();
       final keys = section.entries.map((e) => e.key).toSet();
       await Future.wait(keys.map(prefs.remove));

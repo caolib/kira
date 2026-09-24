@@ -131,6 +131,7 @@ abstract final class BackupSchema {
     'copy_home_section_collapsed',
     'copy_login_host',
     'desktop_font_family',
+    'discover_source',
     'locale',
     'login_source',
     'manga_home_source',

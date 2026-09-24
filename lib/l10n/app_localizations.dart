@@ -115,6 +115,72 @@ abstract class AppLocalizations {
   /// **'发现'**
   String get discoverTabLabel;
 
+  /// No description provided for @searchFilterAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get searchFilterAll;
+
+  /// No description provided for @searchEmptyResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有找到相关漫画，试试其他关键词'**
+  String get searchEmptyResults;
+
+  /// No description provided for @searchRequestFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索失败，请重试'**
+  String get searchRequestFailed;
+
+  /// No description provided for @discoverEmptyResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无符合条件的漫画，试试其他筛选条件'**
+  String get discoverEmptyResults;
+
+  /// No description provided for @discoverRequestFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'漫画加载失败，请重试'**
+  String get discoverRequestFailed;
+
+  /// No description provided for @discoverFiltersFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'筛选项加载失败，请重试'**
+  String get discoverFiltersFailed;
+
+  /// No description provided for @searchLoadMoreFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多失败，请重试'**
+  String get searchLoadMoreFailed;
+
+  /// No description provided for @searchHistoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索历史'**
+  String get searchHistoryTitle;
+
+  /// No description provided for @searchHistoryClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空历史'**
+  String get searchHistoryClear;
+
+  /// No description provided for @searchHistoryDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除记录'**
+  String get searchHistoryDelete;
+
+  /// No description provided for @cacheCategorySearchHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索历史'**
+  String get cacheCategorySearchHistory;
+
   /// No description provided for @bookshelfTabLabel.
   ///
   /// In zh, this message translates to:

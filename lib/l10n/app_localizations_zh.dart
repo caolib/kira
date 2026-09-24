@@ -18,6 +18,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get discoverTabLabel => '发现';
 
   @override
+  String get searchFilterAll => '全部';
+
+  @override
+  String get searchEmptyResults => '没有找到相关漫画，试试其他关键词';
+
+  @override
+  String get searchRequestFailed => '搜索失败，请重试';
+
+  @override
+  String get discoverEmptyResults => '暂无符合条件的漫画，试试其他筛选条件';
+
+  @override
+  String get discoverRequestFailed => '漫画加载失败，请重试';
+
+  @override
+  String get discoverFiltersFailed => '筛选项加载失败，请重试';
+
+  @override
+  String get searchLoadMoreFailed => '加载更多失败，请重试';
+
+  @override
+  String get searchHistoryTitle => '搜索历史';
+
+  @override
+  String get searchHistoryClear => '清空历史';
+
+  @override
+  String get searchHistoryDelete => '删除记录';
+
+  @override
+  String get cacheCategorySearchHistory => '搜索历史';
+
+  @override
   String get bookshelfTabLabel => '书架';
 
   @override
@@ -3511,6 +3544,39 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get discoverTabLabel => '發現';
+
+  @override
+  String get searchFilterAll => '全部';
+
+  @override
+  String get searchEmptyResults => '沒有找到相關漫畫，試試其他關鍵詞';
+
+  @override
+  String get searchRequestFailed => '搜尋失敗，請重試';
+
+  @override
+  String get discoverEmptyResults => '暫無符合條件的漫畫，試試其他篩選條件';
+
+  @override
+  String get discoverRequestFailed => '漫畫載入失敗，請重試';
+
+  @override
+  String get discoverFiltersFailed => '篩選項載入失敗，請重試';
+
+  @override
+  String get searchLoadMoreFailed => '載入更多失敗，請重試';
+
+  @override
+  String get searchHistoryTitle => '搜尋歷史';
+
+  @override
+  String get searchHistoryClear => '清空歷史';
+
+  @override
+  String get searchHistoryDelete => '刪除記錄';
+
+  @override
+  String get cacheCategorySearchHistory => '搜尋歷史';
 
   @override
   String get bookshelfTabLabel => '書架';

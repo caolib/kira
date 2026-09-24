@@ -73,23 +73,27 @@ class ComicCoverSkeletonGrid extends StatelessWidget {
   final int count;
   final int crossAxisCount;
   final double childAspectRatio;
+  final SliverGridDelegate? gridDelegate;
 
   const ComicCoverSkeletonGrid({
     super.key,
     this.count = 6,
     this.crossAxisCount = 3,
     this.childAspectRatio = 0.55,
+    this.gridDelegate,
   });
 
   @override
   Widget build(BuildContext context) {
     return SliverGrid(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 8,
-      ),
+      gridDelegate:
+          gridDelegate ??
+          SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 8,
+          ),
       delegate: SliverChildBuilderDelegate(
         (context, index) => const ShimmerShell(
           child: Column(

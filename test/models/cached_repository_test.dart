@@ -261,6 +261,67 @@ void main() {
     });
   });
 
+  group('CachedRepository forced refresh', () {
+    test('bypasses fresh cache and updates it', () async {
+      final repo = _TestMemRepo(skipApiIfCacheFresh: true);
+      await repo.saveToCache(const _TestItem(name: 'cached', count: 1));
+      repo.setMockApiResponse(const _TestItem(name: 'fresh', count: 2));
+
+      expect((await repo.forceRefreshApi()).name, 'fresh');
+      expect((await repo.loadFromCache())?.name, 'fresh');
+      expect(repo.fetchCallCount, 1);
+    });
+
+    test('waits for an older load before starting a fresh request', () async {
+      final repo = _ControlledRepo();
+      final initial = repo.load();
+      final refresh = repo.forceRefreshApi();
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.requests, hasLength(1));
+
+      repo.requests.first.complete(const _TestItem(name: 'old', count: 1));
+      await initial;
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.requests, hasLength(2));
+      repo.requests.last.complete(const _TestItem(name: 'fresh', count: 2));
+
+      expect((await refresh).name, 'fresh');
+      expect((await repo.loadFromCache())?.name, 'fresh');
+    });
+
+    test('concurrent refreshes and loads share the fresh request', () async {
+      final repo = _ControlledRepo();
+      final calls = [
+        repo.forceRefreshApi(),
+        repo.forceRefreshApi(),
+        repo.load(),
+      ];
+      expect(repo.requests, hasLength(1));
+      repo.requests.single.complete(const _TestItem(name: 'fresh', count: 2));
+
+      final results = await Future.wait(calls);
+      expect(results.map((item) => item.name), everyElement('fresh'));
+      expect(repo.requests, hasLength(1));
+    });
+
+    test('failed refresh preserves cache and permits a retry', () async {
+      final repo = _ControlledRepo();
+      await repo.saveToCache(const _TestItem(name: 'cached', count: 1));
+      final failed = expectLater(
+        repo.forceRefreshApi(),
+        throwsA(isA<StateError>()),
+      );
+      repo.requests.single.completeError(StateError('offline'));
+      await failed;
+      expect((await repo.loadFromCache())?.name, 'cached');
+
+      final retry = repo.forceRefreshApi();
+      expect(repo.requests, hasLength(2));
+      repo.requests.last.complete(const _TestItem(name: 'recovered', count: 2));
+      expect((await retry).name, 'recovered');
+    });
+  });
+
   group('CachedRepository in-flight de-duplication', () {
     test('concurrent load calls share one API request', () async {
       final repo = _GatedRepo();
@@ -302,6 +363,17 @@ void main() {
       expect(recovered.name, 'recovered');
     });
   });
+}
+
+class _ControlledRepo extends _TestMemRepo {
+  final requests = <Completer<_TestItem>>[];
+
+  @override
+  Future<_TestItem> fetchFromApi() {
+    final request = Completer<_TestItem>();
+    requests.add(request);
+    return request.future;
+  }
 }
 
 /// Holds [fetchFromApi] open until [gate] completes, so concurrent callers are
