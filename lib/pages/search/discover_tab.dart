@@ -502,10 +502,10 @@ class _DiscoverTabState extends State<_DiscoverTab>
             _FilterChipRow(
               options: _tagOptions(l10n),
               onTap: (o) => _selectTag(o.value.isEmpty ? null : o.value),
-              trailing: TextButton.icon(
+              trailing: _filterRowButton(
                 onPressed: _toggleTagsExpanded,
-                icon: const Icon(Icons.expand_more, size: AppIconSize.lg),
-                label: Text(l10n.tagsExpandAll),
+                icon: Icons.expand_more,
+                label: l10n.tagsExpandAll,
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -523,10 +523,10 @@ class _DiscoverTabState extends State<_DiscoverTab>
                       unawaited(_selectSource(_isCopySource ? 'hot' : 'copy')),
                 ),
                 if (_canResetFilters)
-                  TextButton.icon(
+                  _filterRowButton(
                     onPressed: _resetFilters,
-                    icon: const Icon(Icons.restart_alt, size: AppIconSize.lg),
-                    label: Text(l10n.resetButton),
+                    icon: Icons.restart_alt,
+                    label: l10n.resetButton,
                   ),
               ],
             ),
@@ -535,10 +535,10 @@ class _DiscoverTabState extends State<_DiscoverTab>
             const SizedBox(height: AppSpacing.sm),
             SectionHeader(
               title: l10n.allTagsTitle,
-              trailing: TextButton.icon(
+              trailing: _filterRowButton(
                 onPressed: _toggleTagsExpanded,
-                icon: const Icon(Icons.expand_less, size: AppIconSize.lg),
-                label: Text(l10n.tagsCollapseAll),
+                icon: Icons.expand_less,
+                label: l10n.tagsCollapseAll,
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
