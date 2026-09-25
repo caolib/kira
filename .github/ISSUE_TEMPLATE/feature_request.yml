@@ -17,6 +17,17 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: official_app
+    attributes:
+      label: 该功能在官方 App 是否存在？
+      description: 用于区分「官方已有但本应用缺失」和「全新的功能设想」。
+      options:
+        - 是
+        - 否
+    validations:
+      required: true
+
   - type: textarea
     id: proposal
     attributes:

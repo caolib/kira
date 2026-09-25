@@ -64,3 +64,12 @@ body:
       description: 建议提交截图、视频。可以直接拖拽文件到输入框上传。
     validations:
       required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交前确认
+      description: 请确认以下事项，避免重复或无效的 issue。
+      options:
+        - label: 我已经搜索过现有的 issue，确认没有相同的问题
+          required: true
