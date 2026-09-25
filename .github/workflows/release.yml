@@ -1,6 +1,7 @@
 name: Build & Release
 
-# 推送 v* tag 触发（scripts/release.ps1 完成推送后自动接手），也支持手动 dispatch：
+# 推送正式版 v* tag 触发（scripts/release.ps1 完成推送后自动接手；beta tag 由 build-ci.yml 处理），
+# 也支持手动 dispatch：
 # 1. 三个 ABI 的 APK 并行构建（arm / arm64 / x86_64，flutter build apk 不支持 32 位 x86），
 #    复用 scripts/build_apk.ps1
 # 2. Windows x64 安装包（Inno Setup），复用 scripts/build_windows.ps1
@@ -10,6 +11,7 @@ on:
   push:
     tags:
       - "v*"
+      - "!v*-beta*"
   workflow_dispatch:
     inputs:
       tag_name:

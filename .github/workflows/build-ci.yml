@@ -2,6 +2,7 @@ name: Build CI APK
 
 # Actions 产物从网页下载时会被 GitHub 打包成 zip。
 # 因此这里同时上传到固定的 CI 预发布，把 APK 作为 Release asset 提供，方便手机直接下载。
+# 触发方式：推送 beta tag（v*-beta*，如 v1.2.3-beta）或手动 dispatch。
 
 on:
   workflow_dispatch:
@@ -11,10 +12,8 @@ on:
         required: false
         default: ""
   push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'pubspec.yaml'
+    tags:
+      - "v*-beta*"
 
 env:
   FLUTTER_VERSION: "3.44.0"
@@ -97,7 +96,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APP_VERSION=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          # tag 触发时用 tag 名；手动 dispatch 时回退到 pubspec 版本号
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            APP_VERSION="$GITHUB_REF_NAME"
+          else
+            APP_VERSION=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          fi
           test -n "$APP_VERSION"
 
           cd build/app/outputs/flutter-apk
@@ -120,9 +124,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          APP_VERSION=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            APP_VERSION="$GITHUB_REF_NAME"
+          else
+            APP_VERSION=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          fi
           TAG="CI"
-          TITLE="CI APK"
+          TITLE="$APP_VERSION"
           APK=$(find build/app/outputs/flutter-apk -maxdepth 1 -name 'kira-*.apk' -print -quit)
 
           test -n "$APP_VERSION"
@@ -131,7 +139,12 @@ jobs:
           {
             echo "${APP_VERSION}"
             echo
-            git log --pretty=format:"- %s" -5
+            # 最近 10 条 feat/fix 提交（按标题行筛选，排除 Merge commit 等，
+            git log --pretty=format:"%s" -100 \
+              | grep -E '(^|[[:space:]])(feat|fix)[(:]' \
+              | head -10 \
+              | sed 's/^/- /' \
+              || true
             if [ -n "$NOTE" ]; then
               echo
               echo
