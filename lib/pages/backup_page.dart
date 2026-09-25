@@ -56,6 +56,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   bool _remember = false;
   bool _encrypted = true;
   bool _webDav = false;
+  bool _webDavEnabled = false;
   bool _working = true;
   bool _listed = false;
   Object? _loadError;
@@ -99,6 +100,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       if (!mounted) return;
       _config = data.connection;
       _credentials = data.credentials;
+      _webDavEnabled = data.webDavEnabled;
       _encrypted = data.encrypted;
       _password = data.rememberedPassword ?? '';
       _remember = data.rememberedPassword != null;
@@ -210,21 +212,61 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   }
 
   Future<void> _configure() async {
-    final choice = await showDialog<(WebDavConfig, WebDavCredentials)>(
+    final choice = await showDialog<(WebDavConfig?, WebDavCredentials)>(
       context: context,
       builder: (_) =>
           WebDavConnectionDialog(config: _config, credentials: _credentials),
     );
     if (choice == null) return;
-    await _settings.saveConnection(choice.$1, choice.$2);
+    final config = choice.$1;
+    // 连接设置留空保存 = 清除：地址与账号密码一起删掉。
+    if (config == null) {
+      await _settings.clearConnection();
+      if (!mounted) return;
+      setState(() {
+        _config = null;
+        _credentials = const WebDavCredentials(username: '', password: '');
+        _entries = [];
+        _listed = false;
+        _listError = null;
+      });
+      _toast(AppLocalizations.of(context)!.backupWebDavCleared);
+      _scheduler.poke();
+      return;
+    }
+    await _settings.saveConnection(config, choice.$2);
     if (!mounted) return;
     setState(() {
-      _config = choice.$1;
+      _config = config;
       _credentials = choice.$2;
       _entries = [];
       _listed = false;
       _listError = null;
     });
+  }
+
+  Future<void> _toggleWebDav(bool value) async {
+    setState(() => _webDavEnabled = value);
+    try {
+      await _settings.saveEnabled(value);
+    } catch (error, stack) {
+      if (!mounted) return;
+      setState(() => _webDavEnabled = !value);
+      showToast(
+        context,
+        backupErrorMessage(error, AppLocalizations.of(context)!),
+        isError: true,
+      );
+      _recordFailure(error, stack);
+      return;
+    }
+    // 关掉开关会取消已排期的定时器——没有这一步，关闭前武装的那一次仍会上传。
+    if (value) {
+      _scheduler.poke();
+      if (_config != null) unawaited(_perform(_refreshRemote));
+    } else {
+      _scheduler.suspend();
+    }
   }
 
   Future<bool> _confirm(String title, String body, String action) async =>
@@ -420,7 +462,9 @@ class _BackupPageState extends ConsumerState<BackupPage> {
                           : (value) {
                               setState(() => _webDav = value.single);
                               // 切到 WebDAV 页签时自动拉取一次远端列表。
-                              if (_webDav && _config != null) {
+                              if (_webDav &&
+                                  _webDavEnabled &&
+                                  _config != null) {
                                 unawaited(_perform(_refreshRemote));
                               }
                             },
@@ -512,7 +556,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
                         WebDavPanel(
                           config: _config,
                           entries: _entries,
-                          enabled: !_busy,
+                          enabled: _webDavEnabled,
+                          interactive: !_busy,
                           canUpload: _selected.isNotEmpty,
                           listed: _listed,
                           schedule: _schedule,
@@ -521,6 +566,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
                               ? l10n.backupSchedulePasswordRequired
                               : null,
                           error: _listError,
+                          onToggle: _toggleWebDav,
                           onConfigure: () => _perform(_configure),
                           onTest: () => _perform(() async {
                             await _controller.test(_config!, _credentials);

@@ -13,7 +13,12 @@ import 'backup_schedule_controls.dart';
 class WebDavPanel extends StatelessWidget {
   final WebDavConfig? config;
   final List<WebDavBackupEntry> entries;
+
+  /// WebDAV 总开关：关闭时下面的连接设置、定时备份与远端列表全部收起来。
   final bool enabled;
+
+  /// 有备份操作在跑时为 false：此时连总开关也锁住，避免中途改设置。
+  final bool interactive;
   final bool canUpload;
   final bool listed;
   final BackupSchedule schedule;
@@ -24,6 +29,7 @@ class WebDavPanel extends StatelessWidget {
   /// 定时备份不可开启时的原因提示，可为空。
   final String? scheduleHint;
   final String? error;
+  final ValueChanged<bool>? onToggle;
   final VoidCallback onConfigure;
   final VoidCallback onTest;
   final VoidCallback onUpload;
@@ -37,12 +43,14 @@ class WebDavPanel extends StatelessWidget {
     required this.config,
     required this.entries,
     required this.enabled,
+    required this.interactive,
     required this.canUpload,
     required this.listed,
     required this.schedule,
     required this.scheduleReady,
     required this.error,
     this.scheduleHint,
+    required this.onToggle,
     required this.onConfigure,
     required this.onTest,
     required this.onUpload,
@@ -55,110 +63,133 @@ class WebDavPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final connected = config != null;
+    final config = this.config;
+    final connected = enabled && interactive && config != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingTileGroup(
           children: [
-            ListTile(
-              leading: const Icon(Icons.cloud_outlined),
-              title: Text(l10n.backupWebDavConfiguration),
-              subtitle: Text(
-                config?.root.toString() ?? l10n.backupWebDavNotConfigured,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: enabled ? onConfigure : null,
+            SwitchListTile(
+              secondary: const Icon(Icons.cloud_outlined),
+              title: Text(l10n.backupWebDav),
+              value: enabled,
+              onChanged: interactive ? onToggle : null,
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.md),
-        BackupScheduleControls(
-          schedule: schedule,
-          canEnable: connected && scheduleReady,
-          enabled: enabled,
-          hint: scheduleHint,
-          onChanged: onScheduleChanged,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            OutlinedButton.icon(
-              onPressed: enabled && connected ? onTest : null,
-              icon: const Icon(Icons.lan_outlined),
-              label: Text(l10n.backupTestConnection),
-            ),
-            FilledButton.icon(
-              onPressed: enabled && connected && canUpload ? onUpload : null,
-              icon: const Icon(Icons.cloud_upload_outlined),
-              label: Text(l10n.backupUpload),
-            ),
-            OutlinedButton.icon(
-              onPressed: enabled && connected ? onRefresh : null,
-              icon: const Icon(Icons.refresh_rounded),
-              label: Text(l10n.refreshButton),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        if (error case final message?)
+        if (!enabled)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-            child: ErrorRetryView(
-              message: message,
-              onRetry: enabled ? onRefresh : () {},
-            ),
-          )
-        else if (entries.isEmpty && connected)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            // 已有配置时说明「设置还在」，否则关掉开关看起来像配置被清空了。
             child: Text(
-              listed ? l10n.backupNoRemoteFiles : l10n.backupRemoteFilesHint,
-              textAlign: TextAlign.center,
+              config == null
+                  ? l10n.backupWebDavDisabledHint
+                  : l10n.backupWebDavDisabledHintSaved,
             ),
           )
-        else
+        else ...[
+          const SizedBox(height: AppSpacing.md),
           SettingTileGroup(
             children: [
-              for (final entry in entries)
-                ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(
-                    entry.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    [
-                      if (entry.size case final size?) formatBackupBytes(size),
-                      if (entry.modified case final time?)
-                        formatBackupTime(time),
-                    ].join(' · '),
-                    style: AppTypography.meta(Theme.of(context).textTheme),
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    enabled: enabled,
-                    onSelected: (action) => action == 'restore'
-                        ? onRestore(entry)
-                        : onDelete(entry),
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'restore',
-                        child: Text(l10n.backupRestore),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(l10n.deleteButton),
-                      ),
-                    ],
-                  ),
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: Text(l10n.backupWebDavConfiguration),
+                subtitle: Text(
+                  config?.root.toString() ?? l10n.backupWebDavNotConfigured,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                trailing: const Icon(Icons.chevron_right),
+                enabled: interactive,
+                onTap: onConfigure,
+              ),
             ],
           ),
+          const SizedBox(height: AppSpacing.md),
+          BackupScheduleControls(
+            schedule: schedule,
+            canEnable: connected && scheduleReady,
+            enabled: interactive,
+            hint: scheduleHint,
+            onChanged: onScheduleChanged,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              OutlinedButton.icon(
+                onPressed: connected ? onTest : null,
+                icon: const Icon(Icons.lan_outlined),
+                label: Text(l10n.backupTestConnection),
+              ),
+              FilledButton.icon(
+                onPressed: connected && canUpload ? onUpload : null,
+                icon: const Icon(Icons.cloud_upload_outlined),
+                label: Text(l10n.backupUpload),
+              ),
+              OutlinedButton.icon(
+                onPressed: connected ? onRefresh : null,
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text(l10n.refreshButton),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          if (error case final message?)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+              child: ErrorRetryView(message: message, onRetry: onRefresh),
+            )
+          else if (entries.isEmpty && connected)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+              child: Text(
+                listed ? l10n.backupNoRemoteFiles : l10n.backupRemoteFilesHint,
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            SettingTileGroup(
+              children: [
+                for (final entry in entries)
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(
+                      entry.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      [
+                        if (entry.size case final size?)
+                          formatBackupBytes(size),
+                        if (entry.modified case final time?)
+                          formatBackupTime(time),
+                      ].join(' · '),
+                      style: AppTypography.meta(Theme.of(context).textTheme),
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      enabled: interactive,
+                      onSelected: (action) => action == 'restore'
+                          ? onRestore(entry)
+                          : onDelete(entry),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'restore',
+                          child: Text(l10n.backupRestore),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text(l10n.deleteButton),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+        ],
       ],
     );
   }

@@ -1,7 +1,7 @@
 ﻿# kira 一键启动脚本（psmux 托管，复用 run-kira driver）
 # 用法: .\scripts\run.ps1 [win|mumu|emu] [-Stop] [-Log]
 #   win   flutter run -d win
-#   mumu  启动 MuMu 模拟器 → adb connect 127.0.0.1:16416 → flutter run -d 127
+#   mumu  启动 MuMu 模拟器 → adb connect 127.0.0.1:5557 → flutter run -d 127
 #   emu   flutter emulators --launch Medium_Phone_API_36 → flutter run -d emu
 # 无参数: 打印用法
 
@@ -16,7 +16,7 @@ param(
 $SessionName = 'kira'
 $MuMuManager = 'C:\Program Files\Netease\MuMu\nx_main\MuMuManager.exe'
 $MuMuIndex = 1
-$MuMuAdbAddr = '127.0.0.1:16416'
+$MuMuAdbAddr = '127.0.0.1:5557'
 $EmulatorName = 'Medium_Phone_API_36'
 $Driver = '.claude/skills/run-kira/driver.mjs'
 
@@ -44,7 +44,7 @@ if (-not $Target) {
 用法: .\scripts\run.ps1 <win|mumu|emu> [-Stop] [-Log]
 
   win   Windows 桌面运行
-  mumu  MuMu 模拟器 (127.0.0.1:16416)
+  mumu  MuMu 模拟器 (127.0.0.1:5557)
   emu   Android emulator ($EmulatorName)
 
   -Stop 停止并清理 psmux session

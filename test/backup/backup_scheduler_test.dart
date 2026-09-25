@@ -95,6 +95,49 @@ void main() {
     subject.dispose();
   });
 
+  test('the master switch being off pauses a due schedule', () async {
+    await settings.saveConnection(config, credentials);
+    await settings.saveEncryption(
+      encrypted: false,
+      remember: false,
+      password: '',
+    );
+    await settings.saveSchedule(hourly);
+    await settings.markAutoBackup(clock.subtract(const Duration(hours: 2)));
+    await settings.saveEnabled(false);
+    final subject = scheduler();
+
+    await subject.checkNow();
+
+    expect(uploads, isEmpty);
+    subject.dispose();
+  });
+
+  test('suspend drops the armed run so nothing is left to fire', () async {
+    await settings.saveConnection(config, credentials);
+    await settings.saveEncryption(
+      encrypted: false,
+      remember: false,
+      password: '',
+    );
+    await settings.saveSchedule(hourly);
+    await settings.markAutoBackup(clock.subtract(const Duration(hours: 2)));
+    final timers = <_FakeTimer>[];
+    final subject = scheduler(
+      timerFactory: (delay, callback) {
+        final timer = _FakeTimer(callback);
+        timers.add(timer);
+        return timer;
+      },
+    );
+
+    subject.poke();
+    subject.suspend();
+
+    expect(timers.single.cancelled, isTrue);
+    subject.dispose();
+  });
+
   test(
     'two hours away catch up once, then once an hour while in use',
     () async {
@@ -234,14 +277,19 @@ void main() {
 
 /// 不真的计时的 Timer 替身，触发由测试手动控制。
 class _FakeTimer implements Timer {
+  final void Function()? onFire;
+  bool cancelled = false;
+
+  _FakeTimer([this.onFire]);
+
   @override
   int get tick => 0;
 
   @override
-  bool get isActive => false;
+  bool get isActive => !cancelled;
 
   @override
-  void cancel() {}
+  void cancel() => cancelled = true;
 }
 
 Future<void> _waitFor(

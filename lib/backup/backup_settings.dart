@@ -8,6 +8,10 @@ import 'webdav_config.dart';
 class BackupSettingsData {
   final WebDavConfig? connection;
   final WebDavCredentials credentials;
+
+  /// WebDAV 总开关。关闭时整条远端链路停摆，也不展示任何连接配置。
+  /// 从未动过开关时按「是否已保存过服务器」推断：老配置仍按开启对待。
+  final bool webDavEnabled;
   final bool encrypted;
   final String? rememberedPassword;
   final BackupSchedule schedule;
@@ -16,6 +20,7 @@ class BackupSettingsData {
   const BackupSettingsData({
     this.connection,
     this.credentials = const WebDavCredentials(username: '', password: ''),
+    this.webDavEnabled = false,
     this.encrypted = true,
     this.rememberedPassword,
     this.schedule = const BackupSchedule(),
@@ -28,6 +33,7 @@ class BackupSettingsData {
 /// deliberately outside the scope of this feature).
 class BackupSettings {
   static const configKey = 'backup_webdav_config_v1';
+  static const enabledKey = 'backup_webdav_enabled';
   static const encryptionKey = 'backup_encryption_enabled';
   static const scheduleEnabledKey = 'backup_auto_enabled';
   static const scheduleValueKey = 'backup_auto_interval_value';
@@ -79,6 +85,9 @@ class BackupSettings {
         );
       }
     }
+    // 写过的开关值说了算；从没动过时，已保存过服务器的老配置视为开启，
+    // 全新用户（没有配置）才是关闭。
+    final rawEnabled = prefs[enabledKey];
     final rawValue = prefs[scheduleValueKey];
     final rawLast = prefs[lastAutoBackupKey];
     // 单位不再被当前版本认识时，数值也一并回到默认，避免出现「10 天」这类
@@ -87,6 +96,7 @@ class BackupSettings {
     return BackupSettingsData(
       connection: config,
       credentials: credentials,
+      webDavEnabled: rawEnabled is bool ? rawEnabled : config != null,
       encrypted: prefs[encryptionKey] != false,
       rememberedPassword: await _secrets.readBackupPassword(),
       schedule: BackupSchedule(
@@ -102,6 +112,8 @@ class BackupSettings {
     );
   }
 
+  /// 保存连接设置。凭据写在服务器地址之前：中途失败时，地址一变就认不出旧
+  /// 密码（见 [load] 的绑定规则），不会出现密码配上新服务器的情况。
   Future<void> saveConnection(
     WebDavConfig config,
     WebDavCredentials credentials,
@@ -125,6 +137,24 @@ class BackupSettings {
         'allowHttp': config.allowHttp,
       }),
     );
+    await saveEnabled(true);
+  }
+
+  Future<void> saveEnabled(bool enabled) =>
+      _preferences.write(enabledKey, enabled);
+
+  /// 清除连接设置：地址、账号密码，以及指向它的定时备份与上次运行时刻。
+  /// 先删凭据再删地址：中途失败最坏只剩一个没有密码的地址，重填即可。
+  ///
+  /// 总开关显式写回开启：清空后停在「未设置服务器」的配置流程里（页面不用跳回
+  /// 收起状态），也避免显式值缺失时按「没有配置」推断成关闭。
+  Future<void> clearConnection() async {
+    await _secrets.writeWebDavCredentials(null);
+    final prefs = await _preferences.readAll();
+    for (final key in [configKey, scheduleEnabledKey, lastAutoBackupKey]) {
+      if (prefs.containsKey(key)) await _preferences.remove(key);
+    }
+    await _preferences.write(enabledKey, true);
   }
 
   Future<void> saveEncryption({

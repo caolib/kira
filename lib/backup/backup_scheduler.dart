@@ -75,7 +75,9 @@ class BackupScheduler {
     if (_disposed) return;
     final data = await settings.load();
     final schedule = data.schedule;
-    if (!schedule.enabled) {
+    // 总开关关掉后整条链路暂停，已配置的定时备份也一并停摆；重新打开时由
+    // poke() 按原有到期判断复查（间隔已过则照常补一次）。
+    if (!schedule.enabled || !data.webDavEnabled) {
       _timer?.cancel();
       _timer = null;
       return;
@@ -125,6 +127,13 @@ class BackupScheduler {
       );
       return false;
     }
+  }
+
+  /// 关闭总开关后取消已排期的定时器：没有这一步，关闭前已武装的那一次仍会在
+  /// 开关关闭后触发上传。
+  void suspend() {
+    _timer?.cancel();
+    _timer = null;
   }
 
   /// 未加密的定时上传没有二次确认，跳过账号与 AI 密钥。

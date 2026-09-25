@@ -6221,6 +6221,24 @@ abstract class AppLocalizations {
   /// **'未设置服务器'**
   String get backupWebDavNotConfigured;
 
+  /// No description provided for @backupWebDavDisabledHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后可配置服务器、定时备份与远端备份列表。'**
+  String get backupWebDavDisabledHint;
+
+  /// No description provided for @backupWebDavDisabledHintSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭：不会上传备份，已保存的连接信息仍会保留。'**
+  String get backupWebDavDisabledHintSaved;
+
+  /// No description provided for @backupWebDavCleared.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接设置已清除'**
+  String get backupWebDavCleared;
+
   /// No description provided for @backupSchedule.
   ///
   /// In zh, this message translates to:

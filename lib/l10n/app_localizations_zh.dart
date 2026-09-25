@@ -3377,6 +3377,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupWebDavNotConfigured => '未设置服务器';
 
   @override
+  String get backupWebDavDisabledHint => '开启后可配置服务器、定时备份与远端备份列表。';
+
+  @override
+  String get backupWebDavDisabledHintSaved => '已关闭：不会上传备份，已保存的连接信息仍会保留。';
+
+  @override
+  String get backupWebDavCleared => '连接设置已清除';
+
+  @override
   String get backupSchedule => '定时备份';
 
   @override
@@ -6903,6 +6912,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get backupWebDavNotConfigured => '未設定伺服器';
+
+  @override
+  String get backupWebDavDisabledHint => '開啟後可設定伺服器、定時備份與遠端備份清單。';
+
+  @override
+  String get backupWebDavDisabledHintSaved => '已關閉：不會上傳備份，已儲存的連線資訊仍會保留。';
+
+  @override
+  String get backupWebDavCleared => '連線設定已清除';
 
   @override
   String get backupSchedule => '定時備份';
