@@ -668,7 +668,10 @@ class _DiscoverTabState extends State<_DiscoverTab>
           Positioned(
             right: AppSpacing.md,
             bottom: AppSpacing.md,
-            child: _BackToTopButton(onPressed: _scrollToTop),
+            child: SafeArea(
+              top: false,
+              child: BackToTopButton(onPressed: _scrollToTop),
+            ),
           ),
       ],
     );

@@ -483,7 +483,6 @@ class _ComicBrowseHistoryCard extends StatelessWidget {
       title: comic.name,
       subtitle: authors.isEmpty ? null : authors.join(' / '),
       lastBrowseName: item.lastBrowseName,
-      lastBrowseIcon: Icons.menu_book_outlined,
       latestText:
           comic.lastChapterName == null || comic.lastChapterName!.isEmpty
           ? null
@@ -535,7 +534,6 @@ class _HistoryCardShell extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? lastBrowseName;
-  final IconData lastBrowseIcon;
   final String? latestText;
   final List<Widget> chips;
 
@@ -549,7 +547,6 @@ class _HistoryCardShell extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.lastBrowseName,
-    required this.lastBrowseIcon,
     this.latestText,
     required this.chips,
     this.hugText = false,
@@ -582,37 +579,31 @@ class _HistoryCardShell extends StatelessWidget {
         if ((lastBrowseName != null && lastBrowseName!.isNotEmpty) ||
             (latestText != null && latestText!.isNotEmpty)) ...[
           const SizedBox(height: 10),
-          // 「上次看到」与「最新一话」合并为一行，字号用原来最新一话的
-          // bodySmall；图标用 WidgetSpan 内联，整行作为一个 Text 自然
-          // 截断省略——拆成两个 Flexible 会各占一半宽度提前省略。
-          Text.rich(
-            TextSpan(
-              children: [
-                if (lastBrowseName != null && lastBrowseName!.isNotEmpty) ...[
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: Icon(lastBrowseIcon, size: 16, color: cs.primary),
-                    ),
-                  ),
-                  TextSpan(text: l10n.browseHistoryLastSeen(lastBrowseName!)),
-                ],
-                if (lastBrowseName != null &&
-                    lastBrowseName!.isNotEmpty &&
-                    latestText != null &&
-                    latestText!.isNotEmpty)
-                  const TextSpan(text: ' · '),
-                if (latestText != null && latestText!.isNotEmpty)
-                  TextSpan(
-                    text: latestText!,
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: tt.bodySmall,
+          // 「上次看到」与「最新一话」分两行显示，字号都用 bodySmall，
+          // 各自单行截断省略。
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (lastBrowseName != null && lastBrowseName!.isNotEmpty)
+                Text(
+                  l10n.browseHistoryLastSeen(lastBrowseName!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tt.bodySmall,
+                ),
+              if (lastBrowseName != null &&
+                  lastBrowseName!.isNotEmpty &&
+                  latestText != null &&
+                  latestText!.isNotEmpty)
+                const SizedBox(height: 4),
+              if (latestText != null && latestText!.isNotEmpty)
+                Text(
+                  latestText!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+            ],
           ),
         ],
         const SizedBox(height: 10),

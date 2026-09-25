@@ -581,7 +581,10 @@ class _SearchTabState extends State<_SearchTab>
           Positioned(
             right: AppSpacing.lg,
             bottom: AppSpacing.lg,
-            child: _BackToTopButton(onPressed: _scrollToTop),
+            child: SafeArea(
+              top: false,
+              child: BackToTopButton(onPressed: _scrollToTop),
+            ),
           ),
       ],
     );

@@ -1,37 +1,5 @@
 part of '../search_page.dart';
 
-/// 两个标签页共用的右下角「回到顶部」按钮。
-class _BackToTopButton extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _BackToTopButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return SafeArea(
-      top: false,
-      child: SizedBox.square(
-        dimension: 48,
-        child: FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: cs.primaryContainer,
-            foregroundColor: cs.onPrimaryContainer,
-            elevation: 6,
-            shadowColor: AppShadows.floatingTint(0.22),
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          onPressed: onPressed,
-          child: const Icon(Icons.arrow_upward_rounded),
-        ),
-      ),
-    );
-  }
-}
-
 /// 排序行行尾的数据源切换按钮（仅「发现」页用，搜索页固定 HOT 源）。
 ///
 /// 显示**当前**源名称，点击后切到另一个源。只影响「发现」页，

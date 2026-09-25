@@ -15,8 +15,6 @@ import '../providers/app_providers.dart';
 import '../providers/repository_providers.dart';
 import '../repositories/bookshelf_repository.dart';
 import '../routing/app_router.dart';
-import '../theme/app_radius.dart';
-import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_status_colors.dart';
 import '../theme/app_typography.dart';
@@ -25,6 +23,7 @@ import '../utils/reading_history.dart';
 import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/back_to_top_button.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/load_more_footer.dart';
@@ -415,32 +414,9 @@ class _BookshelfPageState extends ConsumerState<BookshelfPage> {
     final cardExtent = ScreenLayout.cardExtent(screenWidth);
 
     return Scaffold(
-      // 右下角悬浮回到顶部按钮：方形 FilledButton，与搜索页工具条同款
-      // （primaryContainer 底 + 零内边距固定 48px，保证正方形且图标居中）。
+      // 右下角悬浮回到顶部按钮，与其他列表页共用 BackToTopButton。
       floatingActionButton: _showBackToTop
-          ? SizedBox.square(
-              dimension: 48,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onPrimaryContainer,
-                  elevation: 6,
-                  shadowColor: AppShadows.floatingTint(0.22),
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size.square(48),
-                  maximumSize: const Size.square(48),
-                  fixedSize: const Size.square(48),
-                  shape: RoundedRectangleBorder(borderRadius: AppRadius.smR),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: _scrollToTop,
-                child: const Icon(Icons.arrow_upward_rounded),
-              ),
-            )
+          ? BackToTopButton(onPressed: _scrollToTop)
           : null,
       body: RefreshIndicator(
         onRefresh: () => _load(force: true),

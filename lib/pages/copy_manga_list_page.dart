@@ -10,6 +10,7 @@ import '../theme/app_spacing.dart';
 import '../utils/cover_brightness_filter.dart';
 import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
+import '../widgets/back_to_top_button.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
@@ -202,11 +203,9 @@ class _CopyMangaListPageState extends State<CopyMangaListPage> {
     return Scaffold(
       appBar: AppBar(title: Text(_title(AppLocalizations.of(context)!))),
       floatingActionButton: _showBackToTop
-          ? FloatingActionButton.small(
-              heroTag: 'copy_list_back_to_top_${widget.kind.name}',
+          ? BackToTopButton(
               onPressed: _scrollToTop,
               tooltip: AppLocalizations.of(context)!.backToTop,
-              child: const Icon(Icons.arrow_upward_rounded),
             )
           : null,
       body: NotificationListener<ScrollNotification>(

@@ -9,6 +9,7 @@ import '../models/comic.dart' hide Theme;
 import '../routing/app_router.dart';
 import '../utils/app_logger.dart';
 import '../utils/screen_layout.dart';
+import '../widgets/back_to_top_button.dart';
 import '../widgets/comic_card_skeleton.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/load_more_footer.dart';
@@ -30,6 +31,24 @@ class _RecommendPageState extends State<RecommendPage> {
   bool _loadingMore = false;
   // 推荐接口不返回 total：以「某页返回空列表」作为到底标志。
   bool _hasMore = true;
+
+  final _scrollController = ScrollController();
+  bool _showBackToTop = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _scrollToTop() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   void initState() {
@@ -105,6 +124,9 @@ class _RecommendPageState extends State<RecommendPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.hotRecommend)),
+      floatingActionButton: _showBackToTop
+          ? BackToTopButton(onPressed: _scrollToTop)
+          : null,
       body: _loading
           ? GridView.builder(
               padding: EdgeInsets.symmetric(horizontal: hp, vertical: 12),
@@ -114,6 +136,12 @@ class _RecommendPageState extends State<RecommendPage> {
             )
           : NotificationListener<ScrollNotification>(
               onNotification: (n) {
+                if (n.metrics.axis == Axis.vertical) {
+                  final shouldShow = n.metrics.pixels > 400;
+                  if (shouldShow != _showBackToTop) {
+                    setState(() => _showBackToTop = shouldShow);
+                  }
+                }
                 // pixels > 0：只在用户确实滚动过后才自动翻页，
                 // 否则宽屏首屏不满一页时会立刻连发第二页。
                 if (n.metrics.pixels > 0 &&
@@ -123,6 +151,7 @@ class _RecommendPageState extends State<RecommendPage> {
                 return false;
               },
               child: CustomScrollView(
+                controller: _scrollController,
                 slivers: [
                   SliverPadding(
                     padding: EdgeInsets.fromLTRB(hp, 12, hp, 0),
