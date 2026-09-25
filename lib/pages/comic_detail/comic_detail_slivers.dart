@@ -215,7 +215,7 @@ extension _ComicDetailSlivers on _ComicDetailPageState {
                 : _buildGroupSegments(comic),
           ),
         ),
-      // ── 章节标题 + 排序 + 分页（单页时排序按钮已合并到分组行）──
+      // ── 分页 + 排序 ──
       if (_totalPages > 1)
         SliverToBoxAdapter(
           child: Padding(
