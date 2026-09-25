@@ -96,17 +96,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # tag 触发时用 tag 名；手动 dispatch 时回退到 pubspec 版本号
+          # 文件名沿用 pubspec 版本号（如 1.6.0+457），保持 app 端 build number 比较兼容
+          PUB_VER=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          test -n "$PUB_VER"
+
+          # tag 触发时记录 tag 名用于 release 标题与更新日志；文件名始终用 pubspec 版本
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             APP_VERSION="$GITHUB_REF_NAME"
           else
-            APP_VERSION=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+            APP_VERSION="$PUB_VER"
           fi
-          test -n "$APP_VERSION"
+
+          APK_NAME="kira-${PUB_VER}-arm64-v8a.apk"
 
           cd build/app/outputs/flutter-apk
-          mv app-release.apk "kira-${APP_VERSION}-arm64-v8a.apk"
-          ls -lh kira-*.apk
+          mv app-release.apk "$APK_NAME"
+          ls -lh "$APK_NAME"
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v6
