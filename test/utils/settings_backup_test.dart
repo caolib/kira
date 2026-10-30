@@ -79,6 +79,36 @@ void main() {
     );
   });
 
+  test(
+    'comment page count is portable and removed auto-load key is excluded',
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('comment_initial_pages', 5);
+      await prefs.setBool('comment_auto_load_all', true);
+      final service = createService();
+      final backup = await service.exportPlainText();
+      final preferences = preferencesOf(decodeBackup(backup));
+      expect(preferences['comment_initial_pages']?['value'], 5);
+      expect(preferences.containsKey('comment_auto_load_all'), isFalse);
+
+      await prefs.setInt('comment_initial_pages', 1);
+      await service.importPlainText(backup);
+      expect(prefs.getInt('comment_initial_pages'), 5);
+
+      final legacy = decodeBackup(backup);
+      final legacyPreferences = preferencesOf(legacy);
+      legacyPreferences['comment_auto_load_all'] = {
+        'type': 'bool',
+        'value': true,
+      };
+      legacy['preferences'] = legacyPreferences;
+      await prefs.remove('comment_auto_load_all');
+      await service.importPlainText(jsonEncode(legacy));
+      expect(prefs.getInt('comment_initial_pages'), 5);
+      expect(prefs.containsKey('comment_auto_load_all'), isFalse);
+    },
+  );
+
   test('exports sensitive settings only when requested', () async {
     final prefs = await SharedPreferences.getInstance();
     await SecureCredentialStore().writeToken('token-1');

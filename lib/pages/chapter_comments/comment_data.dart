@@ -51,18 +51,9 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
       _rebuildGroupedEntries();
       _notifyCommentsUpdated();
       _maybeAutoSummary();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        tryLoadMoreWhenNearBottom();
-      });
-      if (!loadMore) {
-        // 服务端每页只有 10 条，首屏默认补到 2 页；开启「自动加载全部」
-        // 时直接走全量循环，避免两条路径同时翻页。
-        if (_user.commentAutoLoadAll && _comments.length < _total) {
-          unawaited(_loadAllComments());
-        } else {
-          unawaited(_prefetchInitialPages());
-        }
+      if (!loadMore &&
+          data.list.length >= _ChapterCommentsSheetState._pageSize) {
+        unawaited(_prefetchInitialPages());
       }
     } catch (e) {
       if (!mounted) return;
@@ -142,12 +133,8 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
       _rebuildGroupedEntries();
       _notifyCommentsUpdated();
       _maybeAutoSummary();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        tryLoadMoreWhenNearBottom();
-      });
-      // 发表评论后首屏可能只剩一页，补齐到默认页数。
-      if (!_user.commentAutoLoadAll && _comments.length < _total) {
+      // 发表评论后首屏可能只剩一页，补齐到本次打开时的设定页数。
+      if (_comments.length < _total) {
         unawaited(_prefetchInitialPages());
       }
     } catch (e, stack) {
@@ -155,7 +142,7 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
       // Keep existing data when page-1 refresh fails; only log the issue.
       unawaited(
         AppLogger.instance.recordWarning(
-          'Refresh first comment page failed: $e',
+          e,
           stackTrace: stack,
           source: 'chapter_comments.refresh',
         ),
@@ -163,27 +150,31 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
     }
   }
 
-  /// 首屏补足 [chapterCommentInitialPages] 页，页与页之间间隔
-  /// [chapterCommentPageGap]。
-  ///
-  /// 与 `_loadAllComments` 的区别：只补到固定页数，且首屏加载态由
-  /// `_loadComments` 负责，这里不再置 `_loadingMore`，避免底部先闪一下加载圈。
+  /// 首屏补到本次打开时设定的页数，每次翻页随机间隔 1–1.5 秒。
+  /// 首屏加载态由 `_loadComments` 负责，补页不闪烁底部加载圈。
   Future<void> _prefetchInitialPages() async {
     final generation = _prefetchGeneration;
     bool stale() => !mounted || generation != _prefetchGeneration;
+    var remainingPages =
+        _initialPages -
+        (_comments.length / _ChapterCommentsSheetState._pageSize).ceil();
+    if (remainingPages <= 0 || _comments.length >= _total) return;
     _prefetchingInitialPages = true;
     try {
-      while (!stale() && _comments.length < _total) {
+      while (!stale() && remainingPages > 0 && _comments.length < _total) {
         if (_comments.length >=
-            _ChapterCommentsSheetState._pageSize * chapterCommentInitialPages) {
+            _ChapterCommentsSheetState._pageSize * _initialPages) {
           break;
         }
-        await Future<void>.delayed(chapterCommentPageGap);
+        if (_comments.isNotEmpty) {
+          await Future<void>.delayed(chapterCommentPageGap);
+        }
         if (stale()) return;
         // 用户已手动翻页时让位，下一轮再判断是否还需要补。
         if (_loadingMore) continue;
 
         final offset = _comments.length;
+        remainingPages--;
         final data = await _api.manga.getChapterComments(
           widget.chapterUuid,
           limit: _ChapterCommentsSheetState._pageSize,
@@ -204,16 +195,15 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
         _notifyCommentsUpdated();
         // 一页只有 10 条，自动总结的最小条数可能要跨页才够。
         _maybeAutoSummary();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          tryLoadMoreWhenNearBottom();
-        });
+        if (data.list.length < _ChapterCommentsSheetState._pageSize) break;
       }
     } catch (e, stack) {
-      // 补页失败不打断已加载内容，用户仍可手动加载更多。
+      if (stale()) return;
+      // 保留已加载内容与真实失败原因，用户仍可手动重试。
+      _setState(() => _error = NetworkError.describe(e));
       unawaited(
         AppLogger.instance.recordWarning(
-          'Prefetch initial comment pages failed: $e',
+          e,
           stackTrace: stack,
           source: 'chapter_comments.prefetch',
         ),
@@ -223,41 +213,6 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
       if (generation == _prefetchGeneration) {
         _prefetchingInitialPages = false;
       }
-    }
-  }
-
-  Future<void> _loadAllComments() async {
-    if (_loadingAll) return;
-    _setState(() => _loadingAll = true);
-
-    try {
-      while (mounted && _comments.length < _total) {
-        final data = await _api.manga.getChapterComments(
-          widget.chapterUuid,
-          limit: _ChapterCommentsSheetState._pageSize,
-          offset: _comments.length,
-        );
-        if (!mounted) return;
-
-        final newComments = data.list
-            .where((item) => !_comments.any((e) => e.id == item.id))
-            .toList();
-        if (newComments.isEmpty) break;
-
-        _setState(() {
-          _comments = [..._comments, ...newComments];
-          _total = data.total;
-        });
-        _rebuildGroupedEntries();
-        _notifyCommentsUpdated();
-        _maybeAutoSummary();
-
-        if (_comments.length < _total) {
-          await Future<void>.delayed(chapterCommentPageGap);
-        }
-      }
-    } finally {
-      if (mounted) _setState(() => _loadingAll = false);
     }
   }
 

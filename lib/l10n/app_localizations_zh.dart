@@ -1756,7 +1756,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commentSettingsPreloadDesc => '进入章节时提前加载评论并显示数量';
 
   @override
-  String get commentSettingsAutoLoadAllTitle => '自动加载全部评论';
+  String get commentSettingsDisplaySection => '评论区布局';
+
+  @override
+  String get commentSettingsLoadingSection => '加载';
+
+  @override
+  String get commentSettingsFilteringSection => '屏蔽';
+
+  @override
+  String commentSettingsInitialCountTitle(int count) {
+    return '初始加载$count条评论';
+  }
 
   @override
   String get commentSettingsFontSizeTitle => '评论内容字体大小';
@@ -2795,7 +2806,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get commentSettingsMinCommentCount => '最少评论数';
+  String get commentSettingsMinCommentCount => '最少已加载评论数';
 
   @override
   String get commentSettingsTriggerTiming => '调用时机';
@@ -5718,7 +5729,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get commentSettingsPreloadDesc => '進入章節時提前載入評論並顯示數量';
 
   @override
-  String get commentSettingsAutoLoadAllTitle => '自動載入全部評論';
+  String get commentSettingsDisplaySection => '評論區版面';
+
+  @override
+  String get commentSettingsLoadingSection => '載入';
+
+  @override
+  String get commentSettingsFilteringSection => '封鎖';
+
+  @override
+  String commentSettingsInitialCountTitle(int count) {
+    return '初始載入$count則評論';
+  }
 
   @override
   String get commentSettingsFontSizeTitle => '評論內容字型大小';
@@ -6757,7 +6779,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get commentSettingsMinCommentCount => '最少評論數';
+  String get commentSettingsMinCommentCount => '最少已載入評論數';
 
   @override
   String get commentSettingsTriggerTiming => '呼叫時機';

@@ -3253,11 +3253,29 @@ abstract class AppLocalizations {
   /// **'进入章节时提前加载评论并显示数量'**
   String get commentSettingsPreloadDesc;
 
-  /// No description provided for @commentSettingsAutoLoadAllTitle.
+  /// No description provided for @commentSettingsDisplaySection.
   ///
   /// In zh, this message translates to:
-  /// **'自动加载全部评论'**
-  String get commentSettingsAutoLoadAllTitle;
+  /// **'评论区布局'**
+  String get commentSettingsDisplaySection;
+
+  /// No description provided for @commentSettingsLoadingSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载'**
+  String get commentSettingsLoadingSection;
+
+  /// No description provided for @commentSettingsFilteringSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'屏蔽'**
+  String get commentSettingsFilteringSection;
+
+  /// No description provided for @commentSettingsInitialCountTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'初始加载{count}条评论'**
+  String commentSettingsInitialCountTitle(int count);
 
   /// No description provided for @commentSettingsFontSizeTitle.
   ///
@@ -5084,7 +5102,7 @@ abstract class AppLocalizations {
   /// No description provided for @commentSettingsMinCommentCount.
   ///
   /// In zh, this message translates to:
-  /// **'最少评论数'**
+  /// **'最少已加载评论数'**
   String get commentSettingsMinCommentCount;
 
   /// No description provided for @commentSettingsTriggerTiming.

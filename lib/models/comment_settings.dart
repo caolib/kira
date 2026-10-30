@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/chapter_comment_paging.dart';
 import 'prefs_store.dart';
 
 /// Comment display settings, extracted from UserManager.
@@ -16,7 +17,7 @@ class CommentSettings extends PrefsStore {
   static const _keyShowTime = 'comment_show_time';
   static const _keyFontScale = 'comment_font_scale';
   static const _keyPreload = 'comment_preload';
-  static const _keyAutoLoadAll = 'comment_auto_load_all';
+  static const _keyInitialPages = 'comment_initial_pages';
 
   // ── Fields ─────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ class CommentSettings extends PrefsStore {
   bool _showTime = true;
   double _fontScale = 1.0;
   bool _preload = true;
-  bool _autoLoadAll = false;
+  int _initialPages = chapterCommentInitialPages;
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ class CommentSettings extends PrefsStore {
   bool get showTime => _showTime;
   double get fontScale => _fontScale;
   bool get preload => _preload;
-  bool get autoLoadAll => _autoLoadAll;
+  int get initialPages => _initialPages;
 
   // ── Init ───────────────────────────────────────────────────────────
 
@@ -48,7 +49,9 @@ class CommentSettings extends PrefsStore {
     _showTime = prefs.getBool(_keyShowTime) ?? true;
     _fontScale = prefs.getDouble(_keyFontScale) ?? 1.0;
     _preload = prefs.getBool(_keyPreload) ?? true;
-    _autoLoadAll = prefs.getBool(_keyAutoLoadAll) ?? false;
+    _initialPages = normalizeChapterCommentPages(
+      prefs.getInt(_keyInitialPages) ?? chapterCommentInitialPages,
+    );
   }
 
   // ── Setters ────────────────────────────────────────────────────────
@@ -83,8 +86,8 @@ class CommentSettings extends PrefsStore {
     await setBool(_keyPreload, value);
   }
 
-  Future<void> setAutoLoadAll(bool value) async {
-    _autoLoadAll = value;
-    await setBool(_keyAutoLoadAll, value);
+  Future<void> setInitialPages(int value) async {
+    _initialPages = normalizeChapterCommentPages(value);
+    await setInt(_keyInitialPages, _initialPages);
   }
 }

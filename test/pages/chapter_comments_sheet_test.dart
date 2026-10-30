@@ -47,6 +47,7 @@ void main() {
     WidgetTester tester, {
     List<ChapterComment>? comments,
     int? initialTotal,
+    int initialPages = 2,
     Size viewSize = const Size(593, 279),
     bool reducedMotion = false,
     double textScale = 1,
@@ -57,6 +58,7 @@ void main() {
       'comment_show_avatar': false,
       'comment_show_user_name': false,
       'comment_show_time': false,
+      'comment_initial_pages': initialPages,
     });
     await UserManager().init();
 
@@ -183,11 +185,9 @@ void main() {
       tester,
       comments: mergedComments('会赢的', 10, 1000),
       initialTotal: 78,
+      initialPages: 1,
       viewSize: const Size(593, 1200),
     );
-    // 首屏补页会等 1 秒再请求下一页；测试环境下网络请求直接失败并结束循环。
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
 
     expect(find.byType(LoadMoreFooter), findsOneWidget);
     expect(find.text('加载更多（10/78）'), findsOneWidget);

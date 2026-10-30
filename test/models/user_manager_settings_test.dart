@@ -41,14 +41,6 @@ void main() {
       writeFacade: user.setCommentPreload,
       writeStore: user.comment.setPreload,
     ),
-    (
-      key: 'comment_auto_load_all',
-      initial: false,
-      readFacade: () => user.commentAutoLoadAll,
-      readStore: () => user.comment.autoLoadAll,
-      writeFacade: user.setCommentAutoLoadAll,
-      writeStore: user.comment.setAutoLoadAll,
-    ),
   ];
 
   for (final setting in settings) {
@@ -78,6 +70,61 @@ void main() {
       },
     );
   }
+
+  test('comment initial pages shares state and notifies once', () async {
+    expect(user.commentInitialPages, 2);
+    expect(user.comment.initialPages, 2);
+    final snapshots = <(int, int)>[];
+    void listener() =>
+        snapshots.add((user.commentInitialPages, user.comment.initialPages));
+    user.addListener(listener);
+    addTearDown(() => user.removeListener(listener));
+    final prefs = await SharedPreferences.getInstance();
+
+    await user.setCommentInitialPages(5);
+    expect(snapshots, [(5, 5)]);
+    expect(prefs.getInt('comment_initial_pages'), 5);
+    snapshots.clear();
+    await user.comment.setInitialPages(1);
+    expect(snapshots, [(1, 1)]);
+    expect(prefs.getInt('comment_initial_pages'), 1);
+  });
+
+  test(
+    'comment initial pages clamps invalid values on read and write',
+    () async {
+      for (final (value, expected) in [(-2, 1), (0, 1), (3, 3), (9, 5)]) {
+        SharedPreferences.setMockInitialValues({
+          'comment_initial_pages': value,
+        });
+        await user.init(persistMigrations: false);
+        expect(user.commentInitialPages, expected);
+        await user.setCommentInitialPages(value);
+        expect(user.comment.initialPages, expected);
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getInt('comment_initial_pages'), expected);
+      }
+    },
+  );
+
+  test(
+    'default prefs retains page count across repeated initialization',
+    () async {
+      teardownSecureCredentialStoreForTest();
+      await user.init(persistMigrations: false);
+      await user.setCommentInitialPages(4);
+      for (var boot = 0; boot < 3; boot++) {
+        user.comment.resetPrefsCache();
+        await user.init(persistMigrations: false);
+        expect(user.commentInitialPages, 4);
+        expect(user.comment.initialPages, 4);
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('comment_initial_pages');
+      await user.init(persistMigrations: false);
+      expect(user.commentInitialPages, 2);
+    },
+  );
 
   test(
     'opening floating nav downgrades facade mode in the same notification',

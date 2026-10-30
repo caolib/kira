@@ -79,6 +79,6 @@ extension UserManagerReaderPart on UserManager {
 
   Future<void> setCommentPreload(bool enabled) => comment.setPreload(enabled);
 
-  Future<void> setCommentAutoLoadAll(bool enabled) =>
-      comment.setAutoLoadAll(enabled);
+  Future<void> setCommentInitialPages(int pages) =>
+      comment.setInitialPages(pages);
 }

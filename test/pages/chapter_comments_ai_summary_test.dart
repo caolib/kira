@@ -9,7 +9,6 @@ import 'package:kira/models/chapter_comment.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/chapter_comments/comment_scroll_behavior.dart';
 import 'package:kira/pages/chapter_comments_sheet.dart';
-import 'package:kira/utils/chapter_comment_paging.dart';
 import 'package:kira/utils/chapter_summary_cache.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -27,6 +26,8 @@ ChapterComment _comment(int id) => ChapterComment(
 class _CommentsApi extends Fake implements MangaApi {
   final comments = List.generate(60, (index) => _comment(index + 1));
   final offsets = <int>[];
+  bool repeatFirstPage = false;
+  int? failureOffset;
 
   @override
   Future<({List<ChapterComment> list, int total})> getChapterComments(
@@ -35,8 +36,9 @@ class _CommentsApi extends Fake implements MangaApi {
     int offset = 0,
   }) async {
     offsets.add(offset);
+    if (offset == failureOffset) throw StateError('test comment unavailable');
     return (
-      list: comments.skip(offset).take(limit).toList(),
+      list: comments.skip(repeatFirstPage ? 0 : offset).take(limit).toList(),
       total: comments.length,
     );
   }
@@ -120,13 +122,16 @@ void main() {
   Future<void> pumpAutoSummarySheet(
     WidgetTester tester, {
     int initialCount = 20,
+    bool useCache = true,
   }) async {
     await tester.pumpWidget(
       wrapWithApp(
         ChapterCommentsSheet(
           chapterUuid: autoChapterUuid,
           chapterName: '第 1 话',
-          initialComments: commentsApi.comments.take(initialCount).toList(),
+          initialComments: useCache
+              ? commentsApi.comments.take(initialCount).toList()
+              : null,
           initialTotal: commentsApi.comments.length,
         ),
       ),
@@ -168,12 +173,126 @@ void main() {
     });
   }
 
+  for (final pages in [1, 2, 3, 4, 5]) {
+    testWidgets('首屏加载设定的$pages页后停止，滚动仍可继续翻页', (tester) async {
+      await AiSettings().setAutoSummary(false);
+      await UserManager().setCommentInitialPages(pages);
+      await pumpAutoSummarySheet(tester, useCache: false);
+      expect(commentsApi.offsets, [0]);
+      for (var page = 1; page < pages; page++) {
+        await tester.pump(const Duration(milliseconds: 1500));
+        await tester.pumpAndSettle();
+      }
+      expect(commentsApi.offsets, List.generate(pages, (i) => i * 10));
+      expect(find.text('${pages * 10}/60'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      expect(commentsApi.offsets, hasLength(pages));
+
+      final state = tester.state(find.byType(ChapterCommentsSheet));
+      if (state is! CommentScrollBehavior<ChapterCommentsSheet>) {
+        fail('ChapterCommentsSheet must expose its scroll behavior');
+      }
+      state.scrollController.jumpTo(
+        state.scrollController.position.maxScrollExtent,
+      );
+      await tester.pumpAndSettle();
+      // 即使列表不足一屏，拖拽也应触发继续加载。
+      await tester.drag(find.byType(ListView).last, const Offset(0, -100));
+      await tester.pumpAndSettle();
+      expect(commentsApi.offsets.length, greaterThan(pages));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('连续补页至少等待1秒，且最迟1.5秒发起下一页', (tester) async {
+    await AiSettings().setAutoSummary(false);
+    await UserManager().setCommentInitialPages(2);
+    await pumpAutoSummarySheet(tester, initialCount: 10);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(commentsApi.offsets, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(commentsApi.offsets, [10]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('已有缓存超过设定页数时保留全部缓存，不主动重新加载', (tester) async {
+    await AiSettings().setAutoSummary(false);
+    await UserManager().setCommentInitialPages(1);
+    await pumpAutoSummarySheet(tester, initialCount: 40);
+    await tester.pump(const Duration(seconds: 5));
+    expect(commentsApi.offsets, isEmpty);
+    expect(find.text('40/60'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('当前评论区不受加载页数设置变化影响', (tester) async {
+    await AiSettings().setAutoSummary(false);
+    await UserManager().setCommentInitialPages(2);
+    await pumpAutoSummarySheet(tester, initialCount: 10);
+    await UserManager().setCommentInitialPages(5);
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5));
+    expect(commentsApi.offsets, [10]);
+    expect(find.text('20/60'), findsOneWidget);
+  });
+
+  testWidgets('补页返回重复数据时停止，不继续请求剩余页数', (tester) async {
+    await AiSettings().setAutoSummary(false);
+    await UserManager().setCommentInitialPages(5);
+    commentsApi.repeatFirstPage = true;
+    await pumpAutoSummarySheet(tester, initialCount: 10);
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5));
+    expect(commentsApi.offsets, [10]);
+    expect(find.text('10/60'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('补页失败显示真实原因，停止自动请求并允许手动重试', (tester) async {
+    await AiSettings().setAutoSummary(false);
+    await UserManager().setCommentInitialPages(5);
+    commentsApi.failureOffset = 10;
+    await pumpAutoSummarySheet(tester, initialCount: 10);
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pumpAndSettle();
+    final state = tester.state(find.byType(ChapterCommentsSheet));
+    if (state is! CommentScrollBehavior<ChapterCommentsSheet>) {
+      fail('ChapterCommentsSheet must expose its scroll behavior');
+    }
+    state.scrollController.jumpTo(
+      state.scrollController.position.maxScrollExtent,
+    );
+    await tester.pumpAndSettle();
+    final detail = find.textContaining('test comment unavailable');
+    await tester.ensureVisible(detail);
+    expect(detail, findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    expect(commentsApi.offsets, [10]);
+    commentsApi.failureOffset = null;
+    await loadNextPage(tester);
+    expect(commentsApi.offsets, [10, 10]);
+    expect(find.text('20/60'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('关闭评论区后不再发送下一页请求', (tester) async {
+    await UserManager().setCommentInitialPages(5);
+    await pumpAutoSummarySheet(tester, initialCount: 10);
+    await tester.pumpWidget(wrapWithApp(const SizedBox.shrink()));
+    await tester.pump(const Duration(seconds: 5));
+    expect(commentsApi.offsets, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('首屏补页达到阈值时自动总结', (tester) async {
     await AiSettings().setAutoSummaryMin(15);
     await pumpAutoSummarySheet(tester, initialCount: 10);
     expect(aiNetwork.requests, isEmpty);
 
-    await tester.pump(chapterCommentPageGap);
+    await tester.pump(const Duration(milliseconds: 1500));
     await tester.pumpAndSettle();
     expect(find.text('20/60'), findsOneWidget);
     expect(commentsApi.offsets, [10]);
@@ -181,16 +300,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('自动加载全部途中达到阈值时总结一次', (tester) async {
-    await UserManager().setCommentAutoLoadAll(true);
+  testWidgets('设为5页时补页达标只总结一次，并保留手动翻页', (tester) async {
+    await UserManager().setCommentInitialPages(5);
     await pumpAutoSummarySheet(tester);
-    expect(find.text('30/60'), findsOneWidget);
-    expect(aiNetwork.requests, hasLength(1));
+    expect(find.text('20/60'), findsOneWidget);
+    expect(aiNetwork.requests, isEmpty);
 
     for (var page = 0; page < 3; page++) {
-      await tester.pump(chapterCommentPageGap);
+      await tester.pump(const Duration(milliseconds: 1500));
       await tester.pumpAndSettle();
     }
+    expect(find.text('50/60'), findsOneWidget);
+    expect(commentsApi.offsets, [20, 30, 40]);
+    expect(aiNetwork.requests, hasLength(1));
+
+    await tester.pump(const Duration(seconds: 5));
+    expect(commentsApi.offsets, [20, 30, 40]);
+    await loadNextPage(tester);
     expect(find.text('60 条'), findsOneWidget);
     expect(commentsApi.offsets, [20, 30, 40, 50]);
     expect(aiNetwork.requests, hasLength(1));

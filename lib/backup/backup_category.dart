@@ -46,7 +46,6 @@ abstract final class BackupSchema {
     'back_exit_confirm',
     'banner_visible',
     'bottom_nav_show_labels',
-    'comment_auto_load_all',
     'comment_block_group_spam',
     'comment_block_no_remind',
     'comment_compact_layout',
@@ -101,6 +100,7 @@ abstract final class BackupSchema {
 
   static const _intKeys = {
     'api_route',
+    'comment_initial_pages',
     'custom_theme_color',
     'download_image_concurrency',
     'image_load_timeout',

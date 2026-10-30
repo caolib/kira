@@ -33,8 +33,7 @@ extension DownloadManagerContentDownloadPart on DownloadManager {
     }
   }
 
-  /// 下载章节评论：默认取前 [chapterCommentInitialPages] 页
-  /// （避免整章评论下载量过大、耗时过长）。
+  /// 下载章节评论：按用户设置取前 1–5 页，不重新下载已有评论。
   Future<({List<ChapterComment> list, int total})> _downloadComments(
     String chapterUuid,
   ) async {

@@ -1050,7 +1050,17 @@
   "commentSettingsShowCommentTime": "顯示評論時間",
   "commentSettingsPreloadTitle": "預載評論",
   "commentSettingsPreloadDesc": "進入章節時提前載入評論並顯示數量",
-  "commentSettingsAutoLoadAllTitle": "自動載入全部評論",
+  "commentSettingsDisplaySection": "評論區版面",
+  "commentSettingsLoadingSection": "載入",
+  "commentSettingsFilteringSection": "封鎖",
+  "commentSettingsInitialCountTitle": "初始載入{count}則評論",
+  "@commentSettingsInitialCountTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "commentSettingsFontSizeTitle": "評論內容字型大小",
   "chapterCommentsNoSummaryComments": "目前沒有可總結的評論",
   "chapterCommentsEnableAiSummaryFirst": "請先在評論區設定中啟用 AI 總結",
@@ -1824,7 +1834,7 @@
       }
     }
   },
-  "commentSettingsMinCommentCount": "最少評論數",
+  "commentSettingsMinCommentCount": "最少已載入評論數",
   "commentSettingsTriggerTiming": "呼叫時機",
   "commentSettingsTimingOnOpen": "打開評論區時",
   "commentSettingsTimingAfterPreload": "預載完成後",

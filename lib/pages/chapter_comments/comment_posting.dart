@@ -336,7 +336,7 @@ extension _ChapterCommentPosting on _ChapterCommentsSheetState {
                   showCommentTime: _showCommentTime,
                   commentFontScale: _commentFontScale,
                   commentPreload: _user.commentPreload,
-                  commentAutoLoadAll: _user.commentAutoLoadAll,
+                  commentInitialPages: _user.commentInitialPages,
                   onLayoutChanged: (compact) {
                     if (!mounted) return;
                     _setState(() => _useCompactLayout = compact);
@@ -372,8 +372,8 @@ extension _ChapterCommentPosting on _ChapterCommentsSheetState {
                       );
                     }
                   },
-                  onAutoLoadAllChanged: (enabled) {
-                    _user.setCommentAutoLoadAll(enabled);
+                  onInitialPagesChanged: (pages) {
+                    _user.setCommentInitialPages(pages);
                   },
                 ),
               ),

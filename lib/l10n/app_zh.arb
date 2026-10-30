@@ -1077,7 +1077,17 @@
   "commentSettingsShowCommentTime": "显示评论时间",
   "commentSettingsPreloadTitle": "预加载评论",
   "commentSettingsPreloadDesc": "进入章节时提前加载评论并显示数量",
-  "commentSettingsAutoLoadAllTitle": "自动加载全部评论",
+  "commentSettingsDisplaySection": "评论区布局",
+  "commentSettingsLoadingSection": "加载",
+  "commentSettingsFilteringSection": "屏蔽",
+  "commentSettingsInitialCountTitle": "初始加载{count}条评论",
+  "@commentSettingsInitialCountTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "commentSettingsFontSizeTitle": "评论内容字体大小",
   "chapterCommentsNoSummaryComments": "当前没有可总结的评论",
   "chapterCommentsEnableAiSummaryFirst": "请先在评论区设置中启用 AI 总结",
@@ -1875,7 +1885,7 @@
       }
     }
   },
-  "commentSettingsMinCommentCount": "最少评论数",
+  "commentSettingsMinCommentCount": "最少已加载评论数",
   "commentSettingsTriggerTiming": "调用时机",
   "commentSettingsTimingOnOpen": "打开评论区时",
   "commentSettingsTimingAfterPreload": "预加载完成后",

@@ -298,10 +298,20 @@ void main() {
     expect(panel.isChapterComments, isFalse);
     // 与漫画评论区一致：屏蔽词/群广告/黑名单过滤区对本评论区开放。
     expect(panel.showFilteringSettings, isTrue);
-    // 外观三项 + 群广告开关；布局/预载/自动加载/AI 摘要仍不出现。
+    // 显示三项 + 群广告开关；布局/初始页数/预加载/AI 总结仍不出现。
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(CommentSettingsPanel)),
+    )!;
     expect(find.byType(SwitchListTile), findsNWidgets(4));
     expect(find.byType(Slider), findsOneWidget);
     expect(find.byType(SegmentedButton<bool>), findsNothing);
+    expect(find.byType(SegmentedButton<int>), findsNothing);
+    expect(find.text(l10n.commentSettingsDisplaySection), findsOneWidget);
+    expect(find.text(l10n.commentSettingsFilteringSection), findsOneWidget);
+    expect(find.text(l10n.commentSettingsLoadingSection), findsNothing);
+    expect(find.text(l10n.commentSettingsInitialCountTitle(20)), findsNothing);
+    expect(find.text(l10n.commentSettingsAiSummarySection), findsNothing);
+    expect(find.text('自动加载全部评论'), findsNothing);
     // 屏蔽词编辑器出现；黑名单为空时只有说明文案。
     expect(
       find.descendant(
@@ -324,7 +334,7 @@ void main() {
     expect(prefs.getDouble('comment_font_scale'), 1.5);
     expect(prefs.getBool('comment_block_group_spam'), isFalse);
     expect(prefs.containsKey('comment_preload'), isFalse);
-    expect(prefs.containsKey('comment_auto_load_all'), isFalse);
+    expect(prefs.containsKey('comment_initial_pages'), isFalse);
     h.router.pop();
     await tester.pumpAndSettle();
     expect(find.byType(AccountAvatar), findsNothing);
