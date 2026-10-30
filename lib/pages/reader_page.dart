@@ -104,7 +104,7 @@ class ReaderPage extends StatefulWidget {
   State<ReaderPage> createState() => _ReaderPageState();
 }
 
-class _ReaderPageState extends State<ReaderPage> {
+class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
   static const _hiddenToolbarSlideOffset = 1.05;
 
@@ -140,6 +140,7 @@ class _ReaderPageState extends State<ReaderPage> {
   final _itemScrollController = ItemScrollController();
   final _itemPositionsListener = ItemPositionsListener.create();
   final _scrollOffsetController = ScrollOffsetController();
+  Future<void>? _wakeQueue;
   bool _autoScrollEnabled = false;
   bool _autoScrollActive = false;
   Timer? _autoScrollResumeTimer;
@@ -330,6 +331,9 @@ class _ReaderPageState extends State<ReaderPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _user.reader.addListener(_onScreenOnSettingsChanged);
+    _setScreenOn(_user.reader.keepScreenOn);
     _currentUuid = widget.chapterUuid;
     _bookmarks.addListener(_onBookmarksChanged);
     unawaited(_bookmarks.ensureLoaded());
@@ -353,6 +357,9 @@ class _ReaderPageState extends State<ReaderPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _user.reader.removeListener(_onScreenOnSettingsChanged);
+    _setScreenOn(false);
     // 进度保存是防抖的，离开阅读页必须立刻落盘，否则最后几页会丢。
     unawaited(ReadingHistory.flush());
     _setVolumeIntercept(false);
@@ -373,6 +380,44 @@ class _ReaderPageState extends State<ReaderPage> {
       overlays: SystemUiOverlay.values,
     );
     super.dispose();
+  }
+
+  void _onScreenOnSettingsChanged() {
+    _setScreenOn(_user.reader.keepScreenOn);
+  }
+
+  void _setScreenOn(bool enabled) {
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    final shouldEnable =
+        enabled &&
+        (lifecycle == null || lifecycle == AppLifecycleState.resumed);
+    Future<void> toggle() async {
+      try {
+        await WakelockPlus.toggle(enable: shouldEnable);
+      } catch (error, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            error,
+            stackTrace: stack,
+            source: 'reader.screen_on',
+          ),
+        );
+      }
+    }
+
+    final operation = _wakeQueue?.then((_) => toggle()) ?? toggle();
+    late final Future<void> tail;
+    tail = operation.whenComplete(() {
+      if (identical(_wakeQueue, tail)) _wakeQueue = null;
+    });
+    _wakeQueue = tail;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _setScreenOn(
+      state == AppLifecycleState.resumed && _user.reader.keepScreenOn,
+    );
   }
 
   /// 「返回目录」统一出口：顶栏、章末按钮、末尾空白页、滚动回顶、
