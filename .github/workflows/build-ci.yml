@@ -143,15 +143,32 @@ jobs:
           test -n "$APP_VERSION"
           test -n "$APK"
 
+          # tag 触发：取上一个 beta tag 到本次 tag 之间的提交；
+          # 首个 beta（没有上一个 beta）与手动 dispatch 回退为最近 10 条。
+          PREV=""
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            PREV=$(git tag --sort=-v:refname \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-beta' \
+              | grep -v "^${APP_VERSION}$" \
+              | head -1 || true)
+          fi
+
           {
             echo "${APP_VERSION}"
             echo
-            # 最近 10 条 feat/fix 提交（按标题行筛选，排除 Merge commit 等，
-            git log --pretty=format:"%s" -100 \
-              | grep -E '(^|[[:space:]])(feat|fix)[(:]' \
-              | head -10 \
-              | sed 's/^/- /' \
-              || true
+            if [ -n "$PREV" ]; then
+              # 本次发布区间内的 feat/fix/style 标题，排除 Merge/CI/chore 等。
+              git log --pretty=format:"%s" "${PREV}..${APP_VERSION}" \
+                | grep -E '(^|[[:space:]])(feat|fix|style)[(:]' \
+                | sed 's/^/- /' \
+                || true
+            else
+              git log --pretty=format:"%s" -100 \
+                | grep -E '(^|[[:space:]])(feat|fix)[(:]' \
+                | head -10 \
+                | sed 's/^/- /' \
+                || true
+            fi
             if [ -n "$NOTE" ]; then
               echo
               echo
