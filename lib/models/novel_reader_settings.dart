@@ -95,6 +95,7 @@ class NovelReaderSettings {
     this.volumeKey = true,
     this.ignoreBlankParagraphs = defaultIgnoreBlankParagraphs,
     this.focusModeEnabled = defaultFocusModeEnabled,
+    this.focusKeepStatusVisible = defaultFocusKeepStatusVisible,
     double focusTopRatio = defaultFocusTopRatio,
     double focusBottomRatio = defaultFocusBottomRatio,
     double focusOpacity = defaultFocusOpacity,
@@ -165,6 +166,7 @@ class NovelReaderSettings {
       volumeKey = base.volumeKey,
       ignoreBlankParagraphs = base.ignoreBlankParagraphs,
       focusModeEnabled = base.focusModeEnabled,
+      focusKeepStatusVisible = base.focusKeepStatusVisible,
       focusTopRatio = base.focusTopRatio,
       _focusBottomRatio = base.focusBottomRatio,
       focusOpacity = base.focusOpacity,
@@ -198,6 +200,7 @@ class NovelReaderSettings {
 
   /// 专注模式：上下黑遮罩夹出中间可见区，两边界至少相隔 10% 屏高。
   static const defaultFocusModeEnabled = false;
+  static const defaultFocusKeepStatusVisible = false;
   static const minFocusGapRatio = 0.1;
   static const minFocusTopRatio = 0.0;
   static const maxFocusTopRatio = 0.9;
@@ -234,6 +237,9 @@ class NovelReaderSettings {
 
   /// 专注模式开关：开启后上下各加一条半透明黑遮罩。
   final bool focusModeEnabled;
+
+  /// 专注遮罩不遮挡状态组件；不改变状态组件自身的开关与显隐规则。
+  final bool focusKeepStatusVisible;
 
   /// 可见区上/下边界，占屏幕高度比例；遮罩触摸穿透，不挡翻页与点按。
   final double focusTopRatio;
@@ -344,6 +350,7 @@ class NovelReaderSettings {
       ignoreBlankParagraphs: jsonBool(json, 'ignoreBlankParagraphs'),
       // 旧记录没有专注模式各键时：默认关闭、默认区域与浓度。
       focusModeEnabled: jsonBool(json, 'focusModeEnabled'),
+      focusKeepStatusVisible: jsonBool(json, 'focusKeepStatusVisible'),
       focusTopRatio: jsonDouble(
         json,
         'focusTopRatio',
@@ -377,6 +384,7 @@ class NovelReaderSettings {
     'volumeKey': volumeKey,
     'ignoreBlankParagraphs': ignoreBlankParagraphs,
     'focusModeEnabled': focusModeEnabled,
+    'focusKeepStatusVisible': focusKeepStatusVisible,
     'focusTopRatio': focusTopRatio,
     'focusBottomRatio': focusBottomRatio,
     'focusOpacity': focusOpacity,
@@ -397,6 +405,7 @@ class NovelReaderSettings {
     bool? volumeKey,
     bool? ignoreBlankParagraphs,
     bool? focusModeEnabled,
+    bool? focusKeepStatusVisible,
     double? focusTopRatio,
     double? focusBottomRatio,
     double? focusOpacity,
@@ -435,6 +444,8 @@ class NovelReaderSettings {
           (mode == NovelReaderMode.paged && this.mode != NovelReaderMode.paged
               ? false
               : this.focusModeEnabled),
+      focusKeepStatusVisible:
+          focusKeepStatusVisible ?? this.focusKeepStatusVisible,
       focusTopRatio: top,
       focusBottomRatio: bottom,
       focusOpacity: focusOpacity ?? this.focusOpacity,
@@ -543,6 +554,7 @@ class NovelReaderSettings {
       volumeKey == other.volumeKey &&
       ignoreBlankParagraphs == other.ignoreBlankParagraphs &&
       focusModeEnabled == other.focusModeEnabled &&
+      focusKeepStatusVisible == other.focusKeepStatusVisible &&
       focusTopRatio == other.focusTopRatio &&
       focusBottomRatio == other.focusBottomRatio &&
       focusOpacity == other.focusOpacity;
@@ -563,6 +575,7 @@ class NovelReaderSettings {
     volumeKey,
     ignoreBlankParagraphs,
     focusModeEnabled,
+    focusKeepStatusVisible,
     focusTopRatio,
     focusBottomRatio,
     focusOpacity,

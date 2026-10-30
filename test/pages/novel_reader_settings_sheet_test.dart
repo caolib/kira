@@ -523,6 +523,71 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final (locale, label, size, textScale, brightness, reduceMotion) in [
+    (
+      const Locale('zh'),
+      '不遮挡状态组件',
+      const Size(375, 812),
+      1.0,
+      Brightness.light,
+      false,
+    ),
+    (
+      const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      '不遮擋狀態元件',
+      const Size(320, 850),
+      2.0,
+      Brightness.dark,
+      true,
+    ),
+    (
+      const Locale('zh'),
+      '不遮挡状态组件',
+      const Size(812, 375),
+      1.0,
+      Brightness.dark,
+      true,
+    ),
+  ]) {
+    testWidgets(
+      'focus status switch follows the focus details at $size $locale',
+      (tester) async {
+        var latest = const NovelReaderSettings();
+        await _mount(
+          tester,
+          settings: latest,
+          onChanged: (value) => latest = value,
+          size: size,
+          textScale: textScale,
+          locale: locale,
+          systemBrightness: brightness,
+          reduceMotion: reduceMotion,
+        );
+        final finder = find.byKey(
+          const ValueKey('novel-focus-keep-status-visible'),
+        );
+        expect(finder, findsNothing);
+        await _tapVisible(tester, 'novel-focus-mode');
+        expect(tester.widget<SwitchListTile>(finder).value, isFalse);
+        expect(finder.hitTestable(), findsNothing);
+        await _tapVisible(tester, 'novel-focus-details-toggle');
+        await _tapVisible(tester, 'novel-focus-keep-status-visible');
+        expect(find.text(label), findsOneWidget);
+        expect(latest.focusKeepStatusVisible, isTrue);
+        expect(tester.widget<SwitchListTile>(finder).value, isTrue);
+        await _tapVisible(tester, 'novel-focus-mode');
+        expect(finder, findsNothing);
+        expect(latest.focusKeepStatusVisible, isTrue);
+        await _tapVisible(tester, 'novel-focus-mode');
+        expect(tester.widget<SwitchListTile>(finder).value, isTrue);
+        await _tapVisible(tester, 'novel-focus-details-toggle');
+        await _tapVisible(tester, 'novel-focus-keep-status-visible');
+        expect(latest.focusKeepStatusVisible, isFalse);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('focus boundaries move each other to keep a ten percent gap', (
     tester,
   ) async {

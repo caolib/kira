@@ -724,15 +724,80 @@ void main() {
     await _remove(tester);
   });
 
-  testWidgets('focus mode masks the top status overlay above it', (
+  for (final mode in NovelReaderMode.values) {
+    for (final position in [0, 3]) {
+      for (final keepVisible in [false, true]) {
+        testWidgets(
+          'focus status layer $mode position $position keep visible $keepVisible',
+          (tester) async {
+            await tester.runAsync(() async {
+              final prefs = await SharedPreferences.getInstance();
+              final status = NovelReaderStatusSettings();
+              await status.initFromPrefs(prefs);
+              await status.setStatusOverlay(true);
+              await status.setStatusOverlayPosition(position);
+            });
+            await _mount(
+              tester,
+              repository: repository,
+              store: store,
+              settings: NovelReaderSettings(
+                mode: mode,
+                focusModeEnabled: true,
+                focusKeepStatusVisible: keepVisible,
+              ),
+            );
+            expect(find.byType(ReaderStatusOverlay), findsOneWidget);
+            final stack = find.ancestor(
+              of: find.byKey(const ValueKey('novel-focus-mask-widget')),
+              matching: find.byType(Stack),
+            );
+            final children = tester.widget<Stack>(stack.first).children;
+            final maskAt = children.indexWhere(
+              (child) => child.key == const ValueKey('novel-focus-mask-widget'),
+            );
+            final overlayAt = children.indexWhere(
+              (child) => child.key == const ValueKey('novel-status-overlay'),
+            );
+            expect(maskAt, isNonNegative);
+            expect(overlayAt, isNonNegative);
+            expect(
+              overlayAt,
+              keepVisible ? greaterThan(maskAt) : lessThan(maskAt),
+            );
+            expect(_toolbarHidden(tester), isTrue);
+            final band = tester.getRect(
+              find.byKey(
+                ValueKey(
+                  position < 3
+                      ? 'novel-focus-mask-top'
+                      : 'novel-focus-mask-bottom',
+                ),
+              ),
+            );
+            final showToolbar = find.byKey(
+              const ValueKey('novel-reader-show-toolbar'),
+            );
+            expect(band.contains(tester.getCenter(showToolbar)), isTrue);
+            await tester.tap(showToolbar);
+            await _settle(tester);
+            expect(_toolbarHidden(tester), isFalse);
+            expect(showToolbar.hitTestable(), findsNothing);
+            expect(tester.takeException(), isNull);
+            await _remove(tester);
+          },
+        );
+      }
+    }
+  }
+
+  testWidgets('focus status visibility updates live and persists', (
     tester,
   ) async {
     await tester.runAsync(() async {
-      final prefs = await SharedPreferences.getInstance();
       final status = NovelReaderStatusSettings();
-      await status.initFromPrefs(prefs);
+      await status.initFromPrefs(await SharedPreferences.getInstance());
       await status.setStatusOverlay(true);
-      await status.setStatusOverlayPosition(0);
     });
     await _mount(
       tester,
@@ -743,37 +808,75 @@ void main() {
         focusModeEnabled: true,
       ),
     );
-    final overlay = find.byType(ReaderStatusOverlay);
-    expect(overlay, findsOneWidget);
-    // 遮罩在状态组件之后绘制：同一 Stack 里后画的在上层，
-    // 顶部状态组件因此被压暗。
-    final stack = find.ancestor(
-      of: find.byKey(const ValueKey('novel-focus-mask-widget')),
-      matching: find.byType(Stack),
-    );
-    final children = tester.widget<Stack>(stack.first).children;
-    final maskAt = children.indexWhere(
-      (child) => child.key == const ValueKey('novel-focus-mask-widget'),
-    );
-    final overlayAt = children.indexWhere(
-      (child) => child.key == const ValueKey('novel-status-overlay'),
-    );
-    expect(overlayAt, isNonNegative);
-    expect(maskAt, greaterThan(overlayAt), reason: '遮罩必须画在状态组件之上');
-    // 遮罩不拦截点击：顶部状态组件仍可唤出工具栏。
-    expect(_toolbarHidden(tester), isTrue);
-    final maskTop = tester.getRect(
-      find.byKey(const ValueKey('novel-focus-mask-top')),
-    );
-    final showToolbar = find.byKey(const ValueKey('novel-reader-show-toolbar'));
-    expect(
-      maskTop.contains(tester.getCenter(showToolbar)),
-      isTrue,
-      reason: '点按位置必须落在顶部遮罩内才能验证穿透',
-    );
-    await tester.tap(showToolbar);
+    final overlayState = tester.state(find.byType(ReaderStatusOverlay));
+    final location = _pagedLocation(tester).anchor;
+    await _openSettings(tester);
+    final expand = find.byKey(const ValueKey('novel-focus-details-toggle'));
+    await tester.ensureVisible(expand);
     await _settle(tester);
-    expect(_toolbarHidden(tester), isFalse, reason: '遮罩不应吞掉状态组件的点按');
+    await tester.tap(expand);
+    await _settle(tester);
+    for (final value in [true, false]) {
+      final tile = find.byKey(
+        const ValueKey('novel-focus-keep-status-visible'),
+      );
+      await tester.ensureVisible(tile);
+      await _settle(tester);
+      await tester.tap(tile);
+      await _settle(tester);
+      expect(tester.widget<SwitchListTile>(tile).value, value);
+      final stack = find.ancestor(
+        of: find.byKey(const ValueKey('novel-focus-mask-widget')),
+        matching: find.byType(Stack),
+      );
+      final children = tester.widget<Stack>(stack.first).children;
+      final maskAt = children.indexWhere(
+        (child) => child.key == const ValueKey('novel-focus-mask-widget'),
+      );
+      final overlayAt = children.indexWhere(
+        (child) => child.key == const ValueKey('novel-status-overlay'),
+      );
+      expect(overlayAt, value ? greaterThan(maskAt) : lessThan(maskAt));
+      expect(
+        tester.state(find.byType(ReaderStatusOverlay, skipOffstage: false)),
+        same(overlayState),
+      );
+      final current = _pagedLocation(tester).anchor;
+      expect(current.entryIndex, location.entryIndex);
+      expect(current.paragraphIndex, location.paragraphIndex);
+      expect(current.alignment, closeTo(location.alignment, 1e-6));
+      expect(current.volumeId, location.volumeId);
+      await tester.runAsync(() async {
+        expect(
+          (await NovelReaderSettings.load()).focusKeepStatusVisible,
+          value,
+        );
+      });
+    }
+    expect(tester.takeException(), isNull);
+    await _remove(tester);
+  });
+
+  testWidgets('focus keep status visible does not enable a disabled overlay', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final status = NovelReaderStatusSettings();
+      await status.initFromPrefs(await SharedPreferences.getInstance());
+      await status.setStatusOverlay(false);
+    });
+    await _mount(
+      tester,
+      repository: repository,
+      store: store,
+      settings: const NovelReaderSettings(
+        mode: NovelReaderMode.paged,
+        focusModeEnabled: true,
+        focusKeepStatusVisible: true,
+      ),
+    );
+    expect(find.byKey(const ValueKey('novel-focus-mask')), findsOneWidget);
+    expect(find.byType(ReaderStatusOverlay), findsNothing);
     expect(tester.takeException(), isNull);
     await _remove(tester);
   });

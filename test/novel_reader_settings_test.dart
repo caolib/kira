@@ -705,6 +705,60 @@ void main() {
     expect(themed.removeCustomTheme('f1'), custom);
   });
 
+  test('focus status visibility defaults off and preserves other settings', () {
+    const defaults = NovelReaderSettings();
+    expect(defaults.focusKeepStatusVisible, isFalse);
+    expect(defaults.toJson()['focusKeepStatusVisible'], isFalse);
+    expect(
+      NovelReaderSettings.fromJson(const {}).focusKeepStatusVisible,
+      isFalse,
+    );
+    expect(
+      NovelReaderSettings.fromJson(const {
+        'focusKeepStatusVisible': [],
+      }).focusKeepStatusVisible,
+      isFalse,
+    );
+    final enabled = defaults.copyWith(focusKeepStatusVisible: true);
+    expect(enabled.focusKeepStatusVisible, isTrue);
+    expect(enabled.focusModeEnabled, isFalse);
+    expect(enabled.toJson()['focusKeepStatusVisible'], isTrue);
+    expect(NovelReaderSettings.fromJson(enabled.toJson()), enabled);
+    expect(enabled, isNot(defaults));
+    expect(enabled.hashCode, isNot(defaults.hashCode));
+    expect(enabled.copyWith(fontSize: 24).focusKeepStatusVisible, isTrue);
+    expect(
+      enabled.copyWith(mode: NovelReaderMode.paged).focusKeepStatusVisible,
+      isTrue,
+    );
+    expect(
+      enabled.copyWith(focusModeEnabled: false).focusKeepStatusVisible,
+      isTrue,
+    );
+    expect(enabled.copyWith(focusKeepStatusVisible: false), defaults);
+    final themed = enabled.upsertCustomTheme(
+      const NovelReaderCustomTheme(id: 'focus', name: '专注'),
+    );
+    expect(themed.focusKeepStatusVisible, isTrue);
+    expect(themed.removeCustomTheme('focus'), enabled);
+  });
+
+  test('focus status visibility persists across recreated prefs', () async {
+    for (final value in [true, false]) {
+      final settings = NovelReaderSettings(
+        focusModeEnabled: true,
+        focusKeepStatusVisible: value,
+      );
+      await settings.save();
+      SharedPreferences.setMockInitialValues({
+        for (final key in prefs.getKeys())
+          if (prefs.get(key) case final Object value) key: value,
+      });
+      prefs = await SharedPreferences.getInstance();
+      expect(await NovelReaderSettings.load(), settings);
+    }
+  });
+
   test('focus bounds keep the minimum gap across the full ranges', () {
     for (final top in [-1.0, 0.0, 0.45, 0.9, 2.0, double.nan]) {
       for (final bottom in [-1.0, 0.1, 0.55, 1.0, 2.0, double.nan]) {

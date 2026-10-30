@@ -3855,6 +3855,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderFocusMode => '专注模式';
 
   @override
+  String get novelReaderFocusKeepStatusVisible => '不遮挡状态组件';
+
+  @override
   String get novelReaderFocusTopBound => '上边界';
 
   @override
@@ -7812,6 +7815,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get novelReaderFocusMode => '專注模式';
+
+  @override
+  String get novelReaderFocusKeepStatusVisible => '不遮擋狀態元件';
 
   @override
   String get novelReaderFocusTopBound => '上邊界';

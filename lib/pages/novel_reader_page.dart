@@ -1276,10 +1276,11 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
                       // 一致）：安全区 inset 经 contentPadding 交给列表内容
                       // 层，viewport 尺寸恒定，不会触发 anchor restoration。
                       body,
-                      // 状态浮层先画、专注遮罩后画：开启专注模式时顶部
-                      // 状态组件同样被遮罩压暗，不会在暗区里格外显眼。
-                      // 遮罩本身 IgnorePointer，状态组件的点按不受影响。
-                      if (_statusSettings.statusOverlay) _buildStatusOverlay(),
+                      // 默认遮罩压暗状态组件；开启「不遮挡状态组件」后
+                      // 将浮层画在遮罩上方，显隐与点按规则保持不变。
+                      if (_statusSettings.statusOverlay &&
+                          !_settings.focusKeepStatusVisible)
+                        _buildStatusOverlay(),
                       NovelFocusMask(
                         key: const ValueKey('novel-focus-mask-widget'),
                         enabled: _settings.focusModeEnabled,
@@ -1287,6 +1288,9 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
                         bottomRatio: _settings.focusBottomRatio,
                         opacity: _settings.focusOpacity,
                       ),
+                      if (_statusSettings.statusOverlay &&
+                          _settings.focusKeepStatusVisible)
+                        _buildStatusOverlay(),
                       // 显隐都留在树里做滑动过渡（与漫画阅读器同一套规则）。
                       Positioned(
                         top: 0,

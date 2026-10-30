@@ -2468,6 +2468,7 @@
   "novelReaderIgnoreBlankParagraphs": "隐藏空白段落",
   "novelReaderIgnoreBlankParagraphsDenseHint": "可以适当增大段距以免文字过于密集",
   "novelReaderFocusMode": "专注模式",
+  "novelReaderFocusKeepStatusVisible": "不遮挡状态组件",
   "novelReaderFocusTopBound": "上边界",
   "novelReaderFocusBottomBound": "下边界",
   "novelReaderFocusOpacity": "遮罩浓度",

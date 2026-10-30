@@ -309,6 +309,15 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
               expanded: _focusExpanded,
               child: Column(
                 children: [
+                  SwitchListTile.adaptive(
+                    key: const ValueKey('novel-focus-keep-status-visible'),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.novelReaderFocusKeepStatusVisible),
+                    value: _settings.focusKeepStatusVisible,
+                    onChanged: (value) => _change(
+                      _settings.copyWith(focusKeepStatusVisible: value),
+                    ),
+                  ),
                   _slider(
                     key: const ValueKey('novel-focus-top'),
                     label: l10n.novelReaderFocusTopBound,

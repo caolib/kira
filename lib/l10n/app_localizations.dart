@@ -7055,6 +7055,12 @@ abstract class AppLocalizations {
   /// **'专注模式'**
   String get novelReaderFocusMode;
 
+  /// No description provided for @novelReaderFocusKeepStatusVisible.
+  ///
+  /// In zh, this message translates to:
+  /// **'不遮挡状态组件'**
+  String get novelReaderFocusKeepStatusVisible;
+
   /// No description provided for @novelReaderFocusTopBound.
   ///
   /// In zh, this message translates to:
