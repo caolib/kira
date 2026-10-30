@@ -62,6 +62,29 @@ extension _NetworkNodesSection on _NetworkPageState {
               if (i > 0) const SizedBox(height: AppSpacing.md),
               cards[i],
             ],
+          const SizedBox(height: AppSpacing.md),
+          SettingTileGroup(
+            children: [
+              SwitchListTile(
+                title: Text(l10n.networkAutoTestEnabled),
+                value: _user.network.autoTestEnabled,
+                onChanged: _user.network.setAutoTestEnabled,
+              ),
+              if (_user.network.autoTestEnabled)
+                ListTile(
+                  title: Text(l10n.networkAutoTestInterval),
+                  trailing: SelectTile<int>(
+                    value: _user.network.autoTestIntervalHours,
+                    items: [
+                      for (final hours
+                          in NetworkSettings.autoTestIntervalOptions)
+                        SelectItem(hours, '${hours}h'),
+                    ],
+                    onChanged: _user.network.setAutoTestIntervalHours,
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );

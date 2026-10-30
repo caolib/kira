@@ -827,13 +827,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkSelectionMode => '选择模式';
 
   @override
+  String get networkAutoTestEnabled => '定时测速并切换线路';
+
+  @override
+  String get networkAutoTestInterval => '测速间隔';
+
+  @override
   String get networkModeRoute => '线路';
-
-  @override
-  String get networkFixedNodeAutoSelected => '测速后已选择延迟最低的节点';
-
-  @override
-  String get networkRouteAutoSelected => '测速后已切换到平均延迟最低的线路';
 
   @override
   String networkRouteLabel(int index) {
@@ -849,7 +849,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get networkHighLatencyProxySuggestion => '当前延迟较大，建议开启代理';
+  String get networkHighLatencyHint => '当前线路延迟较高';
 
   @override
   String get networkRateLimitMessage => '请求过于频繁，已被限速，请稍后再试';
@@ -1016,7 +1016,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String networkStatusWarnHint(int ms) {
-    return '当前延迟约 $ms ms，建议开启代理';
+    return '当前延迟约 $ms ms';
   }
 
   @override
@@ -4789,13 +4789,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkSelectionMode => '選擇模式';
 
   @override
+  String get networkAutoTestEnabled => '定時測速並切換線路';
+
+  @override
+  String get networkAutoTestInterval => '測速間隔';
+
+  @override
   String get networkModeRoute => '線路';
-
-  @override
-  String get networkFixedNodeAutoSelected => '測速後已選擇延遲最低的節點';
-
-  @override
-  String get networkRouteAutoSelected => '測速後已切換到平均延遲最低的線路';
 
   @override
   String networkRouteLabel(int index) {
@@ -4811,7 +4811,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get networkHighLatencyProxySuggestion => '目前延遲較大，建議開啟代理';
+  String get networkHighLatencyHint => '目前線路延遲較高';
 
   @override
   String get networkRateLimitMessage => '請求過於頻繁，已被限速，請稍後再試';
@@ -4978,7 +4978,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String networkStatusWarnHint(int ms) {
-    return '目前延遲約 $ms ms，建議開啟代理';
+    return '目前延遲約 $ms ms';
   }
 
   @override

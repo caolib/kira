@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/api/api_client.dart';
 import 'package:kira/api/network/network_api.dart';
 import 'package:kira/l10n/app_localizations.dart';
+import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/network_page.dart';
+import 'package:kira/widgets/select_tile.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_helpers.dart';
 
@@ -24,8 +28,9 @@ class _FakeNetworkApi implements NetworkApi {
     int routeIndex, {
     void Function(String host, int? latency)? onHostResult,
   }) async {
-    onHostResult?.call('route-host.test', 100);
-    return {'route-host.test': 100};
+    final latency = routeIndex == 0 ? 500 : 100;
+    onHostResult?.call('route-host.test', latency);
+    return {'route-host.test': latency};
   }
 
   @override
@@ -51,8 +56,10 @@ class _FakeClient implements ApiClient {
 void main() {
   late ApiClient originalApi;
 
-  setUp(() {
+  setUp(() async {
     setupSecureCredentialStoreForTest();
+    SharedPreferences.setMockInitialValues({});
+    await UserManager().init();
     originalApi = ApiClient();
     ApiClient.setTestInstance(_FakeClient());
   });
@@ -64,7 +71,9 @@ void main() {
 
   Future<void> pumpPage(WidgetTester tester) async {
     await tester.pumpWidget(
-      wrapWithApp(const NetworkPage(), wrapInScaffold: false),
+      ProviderScope(
+        child: wrapWithApp(const NetworkPage(), wrapInScaffold: false),
+      ),
     );
     // 呼吸灯是无限循环动画，不能用 pumpAndSettle；固定 pump 两帧让
     // post-frame 自动测速完成，「其他」块随之出现。
@@ -78,6 +87,19 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
   }
+
+  testWidgets('speed tests switch routes without a success toast', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    expect(UserManager().apiRoute, 1);
+    expect(find.textContaining('测速后已'), findsNothing);
+    expect(find.textContaining('建议开启代理'), findsNothing);
+    await tester.tap(find.text('测速'));
+    await tester.pump();
+    expect(find.textContaining('测速后已'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('wide screen puts route cards and the extra group on one row', (
     tester,
@@ -97,6 +119,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('auto-test switch reveals all four intervals below the cards', (
+    tester,
+  ) async {
+    setScreen(tester, const Size(900, 900));
+    await pumpPage(tester);
+    expect(UserManager().network.autoTestEnabled, isFalse);
+    expect(find.text('测速间隔'), findsNothing);
+    await tester.tap(find.text('定时测速并切换线路'));
+    await tester.pump();
+    expect(UserManager().network.autoTestEnabled, isTrue);
+    expect(find.text('测速间隔'), findsOneWidget);
+    expect(find.text('1h'), findsOneWidget);
+    await tester.tap(find.byType(SelectTile<int>));
+    await tester.pump();
+    for (final hours in [1, 3, 6, 24]) {
+      expect(find.text('${hours}h'), findsWidgets);
+    }
+    await tester.tap(find.text('6h'));
+    await tester.pump();
+    expect(UserManager().network.autoTestIntervalHours, 6);
+    expect(find.text('6h'), findsOneWidget);
+    await tester.tap(find.text('定时测速并切换线路'));
+    await tester.pump();
+    expect(find.text('测速间隔'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('narrow screen keeps the cards stacked vertically', (
     tester,
   ) async {
@@ -109,6 +158,7 @@ void main() {
 
     expect(route2.dy, greaterThan(route1.dy));
     expect(other.dy, greaterThan(route2.dy));
+    expect(tester.getTopLeft(find.text('定时测速并切换线路')).dy, greaterThan(other.dy));
     expect(tester.takeException(), isNull);
   });
 }

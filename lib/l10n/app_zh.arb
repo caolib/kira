@@ -497,9 +497,9 @@
   },
   "networkTitle": "网络",
   "networkSelectionMode": "选择模式",
+  "networkAutoTestEnabled": "定时测速并切换线路",
+  "networkAutoTestInterval": "测速间隔",
   "networkModeRoute": "线路",
-  "networkFixedNodeAutoSelected": "测速后已选择延迟最低的节点",
-  "networkRouteAutoSelected": "测速后已切换到平均延迟最低的线路",
   "networkRouteLabel": "线路 {index}",
   "@networkRouteLabel": {
     "placeholders": {
@@ -517,7 +517,7 @@
       }
     }
   },
-  "networkHighLatencyProxySuggestion": "当前延迟较大，建议开启代理",
+  "networkHighLatencyHint": "当前线路延迟较高",
   "networkRateLimitMessage": "请求过于频繁，已被限速，请稍后再试",
   "networkRequestFailedCode": "请求失败（code: {code}）",
   "@networkRequestFailedCode": {
@@ -632,7 +632,7 @@
   },
   "networkStatusGoodFallback": "连接正常，状态良好",
   "networkStatusWarn": "延迟偏高",
-  "networkStatusWarnHint": "当前延迟约 {ms} ms，建议开启代理",
+  "networkStatusWarnHint": "当前延迟约 {ms} ms",
   "@networkStatusWarnHint": {
     "placeholders": {
       "ms": {

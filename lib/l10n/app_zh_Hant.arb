@@ -497,9 +497,9 @@
   },
   "networkTitle": "網路",
   "networkSelectionMode": "選擇模式",
+  "networkAutoTestEnabled": "定時測速並切換線路",
+  "networkAutoTestInterval": "測速間隔",
   "networkModeRoute": "線路",
-  "networkFixedNodeAutoSelected": "測速後已選擇延遲最低的節點",
-  "networkRouteAutoSelected": "測速後已切換到平均延遲最低的線路",
   "networkRouteLabel": "線路 {index}",
   "@networkRouteLabel": {
     "placeholders": {
@@ -517,7 +517,7 @@
       }
     }
   },
-  "networkHighLatencyProxySuggestion": "目前延遲較大，建議開啟代理",
+  "networkHighLatencyHint": "目前線路延遲較高",
   "networkRateLimitMessage": "請求過於頻繁，已被限速，請稍後再試",
   "networkRequestFailedCode": "請求失敗（code: {code}）",
   "@networkRequestFailedCode": {
@@ -2029,7 +2029,7 @@
   },
   "networkStatusGoodFallback": "節點網路狀態良好",
   "networkStatusWarn": "延遲偏高",
-  "networkStatusWarnHint": "目前延遲約 {ms} ms，建議開啟代理",
+  "networkStatusWarnHint": "目前延遲約 {ms} ms",
   "@networkStatusWarnHint": {
     "placeholders": {
       "ms": {

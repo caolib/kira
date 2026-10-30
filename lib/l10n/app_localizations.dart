@@ -1579,23 +1579,23 @@ abstract class AppLocalizations {
   /// **'选择模式'**
   String get networkSelectionMode;
 
+  /// No description provided for @networkAutoTestEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'定时测速并切换线路'**
+  String get networkAutoTestEnabled;
+
+  /// No description provided for @networkAutoTestInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速间隔'**
+  String get networkAutoTestInterval;
+
   /// No description provided for @networkModeRoute.
   ///
   /// In zh, this message translates to:
   /// **'线路'**
   String get networkModeRoute;
-
-  /// No description provided for @networkFixedNodeAutoSelected.
-  ///
-  /// In zh, this message translates to:
-  /// **'测速后已选择延迟最低的节点'**
-  String get networkFixedNodeAutoSelected;
-
-  /// No description provided for @networkRouteAutoSelected.
-  ///
-  /// In zh, this message translates to:
-  /// **'测速后已切换到平均延迟最低的线路'**
-  String get networkRouteAutoSelected;
 
   /// No description provided for @networkRouteLabel.
   ///
@@ -1615,11 +1615,11 @@ abstract class AppLocalizations {
   /// **'测速失败：{detail}'**
   String networkSpeedTestFailedDetail(String detail);
 
-  /// No description provided for @networkHighLatencyProxySuggestion.
+  /// No description provided for @networkHighLatencyHint.
   ///
   /// In zh, this message translates to:
-  /// **'当前延迟较大，建议开启代理'**
-  String get networkHighLatencyProxySuggestion;
+  /// **'当前线路延迟较高'**
+  String get networkHighLatencyHint;
 
   /// No description provided for @networkRateLimitMessage.
   ///
@@ -1912,7 +1912,7 @@ abstract class AppLocalizations {
   /// No description provided for @networkStatusWarnHint.
   ///
   /// In zh, this message translates to:
-  /// **'当前延迟约 {ms} ms，建议开启代理'**
+  /// **'当前延迟约 {ms} ms'**
   String networkStatusWarnHint(int ms);
 
   /// No description provided for @networkStatusBad.

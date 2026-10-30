@@ -6,49 +6,14 @@ extension _NetworkActions on _NetworkPageState {
       localIndex +
       1;
 
-  String? _bestLatencyHost(Map<int, Map<String, int?>> results) {
-    String? bestHost;
-    int? bestLatency;
-    for (var route = 0; route < ApiClient.routeCount; route++) {
-      final entries = results[route]?.entries;
-      if (entries == null) continue;
-      for (final entry in entries) {
-        final latency = entry.value;
-        if (latency != null && (bestLatency == null || latency < bestLatency)) {
-          bestHost = entry.key;
-          bestLatency = latency;
-        }
-      }
-    }
-    return bestHost;
-  }
-
-  /// 平均延迟最低的线路索引；所有线路都不可达时返回 null。
-  int? _bestAverageRoute(Map<int, Map<String, int?>> results) {
-    int? bestRoute;
-    double? bestAvg;
-    for (var route = 0; route < ApiClient.routeCount; route++) {
-      final avg = _averageLatency(results[route]);
-      if (avg == null) continue;
-      if (bestAvg == null || avg < bestAvg) {
-        bestRoute = route;
-        bestAvg = avg;
-      }
-    }
-    return bestRoute;
-  }
-
   Color _latencyTone(double avg, ColorScheme cs) {
-    if (avg <= 800) return Colors.green;
-    if (avg <= 2000) return Colors.orange;
-    return cs.error;
+    if (avg <= 800) return AppStatusColors.success(cs);
+    if (avg <= 2000) return AppStatusColors.warning(cs);
+    return AppStatusColors.danger(cs);
   }
 
-  double? _averageLatency(Map<String, int?>? results) {
-    final values = results?.values.whereType<int>().toList() ?? const <int>[];
-    if (values.isEmpty) return null;
-    return values.reduce((a, b) => a + b) / values.length;
-  }
+  double? _averageLatency(Map<String, int?>? results) =>
+      NetworkLatencyTester.averageLatency(results);
 
   String _latencyHostKey(int index, String host) => '$index|$host';
 
@@ -68,102 +33,57 @@ extension _NetworkActions on _NetworkPageState {
   }
 
   Future<void> _testLatency() async {
-    final api = ApiClient();
-    final pendingResults = <int, Map<String, int?>>{};
-    final pendingHosts = <String>{};
-    for (var i = 0; i < ApiClient.routeCount; i++) {
-      pendingResults[i] = {
-        for (final host in api.network.getRouteHosts(i)) host: null,
-      };
-      pendingHosts.addAll(
-        api.network.getRouteHosts(i).map((host) => _latencyHostKey(i, host)),
-      );
-    }
-    pendingResults[-1] = {
-      for (final host in api.network.getExtraApiHosts()) host: null,
-    };
-    pendingHosts.addAll(
-      api.network.getExtraApiHosts().map((host) => _latencyHostKey(-1, host)),
-    );
-
-    void updateHostLatency(int index, String host, int? latency) {
-      if (!mounted) return;
-      _setState(() {
-        _latencyResults[index]?[host] = latency;
-        _pendingLatencyHosts.remove(_latencyHostKey(index, host));
-      });
-    }
-
+    if (_manualLatencyTest) return;
     _setState(() {
+      _manualLatencyTest = true;
       _testingLatency = true;
-      _latencyResults = pendingResults;
-      _pendingLatencyHosts = pendingHosts;
+      _latencyResults[-1] = {
+        for (final host in _networkApi.getExtraApiHosts()) host: null,
+      };
+      _pendingLatencyHosts.addAll(
+        _networkApi.getExtraApiHosts().map((host) => _latencyHostKey(-1, host)),
+      );
     });
     try {
-      final tests = <Future<MapEntry<int, Map<String, int?>>>>[
-        api.network
+      await Future.wait([
+        _latencyTester.testAndSelect(),
+        _networkApi
             .testExtraApiLatency(
-              onHostResult: (host, latency) =>
-                  updateHostLatency(-1, host, latency),
+              onHostResult: (host, latency) {
+                if (!mounted) return;
+                _setState(() {
+                  _latencyResults[-1]?[host] = latency;
+                  _pendingLatencyHosts.remove(_latencyHostKey(-1, host));
+                });
+              },
             )
-            .then((r) => MapEntry(-1, r)),
-      ];
-      for (var route = 0; route < ApiClient.routeCount; route++) {
-        tests.add(
-          api.network
-              .testRouteLatency(
-                route,
-                onHostResult: (host, latency) =>
-                    updateHostLatency(route, host, latency),
-              )
-              .then((result) => MapEntry(route, result)),
-        );
-      }
-      final results = await Future.wait(tests);
-      final latencyResults = Map<int, Map<String, int?>>.fromEntries(results);
-      // 测速完成后自动选择最优目标：
-      //  - fixedNode 模式：固定到延迟最低的节点；
-      //  - route 模式：切换到平均延迟最低的线路。
-      switch (_user.networkSelectionMode) {
-        case NetworkSelectionMode.fixedNode:
-          final bestHost = _bestLatencyHost(latencyResults);
-          if (bestHost != null && bestHost != _user.fixedNodeHost) {
-            await _user.setFixedNodeHost(bestHost);
-            if (mounted) {
-              _showToast(
-                AppLocalizations.of(context)!.networkFixedNodeAutoSelected,
-              );
-            }
-          }
-        case NetworkSelectionMode.route:
-          final bestRoute = _bestAverageRoute(latencyResults);
-          if (bestRoute != null && bestRoute != _user.apiRoute) {
-            await _user.setApiRoute(bestRoute);
-            if (mounted) {
-              _showToast(
-                AppLocalizations.of(context)!.networkRouteAutoSelected,
-              );
-            }
-          }
-      }
+            .then((result) {
+              if (mounted) _setState(() => _latencyResults[-1] = result);
+            }),
+      ]);
+    } catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'network.test',
+        ),
+      );
       if (!mounted) return;
-      _setState(() {
-        _testingLatency = false;
-        _latencyResults = latencyResults;
-        _pendingLatencyHosts = {};
-      });
-    } catch (e) {
-      if (!mounted) return;
-      _setState(() {
-        _testingLatency = false;
-        _pendingLatencyHosts = {};
-      });
       _showToast(
         AppLocalizations.of(
           context,
-        )!.networkSpeedTestFailedDetail(NetworkError.message(e)),
+        )!.networkSpeedTestFailedDetail(NetworkError.message(error)),
         isError: true,
       );
+    } finally {
+      if (mounted) {
+        _setState(() {
+          _manualLatencyTest = false;
+          _pendingLatencyHosts.removeWhere((key) => key.startsWith('-1|'));
+          _syncLatencyResults();
+        });
+      }
     }
   }
 
