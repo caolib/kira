@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_logger.dart';
 import '../utils/json_helpers.dart';
+import 'novel_dialogue_style.dart';
 
 enum NovelReaderTheme { paper, dark, white, green, gray }
 
@@ -96,6 +97,11 @@ class NovelReaderSettings {
     this.ignoreBlankParagraphs = defaultIgnoreBlankParagraphs,
     this.focusModeEnabled = defaultFocusModeEnabled,
     this.focusKeepStatusVisible = defaultFocusKeepStatusVisible,
+    this.dialogueEnabled = false,
+    this.lightDialogueStyle = const NovelDialogueStyle(),
+    this.darkDialogueStyle = const NovelDialogueStyle(
+      backgroundColor: NovelDialogueStyle.defaultDarkBackgroundColor,
+    ),
     double focusTopRatio = defaultFocusTopRatio,
     double focusBottomRatio = defaultFocusBottomRatio,
     double focusOpacity = defaultFocusOpacity,
@@ -167,6 +173,9 @@ class NovelReaderSettings {
       ignoreBlankParagraphs = base.ignoreBlankParagraphs,
       focusModeEnabled = base.focusModeEnabled,
       focusKeepStatusVisible = base.focusKeepStatusVisible,
+      dialogueEnabled = base.dialogueEnabled,
+      lightDialogueStyle = base.lightDialogueStyle,
+      darkDialogueStyle = base.darkDialogueStyle,
       focusTopRatio = base.focusTopRatio,
       _focusBottomRatio = base.focusBottomRatio,
       focusOpacity = base.focusOpacity,
@@ -240,6 +249,14 @@ class NovelReaderSettings {
 
   /// 专注遮罩不遮挡状态组件；不改变状态组件自身的开关与显隐规则。
   final bool focusKeepStatusVisible;
+
+  /// 全局对白样式开关；「」与『』共用样式。
+  final bool dialogueEnabled;
+  final NovelDialogueStyle lightDialogueStyle;
+  final NovelDialogueStyle darkDialogueStyle;
+
+  NovelDialogueStyle dialogueStyleFor({required bool dark}) =>
+      dark ? darkDialogueStyle : lightDialogueStyle;
 
   /// 可见区上/下边界，占屏幕高度比例；遮罩触摸穿透，不挡翻页与点按。
   final double focusTopRatio;
@@ -351,6 +368,16 @@ class NovelReaderSettings {
       // 旧记录没有专注模式各键时：默认关闭、默认区域与浓度。
       focusModeEnabled: jsonBool(json, 'focusModeEnabled'),
       focusKeepStatusVisible: jsonBool(json, 'focusKeepStatusVisible'),
+      dialogueEnabled: jsonBool(json, 'dialogueEnabled'),
+      lightDialogueStyle: NovelDialogueStyle.fromJson(
+        jsonMap(json, 'lightDialogueStyle') ?? const {},
+      ),
+      darkDialogueStyle: NovelDialogueStyle.fromJson(
+        jsonMap(json, 'darkDialogueStyle') ?? const {},
+        defaults: const NovelDialogueStyle(
+          backgroundColor: NovelDialogueStyle.defaultDarkBackgroundColor,
+        ),
+      ),
       focusTopRatio: jsonDouble(
         json,
         'focusTopRatio',
@@ -385,6 +412,9 @@ class NovelReaderSettings {
     'ignoreBlankParagraphs': ignoreBlankParagraphs,
     'focusModeEnabled': focusModeEnabled,
     'focusKeepStatusVisible': focusKeepStatusVisible,
+    'dialogueEnabled': dialogueEnabled,
+    'lightDialogueStyle': lightDialogueStyle.toJson(),
+    'darkDialogueStyle': darkDialogueStyle.toJson(),
     'focusTopRatio': focusTopRatio,
     'focusBottomRatio': focusBottomRatio,
     'focusOpacity': focusOpacity,
@@ -406,6 +436,9 @@ class NovelReaderSettings {
     bool? ignoreBlankParagraphs,
     bool? focusModeEnabled,
     bool? focusKeepStatusVisible,
+    bool? dialogueEnabled,
+    NovelDialogueStyle? lightDialogueStyle,
+    NovelDialogueStyle? darkDialogueStyle,
     double? focusTopRatio,
     double? focusBottomRatio,
     double? focusOpacity,
@@ -446,6 +479,9 @@ class NovelReaderSettings {
               : this.focusModeEnabled),
       focusKeepStatusVisible:
           focusKeepStatusVisible ?? this.focusKeepStatusVisible,
+      dialogueEnabled: dialogueEnabled ?? this.dialogueEnabled,
+      lightDialogueStyle: lightDialogueStyle ?? this.lightDialogueStyle,
+      darkDialogueStyle: darkDialogueStyle ?? this.darkDialogueStyle,
       focusTopRatio: top,
       focusBottomRatio: bottom,
       focusOpacity: focusOpacity ?? this.focusOpacity,
@@ -555,6 +591,9 @@ class NovelReaderSettings {
       ignoreBlankParagraphs == other.ignoreBlankParagraphs &&
       focusModeEnabled == other.focusModeEnabled &&
       focusKeepStatusVisible == other.focusKeepStatusVisible &&
+      dialogueEnabled == other.dialogueEnabled &&
+      lightDialogueStyle == other.lightDialogueStyle &&
+      darkDialogueStyle == other.darkDialogueStyle &&
       focusTopRatio == other.focusTopRatio &&
       focusBottomRatio == other.focusBottomRatio &&
       focusOpacity == other.focusOpacity;
@@ -579,6 +618,7 @@ class NovelReaderSettings {
     focusTopRatio,
     focusBottomRatio,
     focusOpacity,
+    Object.hash(dialogueEnabled, lightDialogueStyle, darkDialogueStyle),
   );
 }
 

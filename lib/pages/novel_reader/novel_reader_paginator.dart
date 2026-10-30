@@ -4,16 +4,19 @@ import 'package:flutter/material.dart';
 
 import '../../models/novel_reader_settings.dart';
 import '../../theme/app_spacing.dart';
+import 'novel_reader_dialogue.dart';
 import 'novel_reader_document.dart';
 
 /// 段落显示文本：空行渲染为单个空格，空章节显示占位文案（与滚动模式一致）。
 /// 分页测量与页面渲染共用，保证两处排版输入一致。
 String novelParagraphDisplayText(
   NovelReaderParagraph paragraph,
-  String emptyChapterText,
-) {
+  String emptyChapterText, {
+  NovelDialoguePresentation? dialogue,
+}) {
   if (paragraph.entry.paragraphs.isEmpty) return emptyChapterText;
-  return paragraph.text.isEmpty ? ' ' : paragraph.text;
+  final display = novelParagraphDialogue(paragraph, dialogue)?.text;
+  return display ?? (paragraph.text.isEmpty ? ' ' : paragraph.text);
 }
 
 /// 一个页面片段：某段落在本页显示的行区间 [startLine, endLine)，
@@ -60,6 +63,7 @@ class NovelPaginationSpec {
     required this.paragraphSpacing,
     required this.titleSpacing,
     required this.emptyChapterText,
+    this.dialogue,
   });
 
   /// 正文样式（含 fontSize / height / color）。
@@ -86,6 +90,7 @@ class NovelPaginationSpec {
   /// 章节标题上下的固定留白（与滚动模式的 AppSpacing.xxl 一致）。
   final double titleSpacing;
   final String emptyChapterText;
+  final NovelDialoguePresentation? dialogue;
 }
 
 /// 单个段落的测量结果：只保留行高、行边界与累计高度，
@@ -297,16 +302,31 @@ class NovelReaderPaginator {
     pages.add(NovelPaginatedPage(<NovelPageSlice>[]));
   }
 
-  NovelTextMetrics _measure(NovelReaderParagraph paragraph) => _measureText(
-    novelParagraphDisplayText(paragraph, spec.emptyChapterText),
-    spec.textStyle,
-  );
+  NovelTextMetrics _measure(NovelReaderParagraph paragraph) {
+    final display = novelParagraphDialogue(paragraph, spec.dialogue);
+    return _measureText(
+      display?.text ??
+          novelParagraphDisplayText(paragraph, spec.emptyChapterText),
+      spec.textStyle,
+      // 单纯配色不影响行度量，保留单 span 测量的成本。
+      span:
+          display != null &&
+              display.ranges.isNotEmpty &&
+              spec.dialogue!.fontWeight != null
+          ? spec.dialogue!.measurementSpan(display, spec.textStyle)
+          : null,
+    );
+  }
 
-  NovelTextMetrics _measureText(String text, TextStyle style) {
+  NovelTextMetrics _measureText(
+    String text,
+    TextStyle style, {
+    TextSpan? span,
+  }) {
     // TextPainter 没有 style 参数：样式必须挂在根 span 上，否则会按默认
     // 字号测量，与渲染结果不一致（页面溢出）。
     final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
+      text: span ?? TextSpan(text: text, style: style),
       textDirection: spec.textDirection,
       textScaler: spec.textScaler,
     )..layout(maxWidth: spec.size.width);

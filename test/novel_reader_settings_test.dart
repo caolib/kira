@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/models/novel_dialogue_style.dart';
 import 'package:kira/models/novel_reader_settings.dart';
 import 'package:kira/theme/novel_reader_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -76,6 +77,120 @@ void main() {
       expect(prefs.containsKey(NovelReaderSettings.storageKey), isFalse);
     },
   );
+
+  test('dialogue is opt-in and malformed legacy JSON keeps defaults', () {
+    const defaults = NovelReaderSettings();
+    expect(defaults.dialogueEnabled, isFalse);
+    expect(defaults.dialogueStyleFor(dark: false), const NovelDialogueStyle());
+    expect(
+      defaults.dialogueStyleFor(dark: true),
+      const NovelDialogueStyle(backgroundColor: 0xFFFFFFFF),
+    );
+    expect(NovelReaderSettings.fromJson(const {}), defaults);
+    for (final dark in [false, true]) {
+      final style = defaults.dialogueStyleFor(dark: dark);
+      expect(style.colorMode, NovelDialogueColorMode.body);
+      expect(style.weight, NovelDialogueWeight.body);
+      expect(style.backgroundEnabled, isTrue);
+      expect(style.backgroundColor, dark ? 0xFFFFFFFF : 0xFF000000);
+      expect(style.backgroundOpacity, 0.1);
+    }
+    for (final invalid in [null, 1, 'true', [], {}]) {
+      final settings = NovelReaderSettings.fromJson({
+        'dialogueEnabled': invalid,
+        'lightDialogueStyle': invalid,
+        'darkDialogueStyle': invalid,
+      });
+      expect(settings, defaults);
+    }
+  });
+
+  test(
+    'dialogue styles survive themed copies and persist in the existing key',
+    () async {
+      const light = NovelDialogueStyle(
+        colorMode: NovelDialogueColorMode.custom,
+        textColor: 0xFF123456,
+        weight: NovelDialogueWeight.medium,
+        backgroundOpacity: 0.6,
+      );
+      const dark = NovelDialogueStyle(
+        weight: NovelDialogueWeight.bold,
+        backgroundColor: 0xFF654321,
+        backgroundOpacity: 0.3,
+      );
+      const settings = NovelReaderSettings(
+        dialogueEnabled: true,
+        lightDialogueStyle: light,
+        darkDialogueStyle: dark,
+      );
+      expect(settings.dialogueStyleFor(dark: false), light);
+      expect(settings.dialogueStyleFor(dark: true), dark);
+      final copied = settings
+          .copyWith(fontSize: 24)
+          .upsertCustomTheme(
+            const NovelReaderCustomTheme(id: 'dialogue', name: '配色'),
+          )
+          .removeCustomTheme('dialogue');
+      expect(copied.copyWith(fontSize: 20), settings);
+      expect(NovelReaderSettings.fromJson(settings.toJson()), settings);
+      expect(settings.toJson()['lightDialogueStyle'], light.toJson());
+      expect(settings.toJson()['darkDialogueStyle'], dark.toJson());
+      await settings.save();
+      SharedPreferences.setMockInitialValues({
+        for (final key in prefs.getKeys())
+          if (prefs.get(key) case final Object value) key: value,
+      });
+      prefs = await SharedPreferences.getInstance();
+      final restored = await NovelReaderSettings.load();
+      expect(restored, settings);
+      expect(restored.hashCode, settings.hashCode);
+      expect(prefs.getKeys(), {
+        'reader_mode',
+        'theme_mode',
+        'novel_reading_history_book',
+        NovelReaderSettings.storageKey,
+      });
+      expect(prefs.get('novel_reading_history_book'), 'untouched history');
+    },
+  );
+
+  test('each dialogue field participates in equality and targeted copies', () {
+    const defaults = NovelReaderSettings();
+    for (final changed in [
+      defaults.copyWith(dialogueEnabled: true),
+      defaults.copyWith(
+        lightDialogueStyle: const NovelDialogueStyle(
+          weight: NovelDialogueWeight.bold,
+        ),
+      ),
+      defaults.copyWith(
+        darkDialogueStyle: const NovelDialogueStyle(backgroundEnabled: false),
+      ),
+    ]) {
+      expect(changed, isNot(defaults));
+      expect(changed.hashCode, isNot(defaults.hashCode));
+      expect(changed.copyWith(), changed);
+    }
+    const light = NovelDialogueStyle(weight: NovelDialogueWeight.medium);
+    const dark = NovelDialogueStyle(weight: NovelDialogueWeight.bold);
+    const settings = NovelReaderSettings(
+      lightDialogueStyle: light,
+      darkDialogueStyle: dark,
+    );
+    expect(
+      settings
+          .copyWith(lightDialogueStyle: const NovelDialogueStyle())
+          .darkDialogueStyle,
+      dark,
+    );
+    expect(
+      settings
+          .copyWith(darkDialogueStyle: const NovelDialogueStyle())
+          .lightDialogueStyle,
+      light,
+    );
+  });
 
   test('content width defaults safely and clamps invalid values', () {
     expect(NovelReaderSettings.fromJson(const {}).contentWidth, 720);

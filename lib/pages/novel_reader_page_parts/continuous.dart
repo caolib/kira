@@ -163,6 +163,8 @@ extension _NovelReaderContinuousPart on _NovelReaderPageState {
     try {
       final content = await _stackContent(next, refresh: force);
       if (!_active(session) || request != _request) return;
+      await _prepareDialogueContent(content);
+      if (!_active(session) || request != _request) return;
       final volume = NovelReaderVolumeDocument(
         volumeId: next,
         volumeName: content.detail.volume.name,
@@ -275,6 +277,8 @@ extension _NovelReaderContinuousPart on _NovelReaderPageState {
     });
     try {
       final content = await _stackContent(previous, refresh: force);
+      if (!_active(session) || request != _request) return;
+      await _prepareDialogueContent(content);
       if (!_active(session) || request != _request) return;
       final volume = NovelReaderVolumeDocument(
         volumeId: previous,

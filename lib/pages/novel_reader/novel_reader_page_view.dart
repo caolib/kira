@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 
 import '../../models/novel_reader_settings.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/novel_reader_theme.dart';
 import '../../widgets/novel_page_curl.dart';
+import 'novel_reader_dialogue.dart';
 import 'novel_reader_document.dart';
 import 'novel_reader_paginator.dart';
 
@@ -80,10 +82,25 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   NovelReaderPaginator? _paginator;
   int _currentPage = 0;
   bool _restoring = true;
+  bool _paginationPending = false;
+  NovelReaderAnchor? _pendingAnchor;
   int _generation = 0;
   Size? _size;
   EdgeInsets? _contentPadding;
   TextScaler? _textScaler;
+  NovelDialoguePresentation? _dialogue;
+
+  bool _updateDialogue() {
+    final previous = _dialogue?.layoutKey;
+    _dialogue = resolveNovelDialoguePresentation(
+      widget.settings,
+      dark: MediaQuery.platformBrightnessOf(context) == Brightness.dark,
+      foreground: widget.palette.foreground,
+      background: widget.palette.background,
+    );
+    return previous != _dialogue?.layoutKey;
+  }
+
   Timer? _buildTimer;
   NovelReaderLocation? _lastLocation;
   int? _turnTarget;
@@ -140,7 +157,9 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scaler = MediaQuery.textScalerOf(context);
-    if (_textScaler != null && _textScaler != scaler) {
+    final dialogueLayoutChanged = _updateDialogue();
+    if (_textScaler != null &&
+        (_textScaler != scaler || dialogueLayoutChanged)) {
       _scheduleRepaginate(_anchorNow());
     }
     _textScaler = scaler;
@@ -149,24 +168,27 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   @override
   void didUpdateWidget(NovelReaderPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final dialogueLayoutChanged = _updateDialogue();
     if (!identical(oldWidget.document, widget.document)) {
       _restart(widget.target);
       return;
     }
-    if (oldWidget.jumpRevision != widget.jumpRevision) {
-      _restoreTarget(widget.target);
-      return;
-    }
-    if (oldWidget.settings.contentWidth != widget.settings.contentWidth) {
+    final jumped = oldWidget.jumpRevision != widget.jumpRevision;
+    if (oldWidget.settings.contentWidth != widget.settings.contentWidth ||
+        dialogueLayoutChanged) {
       // 同帧重排，避免将旧分页片段先放进变窄后的正文区域而溢出。
-      _restart(_anchorNow());
+      _restart(jumped ? widget.target : _anchorNow());
       return;
     }
     if (oldWidget.settings.fontSize != widget.settings.fontSize ||
         oldWidget.settings.lineHeight != widget.settings.lineHeight ||
         oldWidget.settings.paragraphSpacing !=
             widget.settings.paragraphSpacing) {
-      _scheduleRepaginate(_anchorNow());
+      _scheduleRepaginate(jumped ? widget.target : _anchorNow());
+      return;
+    }
+    if (jumped) {
+      _restoreTarget(widget.target);
       return;
     }
     if (oldWidget.settings.instantPageTurn != widget.settings.instantPageTurn ||
@@ -189,6 +211,7 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   }
 
   NovelReaderAnchor _anchorNow() =>
+      _pendingAnchor ??
       _lastLocation?.anchor ??
       _paginator?.anchorForPage(_currentPage) ??
       widget.target;
@@ -214,21 +237,44 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
       spec: _spec(_size!, _contentPadding ?? EdgeInsets.zero),
     );
     _paginator = paginator;
-    _pumpPagination(generation, anchor);
+    unawaited(_pumpPagination(generation, anchor));
   }
 
   /// 构建到目标页可用，跳转并放行交互，随后后台续建剩余页。
-  void _pumpPagination(int generation, NovelReaderAnchor anchor) {
+  Future<void> _pumpPagination(int generation, NovelReaderAnchor anchor) async {
     final paginator = _paginator;
     if (paginator == null) return;
     // 分页重建会改变页码含义：中止进行中的卷曲，避免落到过期页。
     _cancelTurn();
-    while (paginator.pageForAnchor(anchor) == null && paginator.buildMore()) {}
+    _pendingAnchor = anchor;
+    setState(() => _paginationPending = true);
+    final clock = Stopwatch()..start();
+    while (paginator.pageForAnchor(anchor) == null && !paginator.complete) {
+      paginator.buildMore(maxItems: 1);
+      // 卷中改字重也要分片，不能同步分页整卷前缀。
+      if (clock.elapsedMicroseconds >= 8000) {
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+        if (!_isCurrent(generation)) return;
+        clock.reset();
+      }
+    }
+    if (!_isCurrent(generation)) return;
     final target =
         paginator.pageForAnchor(anchor) ?? paginator.pages.length - 1;
-    final page = target
-        .clamp(0, math.max(0, paginator.pages.length - 1))
-        .toInt();
+    var page = target.clamp(0, math.max(0, paginator.pages.length - 1)).toInt();
+    // 当前尾页仍在填充：把它封页后再展示，后台续建才不会让正文跳动。
+    while (!paginator.complete && page == paginator.pages.length - 1) {
+      paginator.buildMore(maxItems: 1);
+      page = page.clamp(0, paginator.pages.length - 1);
+      if (clock.elapsedMicroseconds >= 8000) {
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+        if (!_isCurrent(generation)) return;
+        clock.reset();
+      }
+    }
+    if (!_isCurrent(generation)) return;
+    _paginationPending = false;
+    _pendingAnchor = null;
     _currentPage = page;
     setState(() {});
     // 恢复期间先渲染一帧目标页再放行交互，避免用户看到旧页。
@@ -246,7 +292,7 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
     final generation = ++_generation;
     _buildTimer?.cancel();
     _restoring = true;
-    _pumpPagination(generation, anchor);
+    unawaited(_pumpPagination(generation, anchor));
   }
 
   void _scheduleBackgroundBuild(int generation) {
@@ -260,12 +306,22 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   void _backgroundBuildStep(int generation) {
     final paginator = _paginator;
     if (paginator == null || paginator.complete) return;
+    final currentSlices = paginator.pages[_currentPage].slices.length;
+    final target = _turnTarget;
+    final targetSlices = target == null
+        ? null
+        : paginator.pages[target].slices.length;
     final stopwatch = Stopwatch()..start();
     while (!paginator.complete && stopwatch.elapsedMilliseconds < 8) {
-      paginator.buildMore(maxItems: 4);
+      paginator.buildMore(maxItems: 1);
     }
     if (!_isCurrent(generation)) return;
-    setState(() {});
+    // 后台新增后续页面不应反复构建当前页的富文本子树。
+    if (currentSlices != paginator.pages[_currentPage].slices.length ||
+        (target != null &&
+            targetSlices != paginator.pages[target].slices.length)) {
+      setState(() {});
+    }
     if (!paginator.complete) _scheduleBackgroundBuild(generation);
   }
 
@@ -308,6 +364,7 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
       paragraphSpacing: widget.settings.paragraphSpacing,
       titleSpacing: AppSpacing.xxl,
       emptyChapterText: widget.emptyChapterText,
+      dialogue: _dialogue,
     );
   }
 
@@ -570,7 +627,9 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
           _scheduleRepaginate(anchor);
         }
         final paginator = _paginator;
-        if (paginator == null) return const SizedBox.expand();
+        if (paginator == null || _paginationPending) {
+          return const Center(child: ExpressiveLoadingIndicator());
+        }
         return AbsorbPointer(
           absorbing: _restoring,
           child: GestureDetector(
@@ -687,19 +746,28 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
           ),
         );
       }
-      final display = novelParagraphDisplayText(
-        paragraph,
-        widget.emptyChapterText,
-      );
+      final styled = novelParagraphDialogue(paragraph, _dialogue);
+      final display =
+          styled?.text ??
+          novelParagraphDisplayText(paragraph, widget.emptyChapterText);
       final start = slice.startOffset.clamp(0, display.length);
       final end = slice.endOffset.clamp(start, display.length);
       final isFinalSlice = end >= display.length;
-      Widget body = Text(
-        display.substring(start, end),
-        style: style,
-        textScaler: _textScaler,
-        textWidthBasis: TextWidthBasis.parent,
-      );
+      Widget body = styled == null || styled.ranges.isEmpty
+          ? Text(
+              display.substring(start, end),
+              style: style,
+              textScaler: _textScaler,
+              textWidthBasis: TextWidthBasis.parent,
+            )
+          : NovelDialogueText(
+              paragraph: styled,
+              baseStyle: style,
+              dialogue: _dialogue,
+              start: start,
+              end: end,
+              textScaler: _textScaler,
+            );
       final highlighted =
           slice.startLine == 0 &&
           widget.highlight != null &&

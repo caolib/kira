@@ -3814,7 +3814,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderThemeGray => '灰';
 
   @override
-  String get novelReaderThemeCustom => '自定义';
+  String get novelReaderThemeCustom => '自定义主题';
 
   @override
   String get novelReaderThemeLightMode => '浅色模式';
@@ -3852,6 +3852,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get novelReaderPreviewText => '夜色温柔，街灯次第亮起，故事从这一页开始。';
+
+  @override
+  String get novelReaderColorScheme => '配色方案';
+
+  @override
+  String get novelReaderDialogueStyle => '对白样式';
+
+  @override
+  String get novelReaderDialogueAutomatic => '自动适配';
+
+  @override
+  String get novelReaderDialogueFollowBody => '跟随正文';
+
+  @override
+  String get novelReaderDialogueCustom => '自选颜色';
+
+  @override
+  String get novelReaderDialogueWeight => '字重';
+
+  @override
+  String get novelReaderDialogueMedium => '中等';
+
+  @override
+  String get novelReaderDialogueBold => '加粗';
+
+  @override
+  String get novelReaderDialogueBackground => '对白底色';
+
+  @override
+  String get novelReaderDialogueBackgroundStrength => '底色强度';
+
+  @override
+  String get novelReaderDialogueLowContrast => '对白与背景对比度较低';
+
+  @override
+  String get novelReaderDialoguePreviewText =>
+      '夜色温柔，她翻开书页，窗外的风轻轻吹动帘角。\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……';
 
   @override
   String get novelReaderKeepScreenOn => '阅读时屏幕常亮';
@@ -7787,7 +7824,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get novelReaderThemeGray => '灰';
 
   @override
-  String get novelReaderThemeCustom => '自訂';
+  String get novelReaderThemeCustom => '自訂主題';
 
   @override
   String get novelReaderThemeLightMode => '淺色模式';
@@ -7825,6 +7862,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get novelReaderPreviewText => '夜色溫柔，街燈次第亮起，故事從這一頁開始。';
+
+  @override
+  String get novelReaderColorScheme => '配色方案';
+
+  @override
+  String get novelReaderDialogueStyle => '對白樣式';
+
+  @override
+  String get novelReaderDialogueAutomatic => '自動適配';
+
+  @override
+  String get novelReaderDialogueFollowBody => '跟隨正文';
+
+  @override
+  String get novelReaderDialogueCustom => '自選顏色';
+
+  @override
+  String get novelReaderDialogueWeight => '字重';
+
+  @override
+  String get novelReaderDialogueMedium => '中等';
+
+  @override
+  String get novelReaderDialogueBold => '加粗';
+
+  @override
+  String get novelReaderDialogueBackground => '對白底色';
+
+  @override
+  String get novelReaderDialogueBackgroundStrength => '底色強度';
+
+  @override
+  String get novelReaderDialogueLowContrast => '對白與背景對比度較低';
+
+  @override
+  String get novelReaderDialoguePreviewText =>
+      '夜色溫柔，她翻開書頁，窗外的風輕輕吹動簾角。\n「故事裡還有『未說完的話』，我們繼續吧。」\n街燈亮起，遠處傳來列車經過的聲音，像一段熟悉的旋律。\n『等到天亮，我們就一起出發。』\n「如果路上迷失方向，\n就記住窗邊這盞燈，我會在這裡等你回來。」\n她合上書，笑著望向窗外。她說：「這一句尚未結束……';
 
   @override
   String get novelReaderKeepScreenOn => '閱讀時螢幕常亮';

@@ -11,6 +11,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/novel_reader_theme.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/fling_brake_tap_guard.dart';
+import 'novel_reader_dialogue.dart';
 import 'novel_reader_document.dart';
 import 'novel_reader_paginator.dart' show novelPageMetricsFor;
 
@@ -103,6 +104,19 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   NovelReaderLocation? _lastLocation;
   Size? _size;
   TextScaler? _textScaler;
+  NovelDialoguePresentation? _dialogue;
+
+  bool _updateDialogue() {
+    final previous = _dialogue?.layoutKey;
+    _dialogue = resolveNovelDialoguePresentation(
+      widget.settings,
+      dark: MediaQuery.platformBrightnessOf(context) == Brightness.dark,
+      foreground: widget.palette.foreground,
+      background: widget.palette.background,
+    );
+    return previous != _dialogue?.layoutKey;
+  }
+
   bool _restoring = true;
   int _restoration = 0;
 
@@ -239,7 +253,9 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scaler = MediaQuery.textScalerOf(context);
-    if (_textScaler != null && _textScaler != scaler) {
+    final dialogueLayoutChanged = _updateDialogue();
+    if (_textScaler != null &&
+        (_textScaler != scaler || dialogueLayoutChanged)) {
       _scheduleRestore(
         _restoring ? _desired : _lastLocation?.anchor ?? _desired,
       );
@@ -250,6 +266,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   @override
   void didUpdateWidget(NovelReaderViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final dialogueLayoutChanged = _updateDialogue();
     if (oldWidget.contentRevision != widget.contentRevision) {
       // 连续阅读在原位追加了下一卷（或拼接了上一卷）：已有内容位置不变，
       // 只解锁接缝节流，让读者能继续滑到新的卷首/卷末。不重定位滚动，
@@ -269,7 +286,8 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
         oldWidget.settings.lineHeight != widget.settings.lineHeight ||
         oldWidget.settings.paragraphSpacing !=
             widget.settings.paragraphSpacing ||
-        oldWidget.settings.contentWidth != widget.settings.contentWidth) {
+        oldWidget.settings.contentWidth != widget.settings.contentWidth ||
+        dialogueLayoutChanged) {
       _scheduleRestore(
         _restoring ? _desired : _lastLocation?.anchor ?? _desired,
       );
@@ -583,7 +601,14 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
     final bodyText = entry.paragraphs.isEmpty
         ? l10n.novelReaderEmptyChapter
         : (paragraph.text.isEmpty ? ' ' : paragraph.text);
-    Widget body = Text(bodyText, style: style);
+    final styled = novelParagraphDialogue(paragraph, _dialogue);
+    Widget body = styled == null || styled.ranges.isEmpty
+        ? Text(styled?.text ?? bodyText, style: style)
+        : NovelDialogueText(
+            paragraph: styled,
+            baseStyle: style,
+            dialogue: _dialogue,
+          );
     // 高亮样式由演示切换器实时决定；DecoratedBox 不参与布局，高亮
     // 出现/消失时正文一个像素都不动，锚点与进度不受闪光影响。
     // 高亮卡片画在段落矩形之外的留白里（不参与布局），出现/消失正文

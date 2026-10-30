@@ -33,6 +33,7 @@ import '../widgets/reader_status_overlay.dart';
 import 'novel_reader/novel_chapter_slider_track_shape.dart';
 import 'novel_reader/novel_focus_mask.dart';
 import 'novel_reader/novel_reader_contents_sheet.dart';
+import 'novel_reader/novel_reader_dialogue.dart';
 import 'novel_reader/novel_reader_document.dart';
 import 'novel_reader/novel_reader_illustrations.dart';
 import 'novel_reader/novel_reader_page_view.dart';
@@ -140,6 +141,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   late String _fallbackCover;
   int _session = 0;
   int _request = 0;
+  int _settingsRevision = 0;
   int _jumpRevision = 0;
 
   /// 阅读位置只通知进度与工具栏，不带动正文重新构建。
@@ -656,6 +658,8 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         return;
       }
       if (content.detail.isLocked) throw NovelAccessException(content.detail);
+      await _prepareDialogueContent(content);
+      if (!_active(session) || request != _request) return;
       _volumeDetails[volume] = content.detail;
       // 卷栈以当前卷起步；滚动模式下可原位追加下一卷 / 拼接上一卷。
       final stackVolume = NovelReaderVolumeDocument(
@@ -945,8 +949,25 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     );
   }
 
-  void _changeSettings(NovelReaderSettings settings) {
+  Future<void> _prepareDialogueContent(NovelVolumeContent content) async {
+    if (!_settings.dialogueEnabled) return;
+    await novelDialogueCache.prepare(content.entries);
+  }
+
+  Future<void> _changeSettings(NovelReaderSettings settings) async {
     if (!mounted || _disposed) return;
+    final revision = ++_settingsRevision;
+    final session = _session;
+    if (settings.dialogueEnabled && !_settings.dialogueEnabled) {
+      int contentRevision;
+      do {
+        contentRevision = _contentRevision;
+        await novelDialogueCache.prepare([
+          for (final content in _stackContents.values) ...content.entries,
+        ]);
+        if (!_active(session) || revision != _settingsRevision) return;
+      } while (contentRevision != _contentRevision);
+    }
     unawaited(_flush());
     // 切换阅读模式：以当前位置为锚点，新视图接管后进度与落点连续。
     final anchor = settings.mode != _settings.mode

@@ -6980,7 +6980,7 @@ abstract class AppLocalizations {
   /// No description provided for @novelReaderThemeCustom.
   ///
   /// In zh, this message translates to:
-  /// **'自定义'**
+  /// **'自定义主题'**
   String get novelReaderThemeCustom;
 
   /// No description provided for @novelReaderThemeLightMode.
@@ -7048,6 +7048,78 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'夜色温柔，街灯次第亮起，故事从这一页开始。'**
   String get novelReaderPreviewText;
+
+  /// No description provided for @novelReaderColorScheme.
+  ///
+  /// In zh, this message translates to:
+  /// **'配色方案'**
+  String get novelReaderColorScheme;
+
+  /// No description provided for @novelReaderDialogueStyle.
+  ///
+  /// In zh, this message translates to:
+  /// **'对白样式'**
+  String get novelReaderDialogueStyle;
+
+  /// No description provided for @novelReaderDialogueAutomatic.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动适配'**
+  String get novelReaderDialogueAutomatic;
+
+  /// No description provided for @novelReaderDialogueFollowBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随正文'**
+  String get novelReaderDialogueFollowBody;
+
+  /// No description provided for @novelReaderDialogueCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自选颜色'**
+  String get novelReaderDialogueCustom;
+
+  /// No description provided for @novelReaderDialogueWeight.
+  ///
+  /// In zh, this message translates to:
+  /// **'字重'**
+  String get novelReaderDialogueWeight;
+
+  /// No description provided for @novelReaderDialogueMedium.
+  ///
+  /// In zh, this message translates to:
+  /// **'中等'**
+  String get novelReaderDialogueMedium;
+
+  /// No description provided for @novelReaderDialogueBold.
+  ///
+  /// In zh, this message translates to:
+  /// **'加粗'**
+  String get novelReaderDialogueBold;
+
+  /// No description provided for @novelReaderDialogueBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'对白底色'**
+  String get novelReaderDialogueBackground;
+
+  /// No description provided for @novelReaderDialogueBackgroundStrength.
+  ///
+  /// In zh, this message translates to:
+  /// **'底色强度'**
+  String get novelReaderDialogueBackgroundStrength;
+
+  /// No description provided for @novelReaderDialogueLowContrast.
+  ///
+  /// In zh, this message translates to:
+  /// **'对白与背景对比度较低'**
+  String get novelReaderDialogueLowContrast;
+
+  /// No description provided for @novelReaderDialoguePreviewText.
+  ///
+  /// In zh, this message translates to:
+  /// **'夜色温柔，她翻开书页，窗外的风轻轻吹动帘角。\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……'**
+  String get novelReaderDialoguePreviewText;
 
   /// No description provided for @novelReaderKeepScreenOn.
   ///
