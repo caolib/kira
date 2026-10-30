@@ -131,6 +131,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
   set _summaryError(String? v) => _summaryErrorVN.value = v ?? '';
 
   CancelToken? _summaryCancelToken;
+  bool _summaryInitialized = false;
+  bool _autoSummaryAttempted = false;
   Set<int> _spoilerIds = const {};
   List<ChapterCommentDisplayEntry> _lastSnippetEntries = const [];
   // Throttle AI stream writes to ValueNotifiers instead of calling setState.
@@ -196,10 +198,13 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     _summaryProgress = ChapterSummaryCache.progressOf(widget.chapterUuid);
     _summaryProgress.addListener(_onSummaryProgressChanged);
     _applySummaryProgress();
-    _aiSettings.load().then((_) {
+    _aiSettings.load().then((_) async {
       if (!mounted) return;
       setState(() {}); // AI config loaded; refresh toolbar visibility.
-      _loadCachedSummary().then((_) => _maybeAutoSummary());
+      await _loadCachedSummary();
+      if (!mounted) return;
+      _summaryInitialized = true;
+      _maybeAutoSummary();
     });
     if (widget.initialComments != null) {
       _comments = List<ChapterComment>.from(widget.initialComments!);

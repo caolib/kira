@@ -50,9 +50,7 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
       });
       _rebuildGroupedEntries();
       _notifyCommentsUpdated();
-      if (!loadMore) {
-        _maybeAutoSummary();
-      }
+      _maybeAutoSummary();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         tryLoadMoreWhenNearBottom();
@@ -252,6 +250,7 @@ extension _ChapterCommentData on _ChapterCommentsSheetState {
         });
         _rebuildGroupedEntries();
         _notifyCommentsUpdated();
+        _maybeAutoSummary();
 
         if (_comments.length < _total) {
           await Future<void>.delayed(chapterCommentPageGap);
