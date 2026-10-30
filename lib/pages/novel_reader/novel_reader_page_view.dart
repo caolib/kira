@@ -10,6 +10,7 @@ import '../../theme/novel_reader_theme.dart';
 import '../../widgets/novel_page_curl.dart';
 import 'novel_reader_dialogue.dart';
 import 'novel_reader_document.dart';
+import 'novel_reader_font.dart';
 import 'novel_reader_paginator.dart';
 
 /// 整页翻页视图：把整卷正文按可用区域切分成页，横向左到右翻页。
@@ -36,10 +37,12 @@ class NovelReaderPageView extends StatefulWidget {
     this.highlightOpacity,
     this.onPageTurned,
     this.onBoundary,
+    this.fontFamily,
   });
 
   final NovelTextDocument document;
   final NovelReaderSettings settings;
+  final String? fontFamily;
   final NovelReaderPalette palette;
 
   /// 目标锚点；[jumpRevision] 变化时按同一锚点重新定位。
@@ -89,6 +92,19 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   EdgeInsets? _contentPadding;
   TextScaler? _textScaler;
   NovelDialoguePresentation? _dialogue;
+  TextStyle? _layoutBodyStyle;
+  TextStyle? _layoutTitleStyle;
+
+  bool _updateTextStyles() {
+    final body = _bodyStyle(context);
+    final title = _titleStyle(context);
+    final changed =
+        _layoutBodyStyle?.compareTo(body) == RenderComparison.layout ||
+        _layoutTitleStyle?.compareTo(title) == RenderComparison.layout;
+    _layoutBodyStyle = body;
+    _layoutTitleStyle = title;
+    return changed;
+  }
 
   bool _updateDialogue() {
     final previous = _dialogue?.layoutKey;
@@ -158,9 +174,10 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
     super.didChangeDependencies();
     final scaler = MediaQuery.textScalerOf(context);
     final dialogueLayoutChanged = _updateDialogue();
+    final textLayoutChanged = _updateTextStyles();
     if (_textScaler != null &&
-        (_textScaler != scaler || dialogueLayoutChanged)) {
-      _scheduleRepaginate(_anchorNow());
+        (_textScaler != scaler || dialogueLayoutChanged || textLayoutChanged)) {
+      _restart(_anchorNow());
     }
     _textScaler = scaler;
   }
@@ -169,13 +186,15 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   void didUpdateWidget(NovelReaderPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
     final dialogueLayoutChanged = _updateDialogue();
+    final textLayoutChanged = _updateTextStyles();
     if (!identical(oldWidget.document, widget.document)) {
       _restart(widget.target);
       return;
     }
     final jumped = oldWidget.jumpRevision != widget.jumpRevision;
     if (oldWidget.settings.contentWidth != widget.settings.contentWidth ||
-        dialogueLayoutChanged) {
+        dialogueLayoutChanged ||
+        textLayoutChanged) {
       // 同帧重排，避免将旧分页片段先放进变窄后的正文区域而溢出。
       _restart(jumped ? widget.target : _anchorNow());
       return;
@@ -327,22 +346,26 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
 
   /// 正文最终样式：与 [Text] 内部一致地把主题样式合并到 DefaultTextStyle
   /// 上。分页测量与页面渲染必须共用同一份样式，否则行高/换行会漂移。
-  TextStyle _bodyStyle(BuildContext context) =>
-      DefaultTextStyle.of(context).style.merge(
-        Theme.of(context).textTheme.bodyLarge!.copyWith(
-          color: widget.palette.foreground,
-          fontSize: widget.settings.fontSize,
-          height: widget.settings.lineHeight,
-        ),
-      );
+  TextStyle _bodyStyle(BuildContext context) => novelContentTextStyle(
+    DefaultTextStyle.of(context).style.merge(
+      Theme.of(context).textTheme.bodyLarge!.copyWith(
+        color: widget.palette.foreground,
+        fontSize: widget.settings.fontSize,
+        height: widget.settings.lineHeight,
+      ),
+    ),
+    widget.fontFamily,
+  );
 
-  TextStyle _titleStyle(BuildContext context) =>
-      DefaultTextStyle.of(context).style.merge(
-        Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: widget.palette.foreground,
-            ) ??
-            const TextStyle(),
-      );
+  TextStyle _titleStyle(BuildContext context) => novelContentTextStyle(
+    DefaultTextStyle.of(context).style.merge(
+      Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: widget.palette.foreground,
+          ) ??
+          const TextStyle(),
+    ),
+    widget.fontFamily,
+  );
 
   NovelPaginationSpec _spec(Size size, EdgeInsets contentPadding) {
     final metrics = novelPageMetricsFor(

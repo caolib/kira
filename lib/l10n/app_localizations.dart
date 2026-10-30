@@ -6947,6 +6947,24 @@ abstract class AppLocalizations {
   /// **'阅读主题'**
   String get novelReaderTheme;
 
+  /// No description provided for @novelReaderFontFamily.
+  ///
+  /// In zh, this message translates to:
+  /// **'正文字体'**
+  String get novelReaderFontFamily;
+
+  /// No description provided for @novelReaderFontFollowApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随应用字体'**
+  String get novelReaderFontFollowApp;
+
+  /// No description provided for @novelReaderFontUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name}（不可用）'**
+  String novelReaderFontUnavailable(String name);
+
   /// No description provided for @novelReaderThemePaper.
   ///
   /// In zh, this message translates to:

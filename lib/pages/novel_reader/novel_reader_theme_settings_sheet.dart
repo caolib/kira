@@ -6,12 +6,16 @@ class _NovelThemeSettingsSheet extends StatefulWidget {
     required this.systemBrightness,
     required this.topInset,
     required this.onDraftChanged,
+    this.fontFamily,
   });
 
   final NovelReaderSettings settings;
   final Brightness systemBrightness;
   final double topInset;
   final ValueChanged<NovelReaderSettings> onDraftChanged;
+
+  /// 宿主已加载的正文有效字体族；null 跟随应用字体。
+  final String? fontFamily;
 
   @override
   State<_NovelThemeSettingsSheet> createState() =>
@@ -163,10 +167,13 @@ class _NovelThemeSettingsSheetState extends State<_NovelThemeSettingsSheet> {
                   : Color.alphaBlend(dialogue.background!, palette.background),
             ) <
             4.5;
-    final baseStyle = (tt.bodyLarge ?? const TextStyle()).copyWith(
-      color: palette.foreground,
-      fontSize: _settings.fontSize,
-      height: _settings.lineHeight,
+    final baseStyle = novelContentTextStyle(
+      (tt.bodyLarge ?? const TextStyle()).copyWith(
+        color: palette.foreground,
+        fontSize: _settings.fontSize,
+        height: _settings.lineHeight,
+      ),
+      widget.fontFamily,
     );
     return Padding(
       // ModalBottomSheet 会移除顶 padding，使用弹层外采集的物理安全区。

@@ -292,6 +292,31 @@ void main() {
     );
   });
 
+  test('font family round-trips and old records follow the app font', () {
+    for (final font in ['', 'system', '霞鹜文楷']) {
+      final settings = NovelReaderSettings(fontFamily: font);
+      expect(settings.fontFamily, font);
+      expect(settings.toJson()['fontFamily'], font);
+      expect(NovelReaderSettings.fromJson(settings.toJson()), settings);
+      expect(settings.copyWith().fontFamily, font);
+    }
+    // 旧记录没有该键：跟随应用字体，而不是回退成系统默认。
+    expect(NovelReaderSettings.fromJson(const {}).fontFamily, isEmpty);
+    expect(
+      NovelReaderSettings.fromJson(const {'fontFamily': '  '}).fontFamily,
+      isEmpty,
+    );
+    // 字体进入相等性判断：改字体必须算作一次真实改动，弹层才会提交。
+    expect(
+      const NovelReaderSettings(fontFamily: 'A'),
+      isNot(const NovelReaderSettings(fontFamily: 'B')),
+    );
+    expect(
+      const NovelReaderSettings(fontFamily: 'A').hashCode,
+      isNot(const NovelReaderSettings(fontFamily: 'B').hashCode),
+    );
+  });
+
   test('ignore blank paragraphs round-trips and falls back for old data', () {
     for (final value in [true, false]) {
       final settings = NovelReaderSettings(ignoreBlankParagraphs: value);

@@ -35,6 +35,7 @@ import 'novel_reader/novel_focus_mask.dart';
 import 'novel_reader/novel_reader_contents_sheet.dart';
 import 'novel_reader/novel_reader_dialogue.dart';
 import 'novel_reader/novel_reader_document.dart';
+import 'novel_reader/novel_reader_font.dart';
 import 'novel_reader/novel_reader_illustrations.dart';
 import 'novel_reader/novel_reader_page_view.dart';
 import 'novel_reader/novel_reader_settings_sheet.dart';
@@ -103,6 +104,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   GlobalKey<NovelReaderViewportState> _viewportKey = GlobalKey();
   GlobalKey<NovelReaderPageViewState> _pageViewKey = GlobalKey();
   NovelReaderSettings _settings = const NovelReaderSettings();
+  String? _contentFontFamily;
   NovelVolumeContent? _content;
   NovelVolumeDetail? _accessDetail;
   NovelTextDocument? _document;
@@ -517,8 +519,10 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     var anchor = initial;
     try {
       final settings = await NovelReaderSettings.load();
+      final fontFamily = await _loadContentFont(settings.fontFamily);
       if (!_active(session)) return;
       _settings = settings;
+      _contentFontFamily = fontFamily;
       _setScreenOn(settings.keepScreenOn);
       _updateVolumeIntercept();
     } catch (error, stack) {
@@ -954,10 +958,32 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     await novelDialogueCache.prepare(content.entries);
   }
 
+  Future<String?> _loadContentFont(String selection) async {
+    try {
+      return await loadNovelReaderFont(selection);
+    } catch (error, stack) {
+      _warn(error, stack, 'font.load');
+      if (mounted && !_disposed) {
+        showToast(
+          context,
+          AppLocalizations.of(
+            context,
+          )!.appearanceFontLoadFailed(error.toString()),
+          isError: true,
+        );
+      }
+      return null;
+    }
+  }
+
   Future<void> _changeSettings(NovelReaderSettings settings) async {
     if (!mounted || _disposed) return;
     final revision = ++_settingsRevision;
     final session = _session;
+    final fontFamily = settings.fontFamily == _settings.fontFamily
+        ? _contentFontFamily
+        : await _loadContentFont(settings.fontFamily);
+    if (!_active(session) || revision != _settingsRevision) return;
     if (settings.dialogueEnabled && !_settings.dialogueEnabled) {
       int contentRevision;
       do {
@@ -980,6 +1006,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     final current = _document;
     setState(() {
       _settings = settings;
+      _contentFontFamily = fontFamily;
       if (anchor != null) _target = anchor;
       if (reflow &&
           _stackVolumes.isNotEmpty &&
@@ -1021,6 +1048,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         fadeOutWhen: dragPreview,
         child: NovelReaderSettingsSheet(
           settings: _settings,
+          fontFamily: _contentFontFamily,
           systemBrightness: MediaQuery.platformBrightnessOf(context),
           dragPreview: dragPreview,
           onChanged: _changeSettings,

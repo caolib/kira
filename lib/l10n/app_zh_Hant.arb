@@ -2412,6 +2412,12 @@
   "novelReaderParagraphSpacing": "段距",
   "novelReaderContentWidth": "正文寬度",
   "novelReaderTheme": "閱讀主題",
+  "novelReaderFontFamily": "正文字型",
+  "novelReaderFontFollowApp": "跟隨應用程式字型",
+  "novelReaderFontUnavailable": "{name}（不可用）",
+  "@novelReaderFontUnavailable": {
+    "placeholders": {"name": {"type": "String"}}
+  },
   "novelReaderThemePaper": "紙張",
   "novelReaderThemeDark": "夜間",
   "novelReaderThemeWhite": "白底",

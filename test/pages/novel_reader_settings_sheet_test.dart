@@ -181,6 +181,35 @@ void main() {
     });
   }
 
+  testWidgets('font family sits above font size and stays out of the theme '
+      'panel', (tester) async {
+    var latest = const NovelReaderSettings();
+    await _mount(tester, onChanged: (value) => latest = value);
+    expect(find.byKey(const ValueKey('novel-font-family')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('novel-font-family'))).dy,
+      lessThan(
+        tester.getTopLeft(find.byKey(const ValueKey('novel-font-size'))).dy,
+      ),
+    );
+    // 默认跟随应用字体：空字符串。
+    expect(latest.fontFamily, isEmpty);
+    await _setSelect<String>(tester, 'novel-font-family', 'system');
+    expect(latest.fontFamily, 'system');
+    await _setSelect<String>(tester, 'novel-font-family', '');
+    expect(latest.fontFamily, isEmpty);
+
+    await _openTheme(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('novel-theme-settings-sheet')),
+        matching: find.byKey(const ValueKey('novel-font-family')),
+      ),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'font slider keeps live updates and theme entry owns the preview',
     (tester) async {

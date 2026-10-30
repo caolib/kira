@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -12,12 +14,15 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_status_colors.dart';
 import '../../theme/novel_reader_theme.dart';
 import '../../utils/adaptive_motion.dart';
+import '../../utils/app_logger.dart';
+import '../../utils/font_manager.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/collapsible_content.dart';
 import '../../widgets/reader_settings_fold.dart';
 import '../../widgets/reader_status_settings.dart';
 import '../../widgets/select_tile.dart';
 import 'novel_reader_dialogue.dart';
+import 'novel_reader_font.dart';
 
 part 'novel_reader_theme_settings_sheet.dart';
 
@@ -30,11 +35,15 @@ class NovelReaderSettingsSheet extends StatefulWidget {
     required this.settings,
     required this.onChanged,
     required this.systemBrightness,
+    this.fontFamily,
     this.dragPreview,
   });
 
   final NovelReaderSettings settings;
   final ValueChanged<NovelReaderSettings> onChanged;
+
+  /// 宿主已加载的正文有效字体族；null 跟随应用字体。
+  final String? fontFamily;
 
   /// 当前系统亮暗，用于实时预览当前生效配色。
   final Brightness systemBrightness;
@@ -51,6 +60,37 @@ class NovelReaderSettingsSheet extends StatefulWidget {
 class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
   late NovelReaderSettings _settings = widget.settings;
   bool _focusExpanded = false;
+  List<String> _fonts = const [];
+  bool _loadingFonts = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadFonts());
+  }
+
+  /// 只列出本地已有字体；不在这里下载或导入。
+  Future<void> _loadFonts() async {
+    try {
+      final fonts = await FontManager().listDownloadedFonts();
+      if (!mounted) return;
+      setState(
+        () => _fonts =
+            fonts
+                .where(
+                  (name) =>
+                      name.isNotEmpty && name != FontManager.defaultFontId,
+                )
+                .toSet()
+                .toList()
+              ..sort(),
+      );
+    } catch (error, stack) {
+      unawaited(AppLogger.instance.recordWarning(error, stackTrace: stack));
+    } finally {
+      if (mounted) setState(() => _loadingFonts = false);
+    }
+  }
 
   @override
   void didUpdateWidget(covariant NovelReaderSettingsSheet oldWidget) {
@@ -77,6 +117,7 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
       maxHeightFactor: 1,
       child: _NovelThemeSettingsSheet(
         settings: initial,
+        fontFamily: widget.fontFamily,
         systemBrightness: widget.systemBrightness,
         topInset:
             View.of(context).viewPadding.top /
@@ -122,7 +163,57 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
             onSelectionChanged: (selection) =>
                 _change(_settings.copyWith(mode: selection.first)),
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.sm),
+          ListTile(
+            key: const ValueKey('novel-theme-settings-entry'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.palette_outlined),
+            title: Text(l10n.novelReaderTheme),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openThemeSettings,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Row(
+              key: const ValueKey('novel-font-family'),
+              children: [
+                Expanded(
+                  child: Text(l10n.novelReaderFontFamily, style: tt.bodyMedium),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: SelectTile<String>(
+                      value: _settings.fontFamily,
+                      items: [
+                        SelectItem('', l10n.novelReaderFontFollowApp),
+                        SelectItem(
+                          FontManager.defaultFontId,
+                          l10n.appearanceSystemDefault,
+                        ),
+                        for (final font in _fonts) SelectItem(font, font),
+                        if (_settings.fontFamily.isNotEmpty &&
+                            _settings.fontFamily != FontManager.defaultFontId &&
+                            !_fonts.contains(_settings.fontFamily))
+                          SelectItem(
+                            _settings.fontFamily,
+                            _loadingFonts
+                                ? _settings.fontFamily
+                                : l10n.novelReaderFontUnavailable(
+                                    _settings.fontFamily,
+                                  ),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          _change(_settings.copyWith(fontFamily: value)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           _slider(
             key: const ValueKey('novel-font-size'),
             label: l10n.novelReaderFontSize,
@@ -274,15 +365,6 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
                 ],
               ),
             ),
-          const Divider(height: AppSpacing.xxl),
-          ListTile(
-            key: const ValueKey('novel-theme-settings-entry'),
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.palette_outlined),
-            title: Text(l10n.novelReaderTheme),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _openThemeSettings,
-          ),
           if (_settings.mode == NovelReaderMode.paged) ...[
             const Divider(height: AppSpacing.xxl),
             ReaderSettingsFold(

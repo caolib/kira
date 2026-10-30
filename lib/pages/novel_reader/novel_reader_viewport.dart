@@ -13,6 +13,7 @@ import '../../utils/app_logger.dart';
 import '../../utils/fling_brake_tap_guard.dart';
 import 'novel_reader_dialogue.dart';
 import 'novel_reader_document.dart';
+import 'novel_reader_font.dart';
 import 'novel_reader_paginator.dart' show novelPageMetricsFor;
 
 /// Owns layout restoration, so neither initial layout nor a font/viewport change
@@ -39,10 +40,12 @@ class NovelReaderViewport extends StatefulWidget {
     this.onReachSeam,
     this.onApproachStart,
     this.onReachStart,
+    this.fontFamily,
   });
 
   final NovelTextDocument document;
   final NovelReaderSettings settings;
+  final String? fontFamily;
   final NovelReaderPalette palette;
   final NovelReaderAnchor target;
   final int jumpRevision;
@@ -105,6 +108,35 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   Size? _size;
   TextScaler? _textScaler;
   NovelDialoguePresentation? _dialogue;
+  TextStyle? _layoutBodyStyle;
+  TextStyle? _layoutTitleStyle;
+
+  TextStyle _bodyStyle(BuildContext context) => novelContentTextStyle(
+    Theme.of(context).textTheme.bodyLarge!.copyWith(
+      color: widget.palette.foreground,
+      fontSize: widget.settings.fontSize,
+      height: widget.settings.lineHeight,
+    ),
+    widget.fontFamily,
+  );
+
+  TextStyle _titleStyle(BuildContext context) => novelContentTextStyle(
+    (Theme.of(context).textTheme.headlineSmall ?? const TextStyle()).copyWith(
+      color: widget.palette.foreground,
+    ),
+    widget.fontFamily,
+  );
+
+  bool _updateTextStyles() {
+    final body = _bodyStyle(context);
+    final title = _titleStyle(context);
+    final changed =
+        _layoutBodyStyle?.compareTo(body) == RenderComparison.layout ||
+        _layoutTitleStyle?.compareTo(title) == RenderComparison.layout;
+    _layoutBodyStyle = body;
+    _layoutTitleStyle = title;
+    return changed;
+  }
 
   bool _updateDialogue() {
     final previous = _dialogue?.layoutKey;
@@ -254,8 +286,9 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
     super.didChangeDependencies();
     final scaler = MediaQuery.textScalerOf(context);
     final dialogueLayoutChanged = _updateDialogue();
+    final textLayoutChanged = _updateTextStyles();
     if (_textScaler != null &&
-        (_textScaler != scaler || dialogueLayoutChanged)) {
+        (_textScaler != scaler || dialogueLayoutChanged || textLayoutChanged)) {
       _scheduleRestore(
         _restoring ? _desired : _lastLocation?.anchor ?? _desired,
       );
@@ -267,6 +300,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   void didUpdateWidget(NovelReaderViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
     final dialogueLayoutChanged = _updateDialogue();
+    final textLayoutChanged = _updateTextStyles();
     if (oldWidget.contentRevision != widget.contentRevision) {
       // 连续阅读在原位追加了下一卷（或拼接了上一卷）：已有内容位置不变，
       // 只解锁接缝节流，让读者能继续滑到新的卷首/卷末。不重定位滚动，
@@ -287,7 +321,8 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
         oldWidget.settings.paragraphSpacing !=
             widget.settings.paragraphSpacing ||
         oldWidget.settings.contentWidth != widget.settings.contentWidth ||
-        dialogueLayoutChanged) {
+        dialogueLayoutChanged ||
+        textLayoutChanged) {
       _scheduleRestore(
         _restoring ? _desired : _lastLocation?.anchor ?? _desired,
       );
@@ -583,14 +618,8 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   Widget _buildParagraph(BuildContext context, int index) {
     final paragraph = widget.document.paragraphAt(index);
     final entry = paragraph.entry;
-    final tt = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context)!;
-    final foreground = widget.palette.foreground;
-    final style = tt.bodyLarge!.copyWith(
-      color: foreground,
-      fontSize: widget.settings.fontSize,
-      height: widget.settings.lineHeight,
-    );
+    final style = _bodyStyle(context);
     final highlighted =
         widget.highlight != null &&
         widget.highlight!.entryIndex == entry.entryIndex &&
@@ -655,10 +684,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
           if (paragraph.paragraphIndex == 0 && entry.name.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-              child: Text(
-                entry.name,
-                style: tt.headlineSmall?.copyWith(color: foreground),
-              ),
+              child: Text(entry.name, style: _titleStyle(context)),
             ),
           // An empty source line is a real paragraph, not something to trim.
           body,

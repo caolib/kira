@@ -83,6 +83,7 @@ class NovelReaderCustomTheme {
 @immutable
 class NovelReaderSettings {
   const NovelReaderSettings({
+    this.fontFamily = '',
     double fontSize = defaultFontSize,
     double lineHeight = defaultLineHeight,
     double paragraphSpacing = defaultParagraphSpacing,
@@ -159,7 +160,8 @@ class NovelReaderSettings {
   NovelReaderSettings._withThemes(
     NovelReaderSettings base,
     List<NovelReaderCustomTheme> themes,
-  ) : fontSize = base.fontSize,
+  ) : fontFamily = base.fontFamily,
+      fontSize = base.fontSize,
       lineHeight = base.lineHeight,
       paragraphSpacing = base.paragraphSpacing,
       contentWidth = base.contentWidth,
@@ -221,6 +223,8 @@ class NovelReaderSettings {
   static const maxFocusOpacity = 0.9;
   static const defaultFocusOpacity = 0.5;
 
+  /// 空字符串跟随应用字体；system 使用系统默认，其余为本地字体名。
+  final String fontFamily;
   final double fontSize;
   final double lineHeight;
   final double paragraphSpacing;
@@ -335,6 +339,9 @@ class NovelReaderSettings {
         ? legacyTheme
         : null;
     return NovelReaderSettings(
+      fontFamily: json['fontFamily'] is String
+          ? jsonString(json, 'fontFamily').trim()
+          : '',
       fontSize: jsonDouble(json, 'fontSize', fallback: defaultFontSize),
       lineHeight: jsonDouble(json, 'lineHeight', fallback: defaultLineHeight),
       paragraphSpacing: jsonDouble(
@@ -397,6 +404,7 @@ class NovelReaderSettings {
   }
 
   Map<String, dynamic> toJson() => {
+    'fontFamily': fontFamily,
     'fontSize': fontSize,
     'lineHeight': lineHeight,
     'paragraphSpacing': paragraphSpacing,
@@ -421,6 +429,7 @@ class NovelReaderSettings {
   };
 
   NovelReaderSettings copyWith({
+    String? fontFamily,
     double? fontSize,
     double? lineHeight,
     double? paragraphSpacing,
@@ -459,6 +468,7 @@ class NovelReaderSettings {
               )
             : this.focusTopRatio);
     final base = NovelReaderSettings(
+      fontFamily: fontFamily ?? this.fontFamily,
       fontSize: fontSize ?? this.fontSize,
       lineHeight: lineHeight ?? this.lineHeight,
       paragraphSpacing: paragraphSpacing ?? this.paragraphSpacing,
@@ -576,6 +586,7 @@ class NovelReaderSettings {
   @override
   bool operator ==(Object other) =>
       other is NovelReaderSettings &&
+      fontFamily == other.fontFamily &&
       fontSize == other.fontSize &&
       lineHeight == other.lineHeight &&
       paragraphSpacing == other.paragraphSpacing &&
@@ -600,6 +611,7 @@ class NovelReaderSettings {
 
   @override
   int get hashCode => Object.hash(
+    fontFamily,
     fontSize,
     lineHeight,
     paragraphSpacing,

@@ -3799,6 +3799,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderTheme => '阅读主题';
 
   @override
+  String get novelReaderFontFamily => '正文字体';
+
+  @override
+  String get novelReaderFontFollowApp => '跟随应用字体';
+
+  @override
+  String novelReaderFontUnavailable(String name) {
+    return '$name（不可用）';
+  }
+
+  @override
   String get novelReaderThemePaper => '纸张';
 
   @override
@@ -7807,6 +7818,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get novelReaderTheme => '閱讀主題';
+
+  @override
+  String get novelReaderFontFamily => '正文字型';
+
+  @override
+  String get novelReaderFontFollowApp => '跟隨應用程式字型';
+
+  @override
+  String novelReaderFontUnavailable(String name) {
+    return '$name（不可用）';
+  }
 
   @override
   String get novelReaderThemePaper => '紙張';
