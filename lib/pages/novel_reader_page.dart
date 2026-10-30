@@ -34,6 +34,7 @@ import 'novel_reader/novel_chapter_slider_track_shape.dart';
 import 'novel_reader/novel_focus_mask.dart';
 import 'novel_reader/novel_reader_contents_sheet.dart';
 import 'novel_reader/novel_reader_document.dart';
+import 'novel_reader/novel_reader_illustrations.dart';
 import 'novel_reader/novel_reader_page_view.dart';
 import 'novel_reader/novel_reader_settings_sheet.dart';
 import 'novel_reader/novel_reader_viewport.dart';
@@ -337,6 +338,18 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     final volumeId = document.volumeIdForItem(item);
     return volumeId.isEmpty ? _volumeId : volumeId;
   }
+
+  /// Current volume metadata, including volumes stitched in by continuous
+  /// reading. Falls back to the entry detail before the first load completes.
+  NovelVolumeDetail? get _currentVolumeDetail {
+    final volumeId = _currentVolumeId;
+    return _volumeDetails[volumeId] ??
+        (_accessDetail?.volume.id == volumeId ? _accessDetail : null);
+  }
+
+  bool get _hasCurrentVolumeIllustrations =>
+      _currentVolumeDetail?.volume.contents.any((entry) => entry.isImage) ??
+      false;
 
   bool get _isBookmarked {
     final anchor = _bookmarkAnchor;
@@ -867,6 +880,26 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         volume,
         anchor: NovelReaderAnchor(entryIndex: 0, volumeId: volume),
         lastEntry: direction < 0,
+      ),
+    );
+  }
+
+  /// 工具栏「插图」入口：直接打开当前卷插图，不关闭阅读页、不改进度。
+  Future<void> _openIllustrations() async {
+    final detail = _currentVolumeDetail;
+    if (detail == null) return;
+    final illustrations = detail.volume.contents
+        .where((entry) => entry.isImage)
+        .toList(growable: false);
+    if (illustrations.isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      useSafeArea: false,
+      builder: (_) => NovelReaderIllustrations(
+        volumeName: detail.volume.name,
+        illustrations: illustrations,
+        loadBytes: (url) =>
+            _source.loadImageBytes(_pathWord, detail.volume.id, url),
       ),
     );
   }

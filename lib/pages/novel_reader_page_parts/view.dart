@@ -107,6 +107,14 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
                   ),
                 ),
               ),
+              if (_hasCurrentVolumeIllustrations)
+                IconButton(
+                  key: const ValueKey('novel-reader-illustrations'),
+                  tooltip: l10n.novelReaderIllustration,
+                  color: ReaderChrome.onSurface,
+                  onPressed: _loading ? null : _openIllustrations,
+                  icon: const Icon(Icons.collections_outlined),
+                ),
               IconButton(
                 key: const ValueKey('novel-reader-bookmark'),
                 tooltip: isBookmarked ? l10n.bookmarkRemove : l10n.bookmarkAdd,

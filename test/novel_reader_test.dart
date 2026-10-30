@@ -17,6 +17,7 @@ import 'package:kira/models/reader_settings.dart';
 import 'package:kira/pages/novel_reader/novel_chapter_slider_track_shape.dart';
 import 'package:kira/pages/novel_reader/novel_reader_contents_sheet.dart';
 import 'package:kira/pages/novel_reader/novel_reader_document.dart';
+import 'package:kira/pages/novel_reader/novel_reader_illustrations.dart';
 import 'package:kira/pages/novel_reader/novel_reader_page_view.dart';
 import 'package:kira/pages/novel_reader/novel_reader_viewport.dart';
 import 'package:kira/pages/novel_reader_page.dart';
@@ -41,12 +42,20 @@ class _Api implements NovelApi {
   bool get hasCopyToken => false;
 
   @override
+  Future<List<int>> getContentBytes(String url) async => base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=',
+  );
+
+  @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw StateError('Unexpected API access: ${invocation.memberName}');
 }
 
 class _Repository implements NovelRepository {
   _Repository(this.content);
+
+  @override
+  final _Api api = _Api();
 
   final Map<String, NovelVolumeContent> content;
   final calls = <String>[];
@@ -2135,6 +2144,46 @@ void main() {
     expect(_location(tester).progress, 1);
     expect(find.text('v1 chapter 1'), findsNothing);
     expect(tester.takeException(), isNull);
+    await _remove(tester);
+  });
+
+  testWidgets('toolbar opens the current volume illustrations directly', (
+    tester,
+  ) async {
+    repository = _Repository({'v1': _volume(image: true)});
+    await _mount(tester, repository, store);
+    await _showToolbar(tester);
+    final button = find.byKey(const ValueKey('novel-reader-illustrations'));
+    expect(button, findsOneWidget);
+
+    await tester.tap(button);
+    await _settle(tester);
+    expect(find.byType(NovelReaderIllustrations), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(NovelReaderIllustrations),
+        matching: find.text('v1 volume'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('novel-illustrations-close')));
+    await _settle(tester);
+    expect(find.byType(NovelReaderIllustrations), findsNothing);
+    expect(find.byType(NovelReaderPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _remove(tester);
+  });
+
+  testWidgets('toolbar hides illustrations for text-only volumes', (
+    tester,
+  ) async {
+    await _mount(tester, repository, store);
+    await _showToolbar(tester);
+    expect(
+      find.byKey(const ValueKey('novel-reader-illustrations')),
+      findsNothing,
+    );
     await _remove(tester);
   });
 

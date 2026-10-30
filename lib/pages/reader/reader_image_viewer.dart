@@ -1,25 +1,54 @@
-part of '../reader_page.dart';
+import 'dart:async';
+import 'dart:io';
 
-class _ReaderImageViewer extends StatefulWidget {
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:gal/gal.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../../l10n/app_localizations.dart';
+import '../../models/user_manager.dart';
+import '../../theme/app_radius.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/reader_chrome.dart';
+import '../../utils/app_logger.dart';
+import '../../utils/network_error.dart';
+import '../../utils/toast.dart';
+import '../../widgets/app_sheet.dart';
+
+/// Full-screen single-image viewer shared by the manga reader and the novel
+/// illustration gallery. Accepts a network URL, a downloaded file path, or
+/// in-memory bytes (novel illustrations are fetched by the novel API).
+class ReaderImageViewer extends StatefulWidget {
   final String imageSource;
+  final Uint8List? imageBytes;
   final bool isDownloaded;
-  final BaseCacheManager cacheManager;
+  final BaseCacheManager? cacheManager;
   final int pageNumber;
   final int pageCount;
 
-  const _ReaderImageViewer({
-    required this.imageSource,
-    required this.isDownloaded,
-    required this.cacheManager,
+  const ReaderImageViewer({
+    super.key,
+    this.imageSource = '',
+    this.imageBytes,
+    this.isDownloaded = false,
+    this.cacheManager,
     required this.pageNumber,
     required this.pageCount,
-  });
+  }) : assert(
+         imageBytes != null || isDownloaded || cacheManager != null,
+         'Network images need a cache manager',
+       );
 
   @override
-  State<_ReaderImageViewer> createState() => _ReaderImageViewerState();
+  State<ReaderImageViewer> createState() => _ReaderImageViewerState();
 }
 
-class _ReaderImageViewerState extends State<_ReaderImageViewer> {
+class _ReaderImageViewerState extends State<ReaderImageViewer> {
   static const _doubleTapScale = 2.5;
   static const _zoomedScaleThreshold = 1.01;
 
@@ -55,16 +84,20 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
     super.dispose();
   }
 
+  ImageProvider _imageProvider() {
+    final bytes = widget.imageBytes;
+    if (bytes != null) return MemoryImage(bytes);
+    if (widget.isDownloaded) return FileImage(File(widget.imageSource));
+    return CachedNetworkImageProvider(
+      widget.imageSource,
+      cacheManager: widget.cacheManager,
+    );
+  }
+
   void _resolveImageSize() {
     if (_imageStreamListener != null) return;
 
-    final ImageProvider imageProvider = widget.isDownloaded
-        ? FileImage(File(widget.imageSource))
-        : CachedNetworkImageProvider(
-            widget.imageSource,
-            cacheManager: widget.cacheManager,
-          );
-    final stream = imageProvider.resolve(
+    final stream = _imageProvider().resolve(
       createLocalImageConfiguration(context),
     );
     final listener = ImageStreamListener((imageInfo, _) {
@@ -201,10 +234,12 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
         return;
       }
       final Uint8List bytes;
-      if (widget.isDownloaded) {
+      if (widget.imageBytes != null) {
+        bytes = widget.imageBytes!;
+      } else if (widget.isDownloaded) {
         bytes = await File(widget.imageSource).readAsBytes();
       } else {
-        final fileInfo = await widget.cacheManager.getFileFromCache(
+        final fileInfo = await widget.cacheManager!.getFileFromCache(
           widget.imageSource,
         );
         if (fileInfo != null) {
@@ -244,9 +279,7 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
       if (mounted) {
         showToast(
           context,
-          l10n.readerSaveImageFailedDetail(
-            NetworkError.message(error),
-          ),
+          l10n.readerSaveImageFailedDetail(NetworkError.message(error)),
           isError: true,
         );
       }
@@ -315,7 +348,13 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
   Widget _buildImage() {
     Widget image;
 
-    if (widget.isDownloaded) {
+    if (widget.imageBytes != null) {
+      image = Image.memory(
+        widget.imageBytes!,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const _ReaderImageViewerError(),
+      );
+    } else if (widget.isDownloaded) {
       image = Image.file(
         File(widget.imageSource),
         fit: BoxFit.contain,
@@ -446,14 +485,16 @@ class _ReaderImageViewerState extends State<_ReaderImageViewer> {
               tooltip: l10n.readerSaveImage,
               onPressed: _saveImage,
             ),
-            const SizedBox(width: AppSpacing.sm),
-            _buildIconButton(
-              icon: Icons.copy_all_outlined,
-              tooltip: widget.isDownloaded
-                  ? l10n.readerCopyImagePath
-                  : l10n.readerCopyImageUrl,
-              onPressed: _copyImageSource,
-            ),
+            if (widget.imageBytes == null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              _buildIconButton(
+                icon: Icons.copy_all_outlined,
+                tooltip: widget.isDownloaded
+                    ? l10n.readerCopyImagePath
+                    : l10n.readerCopyImageUrl,
+                onPressed: _copyImageSource,
+              ),
+            ],
             const SizedBox(width: AppSpacing.sm),
             _buildIconButton(
               icon: Icons.settings,
