@@ -17,7 +17,7 @@
 
 ## 简介
 
-[kira](https://kirakira.dpdns.org/) 是一个拷贝漫画、热辣漫画的第三方客户端
+[kira](https://kirakira.dpdns.org/) 是一个拷贝漫画、热辣漫画的第三方客户端，支持漫画、轻小说
 
 <table>
   <tr>
