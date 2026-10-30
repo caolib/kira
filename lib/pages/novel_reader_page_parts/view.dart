@@ -107,6 +107,14 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
                   ),
                 ),
               ),
+              if (_hasCurrentVolumeIllustrations)
+                IconButton(
+                  key: const ValueKey('novel-reader-illustrations'),
+                  tooltip: l10n.novelReaderIllustration,
+                  color: ReaderChrome.onSurface,
+                  onPressed: _loading ? null : _openIllustrations,
+                  icon: const Icon(Icons.collections_outlined),
+                ),
               IconButton(
                 key: const ValueKey('novel-reader-bookmark'),
                 tooltip: isBookmarked ? l10n.bookmarkRemove : l10n.bookmarkAdd,
@@ -163,6 +171,7 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
         key: _pageViewKey,
         document: document,
         settings: _settings,
+        fontFamily: _contentFontFamily,
         palette: palette,
         target: _target,
         jumpRevision: _jumpRevision,
@@ -187,14 +196,18 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
       key: _viewportKey,
       document: document,
       settings: _settings,
+      fontFamily: _contentFontFamily,
       contentPadding: _systemPadding ?? EdgeInsets.zero,
       palette: palette,
       target: _target,
       jumpRevision: _jumpRevision,
       contentRevision: _contentRevision,
       seam: _buildSeam(),
+      headSeam: _buildHeadSeam(),
       onApproachEnd: _prefetchNextVolume,
       onReachSeam: () => unawaited(_appendNextVolume()),
+      onApproachStart: _prefetchPreviousVolume,
+      onReachStart: () => unawaited(_prependPreviousVolume()),
       highlight: _highlight,
       highlightOpacity: _highlightFade,
       onPosition: onPosition,
@@ -455,7 +468,7 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
               icon: const Icon(Icons.login),
               label: Text(l10n.novelReaderCopyLogin),
             ),
-          if (_source.localOnly || widget.localOnly)
+          if (_source.localOnly)
             TextButton.icon(
               key: const ValueKey('novel-reader-open-downloads'),
               onPressed: () async {

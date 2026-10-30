@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'network_proxy_types.dart';
@@ -27,6 +29,11 @@ class NetworkSettings extends PrefsStore {
   static const _keyApiRoute = 'api_route';
   static const _keySelectionMode = 'network_selection_mode';
   static const _keyFixedNodeHost = 'network_fixed_node_host';
+  static const _keyAutoTestEnabled = 'network_auto_test_enabled';
+  static const _keyAutoTestIntervalHours = 'network_auto_test_interval_hours';
+  static const _keyLastAutoTestAt = 'network_last_auto_test_at';
+
+  static const autoTestIntervalOptions = [1, 3, 6, 24];
   static const _keyProxyMode = 'network_proxy_mode';
   static const _keyProxyType = 'network_proxy_type';
   static const _keyProxyHost = 'network_proxy_host';
@@ -37,16 +44,28 @@ class NetworkSettings extends PrefsStore {
   int _apiRoute = 0;
   NetworkSelectionMode _selectionMode = NetworkSelectionMode.route;
   String? _fixedNodeHost;
+  bool _autoTestEnabled = false;
+  int _autoTestIntervalHours = 1;
+  DateTime? _lastAutoTestAt;
   NetworkProxyMode _proxyMode = NetworkProxyMode.system;
   NetworkProxyType _proxyType = NetworkProxyType.http;
   String _proxyHost = '';
   int _proxyPort = 0;
+  int _selectionRevision = 0;
+  int _autoTestRevision = 0;
+  Future<void>? _pendingAutoTestWrite;
 
   // ── Getters ────────────────────────────────────────────────────────
 
   int get apiRoute => _apiRoute;
   NetworkSelectionMode get selectionMode => _selectionMode;
   String? get fixedNodeHost => _fixedNodeHost;
+  bool get autoTestEnabled => _autoTestEnabled;
+  int get autoTestIntervalHours => _autoTestIntervalHours;
+  Duration get autoTestInterval => Duration(hours: _autoTestIntervalHours);
+  DateTime? get lastAutoTestAt => _lastAutoTestAt;
+  int get selectionRevision => _selectionRevision;
+  int get autoTestRevision => _autoTestRevision;
   NetworkProxyMode get proxyMode => _proxyMode;
   NetworkProxyType get proxyType => _proxyType;
   String get proxyHost => _proxyHost;
@@ -61,7 +80,10 @@ class NetworkSettings extends PrefsStore {
   }) async {
     // 锁定后续 setter 使用的 prefs 与本次 init 读取的为同一实例,
     // 避免在测试 mock 切换场景下 setter 写到与 init 读到不同步的另一份 prefs。
+    await _pendingAutoTestWrite;
     syncPrefs(prefs);
+    _selectionRevision++;
+    _autoTestRevision++;
     _apiRoute = prefs.getInt(_keyApiRoute) ?? 0;
     _selectionMode = _normalizeSelectionMode(prefs.getInt(_keySelectionMode));
     // 若旧版本持久化的是已删除的 automatic(索引 2),自动回落为 route,并修正持久化。
@@ -71,6 +93,14 @@ class NetworkSettings extends PrefsStore {
       await prefs.setInt(_keySelectionMode, _selectionMode.index);
     }
     _fixedNodeHost = prefs.getString(_keyFixedNodeHost)?.trim();
+    _autoTestEnabled = prefs.getBool(_keyAutoTestEnabled) ?? false;
+    _autoTestIntervalHours = _normalizeAutoTestInterval(
+      prefs.getInt(_keyAutoTestIntervalHours),
+    );
+    final lastTest = prefs.getInt(_keyLastAutoTestAt);
+    _lastAutoTestAt = lastTest == null || lastTest <= 0
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(lastTest);
     _proxyMode = _normalizeProxyMode(prefs.getInt(_keyProxyMode));
     _proxyType = _normalizeProxyType(prefs.getInt(_keyProxyType));
     _proxyHost = prefs.getString(_keyProxyHost)?.trim() ?? '';
@@ -80,18 +110,21 @@ class NetworkSettings extends PrefsStore {
   // ── Setters ────────────────────────────────────────────────────────
 
   Future<void> setApiRoute(int route) async {
+    _selectionRevision++;
     _apiRoute = route;
     await setInt(_keyApiRoute, route);
   }
 
   Future<void> setSelectionMode(NetworkSelectionMode mode) async {
     if (_selectionMode == mode) return;
+    _selectionRevision++;
     _selectionMode = mode;
     await setInt(_keySelectionMode, mode.index);
     notifyListeners();
   }
 
   Future<void> setFixedNodeHost(String? host) async {
+    _selectionRevision++;
     final next = host?.trim();
     _fixedNodeHost = next == null || next.isEmpty ? null : next;
     final p = await prefs;
@@ -103,8 +136,74 @@ class NetworkSettings extends PrefsStore {
     notifyListeners();
   }
 
+  Future<void> setAutoTestEnabled(bool enabled) async {
+    if (_autoTestEnabled == enabled) return;
+    _autoTestEnabled = enabled;
+    _autoTestRevision++;
+    // 重新开启从此刻开始计时，不沿用关闭前的排期。
+    final time = enabled ? DateTime.now() : null;
+    if (time != null) _lastAutoTestAt = time;
+    final write = _queueAutoTestWrite(() async {
+      if (time != null) {
+        await setInt(
+          _keyLastAutoTestAt,
+          time.millisecondsSinceEpoch,
+          notify: false,
+        );
+      }
+      await setBool(_keyAutoTestEnabled, enabled, notify: false);
+    });
+    notifyListeners();
+    await write;
+  }
+
+  Future<void> setAutoTestIntervalHours(int hours) async {
+    final next = _normalizeAutoTestInterval(hours);
+    if (_autoTestIntervalHours == next) return;
+    _autoTestIntervalHours = next;
+    _autoTestRevision++;
+    final write = _queueAutoTestWrite(
+      () => setInt(_keyAutoTestIntervalHours, next, notify: false),
+    );
+    notifyListeners();
+    await write;
+  }
+
+  Future<void> markAutoTest(DateTime time) {
+    _lastAutoTestAt = time;
+    return _queueAutoTestWrite(
+      () => setInt(
+        _keyLastAutoTestAt,
+        time.millisecondsSinceEpoch,
+        notify: false,
+      ),
+    );
+  }
+
+  // 开关、间隔和时间戳按调用顺序落盘，快速操作不会让旧写入覆盖新状态。
+  Future<void> _queueAutoTestWrite(Future<void> Function() action) {
+    final previous = _pendingAutoTestWrite;
+    final barrier = Completer<void>();
+    _pendingAutoTestWrite = barrier.future;
+    Future<void> run() async {
+      try {
+        await action();
+      } finally {
+        if (identical(_pendingAutoTestWrite, barrier.future)) {
+          _pendingAutoTestWrite = null;
+        }
+        barrier.complete();
+      }
+    }
+
+    return previous == null ? run() : previous.then((_) => run());
+  }
+
+  Future<void> flushAutoTestWrites() async => await _pendingAutoTestWrite;
+
   Future<void> setProxyMode(NetworkProxyMode mode) async {
     if (_proxyMode == mode) return;
+    _selectionRevision++;
     _proxyMode = mode;
     await setInt(_keyProxyMode, mode.index);
     notifyListeners();
@@ -126,6 +225,7 @@ class NetworkSettings extends PrefsStore {
         _proxyType != type ||
         (enable && _proxyMode != NetworkProxyMode.manual);
 
+    if (shouldNotify) _selectionRevision++;
     _proxyHost = nextHost;
     _proxyPort = nextPort;
     _proxyType = type;
@@ -172,6 +272,9 @@ class NetworkSettings extends PrefsStore {
     }
     return NetworkSelectionMode.values[index];
   }
+
+  static int _normalizeAutoTestInterval(int? hours) =>
+      autoTestIntervalOptions.contains(hours) ? hours! : 1;
 
   static int _normalizePort(int? port) => isValidProxyPort(port) ? port! : 0;
 }

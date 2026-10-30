@@ -172,6 +172,11 @@ class BackupDocument {
     final preferences = <String, BackupPreference>{};
     var skipped = 0;
     for (final entry in rawPreferences.entries) {
+      // 已移除的设置只跳过这一项，避免旧备份因它无法整体恢复。
+      if (entry.key == 'comment_auto_load_all') {
+        skipped++;
+        continue;
+      }
       final category = BackupSchema.categoryOf(entry.key);
       if (category == null) {
         // v1 exported arbitrary local data. Read the file, but never restore

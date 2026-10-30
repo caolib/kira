@@ -16,6 +16,7 @@ import 'api/copy_settings_auto_updater.dart';
 import 'l10n/app_localizations.dart';
 import 'models/theme_settings.dart';
 import 'models/user_manager.dart';
+import 'providers/app_providers.dart';
 import 'providers/backup_providers.dart';
 import 'repositories/novel_bookshelf_repository.dart';
 import 'routing/app_router.dart';
@@ -323,6 +324,7 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     // 定时备份只在应用运行期间生效：启动后复查一次是否已到期。
     ref.read(backupSchedulerProvider).start();
+    ref.read(networkAutoTestSchedulerProvider).start();
     unawaited(
       DisplayModePreference.applyRefreshRate(_user.displayModeRefreshRate),
     );
@@ -404,6 +406,7 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      ref.read(networkAutoTestSchedulerProvider).poke();
       unawaited(_checkSharedLinkClipboard());
     }
   }

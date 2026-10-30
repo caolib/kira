@@ -253,7 +253,7 @@ class UserManager extends ChangeNotifier {
   /// _onSubStoreChanged 转发到本 facade 的监听者。
   double get commentFontScale => comment.fontScale;
   bool get commentPreload => comment.preload;
-  bool get commentAutoLoadAll => comment.autoLoadAll;
+  int get commentInitialPages => comment.initialPages;
   bool get autoCheckUpdate => _autoCheckUpdate;
   String? get skippedUpdateVersion => _skippedUpdateVersion;
   String get updateMirrorPrefix => _updateMirrorPrefix;

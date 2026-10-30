@@ -54,8 +54,9 @@ int _coveredLines(NovelReaderPaginator paginator, int itemIndex) {
   var lines = 0;
   for (final page in paginator.pages) {
     for (final slice in page.slices) {
-      if (slice.itemIndex == itemIndex)
+      if (slice.itemIndex == itemIndex) {
         lines += slice.endLine - slice.startLine;
+      }
     }
   }
   return lines;

@@ -254,7 +254,7 @@ Future<void> deleteAll();
 
 - `novel_reading_history_<pathWord>`：本地卷、原始章节索引、段落位置；不使用漫画历史前缀，备份归入阅读历史。
 - `novel_bookmarks_v1`：用户手动添加的轻小说书签，全量 JSON 列表（上限 500）；独立于 `novel_reading_history_`，不随缓存或阅读历史清理。按书、卷、原始章节索引和段落索引去重，精确保存段落 alignment；不保存正文地址/会话。通过 `NovelBookmarkStore` 串行读写，备份归入书签；恢复时暂停写入并由 `reloadRuntimeSettings()` 重载内存。
-- `reader_novel_settings_v1`：字号（10–48）、行距/段距、预设/自定义 ARGB 背景与文字色、`showStatusBar` 和常亮偏好；新增设置仍保存在同一 JSON 键，备份归入设置。
+- `reader_novel_settings_v1`：字号（10–48）、行距/段距、正文字体选择（空串跟随应用字体，`system` 为系统默认，其余为本地字体名）、预设/自定义 ARGB 背景与文字色和常亮偏好；对白总开关与浅深色对白样式也保存在同一 JSON（`dialogueEnabled`、`lightDialogueStyle`、`darkDialogueStyle`），旧记录缺字段时默认关闭。备份归入设置；配对区间仅存在章节身份的弱引用内存缓存，不写入正文缓存或偏好。
 - `novel_status_overlay*`（`lib/models/novel_reader_status_settings.dart`）：轻小说阅读器状态组件的独立配置（开关/时间/网络/电量/章节名/页码/帧率段位、顺序、六位摆放、不透明度、前景/背景色）。与漫画侧 `reader_status_overlay*` 互不影响；首次初始化（无任何 `novel_status_overlay*` 键）时一次性继承漫画现值并由哨兵键 `novel_status_overlay_seeded` 固化。经 `UserManager.init` 加载与 `reloadRuntimeSettings()` 重载，备份归入设置。
 - 阅读历史和阅读设置每次读取当前 prefs，无一次性数据快照，恢复备份后无需注册额外单例重载。
 - `cache_novel_*`：按主机/账号指纹区分的元数据缓存，明确 TTL。

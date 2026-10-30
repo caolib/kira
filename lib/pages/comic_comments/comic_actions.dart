@@ -299,7 +299,7 @@ extension _ComicActions on _ComicCommentsSheetState {
                   showCommentTime: _user.commentShowTime,
                   commentFontScale: _user.commentFontScale,
                   commentPreload: _user.commentPreload,
-                  commentAutoLoadAll: _user.commentAutoLoadAll,
+                  commentInitialPages: _user.commentInitialPages,
                   onLayoutChanged: (_) {},
                   onShowAvatarChanged: (v) {
                     if (!mounted) return;
@@ -322,7 +322,7 @@ extension _ComicActions on _ComicCommentsSheetState {
                     _user.setCommentFontScale(v);
                   },
                   onPreloadChanged: (v) => _user.setCommentPreload(v),
-                  onAutoLoadAllChanged: (v) => _user.setCommentAutoLoadAll(v),
+                  onInitialPagesChanged: (v) => _user.setCommentInitialPages(v),
                 ),
               ),
             ),

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_logger.dart';
 import '../utils/json_helpers.dart';
+import 'novel_dialogue_style.dart';
 
 enum NovelReaderTheme { paper, dark, white, green, gray }
 
@@ -82,6 +83,7 @@ class NovelReaderCustomTheme {
 @immutable
 class NovelReaderSettings {
   const NovelReaderSettings({
+    this.fontFamily = '',
     double fontSize = defaultFontSize,
     double lineHeight = defaultLineHeight,
     double paragraphSpacing = defaultParagraphSpacing,
@@ -95,6 +97,12 @@ class NovelReaderSettings {
     this.volumeKey = true,
     this.ignoreBlankParagraphs = defaultIgnoreBlankParagraphs,
     this.focusModeEnabled = defaultFocusModeEnabled,
+    this.focusKeepStatusVisible = defaultFocusKeepStatusVisible,
+    this.dialogueEnabled = false,
+    this.lightDialogueStyle = const NovelDialogueStyle(),
+    this.darkDialogueStyle = const NovelDialogueStyle(
+      backgroundColor: NovelDialogueStyle.defaultDarkBackgroundColor,
+    ),
     double focusTopRatio = defaultFocusTopRatio,
     double focusBottomRatio = defaultFocusBottomRatio,
     double focusOpacity = defaultFocusOpacity,
@@ -152,7 +160,8 @@ class NovelReaderSettings {
   NovelReaderSettings._withThemes(
     NovelReaderSettings base,
     List<NovelReaderCustomTheme> themes,
-  ) : fontSize = base.fontSize,
+  ) : fontFamily = base.fontFamily,
+      fontSize = base.fontSize,
       lineHeight = base.lineHeight,
       paragraphSpacing = base.paragraphSpacing,
       contentWidth = base.contentWidth,
@@ -165,6 +174,10 @@ class NovelReaderSettings {
       volumeKey = base.volumeKey,
       ignoreBlankParagraphs = base.ignoreBlankParagraphs,
       focusModeEnabled = base.focusModeEnabled,
+      focusKeepStatusVisible = base.focusKeepStatusVisible,
+      dialogueEnabled = base.dialogueEnabled,
+      lightDialogueStyle = base.lightDialogueStyle,
+      darkDialogueStyle = base.darkDialogueStyle,
       focusTopRatio = base.focusTopRatio,
       _focusBottomRatio = base.focusBottomRatio,
       focusOpacity = base.focusOpacity,
@@ -198,6 +211,7 @@ class NovelReaderSettings {
 
   /// 专注模式：上下黑遮罩夹出中间可见区，两边界至少相隔 10% 屏高。
   static const defaultFocusModeEnabled = false;
+  static const defaultFocusKeepStatusVisible = false;
   static const minFocusGapRatio = 0.1;
   static const minFocusTopRatio = 0.0;
   static const maxFocusTopRatio = 0.9;
@@ -209,6 +223,8 @@ class NovelReaderSettings {
   static const maxFocusOpacity = 0.9;
   static const defaultFocusOpacity = 0.5;
 
+  /// 空字符串跟随应用字体；system 使用系统默认，其余为本地字体名。
+  final String fontFamily;
   final double fontSize;
   final double lineHeight;
   final double paragraphSpacing;
@@ -234,6 +250,17 @@ class NovelReaderSettings {
 
   /// 专注模式开关：开启后上下各加一条半透明黑遮罩。
   final bool focusModeEnabled;
+
+  /// 专注遮罩不遮挡状态组件；不改变状态组件自身的开关与显隐规则。
+  final bool focusKeepStatusVisible;
+
+  /// 全局对白样式开关；「」与『』共用样式。
+  final bool dialogueEnabled;
+  final NovelDialogueStyle lightDialogueStyle;
+  final NovelDialogueStyle darkDialogueStyle;
+
+  NovelDialogueStyle dialogueStyleFor({required bool dark}) =>
+      dark ? darkDialogueStyle : lightDialogueStyle;
 
   /// 可见区上/下边界，占屏幕高度比例；遮罩触摸穿透，不挡翻页与点按。
   final double focusTopRatio;
@@ -312,6 +339,9 @@ class NovelReaderSettings {
         ? legacyTheme
         : null;
     return NovelReaderSettings(
+      fontFamily: json['fontFamily'] is String
+          ? jsonString(json, 'fontFamily').trim()
+          : '',
       fontSize: jsonDouble(json, 'fontSize', fallback: defaultFontSize),
       lineHeight: jsonDouble(json, 'lineHeight', fallback: defaultLineHeight),
       paragraphSpacing: jsonDouble(
@@ -344,6 +374,17 @@ class NovelReaderSettings {
       ignoreBlankParagraphs: jsonBool(json, 'ignoreBlankParagraphs'),
       // 旧记录没有专注模式各键时：默认关闭、默认区域与浓度。
       focusModeEnabled: jsonBool(json, 'focusModeEnabled'),
+      focusKeepStatusVisible: jsonBool(json, 'focusKeepStatusVisible'),
+      dialogueEnabled: jsonBool(json, 'dialogueEnabled'),
+      lightDialogueStyle: NovelDialogueStyle.fromJson(
+        jsonMap(json, 'lightDialogueStyle') ?? const {},
+      ),
+      darkDialogueStyle: NovelDialogueStyle.fromJson(
+        jsonMap(json, 'darkDialogueStyle') ?? const {},
+        defaults: const NovelDialogueStyle(
+          backgroundColor: NovelDialogueStyle.defaultDarkBackgroundColor,
+        ),
+      ),
       focusTopRatio: jsonDouble(
         json,
         'focusTopRatio',
@@ -363,6 +404,7 @@ class NovelReaderSettings {
   }
 
   Map<String, dynamic> toJson() => {
+    'fontFamily': fontFamily,
     'fontSize': fontSize,
     'lineHeight': lineHeight,
     'paragraphSpacing': paragraphSpacing,
@@ -377,12 +419,17 @@ class NovelReaderSettings {
     'volumeKey': volumeKey,
     'ignoreBlankParagraphs': ignoreBlankParagraphs,
     'focusModeEnabled': focusModeEnabled,
+    'focusKeepStatusVisible': focusKeepStatusVisible,
+    'dialogueEnabled': dialogueEnabled,
+    'lightDialogueStyle': lightDialogueStyle.toJson(),
+    'darkDialogueStyle': darkDialogueStyle.toJson(),
     'focusTopRatio': focusTopRatio,
     'focusBottomRatio': focusBottomRatio,
     'focusOpacity': focusOpacity,
   };
 
   NovelReaderSettings copyWith({
+    String? fontFamily,
     double? fontSize,
     double? lineHeight,
     double? paragraphSpacing,
@@ -397,6 +444,10 @@ class NovelReaderSettings {
     bool? volumeKey,
     bool? ignoreBlankParagraphs,
     bool? focusModeEnabled,
+    bool? focusKeepStatusVisible,
+    bool? dialogueEnabled,
+    NovelDialogueStyle? lightDialogueStyle,
+    NovelDialogueStyle? darkDialogueStyle,
     double? focusTopRatio,
     double? focusBottomRatio,
     double? focusOpacity,
@@ -417,6 +468,7 @@ class NovelReaderSettings {
               )
             : this.focusTopRatio);
     final base = NovelReaderSettings(
+      fontFamily: fontFamily ?? this.fontFamily,
       fontSize: fontSize ?? this.fontSize,
       lineHeight: lineHeight ?? this.lineHeight,
       paragraphSpacing: paragraphSpacing ?? this.paragraphSpacing,
@@ -435,6 +487,11 @@ class NovelReaderSettings {
           (mode == NovelReaderMode.paged && this.mode != NovelReaderMode.paged
               ? false
               : this.focusModeEnabled),
+      focusKeepStatusVisible:
+          focusKeepStatusVisible ?? this.focusKeepStatusVisible,
+      dialogueEnabled: dialogueEnabled ?? this.dialogueEnabled,
+      lightDialogueStyle: lightDialogueStyle ?? this.lightDialogueStyle,
+      darkDialogueStyle: darkDialogueStyle ?? this.darkDialogueStyle,
       focusTopRatio: top,
       focusBottomRatio: bottom,
       focusOpacity: focusOpacity ?? this.focusOpacity,
@@ -529,6 +586,7 @@ class NovelReaderSettings {
   @override
   bool operator ==(Object other) =>
       other is NovelReaderSettings &&
+      fontFamily == other.fontFamily &&
       fontSize == other.fontSize &&
       lineHeight == other.lineHeight &&
       paragraphSpacing == other.paragraphSpacing &&
@@ -543,12 +601,17 @@ class NovelReaderSettings {
       volumeKey == other.volumeKey &&
       ignoreBlankParagraphs == other.ignoreBlankParagraphs &&
       focusModeEnabled == other.focusModeEnabled &&
+      focusKeepStatusVisible == other.focusKeepStatusVisible &&
+      dialogueEnabled == other.dialogueEnabled &&
+      lightDialogueStyle == other.lightDialogueStyle &&
+      darkDialogueStyle == other.darkDialogueStyle &&
       focusTopRatio == other.focusTopRatio &&
       focusBottomRatio == other.focusBottomRatio &&
       focusOpacity == other.focusOpacity;
 
   @override
   int get hashCode => Object.hash(
+    fontFamily,
     fontSize,
     lineHeight,
     paragraphSpacing,
@@ -563,9 +626,11 @@ class NovelReaderSettings {
     volumeKey,
     ignoreBlankParagraphs,
     focusModeEnabled,
+    focusKeepStatusVisible,
     focusTopRatio,
     focusBottomRatio,
     focusOpacity,
+    Object.hash(dialogueEnabled, lightDialogueStyle, darkDialogueStyle),
   );
 }
 

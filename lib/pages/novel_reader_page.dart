@@ -33,7 +33,10 @@ import '../widgets/reader_status_overlay.dart';
 import 'novel_reader/novel_chapter_slider_track_shape.dart';
 import 'novel_reader/novel_focus_mask.dart';
 import 'novel_reader/novel_reader_contents_sheet.dart';
+import 'novel_reader/novel_reader_dialogue.dart';
 import 'novel_reader/novel_reader_document.dart';
+import 'novel_reader/novel_reader_font.dart';
+import 'novel_reader/novel_reader_illustrations.dart';
 import 'novel_reader/novel_reader_page_view.dart';
 import 'novel_reader/novel_reader_settings_sheet.dart';
 import 'novel_reader/novel_reader_viewport.dart';
@@ -52,7 +55,7 @@ class NovelReaderPage extends ConsumerStatefulWidget {
     this.initialParagraphIndex = 0,
     this.initialParagraphAlignment = 0,
     this.resume = false,
-    this.localOnly = false,
+    this.preferDownloads = false,
     this.noDetailBelow = false,
     this.highlightOnEntry = false,
     this.source,
@@ -66,7 +69,9 @@ class NovelReaderPage extends ConsumerStatefulWidget {
   final int initialParagraphIndex;
   final double initialParagraphAlignment;
   final bool resume;
-  final bool localOnly;
+
+  /// 本地入口先初始化下载目录，缺失内容仍允许在线加载。
+  final bool preferDownloads;
 
   /// 栈底是否没有小说详情页（书架/历史/书签/继续阅读等直达入口）。
   /// 「总目录」退出时据此决定 pop 还是原地替换成详情页。
@@ -99,20 +104,27 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   GlobalKey<NovelReaderViewportState> _viewportKey = GlobalKey();
   GlobalKey<NovelReaderPageViewState> _pageViewKey = GlobalKey();
   NovelReaderSettings _settings = const NovelReaderSettings();
+  String? _contentFontFamily;
   NovelVolumeContent? _content;
   NovelVolumeDetail? _accessDetail;
   NovelTextDocument? _document;
 
-  // ── 滚动模式连续阅读（卷末继续下滑进入下一卷）──
-  /// 卷栈：当前卷 + 已追加的下一卷（最多两卷）。手动跳卷/换卷时重置。
+  // ── 滚动模式连续阅读（卷尾下滑进入下一卷、卷首回滑拼接上一卷）──
+  /// 卷栈：当前卷及相邻卷（最多两卷）。手动跳卷/换卷时重置。
   final _stackVolumes = <NovelReaderVolumeDocument>[];
   final _stackContents = <String, NovelVolumeContent>{};
   final _stackLoads = <String, Future<NovelVolumeContent>>{};
+
+  /// 只读缓存的预取结果：与实际阅读加载分开，缓存未命中不能挡住正常加载。
+  final _stackPrefetches = <String, Future<NovelVolumeContent>>{};
   NovelReaderStack? _stack;
   int _contentRevision = 0;
   bool _appending = false;
+  bool _prepending = false;
   Object? _seamError;
   bool _seamUnavailable = false;
+  Object? _headSeamError;
+  bool _headSeamUnavailable = false;
   NovelReaderLocation? _location;
   NovelReaderAnchor _target = const NovelReaderAnchor(entryIndex: 0);
   NovelReadingProgress? _pendingProgress;
@@ -131,6 +143,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   late String _fallbackCover;
   int _session = 0;
   int _request = 0;
+  int _settingsRevision = 0;
   int _jumpRevision = 0;
 
   /// 阅读位置只通知进度与工具栏，不带动正文重新构建。
@@ -199,7 +212,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         oldWidget.initialParagraphAlignment !=
             widget.initialParagraphAlignment ||
         oldWidget.resume != widget.resume ||
-        oldWidget.localOnly != widget.localOnly ||
+        oldWidget.preferDownloads != widget.preferDownloads ||
         oldWidget.highlightOnEntry != widget.highlightOnEntry ||
         oldWidget.source != widget.source) {
       // Capture against the old book's identity, not the new widget fields.
@@ -331,6 +344,18 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     final volumeId = document.volumeIdForItem(item);
     return volumeId.isEmpty ? _volumeId : volumeId;
   }
+
+  /// Current volume metadata, including volumes stitched in by continuous
+  /// reading. Falls back to the entry detail before the first load completes.
+  NovelVolumeDetail? get _currentVolumeDetail {
+    final volumeId = _currentVolumeId;
+    return _volumeDetails[volumeId] ??
+        (_accessDetail?.volume.id == volumeId ? _accessDetail : null);
+  }
+
+  bool get _hasCurrentVolumeIllustrations =>
+      _currentVolumeDetail?.volume.contents.any((entry) => entry.isImage) ??
+      false;
 
   bool get _isBookmarked {
     final anchor = _bookmarkAnchor;
@@ -494,8 +519,10 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     var anchor = initial;
     try {
       final settings = await NovelReaderSettings.load();
+      final fontFamily = await _loadContentFont(settings.fontFamily);
       if (!_active(session)) return;
       _settings = settings;
+      _contentFontFamily = fontFamily;
       _setScreenOn(settings.keepScreenOn);
       _updateVolumeIntercept();
     } catch (error, stack) {
@@ -527,32 +554,15 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     if (!_active(session) || request != _request) return;
     if (widget.source == null) {
       final downloads = ref.read(novelDownloadStoreProvider);
-      try {
-        if (widget.localOnly) {
+      if (widget.preferDownloads) {
+        try {
           await downloads.init();
-          if (!_active(session) || request != _request) return;
-          _source = DownloadedNovelReaderSource(downloads);
-        } else if (downloads.rootPath != null) {
-          // 生产启动时已初始化下载目录；普通在线测试或未启用下载时不触发平台 I/O。
-          final snapshot = await downloads.readVolumeSnapshot(path, volume);
-          if (!_active(session) || request != _request) return;
-          if (snapshot != null) {
-            _source = DownloadedNovelReaderSource(downloads);
-          }
-        }
-      } catch (error, stack) {
-        _warn(error, stack, 'downloads.resolve');
-        if (!_active(session) || request != _request) return;
-        if (widget.localOnly) {
-          setState(() {
-            _offline = true;
-            _loading = false;
-            _error = const NovelDownloadUnavailableException();
-          });
-          _setToolbarVisible(true);
-          return;
+        } catch (error, stack) {
+          _warn(error, stack, 'downloads.resolve');
         }
       }
+      if (!_active(session) || request != _request) return;
+      _source = DownloadFirstNovelReaderSource(downloads, _source);
     }
     if (!_active(session) || request != _request) return;
     unawaited(_loadVolumes(session, path));
@@ -629,11 +639,15 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
       _stackVolumes.clear();
       _stackContents.clear();
       _stackLoads.clear();
+      _stackPrefetches.clear();
       _stack = null;
       ++_contentRevision;
       _appending = false;
+      _prepending = false;
       _seamError = null;
       _seamUnavailable = false;
+      _headSeamError = null;
+      _headSeamUnavailable = false;
     });
     try {
       final content = await _source.loadContent(
@@ -648,8 +662,10 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         return;
       }
       if (content.detail.isLocked) throw NovelAccessException(content.detail);
+      await _prepareDialogueContent(content);
+      if (!_active(session) || request != _request) return;
       _volumeDetails[volume] = content.detail;
-      // 卷栈以当前卷起步；滚动模式下后续可原位追加下一卷。
+      // 卷栈以当前卷起步；滚动模式下可原位追加下一卷 / 拼接上一卷。
       final stackVolume = NovelReaderVolumeDocument(
         volumeId: volume,
         volumeName: content.detail.volume.name,
@@ -861,6 +877,26 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     );
   }
 
+  /// 工具栏「插图」入口：直接打开当前卷插图，不关闭阅读页、不改进度。
+  Future<void> _openIllustrations() async {
+    final detail = _currentVolumeDetail;
+    if (detail == null) return;
+    final illustrations = detail.volume.contents
+        .where((entry) => entry.isImage)
+        .toList(growable: false);
+    if (illustrations.isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      useSafeArea: false,
+      builder: (_) => NovelReaderIllustrations(
+        volumeName: detail.volume.name,
+        illustrations: illustrations,
+        loadBytes: (url) =>
+            _source.loadImageBytes(_pathWord, detail.volume.id, url),
+      ),
+    );
+  }
+
   Future<void> _showContents() async {
     final session = _session;
     final current = _currentVolumeId;
@@ -917,8 +953,47 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     );
   }
 
-  void _changeSettings(NovelReaderSettings settings) {
+  Future<void> _prepareDialogueContent(NovelVolumeContent content) async {
+    if (!_settings.dialogueEnabled) return;
+    await novelDialogueCache.prepare(content.entries);
+  }
+
+  Future<String?> _loadContentFont(String selection) async {
+    try {
+      return await loadNovelReaderFont(selection);
+    } catch (error, stack) {
+      _warn(error, stack, 'font.load');
+      if (mounted && !_disposed) {
+        showToast(
+          context,
+          AppLocalizations.of(
+            context,
+          )!.appearanceFontLoadFailed(error.toString()),
+          isError: true,
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<void> _changeSettings(NovelReaderSettings settings) async {
     if (!mounted || _disposed) return;
+    final revision = ++_settingsRevision;
+    final session = _session;
+    final fontFamily = settings.fontFamily == _settings.fontFamily
+        ? _contentFontFamily
+        : await _loadContentFont(settings.fontFamily);
+    if (!_active(session) || revision != _settingsRevision) return;
+    if (settings.dialogueEnabled && !_settings.dialogueEnabled) {
+      int contentRevision;
+      do {
+        contentRevision = _contentRevision;
+        await novelDialogueCache.prepare([
+          for (final content in _stackContents.values) ...content.entries,
+        ]);
+        if (!_active(session) || revision != _settingsRevision) return;
+      } while (contentRevision != _contentRevision);
+    }
     unawaited(_flush());
     // 切换阅读模式：以当前位置为锚点，新视图接管后进度与落点连续。
     final anchor = settings.mode != _settings.mode
@@ -931,6 +1006,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     final current = _document;
     setState(() {
       _settings = settings;
+      _contentFontFamily = fontFamily;
       if (anchor != null) _target = anchor;
       if (reflow &&
           _stackVolumes.isNotEmpty &&
@@ -972,6 +1048,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         fadeOutWhen: dragPreview,
         child: NovelReaderSettingsSheet(
           settings: _settings,
+          fontFamily: _contentFontFamily,
           systemBrightness: MediaQuery.platformBrightnessOf(context),
           dragPreview: dragPreview,
           onChanged: _changeSettings,
@@ -1266,10 +1343,11 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
                       // 一致）：安全区 inset 经 contentPadding 交给列表内容
                       // 层，viewport 尺寸恒定，不会触发 anchor restoration。
                       body,
-                      // 状态浮层先画、专注遮罩后画：开启专注模式时顶部
-                      // 状态组件同样被遮罩压暗，不会在暗区里格外显眼。
-                      // 遮罩本身 IgnorePointer，状态组件的点按不受影响。
-                      if (_statusSettings.statusOverlay) _buildStatusOverlay(),
+                      // 默认遮罩压暗状态组件；开启「不遮挡状态组件」后
+                      // 将浮层画在遮罩上方，显隐与点按规则保持不变。
+                      if (_statusSettings.statusOverlay &&
+                          !_settings.focusKeepStatusVisible)
+                        _buildStatusOverlay(),
                       NovelFocusMask(
                         key: const ValueKey('novel-focus-mask-widget'),
                         enabled: _settings.focusModeEnabled,
@@ -1277,6 +1355,9 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
                         bottomRatio: _settings.focusBottomRatio,
                         opacity: _settings.focusOpacity,
                       ),
+                      if (_statusSettings.statusOverlay &&
+                          _settings.focusKeepStatusVisible)
+                        _buildStatusOverlay(),
                       // 显隐都留在树里做滑动过渡（与漫画阅读器同一套规则）。
                       Positioned(
                         top: 0,
@@ -1294,14 +1375,13 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
                   )
                 // Loading / retry actions remain outside the chrome so they
                 // are reachable even in a short viewport with large text.
-                : SafeArea(
-                    child: Column(
-                      children: [
-                        if (_toolbarVisible) header,
-                        Expanded(child: body),
-                        if (_toolbarVisible) toolbar,
-                      ],
-                    ),
+                : Column(
+                    children: [
+                      // chrome 自带 SafeArea，黑色底板必须覆盖系统栏区域。
+                      if (_toolbarVisible) header,
+                      Expanded(child: SafeArea(child: body)),
+                      if (_toolbarVisible) toolbar,
+                    ],
                   ),
           ),
         ),

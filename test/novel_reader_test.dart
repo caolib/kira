@@ -17,6 +17,8 @@ import 'package:kira/models/reader_settings.dart';
 import 'package:kira/pages/novel_reader/novel_chapter_slider_track_shape.dart';
 import 'package:kira/pages/novel_reader/novel_reader_contents_sheet.dart';
 import 'package:kira/pages/novel_reader/novel_reader_document.dart';
+import 'package:kira/pages/novel_reader/novel_reader_illustrations.dart';
+import 'package:kira/pages/novel_reader/novel_reader_page_view.dart';
 import 'package:kira/pages/novel_reader/novel_reader_viewport.dart';
 import 'package:kira/pages/novel_reader_page.dart';
 import 'package:kira/providers/novel_providers.dart';
@@ -25,6 +27,7 @@ import 'package:kira/repositories/novel_repository.dart';
 import 'package:kira/theme/novel_reader_theme.dart';
 import 'package:kira/theme/reader_chrome.dart';
 import 'package:kira/utils/novel_bookmark_store.dart';
+import 'package:kira/utils/novel_download_store.dart';
 import 'package:kira/utils/novel_reading_store.dart';
 import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/error_retry_view.dart';
@@ -34,10 +37,16 @@ import 'package:material3_expressive_loading_indicator/material3_expressive_load
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'test_helpers.dart';
+import 'utils/novel_download_store_test.dart' show saveFixture;
 
 class _Api implements NovelApi {
   @override
   bool get hasCopyToken => false;
+
+  @override
+  Future<List<int>> getContentBytes(String url) async => base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=',
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>
@@ -46,6 +55,9 @@ class _Api implements NovelApi {
 
 class _Repository implements NovelRepository {
   _Repository(this.content);
+
+  @override
+  final _Api api = _Api();
 
   final Map<String, NovelVolumeContent> content;
   final calls = <String>[];
@@ -238,6 +250,8 @@ Future<void> _mount(
   double textScale = 1,
   bool highlightOnEntry = false,
   NovelReaderSource? source,
+  NovelDownloadStore? downloads,
+  bool preferDownloads = false,
   ThemeData? theme,
 }) async {
   await tester.pumpWidget(
@@ -247,6 +261,8 @@ Future<void> _mount(
         novelReadingStoreProvider.overrideWithValue(store),
         novelBookmarkStoreProvider.overrideWithValue(_bookmarks),
         novelApiProvider.overrideWithValue(_Api()),
+        if (downloads != null)
+          novelDownloadStoreProvider.overrideWithValue(downloads),
       ],
       child: MaterialApp(
         theme: theme,
@@ -269,6 +285,7 @@ Future<void> _mount(
           initialParagraphAlignment: initialAlignment,
           highlightOnEntry: highlightOnEntry,
           source: source,
+          preferDownloads: preferDownloads,
         ),
       ),
     ),
@@ -771,6 +788,65 @@ void main() {
         await _remove(tester);
       },
     );
+  }
+
+  for (final fail in [false, true]) {
+    testWidgets('${fail ? '加载失败' : '加载中'}的黑色工具栏覆盖系统安全区，与正文就绪时一致', (
+      tester,
+    ) async {
+      repository = _Repository({
+        'v1': _volume(entries: 1, paragraphs: 4, next: 'v2'),
+        'v2': _volume(id: 'v2', entries: 1, paragraphs: 4),
+      });
+      final pending = Completer<NovelVolumeContent>();
+      repository.pending['v2'] = pending;
+      await _mount(
+        tester,
+        repository,
+        store,
+        padding: const EdgeInsets.only(top: 24, bottom: 34),
+      );
+      await _showToolbar(tester);
+      Finder chromeFor(String key) => find.ancestor(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is ColoredBox && widget.color == ReaderChrome.surface,
+        ),
+      );
+      void expectSystemBarBackgrounds() {
+        final surface = tester.getRect(find.byType(Scaffold));
+        final header = tester.getRect(chromeFor('novel-reader-back'));
+        final toolbar = tester.getRect(chromeFor('novel-reader-settings'));
+        expect(header.top, surface.top);
+        expect(header.height, kToolbarHeight + 24);
+        expect(toolbar.bottom, surface.bottom);
+        expect(
+          tester
+              .widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+                find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+              )
+              .value,
+          ReaderChrome.systemUiToolbar,
+        );
+      }
+
+      expectSystemBarBackgrounds();
+      await _tapToolbar(tester, 'novel-reader-next');
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(find.byType(ExpressiveLoadingIndicator), findsOneWidget);
+      expectSystemBarBackgrounds();
+      if (fail) {
+        pending.completeError(const NovelApiException('network unavailable'));
+      } else {
+        pending.complete(repository.content['v2']!);
+      }
+      await _settle(tester);
+      expectSystemBarBackgrounds();
+      expect(find.byType(ErrorRetryView), fail ? findsOneWidget : findsNothing);
+      expect(tester.takeException(), isNull);
+      await _remove(tester);
+    });
   }
 
   testWidgets('volume loading uses the shared patterned indicator', (
@@ -2137,6 +2213,46 @@ void main() {
     await _remove(tester);
   });
 
+  testWidgets('toolbar opens the current volume illustrations directly', (
+    tester,
+  ) async {
+    repository = _Repository({'v1': _volume(image: true)});
+    await _mount(tester, repository, store);
+    await _showToolbar(tester);
+    final button = find.byKey(const ValueKey('novel-reader-illustrations'));
+    expect(button, findsOneWidget);
+
+    await tester.tap(button);
+    await _settle(tester);
+    expect(find.byType(NovelReaderIllustrations), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(NovelReaderIllustrations),
+        matching: find.text('v1 volume'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('novel-illustrations-close')));
+    await _settle(tester);
+    expect(find.byType(NovelReaderIllustrations), findsNothing);
+    expect(find.byType(NovelReaderPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _remove(tester);
+  });
+
+  testWidgets('toolbar hides illustrations for text-only volumes', (
+    tester,
+  ) async {
+    await _mount(tester, repository, store);
+    await _showToolbar(tester);
+    expect(
+      find.byKey(const ValueKey('novel-reader-illustrations')),
+      findsNothing,
+    );
+    await _remove(tester);
+  });
+
   testWidgets('return button flushes before route result is observed', (
     tester,
   ) async {
@@ -2728,6 +2844,99 @@ void main() {
     await _remove(tester);
   });
 
+  for (final preferDownloads in [false, true]) {
+    for (final paged in [false, true]) {
+      testWidgets(
+        '${preferDownloads ? '本地' : '在线'}入口${paged ? '翻页' : '滚动'}从已下载第一卷自动加载未下载第二卷',
+        (tester) async {
+          final root = await tester.runAsync(
+            () => Directory.systemTemp.createTemp('mixed_novel_reader_'),
+          );
+          final downloads = NovelDownloadStore.forTesting(rootDirectory: root!);
+          addTearDown(() => root.delete(recursive: true));
+          await tester.runAsync(() => saveFixture(downloads, complete: true));
+          if (paged) {
+            await tester.runAsync(
+              () =>
+                  const NovelReaderSettings(mode: NovelReaderMode.paged).save(),
+            );
+          }
+          repository = _Repository({
+            'v2': _volume(id: 'v2', entries: 1, paragraphs: 4),
+          });
+          await _mount(
+            tester,
+            repository,
+            store,
+            downloads: downloads,
+            preferDownloads: preferDownloads,
+            settle: false,
+          );
+          // 下载快照是真实磁盘 I/O，先交付完成事件再推进布局。
+          final viewport = paged
+              ? find.byType(NovelReaderPageView)
+              : find.byType(NovelReaderViewport);
+          for (var frame = 0; frame < 100; frame++) {
+            await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 25)),
+            );
+            await tester.pump(const Duration(milliseconds: 20));
+            if (viewport.evaluate().isNotEmpty) break;
+          }
+          expect(viewport, findsOneWidget);
+          await _settle(tester);
+          expect(
+            repository.calls.where((call) => call == 'book/v1/false'),
+            isEmpty,
+          );
+          expect(repository.volumeCalls, isEmpty);
+          if (paged) {
+            tester
+                .widget<NovelReaderPageView>(find.byType(NovelReaderPageView))
+                .onBoundary!(true);
+            await _settle(tester);
+            expect(
+              tester
+                  .widget<NovelReaderPageView>(find.byType(NovelReaderPageView))
+                  .document
+                  .volumeIdForItem(0),
+              'v2',
+            );
+          } else {
+            for (var attempt = 0; attempt < 8; attempt++) {
+              await tester.drag(
+                find.byKey(const ValueKey('novel-reader-surface')),
+                const Offset(0, -300),
+              );
+              await _settle(tester);
+              if (tester
+                      .widget<NovelReaderViewport>(
+                        find.byType(NovelReaderViewport),
+                      )
+                      .document
+                      .itemCount >
+                  4) {
+                break;
+              }
+            }
+            expect(
+              tester
+                  .widget<NovelReaderViewport>(find.byType(NovelReaderViewport))
+                  .document
+                  .itemCount,
+              8,
+            );
+          }
+          expect(repository.calls, contains('book/v2/false'));
+          expect(find.textContaining('该卷未下载'), findsNothing);
+          expect(downloads.downloadedVolumes('book'), {'v1'});
+          expect(tester.takeException(), isNull);
+          await _remove(tester);
+        },
+      );
+    }
+  }
+
   testWidgets('an undownloaded next volume explains itself without retry', (
     tester,
   ) async {
@@ -2756,6 +2965,400 @@ void main() {
     expect(find.byKey(const ValueKey('novel-reader-seam')), findsOneWidget);
     expect(find.text('该卷未下载或本地文件已损坏，请前往下载中心重新下载。'), findsOneWidget);
     expect(find.byKey(const ValueKey('novel-reader-seam-retry')), findsNothing);
+    await _remove(tester);
+  });
+
+  testWidgets(
+    'scrolling back past the volume start prepends the previous volume',
+    (tester) async {
+      repository = _Repository({
+        'v1': _volume(entries: 1, paragraphs: 20, next: 'v2'),
+        'v2': _volume(id: 'v2', entries: 1, paragraphs: 20, previous: 'v1'),
+      });
+      await _mount(tester, repository, store, volume: 'v2');
+      final viewport = find.byType(NovelReaderViewport);
+      expect(
+        tester.widget<NovelReaderViewport>(viewport).document.itemCount,
+        20,
+      );
+
+      for (var attempt = 0; attempt < 12; attempt++) {
+        await tester.drag(
+          find.byKey(const ValueKey('novel-reader-surface')),
+          const Offset(0, 400),
+        );
+        await _settle(tester);
+        if (tester.widget<NovelReaderViewport>(viewport).document.itemCount >
+            20) {
+          break;
+        }
+      }
+      expect(repository.calls, contains('book/v1/false'));
+      // 拼接是原位前插：第二卷内容位置不变，文档变长。
+      final document = tester.widget<NovelReaderViewport>(viewport).document;
+      expect(document.itemCount, 40);
+      expect(document.volumeIdForItem(0), 'v1');
+      expect(document.volumeIdForItem(21), 'v2');
+      // 当前阅读卷不因前插而改变。
+      expect(_location(tester).anchor.volumeId, 'v2');
+      expect(tester.takeException(), isNull);
+      await _remove(tester);
+    },
+  );
+
+  testWidgets(
+    'a failed previous volume shows an inline retry at the head seam',
+    (tester) async {
+      repository = _Repository({
+        'v1': _volume(entries: 1, paragraphs: 20, next: 'v2'),
+        'v2': _volume(id: 'v2', entries: 1, paragraphs: 20, previous: 'v1'),
+      });
+      repository.errors['v1'] = StateError('offline');
+      await _mount(tester, repository, store, volume: 'v2');
+      for (var attempt = 0; attempt < 12; attempt++) {
+        await tester.drag(
+          find.byKey(const ValueKey('novel-reader-surface')),
+          const Offset(0, 400),
+        );
+        await _settle(tester);
+        if (find
+            .byKey(const ValueKey('novel-reader-head-seam'))
+            .evaluate()
+            .isNotEmpty) {
+          break;
+        }
+      }
+      expect(
+        find.byKey(const ValueKey('novel-reader-head-seam')),
+        findsOneWidget,
+      );
+      // 正文本身不受影响，错误与重试贴在卷首。
+      expect(find.byType(ErrorRetryView), findsNothing);
+      repository.errors.remove('v1');
+      await tester.tap(
+        find.byKey(const ValueKey('novel-reader-head-seam-retry')),
+      );
+      await _settle(tester);
+      expect(
+        find.byKey(const ValueKey('novel-reader-head-seam')),
+        findsNothing,
+      );
+      expect(
+        tester
+            .widget<NovelReaderViewport>(find.byType(NovelReaderViewport))
+            .document
+            .itemCount,
+        40,
+      );
+      await _remove(tester);
+    },
+  );
+
+  testWidgets('an undownloaded previous volume explains itself without retry', (
+    tester,
+  ) async {
+    repository = _Repository({
+      'v1': _volume(entries: 1, paragraphs: 20, next: 'v2'),
+      'v2': _volume(id: 'v2', entries: 1, paragraphs: 20, previous: 'v1'),
+    });
+    await _mount(
+      tester,
+      repository,
+      store,
+      volume: 'v2',
+      source: _OfflineSource(repository, available: {'v2'}),
+    );
+    for (var attempt = 0; attempt < 12; attempt++) {
+      await tester.drag(
+        find.byKey(const ValueKey('novel-reader-surface')),
+        const Offset(0, 400),
+      );
+      await _settle(tester);
+      if (find
+          .byKey(const ValueKey('novel-reader-head-seam'))
+          .evaluate()
+          .isNotEmpty) {
+        break;
+      }
+    }
+    expect(
+      find.byKey(const ValueKey('novel-reader-head-seam')),
+      findsOneWidget,
+    );
+    expect(find.text('该卷未下载或本地文件已损坏，请前往下载中心重新下载。'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('novel-reader-head-seam-retry')),
+      findsNothing,
+    );
+    await _remove(tester);
+  });
+
+  testWidgets(
+    'a slow previous volume never recycles the volume the reader entered',
+    (tester) async {
+      repository = _Repository({
+        'v1': _volume(entries: 1, paragraphs: 20, next: 'v2'),
+        'v2': _volume(
+          id: 'v2',
+          entries: 1,
+          paragraphs: 20,
+          previous: 'v1',
+          next: 'v3',
+        ),
+        'v3': _volume(id: 'v3', entries: 1, paragraphs: 20, previous: 'v2'),
+      });
+      await _mount(tester, repository, store, volume: 'v2');
+      final viewport = find.byType(NovelReaderViewport);
+      for (var attempt = 0; attempt < 12; attempt++) {
+        await tester.drag(
+          find.byKey(const ValueKey('novel-reader-surface')),
+          const Offset(0, -400),
+        );
+        await _settle(tester);
+        if (tester.widget<NovelReaderViewport>(viewport).document.itemCount >
+            20) {
+          break;
+        }
+      }
+      expect(
+        tester.widget<NovelReaderViewport>(viewport).document.itemCount,
+        40,
+      );
+
+      // 上一卷请求挂起，读者回滑到卷首触发前插后再滑回第三卷。
+      final pending = Completer<NovelVolumeContent>();
+      repository.pending['v1'] = pending;
+      for (var attempt = 0; attempt < 16; attempt++) {
+        await tester.drag(
+          find.byKey(const ValueKey('novel-reader-surface')),
+          const Offset(0, 400),
+        );
+        await _settle(tester);
+        if (repository.calls.contains('book/v1/false')) break;
+      }
+      expect(repository.calls, contains('book/v1/false'));
+      for (var attempt = 0; attempt < 16; attempt++) {
+        await tester.drag(
+          find.byKey(const ValueKey('novel-reader-surface')),
+          const Offset(0, -400),
+        );
+        await _settle(tester);
+        if (_location(tester).anchor.volumeId == 'v3') break;
+      }
+      expect(_location(tester).anchor.volumeId, 'v3');
+
+      pending.complete(repository.content['v1']!);
+      await _settle(tester);
+      // 读者已进入将被回收的尾卷：放弃前插，正文与位置都保持原样。
+      final document = tester.widget<NovelReaderViewport>(viewport).document;
+      expect(document.itemCount, 40);
+      expect(document.volumeIdForItem(0), 'v2');
+      expect(document.volumeIdForItem(21), 'v3');
+      expect(_location(tester).anchor.volumeId, 'v3');
+      expect(tester.takeException(), isNull);
+      await _remove(tester);
+    },
+  );
+
+  testWidgets('retrying an empty previous volume fetches it again', (
+    tester,
+  ) async {
+    repository = _Repository({
+      'v1': _volume(entries: 0, next: 'v2'),
+      'v2': _volume(id: 'v2', entries: 1, paragraphs: 20, previous: 'v1'),
+    });
+    await _mount(tester, repository, store, volume: 'v2');
+    for (var attempt = 0; attempt < 12; attempt++) {
+      await tester.drag(
+        find.byKey(const ValueKey('novel-reader-surface')),
+        const Offset(0, 400),
+      );
+      await _settle(tester);
+      if (find
+          .byKey(const ValueKey('novel-reader-head-seam'))
+          .evaluate()
+          .isNotEmpty) {
+        break;
+      }
+    }
+    expect(
+      find.byKey(const ValueKey('novel-reader-head-seam')),
+      findsOneWidget,
+    );
+    // 服务端补上了这一卷：显式重试必须重新请求，而不是复用空结果。
+    repository.content['v1'] = _volume(entries: 1, paragraphs: 20, next: 'v2');
+    await tester.tap(
+      find.byKey(const ValueKey('novel-reader-head-seam-retry')),
+    );
+    await _settle(tester);
+    // 显式重试走刷新请求，不复用旧缓存。
+    expect(repository.calls, contains('book/v1/true'));
+    expect(find.byKey(const ValueKey('novel-reader-head-seam')), findsNothing);
+    final document = tester
+        .widget<NovelReaderViewport>(find.byType(NovelReaderViewport))
+        .document;
+    expect(document.itemCount, 40);
+    expect(document.volumeIdForItem(0), 'v1');
+    await _remove(tester);
+  });
+
+  testWidgets('switching to paged mode keeps the prepended volume identity', (
+    tester,
+  ) async {
+    repository = _Repository({
+      'v1': _volume(entries: 1, paragraphs: 20, next: 'v2'),
+      'v2': _volume(id: 'v2', entries: 1, paragraphs: 20, previous: 'v1'),
+    });
+    await _mount(tester, repository, store, volume: 'v2');
+    for (var attempt = 0; attempt < 12; attempt++) {
+      await tester.drag(
+        find.byKey(const ValueKey('novel-reader-surface')),
+        const Offset(0, 400),
+      );
+      await _settle(tester);
+      if (tester
+              .widget<NovelReaderViewport>(find.byType(NovelReaderViewport))
+              .document
+              .itemCount >
+          20) {
+        break;
+      }
+    }
+    expect(
+      tester
+          .widget<NovelReaderViewport>(find.byType(NovelReaderViewport))
+          .document
+          .itemCount,
+      40,
+    );
+
+    await _showToolbar(tester);
+    await tester.tap(find.byKey(const ValueKey('novel-reader-settings')));
+    await _settle(tester);
+    await tester.tap(find.text('翻页'));
+    await _settle(tester);
+    await tester.tapAt(const Offset(400, 40));
+    await _settle(tester);
+    expect(find.byType(NovelReaderPageView), findsOneWidget);
+    // 双卷文档里同一段落索引会重复：书签锚点必须带当前卷 id。
+    final pager = tester.state<NovelReaderPageViewState>(
+      find.byType(NovelReaderPageView),
+    );
+    expect(pager.anchorAtViewportCenter()!.anchor.volumeId, 'v2');
+    expect(tester.takeException(), isNull);
+    await _remove(tester);
+  });
+
+  testWidgets('a recycled tail clears the stale volume-end error', (
+    tester,
+  ) async {
+    repository = _Repository({
+      'v1': _volume(entries: 1, paragraphs: 6, next: 'v2'),
+      'v2': _volume(
+        id: 'v2',
+        entries: 1,
+        paragraphs: 6,
+        previous: 'v1',
+        next: 'v3',
+      ),
+      'v3': _volume(
+        id: 'v3',
+        entries: 1,
+        paragraphs: 6,
+        previous: 'v2',
+        next: 'v4',
+      ),
+      'v4': _volume(id: 'v4', entries: 1, paragraphs: 6, previous: 'v3'),
+    });
+    repository.errors['v4'] = StateError('offline');
+    await _mount(tester, repository, store, volume: 'v2');
+    final viewport = find.byType(NovelReaderViewport);
+    for (var attempt = 0; attempt < 16; attempt++) {
+      await tester.drag(
+        find.byKey(const ValueKey('novel-reader-surface')),
+        const Offset(0, -300),
+      );
+      await _settle(tester);
+      if (find
+          .byKey(const ValueKey('novel-reader-seam'))
+          .evaluate()
+          .isNotEmpty) {
+        break;
+      }
+    }
+    expect(find.byKey(const ValueKey('novel-reader-seam')), findsOneWidget);
+
+    // 回滑前插 v1：栈尾 v3 被回收，v4 的错误不再适用于新的卷尾。
+    for (var attempt = 0; attempt < 16; attempt++) {
+      await tester.drag(
+        find.byKey(const ValueKey('novel-reader-surface')),
+        const Offset(0, 400),
+      );
+      await _settle(tester);
+      final document = tester.widget<NovelReaderViewport>(viewport).document;
+      if (document.itemCount > 12 && document.volumeIdForItem(0) == 'v1') {
+        break;
+      }
+    }
+    expect(
+      tester.widget<NovelReaderViewport>(viewport).document.volumeIdForItem(0),
+      'v1',
+    );
+    expect(find.byKey(const ValueKey('novel-reader-seam')), findsNothing);
+
+    // 新的卷尾是 v2 之后的 v3：应能正常加载，而不是被旧错误挡住。
+    for (var attempt = 0; attempt < 16; attempt++) {
+      await tester.drag(
+        find.byKey(const ValueKey('novel-reader-surface')),
+        const Offset(0, -300),
+      );
+      await _settle(tester);
+      final document = tester.widget<NovelReaderViewport>(viewport).document;
+      if (document.volumeIdForItem(0) == 'v2' &&
+          document.volumeIdForItem(6) == 'v3') {
+        break;
+      }
+    }
+    final document = tester.widget<NovelReaderViewport>(viewport).document;
+    expect(document.volumeIdForItem(0), 'v2');
+    expect(document.volumeIdForItem(6), 'v3');
+    expect(find.byKey(const ValueKey('novel-reader-seam')), findsNothing);
+    await _remove(tester);
+  });
+
+  testWidgets('approaching the volume start prefetches from cache only', (
+    tester,
+  ) async {
+    repository = _Repository({
+      'v1': _volume(entries: 1, paragraphs: 20, next: 'v2'),
+      'v2': _volume(id: 'v2', entries: 1, paragraphs: 20, previous: 'v1'),
+    });
+    repository.cached['v1'] = repository.content['v1']!;
+    await _mount(tester, repository, store, volume: 'v2');
+    for (var attempt = 0; attempt < 12; attempt++) {
+      await tester.drag(
+        find.byKey(const ValueKey('novel-reader-surface')),
+        const Offset(0, 400),
+      );
+      await _settle(tester);
+      if (tester
+              .widget<NovelReaderViewport>(find.byType(NovelReaderViewport))
+              .document
+              .itemCount >
+          20) {
+        break;
+      }
+    }
+    expect(
+      tester
+          .widget<NovelReaderViewport>(find.byType(NovelReaderViewport))
+          .document
+          .itemCount,
+      40,
+    );
+    // 上一卷走只读缓存：不联网，也不会提前写入服务端浏览记录。
+    expect(repository.calls, contains('cache/book/v1'));
+    expect(repository.calls, isNot(contains('book/v1/false')));
     await _remove(tester);
   });
 

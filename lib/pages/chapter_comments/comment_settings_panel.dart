@@ -7,7 +7,7 @@ class CommentSettingsPanel extends StatefulWidget {
   final bool showCommentTime;
   final double commentFontScale;
   final bool commentPreload;
-  final bool commentAutoLoadAll;
+  final int commentInitialPages;
 
   /// Chapter-comment-only sections are shown only when true.
   /// Comic comments reuse this panel with false.
@@ -21,7 +21,7 @@ class CommentSettingsPanel extends StatefulWidget {
   final ValueChanged<bool> onShowCommentTimeChanged;
   final ValueChanged<double> onFontScaleChanged;
   final ValueChanged<bool> onPreloadChanged;
-  final ValueChanged<bool> onAutoLoadAllChanged;
+  final ValueChanged<int> onInitialPagesChanged;
 
   const CommentSettingsPanel({
     super.key,
@@ -31,7 +31,7 @@ class CommentSettingsPanel extends StatefulWidget {
     required this.showCommentTime,
     required this.commentFontScale,
     required this.commentPreload,
-    required this.commentAutoLoadAll,
+    required this.commentInitialPages,
     this.isChapterComments = true,
     this.showFilteringSettings = true,
     required this.onLayoutChanged,
@@ -40,7 +40,7 @@ class CommentSettingsPanel extends StatefulWidget {
     required this.onShowCommentTimeChanged,
     required this.onFontScaleChanged,
     required this.onPreloadChanged,
-    required this.onAutoLoadAllChanged,
+    required this.onInitialPagesChanged,
   });
 
   @override
@@ -54,7 +54,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
   late bool _showCommentTime;
   late double _commentFontScale;
   late bool _commentPreload;
-  late bool _commentAutoLoadAll;
+  late int _commentInitialPages;
 
   @override
   void initState() {
@@ -65,7 +65,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
     _showCommentTime = widget.showCommentTime;
     _commentFontScale = widget.commentFontScale;
     _commentPreload = widget.commentPreload;
-    _commentAutoLoadAll = widget.commentAutoLoadAll;
+    _commentInitialPages = widget.commentInitialPages;
   }
 
   Future<void> _editPreset(
@@ -237,29 +237,35 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
     }
   }
 
-  Widget _buildSectionHeader(String title, ColorScheme cs, TextTheme tt) {
-    final line = Divider(
-      height: 1,
-      color: cs.outlineVariant.withValues(alpha: 0.5),
-    );
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: line),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              title,
-              style: tt.labelSmall?.copyWith(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w500,
-              ),
+  Widget _buildSectionHeader(
+    String title,
+    ColorScheme cs,
+    TextTheme tt, {
+    bool first = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!first) ...[
+          const SizedBox(height: AppSpacing.xxl),
+          Divider(
+            key: ValueKey('comment-settings-divider-$title'),
+            height: 1,
+            color: cs.outlineVariant,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: Text(
+            title,
+            style: tt.titleSmall?.copyWith(
+              color: cs.primary,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          Expanded(child: line),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -280,18 +286,24 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
     ).clamp(minFontSizePx, maxFontSizePx);
 
     return AppSheet(
-      padding: const EdgeInsets.fromLTRB(24, AppSpacing.lg, 24, 16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xxl,
+        AppSpacing.lg,
+        AppSpacing.xxl,
+        AppSpacing.lg,
+      ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.commentSettingsTitle,
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            _buildSectionHeader(
+              l10n.commentSettingsDisplaySection,
+              cs,
+              tt,
+              first: true,
             ),
             if (widget.isChapterComments) ...[
-              _buildSectionHeader(l10n.commentSettingsLayoutSection, cs, tt),
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<bool>(
@@ -344,32 +356,16 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                 widget.onShowCommentTimeChanged(value);
               },
             ),
-            if (widget.isChapterComments) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.commentSettingsPreloadTitle),
-                subtitle: Text(l10n.commentSettingsPreloadDesc),
-                value: _commentPreload,
-                onChanged: (value) {
-                  setState(() => _commentPreload = value);
-                  widget.onPreloadChanged(value);
-                },
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.commentSettingsAutoLoadAllTitle),
-                value: _commentAutoLoadAll,
-                onChanged: (value) {
-                  setState(() => _commentAutoLoadAll = value);
-                  widget.onAutoLoadAllChanged(value);
-                },
-              ),
-            ],
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                Text(l10n.commentSettingsFontSizeTitle, style: tt.bodyMedium),
-                const Spacer(),
+                Expanded(
+                  child: Text(
+                    l10n.commentSettingsFontSizeTitle,
+                    style: tt.bodyMedium,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${currentFontSizePx.round()} px',
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -391,6 +387,49 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                 widget.onFontScaleChanged(nextScale);
               },
             ),
+            if (widget.isChapterComments) ...[
+              _buildSectionHeader(l10n.commentSettingsLoadingSection, cs, tt),
+              Text(
+                l10n.commentSettingsInitialCountTitle(
+                  _commentInitialPages * chapterCommentPageSize,
+                ),
+                style: tt.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<int>(
+                  showSelectedIcon: false,
+                  style: SegmentedButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
+                  ),
+                  segments: [
+                    for (var pages = 1; pages <= 5; pages++)
+                      ButtonSegment(value: pages, label: Text('$pages')),
+                  ],
+                  selected: {_commentInitialPages},
+                  onSelectionChanged: (values) {
+                    final pages = values.first;
+                    setState(() => _commentInitialPages = pages);
+                    widget.onInitialPagesChanged(pages);
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.commentSettingsPreloadTitle),
+                subtitle: Text(l10n.commentSettingsPreloadDesc),
+                value: _commentPreload,
+                onChanged: (value) {
+                  setState(() => _commentPreload = value);
+                  widget.onPreloadChanged(value);
+                },
+              ),
+            ],
             // AI summary settings
             if (widget.isChapterComments)
               ListenableBuilder(
@@ -480,11 +519,13 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                               children: [
                                 Row(
                                   children: [
-                                    Text(
-                                      AppLocalizations.of(
-                                        context,
-                                      )!.commentSettingsMinCommentCount,
-                                      style: tt.bodySmall,
+                                    Flexible(
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.commentSettingsMinCommentCount,
+                                        style: tt.bodySmall,
+                                      ),
                                     ),
                                     const SizedBox(width: AppSpacing.sm),
                                     SizedBox(
@@ -680,7 +721,7 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                 },
               ),
             if (widget.showFilteringSettings) ...[
-              const SizedBox(height: AppSpacing.sm),
+              _buildSectionHeader(l10n.commentSettingsFilteringSection, cs, tt),
               _buildBlockwordsSection(cs, tt),
               const SizedBox(height: AppSpacing.sm),
               _buildBlockPresetsSection(cs, tt),
@@ -741,10 +782,12 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              AppLocalizations.of(context)!.commentSettingsBlacklistSection,
-              cs,
-              tt,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Text(
+                AppLocalizations.of(context)!.commentSettingsBlacklistSection,
+                style: tt.bodyMedium,
+              ),
             ),
             if (list.isEmpty)
               Padding(

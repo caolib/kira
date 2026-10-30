@@ -827,13 +827,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkSelectionMode => '选择模式';
 
   @override
+  String get networkAutoTestEnabled => '定时测速并切换线路';
+
+  @override
+  String get networkAutoTestInterval => '测速间隔';
+
+  @override
   String get networkModeRoute => '线路';
-
-  @override
-  String get networkFixedNodeAutoSelected => '测速后已选择延迟最低的节点';
-
-  @override
-  String get networkRouteAutoSelected => '测速后已切换到平均延迟最低的线路';
 
   @override
   String networkRouteLabel(int index) {
@@ -849,7 +849,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get networkHighLatencyProxySuggestion => '当前延迟较大，建议开启代理';
+  String get networkHighLatencyHint => '当前线路延迟较高';
 
   @override
   String get networkRateLimitMessage => '请求过于频繁，已被限速，请稍后再试';
@@ -1016,7 +1016,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String networkStatusWarnHint(int ms) {
-    return '当前延迟约 $ms ms，建议开启代理';
+    return '当前延迟约 $ms ms';
   }
 
   @override
@@ -1756,7 +1756,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commentSettingsPreloadDesc => '进入章节时提前加载评论并显示数量';
 
   @override
-  String get commentSettingsAutoLoadAllTitle => '自动加载全部评论';
+  String get commentSettingsDisplaySection => '评论区布局';
+
+  @override
+  String get commentSettingsLoadingSection => '加载';
+
+  @override
+  String get commentSettingsFilteringSection => '屏蔽';
+
+  @override
+  String commentSettingsInitialCountTitle(int count) {
+    return '初始加载$count条评论';
+  }
 
   @override
   String get commentSettingsFontSizeTitle => '评论内容字体大小';
@@ -2795,7 +2806,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get commentSettingsMinCommentCount => '最少评论数';
+  String get commentSettingsMinCommentCount => '最少已加载评论数';
 
   @override
   String get commentSettingsTriggerTiming => '调用时机';
@@ -3788,6 +3799,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderTheme => '阅读主题';
 
   @override
+  String get novelReaderFontFamily => '正文字体';
+
+  @override
+  String get novelReaderFontFollowApp => '跟随应用字体';
+
+  @override
+  String novelReaderFontUnavailable(String name) {
+    return '$name（不可用）';
+  }
+
+  @override
   String get novelReaderThemePaper => '纸张';
 
   @override
@@ -3803,7 +3825,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderThemeGray => '灰';
 
   @override
-  String get novelReaderThemeCustom => '自定义';
+  String get novelReaderThemeCustom => '自定义主题';
 
   @override
   String get novelReaderThemeLightMode => '浅色模式';
@@ -3843,6 +3865,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderPreviewText => '夜色温柔，街灯次第亮起，故事从这一页开始。';
 
   @override
+  String get novelReaderColorScheme => '配色方案';
+
+  @override
+  String get novelReaderDialogueStyle => '对白样式';
+
+  @override
+  String get novelReaderDialogueAutomatic => '自动适配';
+
+  @override
+  String get novelReaderDialogueFollowBody => '跟随正文';
+
+  @override
+  String get novelReaderDialogueCustom => '自选颜色';
+
+  @override
+  String get novelReaderDialogueWeight => '字重';
+
+  @override
+  String get novelReaderDialogueMedium => '中等';
+
+  @override
+  String get novelReaderDialogueBold => '加粗';
+
+  @override
+  String get novelReaderDialogueBackground => '对白底色';
+
+  @override
+  String get novelReaderDialogueBackgroundStrength => '底色强度';
+
+  @override
+  String get novelReaderDialogueLowContrast => '对白与背景对比度较低';
+
+  @override
+  String get novelReaderDialoguePreviewText =>
+      '夜色温柔，她翻开书页，窗外的风轻轻吹动帘角。\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……';
+
+  @override
   String get novelReaderKeepScreenOn => '阅读时屏幕常亮';
 
   @override
@@ -3853,6 +3912,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get novelReaderFocusMode => '专注模式';
+
+  @override
+  String get novelReaderFocusKeepStatusVisible => '不遮挡状态组件';
 
   @override
   String get novelReaderFocusTopBound => '上边界';
@@ -4786,13 +4848,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkSelectionMode => '選擇模式';
 
   @override
+  String get networkAutoTestEnabled => '定時測速並切換線路';
+
+  @override
+  String get networkAutoTestInterval => '測速間隔';
+
+  @override
   String get networkModeRoute => '線路';
-
-  @override
-  String get networkFixedNodeAutoSelected => '測速後已選擇延遲最低的節點';
-
-  @override
-  String get networkRouteAutoSelected => '測速後已切換到平均延遲最低的線路';
 
   @override
   String networkRouteLabel(int index) {
@@ -4808,7 +4870,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get networkHighLatencyProxySuggestion => '目前延遲較大，建議開啟代理';
+  String get networkHighLatencyHint => '目前線路延遲較高';
 
   @override
   String get networkRateLimitMessage => '請求過於頻繁，已被限速，請稍後再試';
@@ -4975,7 +5037,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String networkStatusWarnHint(int ms) {
-    return '目前延遲約 $ms ms，建議開啟代理';
+    return '目前延遲約 $ms ms';
   }
 
   @override
@@ -5715,7 +5777,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get commentSettingsPreloadDesc => '進入章節時提前載入評論並顯示數量';
 
   @override
-  String get commentSettingsAutoLoadAllTitle => '自動載入全部評論';
+  String get commentSettingsDisplaySection => '評論區版面';
+
+  @override
+  String get commentSettingsLoadingSection => '載入';
+
+  @override
+  String get commentSettingsFilteringSection => '封鎖';
+
+  @override
+  String commentSettingsInitialCountTitle(int count) {
+    return '初始載入$count則評論';
+  }
 
   @override
   String get commentSettingsFontSizeTitle => '評論內容字型大小';
@@ -6754,7 +6827,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get commentSettingsMinCommentCount => '最少評論數';
+  String get commentSettingsMinCommentCount => '最少已載入評論數';
 
   @override
   String get commentSettingsTriggerTiming => '呼叫時機';
@@ -7747,6 +7820,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get novelReaderTheme => '閱讀主題';
 
   @override
+  String get novelReaderFontFamily => '正文字型';
+
+  @override
+  String get novelReaderFontFollowApp => '跟隨應用程式字型';
+
+  @override
+  String novelReaderFontUnavailable(String name) {
+    return '$name（不可用）';
+  }
+
+  @override
   String get novelReaderThemePaper => '紙張';
 
   @override
@@ -7762,7 +7846,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get novelReaderThemeGray => '灰';
 
   @override
-  String get novelReaderThemeCustom => '自訂';
+  String get novelReaderThemeCustom => '自訂主題';
 
   @override
   String get novelReaderThemeLightMode => '淺色模式';
@@ -7802,6 +7886,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get novelReaderPreviewText => '夜色溫柔，街燈次第亮起，故事從這一頁開始。';
 
   @override
+  String get novelReaderColorScheme => '配色方案';
+
+  @override
+  String get novelReaderDialogueStyle => '對白樣式';
+
+  @override
+  String get novelReaderDialogueAutomatic => '自動適配';
+
+  @override
+  String get novelReaderDialogueFollowBody => '跟隨正文';
+
+  @override
+  String get novelReaderDialogueCustom => '自選顏色';
+
+  @override
+  String get novelReaderDialogueWeight => '字重';
+
+  @override
+  String get novelReaderDialogueMedium => '中等';
+
+  @override
+  String get novelReaderDialogueBold => '加粗';
+
+  @override
+  String get novelReaderDialogueBackground => '對白底色';
+
+  @override
+  String get novelReaderDialogueBackgroundStrength => '底色強度';
+
+  @override
+  String get novelReaderDialogueLowContrast => '對白與背景對比度較低';
+
+  @override
+  String get novelReaderDialoguePreviewText =>
+      '夜色溫柔，她翻開書頁，窗外的風輕輕吹動簾角。\n「故事裡還有『未說完的話』，我們繼續吧。」\n街燈亮起，遠處傳來列車經過的聲音，像一段熟悉的旋律。\n『等到天亮，我們就一起出發。』\n「如果路上迷失方向，\n就記住窗邊這盞燈，我會在這裡等你回來。」\n她合上書，笑著望向窗外。她說：「這一句尚未結束……';
+
+  @override
   String get novelReaderKeepScreenOn => '閱讀時螢幕常亮';
 
   @override
@@ -7812,6 +7933,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get novelReaderFocusMode => '專注模式';
+
+  @override
+  String get novelReaderFocusKeepStatusVisible => '不遮擋狀態元件';
 
   @override
   String get novelReaderFocusTopBound => '上邊界';

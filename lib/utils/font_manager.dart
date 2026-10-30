@@ -453,7 +453,10 @@ class FontManager {
   }
 
   /// Loads a downloaded font file into the Flutter engine by its name.
-  Future<String?> loadFont(String fontName) async {
+  Future<String?> loadFont(
+    String fontName, {
+    bool rethrowErrors = false,
+  }) async {
     if (fontName.isEmpty || fontName == defaultFontId) return null;
 
     final path = await fontFilePath(fontName);
@@ -477,6 +480,7 @@ class FontManager {
         source: 'font_load',
       );
       debugPrint('FontManager: failed to load font "$fontName": $e');
+      if (rethrowErrors) rethrow;
       return null;
     }
   }

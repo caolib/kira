@@ -241,7 +241,7 @@ extension _ReaderImagePipeline on _ReaderPageState {
     _pauseAutoScrollForOverlay();
     await Navigator.of(context).push(
       PageRouteBuilder<void>(
-        pageBuilder: (_, _, _) => _ReaderImageViewer(
+        pageBuilder: (_, _, _) => ReaderImageViewer(
           imageSource: chapter.contents[localIndex],
           isDownloaded: chapter.isDownloaded,
           cacheManager: _readerImageCacheManager,

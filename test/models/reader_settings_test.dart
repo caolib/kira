@@ -29,6 +29,10 @@ void main() {
       expect(settings.volumeKey, true);
     });
 
+    test('keepScreenOn defaults to true', () {
+      expect(settings.keepScreenOn, isTrue);
+    });
+
     test('instantPageTurn defaults to false', () {
       expect(settings.instantPageTurn, false);
     });
@@ -112,6 +116,32 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await settings.initFromPrefs(prefs);
       expect(settings.volumeKey, false);
+    });
+
+    test('keepScreenOn persists and notifies only once per change', () async {
+      var notifications = 0;
+      void listener() => notifications++;
+      settings.addListener(listener);
+      addTearDown(() => settings.removeListener(listener));
+
+      await settings.setKeepScreenOn(false);
+      await settings.setKeepScreenOn(false);
+      expect(notifications, 1);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('reader_keep_screen_on'), isFalse);
+
+      for (var boot = 0; boot < 3; boot++) {
+        settings.resetPrefsCache();
+        await settings.initFromPrefs(await SharedPreferences.getInstance());
+        expect(settings.keepScreenOn, isFalse);
+      }
+
+      await settings.setKeepScreenOn(true);
+      settings.resetPrefsCache();
+      await settings.initFromPrefs(await SharedPreferences.getInstance());
+      expect(settings.keepScreenOn, isTrue);
+      expect(prefs.getBool('reader_keep_screen_on'), isTrue);
+      expect(notifications, 2);
     });
 
     test('instantPageTurn persists after re-init', () async {

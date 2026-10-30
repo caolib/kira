@@ -5,11 +5,21 @@
 /// 按错误的页宽推算溢出项。
 library;
 
+import 'dart:math';
+
 /// 章节评论接口实际返回的每页条数。
 const int chapterCommentPageSize = 10;
 
-/// 打开评论区时默认预取的页数。
+/// 初始加载页数的默认值与设置范围。
 const int chapterCommentInitialPages = 2;
+const int chapterCommentMinPages = 1;
+const int chapterCommentMaxPages = 5;
 
-/// 连续翻页之间的间隔，避免短时间内连发请求。
-const Duration chapterCommentPageGap = Duration(seconds: 1);
+int normalizeChapterCommentPages(int pages) =>
+    pages.clamp(chapterCommentMinPages, chapterCommentMaxPages);
+
+final _pageGapRandom = Random();
+
+/// 每次连续翻页随机等待 1–1.5 秒，避免短时间内连发请求。
+Duration get chapterCommentPageGap =>
+    Duration(milliseconds: 1000 + _pageGapRandom.nextInt(501));

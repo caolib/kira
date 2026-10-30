@@ -96,6 +96,9 @@ extension _ChapterAiSummary on _ChapterCommentsSheetState {
     }
 
     _usingSharedSummaryProgress = true;
+    if (_summaryProgress.isGenerating || _summaryProgress.content.isNotEmpty) {
+      _autoSummaryAttempted = true;
+    }
     _summarizing = _summaryProgress.isGenerating;
     if (_summaryProgress.content.isNotEmpty) {
       _aiSummary = _summaryProgress.content;
@@ -117,22 +120,22 @@ extension _ChapterAiSummary on _ChapterCommentsSheetState {
   }
 
   void _maybeAutoSummary() {
+    if (!mounted || !_summaryInitialized || _autoSummaryAttempted) return;
     if (!_aiSettings.hasConfig ||
         !_aiSettings.summaryEnabled ||
         !_aiSettings.autoSummary) {
       return;
     }
-    if (_aiSettings.autoSummaryTiming != AiAutoSummaryTiming.onOpen) {
-      return;
-    }
+    // 预加载不足时，打开评论区后仍可随翻页达标补触发。
     if (_aiSummary.isNotEmpty || _summarizing || _comments.isEmpty) return;
     if (_comments.length < _aiSettings.autoSummaryMin) return;
-    _summarizeComments();
+    unawaited(_summarizeComments());
   }
 
   Future<void> _loadCachedSummary() async {
     final cached = await ChapterSummaryCache.get(widget.chapterUuid);
     if (!mounted || cached == null || cached.isEmpty) return;
+    _autoSummaryAttempted = true;
     _aiSummary = cached;
     _aiSummaryReasoning = '';
     _setState(() => _spoilerIds = _parseSpoilerIds(cached));
@@ -154,6 +157,8 @@ extension _ChapterAiSummary on _ChapterCommentsSheetState {
       return;
     }
 
+    // 自动或手动尝试后，本次打开不因继续翻页而重复请求。
+    _autoSummaryAttempted = true;
     final cancelToken = CancelToken();
     _summaryCancelToken = cancelToken;
     _setState(() {

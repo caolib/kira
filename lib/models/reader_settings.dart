@@ -18,6 +18,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   static const _keyScrollDirection = 'reader_scroll_direction';
   static const _keyImageGap = 'reader_image_gap';
   static const _keyVolumeKey = 'reader_volume_key';
+  static const _keyKeepScreenOn = 'reader_keep_screen_on';
   static const _keyInstantPageTurn = 'reader_instant_page_turn';
   static const _keyLongPressZoomEnabled = 'reader_long_press_zoom_enabled';
   static const _keyLongPressZoomPanSensitivity =
@@ -79,6 +80,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   int _scrollDirection = 2;
   double _imageGap = 0.0;
   bool _volumeKey = true;
+  bool _keepScreenOn = true;
   bool _instantPageTurn = false;
   bool _longPressZoomEnabled = true;
   double _longPressZoomPanSensitivity = 2.0;
@@ -130,6 +132,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   int get scrollDirection => _scrollDirection;
   double get imageGap => _imageGap;
   bool get volumeKey => _volumeKey;
+  bool get keepScreenOn => _keepScreenOn;
   bool get instantPageTurn => _instantPageTurn;
   bool get longPressZoomEnabled => _longPressZoomEnabled;
   double get longPressZoomPanSensitivity => _longPressZoomPanSensitivity;
@@ -206,6 +209,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     _scrollDirection = prefs.getInt(_keyScrollDirection) ?? 2;
     _imageGap = prefs.getDouble(_keyImageGap) ?? 0.0;
     _volumeKey = prefs.getBool(_keyVolumeKey) ?? true;
+    _keepScreenOn = prefs.getBool(_keyKeepScreenOn) ?? true;
     _instantPageTurn = prefs.getBool(_keyInstantPageTurn) ?? false;
     _longPressZoomEnabled = prefs.getBool(_keyLongPressZoomEnabled) ?? true;
     _longPressZoomPanSensitivity =
@@ -281,6 +285,12 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   Future<void> setVolumeKey(bool value) async {
     _volumeKey = value;
     await setBool(_keyVolumeKey, value);
+  }
+
+  Future<void> setKeepScreenOn(bool value) async {
+    if (_keepScreenOn == value) return;
+    _keepScreenOn = value;
+    await setBool(_keyKeepScreenOn, value);
   }
 
   Future<void> setInstantPageTurn(bool value) async {

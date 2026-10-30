@@ -394,10 +394,9 @@ class _NovelSearchTabState extends ConsumerState<NovelSearchTab>
             FilterChipRow(
               options: _themeOptions(l10n),
               onTap: (option) => unawaited(_selectTheme(option.value)),
-              trailing: filterRowButton(
+              trailing: FilterTagsToggleButton(
+                expanded: false,
                 onPressed: _toggleTagList,
-                icon: Icons.expand_more,
-                label: l10n.tagsExpandAll,
               ),
             ),
           ],
@@ -405,10 +404,9 @@ class _NovelSearchTabState extends ConsumerState<NovelSearchTab>
             const SizedBox(height: AppSpacing.sm),
             SectionHeader(
               title: l10n.allTagsTitle,
-              trailing: filterRowButton(
+              trailing: FilterTagsToggleButton(
+                expanded: true,
                 onPressed: _toggleTagList,
-                icon: Icons.expand_less,
-                label: l10n.tagsCollapseAll,
               ),
             ),
             const SizedBox(height: AppSpacing.sm),

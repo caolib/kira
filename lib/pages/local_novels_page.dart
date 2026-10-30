@@ -174,7 +174,7 @@ class _LocalNovelDetailPageState extends ConsumerState<LocalNovelDetailPage> {
       extra: NovelReaderExtra(
         name: _downloads.localInfo(widget.pathWord)?.name ?? '',
         cover: _downloads.localInfo(widget.pathWord)?.book.cover ?? '',
-        localOnly: true,
+        preferDownloads: true,
         noDetailBelow: true,
       ),
     );

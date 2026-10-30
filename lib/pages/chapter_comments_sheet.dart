@@ -96,7 +96,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
   List<ChapterComment> _comments = [];
   bool _loading = true;
   bool _loadingMore = false;
-  bool _loadingAll = false;
+  late final int _initialPages;
 
   /// 首屏补页进行中：期间把手动翻页交给它，避免同一 offset 并发请求。
   bool _prefetchingInitialPages = false;
@@ -131,6 +131,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
   set _summaryError(String? v) => _summaryErrorVN.value = v ?? '';
 
   CancelToken? _summaryCancelToken;
+  bool _summaryInitialized = false;
+  bool _autoSummaryAttempted = false;
   Set<int> _spoilerIds = const {};
   List<ChapterCommentDisplayEntry> _lastSnippetEntries = const [];
   // Throttle AI stream writes to ValueNotifiers instead of calling setState.
@@ -185,6 +187,7 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     _showUserName = _user.commentShowUserName;
     _showCommentTime = _user.commentShowTime;
     _commentFontScale = _user.commentFontScale;
+    _initialPages = _user.commentInitialPages;
     _aiSettings.addListener(_onAiChanged);
     // Listen to stream ValueNotifiers only for structural panel presence changes.
     // Incremental stream writes keep _hasSummaryPanel unchanged and avoid setState.
@@ -196,26 +199,24 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
     _summaryProgress = ChapterSummaryCache.progressOf(widget.chapterUuid);
     _summaryProgress.addListener(_onSummaryProgressChanged);
     _applySummaryProgress();
-    _aiSettings.load().then((_) {
+    _aiSettings.load().then((_) async {
       if (!mounted) return;
       setState(() {}); // AI config loaded; refresh toolbar visibility.
-      _loadCachedSummary().then((_) => _maybeAutoSummary());
+      await _loadCachedSummary();
+      if (!mounted) return;
+      _summaryInitialized = true;
+      _maybeAutoSummary();
     });
     if (widget.initialComments != null) {
       _comments = List<ChapterComment>.from(widget.initialComments!);
       _total = widget.initialTotal ?? _comments.length;
       _loading = false;
       _rebuildGroupedEntries();
-      // 初始评论已达撒花条件时立即触发（此前仅 _loadAllComments 路径会检查，
-      // 导致已加载完成的评论区永远不触发）。
+      // 初始评论已达撒花条件时立即触发。
       _maybeShowConfetti();
-      // 缓存/下载的评论可能只有第一页，继续按默认页数补齐。
+      // 缓存/下载的评论可能只有第一页，按本次打开时的设定页数补齐。
       if (_comments.length < _total) {
-        if (_user.commentAutoLoadAll) {
-          _loadAllComments();
-        } else {
-          _prefetchInitialPages();
-        }
+        unawaited(_prefetchInitialPages());
       }
       return;
     }
@@ -293,10 +294,8 @@ class _ChapterCommentsSheetState extends State<ChapterCommentsSheet>
       // 上一页失败后不再由滚动自动重试：失败原因已显示在列表底部，
       // 交给用户显式点击，避免近底滚动反复打同一个失败请求。
       _error == null &&
-      // 首屏补页与全量加载期间由它们自己按 offset 追加，避免近底自动翻页
-      // 抢跑、同一 offset 并发请求。
+      // 首屏补页期间自行按 offset 追加，避免近底翻页并发请求。
       !_prefetchingInitialPages &&
-      !_loadingAll &&
       _comments.length < _total;
 
   @override

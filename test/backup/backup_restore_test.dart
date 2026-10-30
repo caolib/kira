@@ -102,6 +102,21 @@ void main() {
     },
   );
 
+  test('comic keep-screen-on preference is backed up and restored', () async {
+    preferences.values['reader_keep_screen_on'] = false;
+    final snapshot = await service.capture();
+    final prepared = await BackupCodec().prepare(
+      snapshot.select({BackupCategory.settings}),
+    );
+    final encoded = await BackupCodec().encode(prepared);
+    final restored = await BackupCodec().decode(encoded.bytes);
+    expect(restored.preferences['reader_keep_screen_on']?.value, isFalse);
+
+    preferences.values['reader_keep_screen_on'] = true;
+    await service.restore(restored, {BackupCategory.settings});
+    expect(preferences.values['reader_keep_screen_on'], isFalse);
+  });
+
   test('a rejected value reports its key and type without its value', () async {
     final logged = <String>[];
     final original = debugPrint;

@@ -79,8 +79,9 @@ extension _ReaderCommentsData on _ReaderPageState {
         chapterName: chapterName,
         comments: data.list,
       );
-    } catch (_) {
-      // Preload failures do not affect reading.
+    } catch (e, stack) {
+      // 预加载失败不打断阅读，保留原始错误供排查。
+      unawaited(AppLogger.instance.recordWarning(e, stackTrace: stack));
     }
   }
 

@@ -11,6 +11,8 @@ import 'package:kira/pages/novel_reader/novel_reader_contents_sheet.dart';
 import 'package:kira/pages/novel_reader/novel_reader_illustrations.dart';
 import 'package:kira/pages/novel_reader/novel_reader_viewport.dart';
 import 'package:kira/pages/novel_reader_page.dart';
+import 'package:kira/pages/reader/reader_image_viewer.dart';
+import 'package:kira/pages/reader/reader_long_press_zoom.dart';
 import 'package:kira/providers/novel_providers.dart';
 import 'package:kira/repositories/novel_repository.dart';
 import 'package:kira/utils/novel_reading_store.dart';
@@ -374,6 +376,14 @@ void main() {
     );
     expect(result.closed, isFalse);
 
+    expect(
+      find.descendant(
+        of: gallery,
+        matching: find.byType(ReaderLongPressZoomSurface),
+      ),
+      findsOneWidget,
+    );
+
     final zoom = find.descendant(
       of: gallery,
       matching: find.byType(PinchZoomable),
@@ -432,6 +442,36 @@ void main() {
     await _settle(tester);
     expect(result.closed, isTrue);
     expect(result.selection, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('double tap opens the shared image viewer', (tester) async {
+    final repository = _Repository({
+      'v1': _detail(const [_text, _imageA, _imageB]),
+    });
+    final result = await _openSheet(tester, repository);
+    await tester.tap(find.byKey(const ValueKey('novel-toc-illustrations-v1')));
+    await _settle(tester);
+
+    await tester.tap(_illustration(_imageA.name));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(_illustration(_imageA.name));
+    await _settle(tester);
+
+    expect(find.byType(ReaderImageViewer), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ReaderImageViewer),
+        matching: find.byIcon(Icons.close),
+      ),
+    );
+    await _settle(tester);
+
+    expect(find.byType(ReaderImageViewer), findsNothing);
+    expect(find.byType(NovelReaderIllustrations), findsOneWidget);
+    expect(result.closed, isFalse);
     expect(tester.takeException(), isNull);
   });
 

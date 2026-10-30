@@ -497,9 +497,9 @@
   },
   "networkTitle": "网络",
   "networkSelectionMode": "选择模式",
+  "networkAutoTestEnabled": "定时测速并切换线路",
+  "networkAutoTestInterval": "测速间隔",
   "networkModeRoute": "线路",
-  "networkFixedNodeAutoSelected": "测速后已选择延迟最低的节点",
-  "networkRouteAutoSelected": "测速后已切换到平均延迟最低的线路",
   "networkRouteLabel": "线路 {index}",
   "@networkRouteLabel": {
     "placeholders": {
@@ -517,7 +517,7 @@
       }
     }
   },
-  "networkHighLatencyProxySuggestion": "当前延迟较大，建议开启代理",
+  "networkHighLatencyHint": "当前线路延迟较高",
   "networkRateLimitMessage": "请求过于频繁，已被限速，请稍后再试",
   "networkRequestFailedCode": "请求失败（code: {code}）",
   "@networkRequestFailedCode": {
@@ -632,7 +632,7 @@
   },
   "networkStatusGoodFallback": "连接正常，状态良好",
   "networkStatusWarn": "延迟偏高",
-  "networkStatusWarnHint": "当前延迟约 {ms} ms，建议开启代理",
+  "networkStatusWarnHint": "当前延迟约 {ms} ms",
   "@networkStatusWarnHint": {
     "placeholders": {
       "ms": {
@@ -1077,7 +1077,17 @@
   "commentSettingsShowCommentTime": "显示评论时间",
   "commentSettingsPreloadTitle": "预加载评论",
   "commentSettingsPreloadDesc": "进入章节时提前加载评论并显示数量",
-  "commentSettingsAutoLoadAllTitle": "自动加载全部评论",
+  "commentSettingsDisplaySection": "评论区布局",
+  "commentSettingsLoadingSection": "加载",
+  "commentSettingsFilteringSection": "屏蔽",
+  "commentSettingsInitialCountTitle": "初始加载{count}条评论",
+  "@commentSettingsInitialCountTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "commentSettingsFontSizeTitle": "评论内容字体大小",
   "chapterCommentsNoSummaryComments": "当前没有可总结的评论",
   "chapterCommentsEnableAiSummaryFirst": "请先在评论区设置中启用 AI 总结",
@@ -1875,7 +1885,7 @@
       }
     }
   },
-  "commentSettingsMinCommentCount": "最少评论数",
+  "commentSettingsMinCommentCount": "最少已加载评论数",
   "commentSettingsTriggerTiming": "调用时机",
   "commentSettingsTimingOnOpen": "打开评论区时",
   "commentSettingsTimingAfterPreload": "预加载完成后",
@@ -2433,12 +2443,18 @@
   "novelReaderParagraphSpacing": "段距",
   "novelReaderContentWidth": "正文宽度",
   "novelReaderTheme": "阅读主题",
+  "novelReaderFontFamily": "正文字体",
+  "novelReaderFontFollowApp": "跟随应用字体",
+  "novelReaderFontUnavailable": "{name}（不可用）",
+  "@novelReaderFontUnavailable": {
+    "placeholders": {"name": {"type": "String"}}
+  },
   "novelReaderThemePaper": "纸张",
   "novelReaderThemeDark": "夜间",
   "novelReaderThemeWhite": "白底",
   "novelReaderThemeGreen": "护眼绿",
   "novelReaderThemeGray": "灰",
-  "novelReaderThemeCustom": "自定义",
+  "novelReaderThemeCustom": "自定义主题",
   "novelReaderThemeLightMode": "浅色模式",
   "novelReaderThemeDarkMode": "深色模式",
   "novelReaderThemeAdd": "新建配色方案",
@@ -2464,10 +2480,23 @@
   "novelReaderBackgroundColor": "背景颜色",
   "novelReaderTextColor": "文字颜色",
   "novelReaderPreviewText": "夜色温柔，街灯次第亮起，故事从这一页开始。",
+  "novelReaderColorScheme": "配色方案",
+  "novelReaderDialogueStyle": "对白样式",
+  "novelReaderDialogueAutomatic": "自动适配",
+  "novelReaderDialogueFollowBody": "跟随正文",
+  "novelReaderDialogueCustom": "自选颜色",
+  "novelReaderDialogueWeight": "字重",
+  "novelReaderDialogueMedium": "中等",
+  "novelReaderDialogueBold": "加粗",
+  "novelReaderDialogueBackground": "对白底色",
+  "novelReaderDialogueBackgroundStrength": "底色强度",
+  "novelReaderDialogueLowContrast": "对白与背景对比度较低",
+  "novelReaderDialoguePreviewText": "夜色温柔，她翻开书页，窗外的风轻轻吹动帘角。\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……",
   "novelReaderKeepScreenOn": "阅读时屏幕常亮",
   "novelReaderIgnoreBlankParagraphs": "隐藏空白段落",
   "novelReaderIgnoreBlankParagraphsDenseHint": "可以适当增大段距以免文字过于密集",
   "novelReaderFocusMode": "专注模式",
+  "novelReaderFocusKeepStatusVisible": "不遮挡状态组件",
   "novelReaderFocusTopBound": "上边界",
   "novelReaderFocusBottomBound": "下边界",
   "novelReaderFocusOpacity": "遮罩浓度",

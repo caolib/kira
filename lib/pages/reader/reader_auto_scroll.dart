@@ -10,9 +10,6 @@ extension _ReaderAutoScroll on _ReaderPageState {
     _cancelAutoScrollResumeTimer();
     if (enabled) {
       _continueAutoScroll();
-      WakelockPlus.enable();
-    } else {
-      WakelockPlus.disable();
     }
     if (mounted) _setState(() {});
   }

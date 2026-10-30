@@ -2,10 +2,13 @@ import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/l10n/app_localizations.dart';
+import 'package:kira/models/novel_dialogue_style.dart';
 import 'package:kira/models/novel_reader_settings.dart';
 import 'package:kira/models/novel_reader_status_settings.dart';
 import 'package:kira/models/reader_settings.dart';
+import 'package:kira/pages/novel_reader/novel_reader_dialogue.dart';
 import 'package:kira/pages/novel_reader/novel_reader_settings_sheet.dart';
+import 'package:kira/theme/novel_reader_theme.dart';
 import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/collapsible_content.dart';
 import 'package:kira/widgets/reader_settings_fold.dart';
@@ -69,6 +72,7 @@ Future<void> _mount(
 
 Future<void> _tapVisible(WidgetTester tester, String key) async {
   if (key == 'novel-theme-add' || key.startsWith('novel-custom-theme-')) {
+    await _openTheme(tester);
     final fold = find.byKey(const ValueKey('novel-custom-theme-settings'));
     if (find
         .descendant(of: fold, matching: find.byIcon(Icons.expand_more))
@@ -84,7 +88,59 @@ Future<void> _tapVisible(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _openTheme(WidgetTester tester, {bool? dark}) async {
+  if (find
+      .byKey(const ValueKey('novel-theme-settings-sheet'))
+      .evaluate()
+      .isEmpty) {
+    await _tapVisible(tester, 'novel-theme-settings-entry');
+  }
+  if (dark != null) {
+    final finder = find.byKey(const ValueKey('novel-theme-edit-mode'));
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+    tester.widget<SegmentedButton<bool>>(finder).onSelectionChanged!({dark});
+    await tester.pumpAndSettle();
+  }
+}
+
+Future<void> _closeTheme(WidgetTester tester) async {
+  await _tapVisible(tester, 'novel-theme-settings-back');
+}
+
+Future<void> _setSelect<T>(WidgetTester tester, String key, T value) async {
+  final row = find.byKey(ValueKey(key));
+  await tester.ensureVisible(row);
+  await tester.pumpAndSettle();
+  final select = find.descendant(of: row, matching: find.byType(SelectTile<T>));
+  tester.widget<SelectTile<T>>(select).onChanged(value);
+  await tester.pumpAndSettle();
+}
+
+List<RichText> _previewRichTexts(WidgetTester tester) => tester
+    .widgetList<RichText>(
+      find.descendant(
+        of: find.byKey(const ValueKey('novel-settings-preview-text')),
+        matching: find.byType(RichText),
+      ),
+    )
+    .toList();
+
+TextSpan _previewSpan(WidgetTester tester) => TextSpan(
+  children: [for (final text in _previewRichTexts(tester)) text.text],
+);
+
+Iterable<TextSpan> _descendantSpans(InlineSpan root) sync* {
+  if (root is TextSpan) {
+    yield root;
+    for (final child in root.children ?? const <InlineSpan>[]) {
+      yield* _descendantSpans(child);
+    }
+  }
+}
+
 Future<void> _toggleFold(WidgetTester tester, String key) async {
+  if (key == 'novel-custom-theme-settings') await _openTheme(tester);
   final fold = find.byKey(ValueKey(key));
   final header = find
       .descendant(of: fold, matching: find.byType(InkWell))
@@ -105,8 +161,57 @@ void main() {
 
   tearDown(teardownSecureCredentialStoreForTest);
 
+  for (final (locale, label) in [
+    (const Locale('zh'), '自定义主题'),
+    (const Locale('zh', 'Hant'), '自訂主題'),
+  ]) {
+    testWidgets('custom theme group uses its complete label in $locale', (
+      tester,
+    ) async {
+      await _mount(tester, locale: locale, onChanged: (_) {});
+      await _openTheme(tester);
+      final group = find.byKey(const ValueKey('novel-custom-theme-settings'));
+      await tester.ensureVisible(group);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: group, matching: find.text(label)),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('font family sits above font size and stays out of the theme '
+      'panel', (tester) async {
+    var latest = const NovelReaderSettings();
+    await _mount(tester, onChanged: (value) => latest = value);
+    expect(find.byKey(const ValueKey('novel-font-family')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('novel-font-family'))).dy,
+      lessThan(
+        tester.getTopLeft(find.byKey(const ValueKey('novel-font-size'))).dy,
+      ),
+    );
+    // 默认跟随应用字体：空字符串。
+    expect(latest.fontFamily, isEmpty);
+    await _setSelect<String>(tester, 'novel-font-family', 'system');
+    expect(latest.fontFamily, 'system');
+    await _setSelect<String>(tester, 'novel-font-family', '');
+    expect(latest.fontFamily, isEmpty);
+
+    await _openTheme(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('novel-theme-settings-sheet')),
+        matching: find.byKey(const ValueKey('novel-font-family')),
+      ),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'font slider offers 10 to 48 with one-pixel steps and live preview',
+    'font slider keeps live updates and theme entry owns the preview',
     (tester) async {
       var latest = const NovelReaderSettings();
       await _mount(tester, onChanged: (value) => latest = value);
@@ -120,11 +225,13 @@ void main() {
         await tester.pumpAndSettle();
         expect(latest.fontSize, fontSize);
         expect(tester.widget<Slider>(finder).value, fontSize);
-        final preview = tester.widget<Text>(
+        expect(
           find.byKey(const ValueKey('novel-settings-preview-text')),
+          findsNothing,
         );
-        expect(preview.style?.fontSize, fontSize);
       }
+      await _openTheme(tester);
+      expect(_previewRichTexts(tester).first.text.style?.fontSize, 48);
       expect(tester.takeException(), isNull);
     },
   );
@@ -187,35 +294,433 @@ void main() {
     });
   }
 
-  testWidgets('light and dark mode bindings pick presets independently', (
+  testWidgets(
+    'light and dark mode bindings commit together when theme closes',
+    (tester) async {
+      var latest = const NovelReaderSettings();
+      var changes = 0;
+      await _mount(
+        tester,
+        onChanged: (value) {
+          latest = value;
+          changes++;
+        },
+      );
+      await _openTheme(tester, dark: false);
+      final lightTile = find.byKey(const ValueKey('novel-light-theme'));
+      await tester.ensureVisible(lightTile);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: lightTile,
+          matching: find.byType(SelectTile<String>),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('纸张').last);
+      await tester.pumpAndSettle();
+      expect(changes, 0);
+      expect(
+        tester
+            .widget<SelectTile<String>>(
+              find.descendant(
+                of: lightTile,
+                matching: find.byType(SelectTile<String>),
+              ),
+            )
+            .value,
+        'paper',
+      );
+      await _openTheme(tester, dark: true);
+      final darkTile = find.byKey(const ValueKey('novel-dark-theme'));
+      await tester.ensureVisible(darkTile);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: darkTile,
+          matching: find.byType(SelectTile<String>),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('护眼绿').last);
+      await tester.pumpAndSettle();
+      expect(changes, 0);
+      await _closeTheme(tester);
+      expect(changes, 1);
+      expect(latest.lightThemeId, 'paper');
+      expect(latest.darkThemeId, 'green');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final dismissal in ['back', 'system', 'drag']) {
+    testWidgets('theme draft commits once on $dismissal dismissal', (
+      tester,
+    ) async {
+      var changes = 0;
+      var latest = const NovelReaderSettings();
+      await _mount(
+        tester,
+        onChanged: (value) {
+          latest = value;
+          changes++;
+        },
+      );
+      await _openTheme(tester);
+
+      final original = _previewSpan(tester).toPlainText();
+      expect(original, contains('『未说完的话』'));
+      await _tapVisible(tester, 'novel-dialogue-enabled');
+
+      await _setSelect(
+        tester,
+        'novel-dialogue-weight',
+        NovelDialogueWeight.bold,
+      );
+      final backgroundToggle = find.byKey(
+        const ValueKey('novel-dialogue-background-enabled'),
+      );
+      await tester.ensureVisible(backgroundToggle);
+      tester.widget<SwitchListTile>(backgroundToggle).onChanged!(true);
+      await tester.pumpAndSettle();
+      final opacity = find.byKey(
+        const ValueKey('novel-dialogue-background-opacity'),
+      );
+      for (final value in [0.2, 0.35, 0.5]) {
+        tester.widget<Slider>(opacity).onChanged!(value);
+        await tester.pumpAndSettle();
+      }
+      expect(changes, 0);
+      final displayed = _previewSpan(tester).toPlainText();
+      expect(displayed, contains('『未说完的话』'));
+      expect(displayed, contains('她说：「这一句尚未结束'));
+      final spans = _descendantSpans(_previewSpan(tester));
+      expect(
+        spans.any((span) => span.style?.fontWeight == FontWeight.w700),
+        isTrue,
+      );
+      switch (dismissal) {
+        case 'back':
+          await _closeTheme(tester);
+        case 'system':
+          await tester.binding.handlePopRoute();
+          await tester.pumpAndSettle();
+
+        case 'drag':
+          final sheet = find.byKey(
+            const ValueKey('novel-theme-settings-sheet'),
+          );
+          final handle = find.descendant(
+            of: find.ancestor(of: sheet, matching: find.byType(AppSheet)),
+            matching: find.byType(AppSheetHandle),
+          );
+          await tester.fling(handle, const Offset(0, 500), 1500);
+          await tester.pumpAndSettle();
+      }
+      expect(
+        find.byKey(const ValueKey('novel-theme-settings-sheet')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('novel-theme-settings-entry')),
+        findsOneWidget,
+      );
+      expect(changes, 1);
+      expect(latest.dialogueEnabled, isTrue);
+      expect(latest.lightDialogueStyle.weight, NovelDialogueWeight.bold);
+      expect(latest.lightDialogueStyle.backgroundOpacity, 0.5);
+      expect(
+        latest.darkDialogueStyle,
+        const NovelDialogueStyle(backgroundColor: 0xFFFFFFFF),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'closing unchanged theme or switching edit mode does not submit',
+    (tester) async {
+      var changes = 0;
+      await _mount(tester, onChanged: (_) => changes++);
+      await _openTheme(tester, dark: true);
+      await _openTheme(tester, dark: false);
+      await _closeTheme(tester);
+      expect(changes, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'preview follows selected light and dark palette, not app brightness',
+    (tester) async {
+      final settings =
+          const NovelReaderSettings(
+                dialogueEnabled: true,
+                lightThemeId: 'light-custom',
+                darkThemeId: 'dark-custom',
+                lightDialogueStyle: NovelDialogueStyle(
+                  colorMode: NovelDialogueColorMode.custom,
+                  textColor: 0xFF335577,
+                ),
+                darkDialogueStyle: NovelDialogueStyle(
+                  colorMode: NovelDialogueColorMode.custom,
+                  textColor: 0xFFAABBCC,
+                ),
+              )
+              .upsertCustomTheme(
+                const NovelReaderCustomTheme(
+                  id: 'light-custom',
+                  name: '浅色纸',
+                  backgroundColor: 0xFFF8F4E8,
+                  textColor: 0xFF302A22,
+                ),
+              )
+              .upsertCustomTheme(
+                const NovelReaderCustomTheme(
+                  id: 'dark-custom',
+                  name: '深色纸',
+                  backgroundColor: 0xFF142332,
+                  textColor: 0xFFE5DEC1,
+                ),
+              );
+      var changes = 0;
+      await _mount(
+        tester,
+        settings: settings,
+        systemBrightness: Brightness.dark,
+        onChanged: (_) => changes++,
+      );
+      await _openTheme(tester);
+      for (final dark in [true, false, true]) {
+        await _openTheme(tester, dark: dark);
+        final palette = NovelReaderPalette.resolve(
+          settings,
+          dark ? Brightness.dark : Brightness.light,
+        );
+        final container = tester.widget<Container>(
+          find.byKey(const ValueKey('novel-settings-preview')),
+        );
+        expect(
+          (container.decoration! as BoxDecoration).color,
+          palette.background,
+        );
+        expect(
+          _previewRichTexts(tester).first.text.style?.color,
+          palette.foreground,
+        );
+        final dialogue = resolveNovelDialoguePresentation(
+          settings,
+          dark: dark,
+          foreground: palette.foreground,
+          background: palette.background,
+        )!;
+        expect(
+          _descendantSpans(
+            _previewSpan(tester),
+          ).any((span) => span.style?.color == dialogue.foreground),
+          isTrue,
+        );
+      }
+      await _closeTheme(tester);
+      expect(changes, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('low contrast warns without blocking color and opacity edits', (
     tester,
   ) async {
-    var latest = const NovelReaderSettings();
-    await _mount(tester, onChanged: (value) => latest = value);
-    final lightTile = find.byKey(const ValueKey('novel-light-theme'));
-    await tester.ensureVisible(lightTile);
+    var latest = const NovelReaderSettings(
+      dialogueEnabled: true,
+      lightDialogueStyle: NovelDialogueStyle(
+        colorMode: NovelDialogueColorMode.custom,
+        textColor: 0xFF666666,
+        backgroundColor: 0xFF666666,
+        backgroundOpacity: 1,
+      ),
+    );
+    await _mount(
+      tester,
+      settings: latest,
+      onChanged: (value) => latest = value,
+    );
+    await _openTheme(tester);
+    expect(
+      find.byKey(const ValueKey('novel-dialogue-low-contrast')),
+      findsOneWidget,
+    );
+    tester
+        .widget<Slider>(
+          find.byKey(const ValueKey('novel-dialogue-background-opacity')),
+        )
+        .onChanged!(0);
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('novel-dialogue-low-contrast')),
+      findsNothing,
+    );
+    await _setSelect(
+      tester,
+      'novel-dialogue-color-mode',
+      NovelDialogueColorMode.body,
+    );
+    expect(
+      find.byKey(const ValueKey('novel-dialogue-text-color')),
+      findsNothing,
+    );
+    await _setSelect(
+      tester,
+      'novel-dialogue-color-mode',
+      NovelDialogueColorMode.custom,
+    );
+    await _tapVisible(tester, 'novel-dialogue-text-color');
+    tester
+        .widget<ColorPicker>(find.byType(ColorPicker))
+        .onColorChanged(Colors.white);
+    final context = tester.element(find.byType(ColorPicker));
     await tester.tap(
-      find.descendant(of: lightTile, matching: find.byType(SelectTile<String>)),
+      find.text(MaterialLocalizations.of(context).okButtonLabel).first,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('纸张').last);
-    await tester.pumpAndSettle();
-    expect(latest.lightThemeId, 'paper');
-    expect(latest.darkThemeId, 'gray');
-    final darkTile = find.byKey(const ValueKey('novel-dark-theme'));
-    await tester.ensureVisible(darkTile);
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(of: darkTile, matching: find.byType(SelectTile<String>)),
+    expect(
+      find.byKey(const ValueKey('novel-dialogue-low-contrast')),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('护眼绿').last);
-    await tester.pumpAndSettle();
-    expect(latest.lightThemeId, 'paper');
-    expect(latest.darkThemeId, 'green');
+    await _closeTheme(tester);
+    expect(latest.lightDialogueStyle.textColor, 0xFFFFFFFF);
+    expect(latest.lightDialogueStyle.backgroundOpacity, 0);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'disabling dialogue preserves style and restores original preview',
+    (tester) async {
+      var latest = const NovelReaderSettings(dialogueEnabled: true);
+      await _mount(
+        tester,
+        settings: latest,
+        onChanged: (value) => latest = value,
+      );
+      await _openTheme(tester);
+      await _setSelect(
+        tester,
+        'novel-dialogue-weight',
+        NovelDialogueWeight.medium,
+      );
+      await _tapVisible(tester, 'novel-dialogue-enabled');
+      final plain = _previewSpan(tester).toPlainText();
+      expect(plain, contains('『未说完的话』'));
+      expect(find.byKey(const ValueKey('novel-dialogue-weight')), findsNothing);
+      await _closeTheme(tester);
+      expect(latest.dialogueEnabled, isFalse);
+      expect(latest.lightDialogueStyle.weight, NovelDialogueWeight.medium);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final (size, textScale) in [
+    (const Size(375, 812), 1.0),
+    (const Size(320, 640), 2.0),
+    (const Size(812, 375), 1.0),
+  ]) {
+    testWidgets(
+      'theme fills screen and pins scrollable preview at $size $textScale',
+      (tester) async {
+        await _mount(
+          tester,
+          settings: const NovelReaderSettings(
+            fontSize: 48,
+            lineHeight: 3,
+            paragraphSpacing: 64,
+            dialogueEnabled: true,
+          ),
+          onChanged: (_) {},
+          size: size,
+          textScale: textScale,
+          reduceMotion: true,
+        );
+        await _openTheme(tester);
+        final sheet = find.byKey(const ValueKey('novel-theme-settings-sheet'));
+        final frame = find.ancestor(of: sheet, matching: find.byType(AppSheet));
+        expect(tester.widget<AppSheet>(frame).heightFactor, 1);
+        expect(tester.getSize(frame).height, closeTo(size.height, 1));
+        final preview = find.byKey(const ValueKey('novel-settings-preview'));
+        final previewScroll = find.byKey(
+          const ValueKey('novel-theme-preview-scroll'),
+        );
+        expect(
+          tester.getSize(preview).height,
+          lessThanOrEqualTo(size.height * 0.4 + 1),
+        );
+        final previewPosition = tester.getTopLeft(preview);
+        final headerPosition = tester.getTopLeft(
+          find.byKey(const ValueKey('novel-theme-settings-back')),
+        );
+        final scroll = find.byKey(
+          const ValueKey('novel-theme-settings-scroll'),
+        );
+        expect(find.descendant(of: scroll, matching: preview), findsNothing);
+        expect(_previewRichTexts(tester).length, 7);
+        final innerScrollable = find.descendant(
+          of: previewScroll,
+          matching: find.byType(Scrollable),
+        );
+        expect(
+          tester
+              .state<ScrollableState>(innerScrollable)
+              .position
+              .maxScrollExtent,
+          greaterThan(0),
+        );
+        for (final key in [
+          'novel-light-theme',
+          'novel-dialogue-color-mode',
+          'novel-dialogue-weight',
+        ]) {
+          final row = find.byKey(ValueKey(key));
+          await tester.ensureVisible(row);
+          await tester.pumpAndSettle();
+          final select = find.descendant(
+            of: row,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is SelectTile<String> ||
+                  widget is SelectTile<NovelDialogueColorMode> ||
+                  widget is SelectTile<NovelDialogueWeight>,
+            ),
+          );
+          expect(
+            tester.getBottomRight(select).dx,
+            closeTo(tester.getBottomRight(row).dx, 1),
+          );
+        }
+        final backgroundToggle = find.byKey(
+          const ValueKey('novel-dialogue-background-enabled'),
+        );
+        await tester.ensureVisible(backgroundToggle);
+        tester.widget<SwitchListTile>(backgroundToggle).onChanged!(true);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('novel-dialogue-background-opacity')),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(preview), previewPosition);
+        expect(
+          tester.getTopLeft(
+            find.byKey(const ValueKey('novel-theme-settings-back')),
+          ),
+          headerPosition,
+        );
+        expect(
+          find
+              .byKey(const ValueKey('novel-dialogue-background-opacity'))
+              .hitTestable(),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets(
     'add dialog edits name and colors together, then binds to dark mode',
@@ -270,10 +775,12 @@ void main() {
       expect(previewText.style?.color, const Color(0xFFE8DDBA));
       await tester.tap(find.byKey(const ValueKey('novel-theme-edit-confirm')));
       await tester.pumpAndSettle();
+      await _closeTheme(tester);
       expect(latest.customThemes, hasLength(1));
       expect(latest.customThemes.single.name, '夜航');
       expect(latest.customThemes.single.backgroundColor, 0xFF152337);
       expect(latest.customThemes.single.textColor, 0xFFE8DDBA);
+      await _openTheme(tester, dark: true);
       final darkTile = find.byKey(const ValueKey('novel-dark-theme'));
       await tester.ensureVisible(darkTile);
       await tester.pumpAndSettle();
@@ -286,6 +793,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('夜航').last);
       await tester.pumpAndSettle();
+      await _closeTheme(tester);
       expect(latest.darkThemeId, latest.customThemes.single.id);
       expect(tester.takeException(), isNull);
     },
@@ -324,6 +832,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('novel-theme-edit-confirm')));
     await tester.pumpAndSettle();
+    await _closeTheme(tester);
     expect(latest.customThemes.single.id, 'c1');
     expect(latest.customThemes.single.name, '暮色');
     expect(latest.customThemes.single.backgroundColor, 0xFF223344);
@@ -351,6 +860,7 @@ void main() {
     await _tapVisible(tester, 'novel-custom-theme-delete-c1');
     await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
+    await _closeTheme(tester);
     expect(latest.customThemes, isEmpty);
     // 绑定保留原 ID，展示时由 themeIdFor 兜底回退到深色默认（灰）。
     expect(latest.themeIdFor(dark: true), 'gray');
@@ -522,6 +1032,71 @@ void main() {
     });
     expect(tester.takeException(), isNull);
   });
+
+  for (final (locale, label, size, textScale, brightness, reduceMotion) in [
+    (
+      const Locale('zh'),
+      '不遮挡状态组件',
+      const Size(375, 812),
+      1.0,
+      Brightness.light,
+      false,
+    ),
+    (
+      const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      '不遮擋狀態元件',
+      const Size(320, 850),
+      2.0,
+      Brightness.dark,
+      true,
+    ),
+    (
+      const Locale('zh'),
+      '不遮挡状态组件',
+      const Size(812, 375),
+      1.0,
+      Brightness.dark,
+      true,
+    ),
+  ]) {
+    testWidgets(
+      'focus status switch follows the focus details at $size $locale',
+      (tester) async {
+        var latest = const NovelReaderSettings();
+        await _mount(
+          tester,
+          settings: latest,
+          onChanged: (value) => latest = value,
+          size: size,
+          textScale: textScale,
+          locale: locale,
+          systemBrightness: brightness,
+          reduceMotion: reduceMotion,
+        );
+        final finder = find.byKey(
+          const ValueKey('novel-focus-keep-status-visible'),
+        );
+        expect(finder, findsNothing);
+        await _tapVisible(tester, 'novel-focus-mode');
+        expect(tester.widget<SwitchListTile>(finder).value, isFalse);
+        expect(finder.hitTestable(), findsNothing);
+        await _tapVisible(tester, 'novel-focus-details-toggle');
+        await _tapVisible(tester, 'novel-focus-keep-status-visible');
+        expect(find.text(label), findsOneWidget);
+        expect(latest.focusKeepStatusVisible, isTrue);
+        expect(tester.widget<SwitchListTile>(finder).value, isTrue);
+        await _tapVisible(tester, 'novel-focus-mode');
+        expect(finder, findsNothing);
+        expect(latest.focusKeepStatusVisible, isTrue);
+        await _tapVisible(tester, 'novel-focus-mode');
+        expect(tester.widget<SwitchListTile>(finder).value, isTrue);
+        await _tapVisible(tester, 'novel-focus-details-toggle');
+        await _tapVisible(tester, 'novel-focus-keep-status-visible');
+        expect(latest.focusKeepStatusVisible, isFalse);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('focus boundaries move each other to keep a ten percent gap', (
     tester,
@@ -818,7 +1393,7 @@ void main() {
       onChanged: (value) => latest = value,
       reduceMotion: true,
     );
-    expect(find.byType(ReaderSettingsFold), findsNWidgets(2));
+    expect(find.byType(ReaderSettingsFold), findsOneWidget);
     expect(
       find.byKey(const ValueKey('novel-volume-key')).hitTestable(),
       findsNothing,
@@ -869,7 +1444,6 @@ void main() {
           locale: locale,
         );
         await _toggleFold(tester, 'novel-page-turn-settings');
-        await _toggleFold(tester, 'novel-custom-theme-settings');
         final realisticTile = find.byKey(
           const ValueKey('novel-realistic-page-turn'),
         );
@@ -883,9 +1457,7 @@ void main() {
           'novel-volume-key',
           'novel-realistic-page-turn',
           'novel-instant-page-turn',
-          'novel-light-theme',
-          'novel-dark-theme',
-          'novel-theme-add',
+          'novel-theme-settings-entry',
           'novel-keep-screen-on',
           'reader-status-overlay-switch',
         ]) {
@@ -893,6 +1465,44 @@ void main() {
           await tester.ensureVisible(finder);
           await tester.pumpAndSettle();
           expect(finder, findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
+        await _openTheme(tester, dark: false);
+        await _toggleFold(tester, 'novel-custom-theme-settings');
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('novel-theme-add')),
+        );
+        await tester.pumpAndSettle();
+        await _tapVisible(tester, 'novel-dialogue-enabled');
+        for (final key in [
+          'novel-dialogue-color-mode',
+          'novel-dialogue-weight',
+          'novel-dialogue-background-enabled',
+        ]) {
+          final control = find.byKey(ValueKey(key));
+          await tester.ensureVisible(control);
+          await tester.pumpAndSettle();
+          expect(control.hitTestable(), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
+        final backgroundToggle = find.byKey(
+          const ValueKey('novel-dialogue-background-enabled'),
+        );
+        await tester.ensureVisible(backgroundToggle);
+        tester.widget<SwitchListTile>(backgroundToggle).onChanged!(true);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('novel-dialogue-background-opacity')),
+        );
+        await tester.pumpAndSettle();
+        for (final dark in [false, true]) {
+          await _openTheme(tester, dark: dark);
+          final tile = find.byKey(
+            ValueKey(dark ? 'novel-dark-theme' : 'novel-light-theme'),
+          );
+          await tester.ensureVisible(tile);
+          await tester.pumpAndSettle();
+          expect(tile, findsOneWidget);
           expect(tester.takeException(), isNull);
         }
         expect(tester.takeException(), isNull);

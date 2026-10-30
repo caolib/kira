@@ -604,13 +604,17 @@ class MangaApi {
     );
   }
 
-  /// 连续拉取章节评论前 [pages] 页，页间隔 [chapterCommentPageGap]。
+  /// 连续拉取章节评论前 [pages] 页，未指定时采用用户设置。
+  /// 每次翻页随机间隔 1–1.5 秒。
   ///
   /// 服务端每页固定 10 条，单独请求 `limit: 100` 也只能拿到一页。
   Future<({List<ChapterComment> list, int total})> getChapterCommentsPages(
     String chapterId, {
-    int pages = chapterCommentInitialPages,
+    int? pages,
   }) async {
+    final pageCount = normalizeChapterCommentPages(
+      pages ?? _t.user.commentInitialPages,
+    );
     final first = await getChapterComments(
       chapterId,
       limit: chapterCommentPageSize,
@@ -618,7 +622,13 @@ class MangaApi {
     var list = first.list;
     var total = first.total;
 
-    for (var page = 1; page < pages && list.length < total; page++) {
+    for (
+      var page = 1;
+      page < pageCount &&
+          list.length < total &&
+          list.length >= chapterCommentPageSize;
+      page++
+    ) {
       await Future<void>.delayed(chapterCommentPageGap);
       final next = await getChapterComments(
         chapterId,
@@ -630,7 +640,9 @@ class MangaApi {
       list = [...list, ...next.list.where((c) => seen.add(c.id))];
       total = next.total;
       // 服务端在分页边界重复返回同一批数据时停止，避免死循环。
-      if (list.length == before) break;
+      if (list.length == before || next.list.length < chapterCommentPageSize) {
+        break;
+      }
     }
     return (list: list, total: total);
   }

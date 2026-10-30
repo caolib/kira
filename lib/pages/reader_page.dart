@@ -2,15 +2,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind, VelocityTracker;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:gal/gal.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -22,7 +19,6 @@ import '../models/chapter_comment.dart';
 import '../models/user_manager.dart';
 import '../repositories/comic_detail_repository.dart';
 import '../routing/app_router.dart';
-import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/reader_chrome.dart';
 import '../utils/adaptive_motion.dart';
@@ -46,6 +42,7 @@ import '../widgets/reader_status_settings.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments_sheet.dart';
 import 'reader/chain_scroll_layout.dart';
+import 'reader/reader_image_viewer.dart';
 import 'reader/reader_long_press_zoom.dart';
 
 part 'reader/reader_auto_scroll.dart';
@@ -56,7 +53,6 @@ part 'reader/reader_chapter_widgets.dart';
 part 'reader/reader_comments_data.dart';
 part 'reader/reader_image_cache.dart';
 part 'reader/reader_image_pipeline.dart';
-part 'reader/reader_image_viewer.dart';
 part 'reader/reader_page_mode.dart';
 part 'reader/reader_scroll_mode.dart';
 part 'reader/reader_settings_panel.dart';
@@ -104,7 +100,7 @@ class ReaderPage extends StatefulWidget {
   State<ReaderPage> createState() => _ReaderPageState();
 }
 
-class _ReaderPageState extends State<ReaderPage> {
+class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
   static const _hiddenToolbarSlideOffset = 1.05;
 
@@ -140,6 +136,7 @@ class _ReaderPageState extends State<ReaderPage> {
   final _itemScrollController = ItemScrollController();
   final _itemPositionsListener = ItemPositionsListener.create();
   final _scrollOffsetController = ScrollOffsetController();
+  Future<void>? _wakeQueue;
   bool _autoScrollEnabled = false;
   bool _autoScrollActive = false;
   Timer? _autoScrollResumeTimer;
@@ -330,6 +327,9 @@ class _ReaderPageState extends State<ReaderPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _user.reader.addListener(_onScreenOnSettingsChanged);
+    _setScreenOn(_user.reader.keepScreenOn);
     _currentUuid = widget.chapterUuid;
     _bookmarks.addListener(_onBookmarksChanged);
     unawaited(_bookmarks.ensureLoaded());
@@ -353,6 +353,9 @@ class _ReaderPageState extends State<ReaderPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _user.reader.removeListener(_onScreenOnSettingsChanged);
+    _setScreenOn(false);
     // 进度保存是防抖的，离开阅读页必须立刻落盘，否则最后几页会丢。
     unawaited(ReadingHistory.flush());
     _setVolumeIntercept(false);
@@ -373,6 +376,44 @@ class _ReaderPageState extends State<ReaderPage> {
       overlays: SystemUiOverlay.values,
     );
     super.dispose();
+  }
+
+  void _onScreenOnSettingsChanged() {
+    _setScreenOn(_user.reader.keepScreenOn);
+  }
+
+  void _setScreenOn(bool enabled) {
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    final shouldEnable =
+        enabled &&
+        (lifecycle == null || lifecycle == AppLifecycleState.resumed);
+    Future<void> toggle() async {
+      try {
+        await WakelockPlus.toggle(enable: shouldEnable);
+      } catch (error, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            error,
+            stackTrace: stack,
+            source: 'reader.screen_on',
+          ),
+        );
+      }
+    }
+
+    final operation = _wakeQueue?.then((_) => toggle()) ?? toggle();
+    late final Future<void> tail;
+    tail = operation.whenComplete(() {
+      if (identical(_wakeQueue, tail)) _wakeQueue = null;
+    });
+    _wakeQueue = tail;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _setScreenOn(
+      state == AppLifecycleState.resumed && _user.reader.keepScreenOn,
+    );
   }
 
   /// 「返回目录」统一出口：顶栏、章末按钮、末尾空白页、滚动回顶、

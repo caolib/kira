@@ -1,11 +1,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+
+part 'filter_chip_row_parts/justified_tag_wrap.dart';
 
 /// 筛选 chip 行里的一个选项。
 class FilterChipOption {
@@ -107,6 +110,37 @@ TextButton filterRowButton({
   style: TextButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
 );
 
+/// 标签区的展开/收起按钮，沿用筛选 chip 的边框、圆角与紧凑高度。
+class FilterTagsToggleButton extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onPressed;
+
+  const FilterTagsToggleButton({
+    super.key,
+    required this.expanded,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    return ActionChip(
+      avatar: Icon(
+        expanded ? Icons.expand_less : Icons.expand_more,
+        size: AppIconSize.lg,
+        color: theme.colorScheme.primary,
+      ),
+      label: Text(expanded ? l10n.tagsCollapseAll : l10n.tagsExpandAll),
+      labelStyle: theme.textTheme.labelLarge?.copyWith(
+        color: theme.colorScheme.primary,
+      ),
+      onPressed: onPressed,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+}
+
 /// 行尾「重置」按钮：与未选中筛选 chip 同款（边框 + 透明底 + onSurfaceVariant），
 /// 视觉上融入 chip 行，而非无边框的文字按钮。
 class FilterRowResetButton extends StatelessWidget {
@@ -188,16 +222,15 @@ class AllTagsGrid extends StatelessWidget {
       required bool selected,
       required VoidCallback onSelected,
     }) => FilterChip(
-      label: label,
+      // label 撑开后，chip 的可见边框与点击区域才会一起填满分配的宽度。
+      label: Center(heightFactor: 1, child: label),
       selected: selected,
       showCheckmark: false,
       onSelected: (_) => onSelected(),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return _JustifiedTagWrap(
       children: [
         chip(
           label: Text(l10n.searchFilterAll),

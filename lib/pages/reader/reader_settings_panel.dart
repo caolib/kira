@@ -429,6 +429,17 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   },
                 ),
               ),
+              SwitchListTile.adaptive(
+                key: const ValueKey('reader-keep-screen-on'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.novelReaderKeepScreenOn),
+                value: _user.reader.keepScreenOn,
+                onChanged: (value) async {
+                  await _user.reader.setKeepScreenOn(value);
+                  if (!mounted) return;
+                  setState(() {});
+                },
+              ),
               ReaderStatusSettingsSection(onChanged: widget.onChanged),
               const Divider(height: AppSpacing.xxl),
               _buildImageLoadingSettings(l10n),
