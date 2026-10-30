@@ -116,6 +116,7 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
     final anchor = NovelReaderAnchor(
       entryIndex: paragraph.entry.entryIndex,
       paragraphIndex: paragraph.paragraphIndex,
+      volumeId: paragraph.volumeId,
     );
     final item = widget.document.itemFor(anchor);
     return NovelReaderLocation(

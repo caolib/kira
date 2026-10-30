@@ -33,8 +33,11 @@ class NovelReaderViewport extends StatefulWidget {
     this.contentPadding = EdgeInsets.zero,
     this.contentRevision = 0,
     this.seam,
+    this.headSeam,
     this.onApproachEnd,
     this.onReachSeam,
+    this.onApproachStart,
+    this.onReachStart,
   });
 
   final NovelTextDocument document;
@@ -71,11 +74,20 @@ class NovelReaderViewport extends StatefulWidget {
   /// 卷末接缝处的内容：下一卷加载中 / 加载失败 / 未下载。无下一卷时为 null。
   final Widget? seam;
 
+  /// 卷首接缝处的内容：上一卷加载失败 / 未下载。无上一卷时为 null。
+  final Widget? headSeam;
+
   /// 接近卷末（约两屏）时触发下一卷预取。
   final VoidCallback? onApproachEnd;
 
   /// 卷末最后一行距视口底部超过 10% 屏高时触发追加下一卷。
   final VoidCallback? onReachSeam;
+
+  /// 卷首进入视口（约一屏）时触发上一卷预取。
+  final VoidCallback? onApproachStart;
+
+  /// 卷首第一段顶部进入视口后触发拼接上一卷。
+  final VoidCallback? onReachStart;
 
   @override
   State<NovelReaderViewport> createState() => NovelReaderViewportState();
@@ -86,6 +98,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   final _offset = ScrollOffsetController();
   final _positions = ItemPositionsListener.create();
   final _lastParagraphBodyKey = GlobalKey();
+  final _headSeamKey = GlobalKey();
   late NovelReaderAnchor _desired;
   NovelReaderLocation? _lastLocation;
   Size? _size;
@@ -104,10 +117,16 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   /// 卷末预取/追加的节流：同一次滑动只触发一次，直到回调方装载新内容。
   bool _approachNotified = false;
   bool _seamNotified = false;
+  bool _approachStartNotified = false;
+  bool _startNotified = false;
 
   /// 本轮是否真的由读者向下滑过。打开一卷时若内容很短，末段本来就在
   /// 触发阈值内；没有这道闸门会在开卷瞬间一路追加，把整本书都读进来。
   bool _scrolledForward = false;
+
+  /// 本轮是否真的由读者向上回滑过。卷首拼接同样需要读者意图，
+  /// 否则打开一卷时会立刻把上一卷也拼进来。
+  bool _scrolledBackward = false;
 
   /// Null during any restoration: callers may flush their last valid snapshot,
   /// but must not replace it with a transient layout position.
@@ -159,11 +178,25 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
     return NovelReaderLocation(
       anchor: widget.document.anchorFor(
         center.index,
-        alignment: center.itemLeadingEdge,
+        alignment: _anchorAlignment(center),
       ),
       itemIndex: center.index,
       progress: widget.document.progressAt(center.index, fraction),
     );
+  }
+
+  /// 持久化用的段落前缘位置。卷首接缝提示插在首段上方，但它不属于正文：
+  /// 首段已部分滚出视口时扣掉提示高度，重进页面（提示不存在）才不会
+  /// 在正文里多跳过一段距离。首段顶部仍在视口内时按 0 处理（读者在卷首）。
+  double _anchorAlignment(ItemPosition item) {
+    final leading = item.itemLeadingEdge;
+    if (item.index != 0 || leading >= 0 || widget.headSeam == null) {
+      return leading;
+    }
+    final seam = _headSeamKey.currentContext?.findRenderObject();
+    final height = _size?.height ?? 0;
+    if (seam is! RenderBox || !seam.hasSize || height <= 0) return leading;
+    return leading + seam.size.height / height;
   }
 
   bool _isEmptyParagraph(int index) =>
@@ -218,8 +251,9 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   void didUpdateWidget(NovelReaderViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.contentRevision != widget.contentRevision) {
-      // 连续阅读在原位追加了下一卷：已有内容位置不变，只解锁接缝节流，
-      // 让读者能继续下滑到新的卷末。不重定位滚动，否则视口会跳。
+      // 连续阅读在原位追加了下一卷（或拼接了上一卷）：已有内容位置不变，
+      // 只解锁接缝节流，让读者能继续滑到新的卷首/卷末。不重定位滚动，
+      // 否则视口会跳。
       _rearmSeam();
       // 回收旧卷会改变 item 下标，此时 jumpRevision 同步递增，走下面的
       // 重定位分支；单纯追加则到此为止。
@@ -317,7 +351,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
     return NovelReaderLocation(
       anchor: widget.document.anchorFor(
         first.index,
-        alignment: first.itemLeadingEdge,
+        alignment: _anchorAlignment(first),
       ),
       itemIndex: first.index,
       progress:
@@ -339,7 +373,15 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
 
   /// 卷末接缝判定：末段接近两屏时预取，正文实际下沿距底部超过 10% 屏高时追加。
   /// 末段有至少一屏的占位留白，不能用它的 item 边界代替正文末行。
+  ///
+  /// 卷首对称：首段进入视口即预取上一卷；首段顶部回到视口内（读者已在卷首）
+  /// 时拼接上一卷。两者都要求本轮发生过真实的向上滚动。
   void _checkVolumeSeam() {
+    _checkVolumeEnd();
+    _checkVolumeStart();
+  }
+
+  void _checkVolumeEnd() {
     if (!_scrolledForward) return;
     if (widget.onApproachEnd == null && widget.onReachSeam == null) return;
     final lastIndex = widget.document.itemCount - 1;
@@ -366,13 +408,45 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
     }
   }
 
-  /// 追加新卷后重新解锁接缝：只有读者继续向下滑才会再次触发，
+  void _checkVolumeStart() {
+    if (!_scrolledBackward) return;
+    if (widget.onApproachStart == null && widget.onReachStart == null) return;
+    ItemPosition? first;
+    for (final item in _positions.itemPositions.value) {
+      if (item.index == 0) {
+        first = item;
+        break;
+      }
+    }
+    if (first == null) return;
+    final visible = first.itemLeadingEdge < 1 && first.itemTrailingEdge > 0;
+    if (!visible) return;
+    if (!_approachStartNotified) {
+      _approachStartNotified = true;
+      widget.onApproachStart?.call();
+    }
+    if (_startNotified) return;
+    // 首段顶部在视口内：卷首之上只剩系统栏留白，继续回滑就是上一卷。
+    if (first.itemLeadingEdge >= -0.001) {
+      _startNotified = true;
+      widget.onReachStart?.call();
+    }
+  }
+
+  /// 追加/拼接新卷后重新解锁接缝：只有读者继续同向滑动才会再次触发，
   /// 避免一帧内连跳多卷。
   void _rearmSeam() {
     _approachNotified = false;
     _seamNotified = false;
+    _approachStartNotified = false;
+    _startNotified = false;
     _scrolledForward = false;
+    _scrolledBackward = false;
   }
+
+  /// 页面层因反方向拼接正在进行而放弃本次接缝触发时调用：重新解锁，
+  /// 读者继续滑动即可重试，而不会永久丢掉这次触发机会。
+  void rearmSeams() => _rearmSeam();
 
   @override
   void dispose() {
@@ -395,13 +469,18 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
         isDrag: notification.dragDetails != null,
         at: DateTime.now(),
       );
-      // 只有读者真正向下滑过，卷末接缝判定才生效（见 _scrolledForward）。
+      // 只有读者真正向下滑过，卷末接缝判定才生效；反方向同理用于卷首。
       if ((notification.scrollDelta ?? 0) > 0) _scrolledForward = true;
+      if ((notification.scrollDelta ?? 0) < 0) _scrolledBackward = true;
     }
     // 正文恰好一屏（或末段被撑满一屏）时无法产生滚动位移，向下越界也算
     // 读者在继续下滑：此时接缝判定已经成立，直接补一次。
     if (notification is OverscrollNotification && notification.overscroll > 0) {
       _scrolledForward = true;
+      _checkVolumeSeam();
+    }
+    if (notification is OverscrollNotification && notification.overscroll < 0) {
+      _scrolledBackward = true;
       _checkVolumeSeam();
     }
     // A user session opens at any ScrollStart (drag or the ballistic phase
@@ -546,6 +625,8 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (index == 0 && widget.headSeam != null)
+            KeyedSubtree(key: _headSeamKey, child: widget.headSeam!),
           if (paragraph.paragraphIndex == 0 && entry.name.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),

@@ -103,16 +103,22 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   NovelVolumeDetail? _accessDetail;
   NovelTextDocument? _document;
 
-  // ── 滚动模式连续阅读（卷末继续下滑进入下一卷）──
-  /// 卷栈：当前卷 + 已追加的下一卷（最多两卷）。手动跳卷/换卷时重置。
+  // ── 滚动模式连续阅读（卷尾下滑进入下一卷、卷首回滑拼接上一卷）──
+  /// 卷栈：当前卷及相邻卷（最多两卷）。手动跳卷/换卷时重置。
   final _stackVolumes = <NovelReaderVolumeDocument>[];
   final _stackContents = <String, NovelVolumeContent>{};
   final _stackLoads = <String, Future<NovelVolumeContent>>{};
+
+  /// 只读缓存的预取结果：与实际阅读加载分开，缓存未命中不能挡住正常加载。
+  final _stackPrefetches = <String, Future<NovelVolumeContent>>{};
   NovelReaderStack? _stack;
   int _contentRevision = 0;
   bool _appending = false;
+  bool _prepending = false;
   Object? _seamError;
   bool _seamUnavailable = false;
+  Object? _headSeamError;
+  bool _headSeamUnavailable = false;
   NovelReaderLocation? _location;
   NovelReaderAnchor _target = const NovelReaderAnchor(entryIndex: 0);
   NovelReadingProgress? _pendingProgress;
@@ -629,11 +635,15 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
       _stackVolumes.clear();
       _stackContents.clear();
       _stackLoads.clear();
+      _stackPrefetches.clear();
       _stack = null;
       ++_contentRevision;
       _appending = false;
+      _prepending = false;
       _seamError = null;
       _seamUnavailable = false;
+      _headSeamError = null;
+      _headSeamUnavailable = false;
     });
     try {
       final content = await _source.loadContent(
@@ -649,7 +659,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
       }
       if (content.detail.isLocked) throw NovelAccessException(content.detail);
       _volumeDetails[volume] = content.detail;
-      // 卷栈以当前卷起步；滚动模式下后续可原位追加下一卷。
+      // 卷栈以当前卷起步；滚动模式下可原位追加下一卷 / 拼接上一卷。
       final stackVolume = NovelReaderVolumeDocument(
         volumeId: volume,
         volumeName: content.detail.volume.name,
