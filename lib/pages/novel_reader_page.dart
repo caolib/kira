@@ -53,7 +53,7 @@ class NovelReaderPage extends ConsumerStatefulWidget {
     this.initialParagraphIndex = 0,
     this.initialParagraphAlignment = 0,
     this.resume = false,
-    this.localOnly = false,
+    this.preferDownloads = false,
     this.noDetailBelow = false,
     this.highlightOnEntry = false,
     this.source,
@@ -67,7 +67,9 @@ class NovelReaderPage extends ConsumerStatefulWidget {
   final int initialParagraphIndex;
   final double initialParagraphAlignment;
   final bool resume;
-  final bool localOnly;
+
+  /// 本地入口先初始化下载目录，缺失内容仍允许在线加载。
+  final bool preferDownloads;
 
   /// 栈底是否没有小说详情页（书架/历史/书签/继续阅读等直达入口）。
   /// 「总目录」退出时据此决定 pop 还是原地替换成详情页。
@@ -206,7 +208,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         oldWidget.initialParagraphAlignment !=
             widget.initialParagraphAlignment ||
         oldWidget.resume != widget.resume ||
-        oldWidget.localOnly != widget.localOnly ||
+        oldWidget.preferDownloads != widget.preferDownloads ||
         oldWidget.highlightOnEntry != widget.highlightOnEntry ||
         oldWidget.source != widget.source) {
       // Capture against the old book's identity, not the new widget fields.
@@ -546,32 +548,15 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     if (!_active(session) || request != _request) return;
     if (widget.source == null) {
       final downloads = ref.read(novelDownloadStoreProvider);
-      try {
-        if (widget.localOnly) {
+      if (widget.preferDownloads) {
+        try {
           await downloads.init();
-          if (!_active(session) || request != _request) return;
-          _source = DownloadedNovelReaderSource(downloads);
-        } else if (downloads.rootPath != null) {
-          // 生产启动时已初始化下载目录；普通在线测试或未启用下载时不触发平台 I/O。
-          final snapshot = await downloads.readVolumeSnapshot(path, volume);
-          if (!_active(session) || request != _request) return;
-          if (snapshot != null) {
-            _source = DownloadedNovelReaderSource(downloads);
-          }
-        }
-      } catch (error, stack) {
-        _warn(error, stack, 'downloads.resolve');
-        if (!_active(session) || request != _request) return;
-        if (widget.localOnly) {
-          setState(() {
-            _offline = true;
-            _loading = false;
-            _error = const NovelDownloadUnavailableException();
-          });
-          _setToolbarVisible(true);
-          return;
+        } catch (error, stack) {
+          _warn(error, stack, 'downloads.resolve');
         }
       }
+      if (!_active(session) || request != _request) return;
+      _source = DownloadFirstNovelReaderSource(downloads, _source);
     }
     if (!_active(session) || request != _request) return;
     unawaited(_loadVolumes(session, path));
@@ -1341,14 +1326,13 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
                   )
                 // Loading / retry actions remain outside the chrome so they
                 // are reachable even in a short viewport with large text.
-                : SafeArea(
-                    child: Column(
-                      children: [
-                        if (_toolbarVisible) header,
-                        Expanded(child: body),
-                        if (_toolbarVisible) toolbar,
-                      ],
-                    ),
+                : Column(
+                    children: [
+                      // chrome 自带 SafeArea，黑色底板必须覆盖系统栏区域。
+                      if (_toolbarVisible) header,
+                      Expanded(child: SafeArea(child: body)),
+                      if (_toolbarVisible) toolbar,
+                    ],
                   ),
           ),
         ),

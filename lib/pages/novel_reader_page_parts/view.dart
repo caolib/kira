@@ -466,7 +466,7 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
               icon: const Icon(Icons.login),
               label: Text(l10n.novelReaderCopyLogin),
             ),
-          if (_source.localOnly || widget.localOnly)
+          if (_source.localOnly)
             TextButton.icon(
               key: const ValueKey('novel-reader-open-downloads'),
               onPressed: () async {
