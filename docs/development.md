@@ -33,3 +33,7 @@ flutter build apk --debug
 ```sh
 flutter run -d <设备ID>
 ```
+
+## 发布
+
+在 Claude Code 中使用项目 [`/release` skill](../.claude/skills/release/SKILL.md)，先确认版本与渠道、审查更新日志，再批准发布。

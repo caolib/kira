@@ -55,7 +55,13 @@ ref/
 # Environment Variables
 .env
 
-.claude
+# Share only the project release skill; keep local configuration and other skills private.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/release/
+.claude/skills/release/*
+!.claude/skills/release/SKILL.md
 .pi
 .agents
 

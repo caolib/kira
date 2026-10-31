@@ -81,7 +81,8 @@ Run these from the repository root:
 
 ### Other Entry Points
 - `scripts/`: PowerShell helpers — `run.ps1 <win|mumu|emu>` (device boot + `KIRA_DEVICE`), `build_apk.ps1`, `build_windows.ps1`, `count_lib_dart_lines.ps1`.
-- `docs/`: `persistence-and-cache.md`（动存储前必读）、`novel.md`（轻小说设计）、`architecture.md`（API 分层 / 缓存仓库解剖 / 序列化清单 / UserManager 偏好归属与通知）、`platform-build.md`（Windows / Android 构建排查）、`widgets.md`（复用组件模式）、`release.md`（发版手册）、`TODO.md`、`CHANGELOG.md`.
+- `docs/`: `persistence-and-cache.md`（动存储前必读）、`novel.md`（轻小说设计）、`architecture.md`（API 分层 / 缓存仓库解剖 / 序列化清单 / UserManager 偏好归属与通知）、`platform-build.md`（Windows / Android 构建排查）、`widgets.md`（复用组件模式）、`TODO.md`、`CHANGELOG.md`.
+- 发版 / 续发 / 发布日志修正：使用项目 `/release` skill；自然语言发版请求先读 `.claude/skills/release/SKILL.md`，按信息确认、日志审查、发布批准三道关卡执行。
 - `.github/workflows/`: `build-ci.yml`（`v*-beta*` tag 或手动触发 Android 构建）、`release.yml`（非 beta 的 `v*` tag 或手动触发正式版构建）、`release-all.yaml`（手动、全平台）。
 
 ### Platform Build Notes (on-demand)
@@ -130,7 +131,7 @@ Emoji-prefixed Conventional Commit types with concise Chinese summaries:
 
 `scripts/git-hooks/pre-commit` 提交前会跑 `scripts/update_version_code.ps1`，把 `pubspec.yaml` 的 versionCode 改成「HEAD 提交数 + 1」并自动 `git add` —— 每次提交都会带上这处改动，属预期行为，不要当成误提交回退。新克隆的仓库需先执行一次 `git config core.hooksPath scripts/git-hooks` 才会启用。
 
-don't update `docs/CHANGELOG.md`
+普通开发不要更新 `docs/CHANGELOG.md`；正式发版按 `/release` skill 准备完整日志并经用户审查，确认后才提交、打标签和推送。
 
 ## Security
 

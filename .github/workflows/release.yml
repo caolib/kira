@@ -1,12 +1,12 @@
 name: Build & Release
 
-# 推送正式版 v* tag 触发（发版流程见 docs/release.md；beta tag 由 build-ci.yml 处理），
+# 推送正式版 v* tag 触发，
 # 也支持手动 dispatch：
 # 1. 三个 ABI 的 APK 并行构建（arm / arm64 / x86_64，flutter build apk 不支持 32 位 x86），
 #    复用 scripts/build_apk.ps1
 # 2. Windows x64 安装包（Inno Setup），复用 scripts/build_windows.ps1
-# 3. 创建 GitHub Release 起草版本（标题 "App vX.Y.Z"，正文取 docs/CHANGELOG.md），
-#    上传全部产物，人工核对后再发布
+# 3. 直接创建公开 GitHub Release（标题 "App vX.Y.Z"，正文取标签快照内的 docs/CHANGELOG.md），
+#    上传全部产物；日志须在提交与推送标签前完成审查
 on:
   push:
     tags:
