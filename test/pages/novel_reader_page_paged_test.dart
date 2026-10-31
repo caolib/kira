@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/api/novel/novel_api.dart';
-import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/novel.dart';
 import 'package:kira/models/novel_reader_settings.dart';
 import 'package:kira/models/novel_reader_status_settings.dart';
@@ -194,11 +193,9 @@ Future<void> _mount(
         novelBookmarkStoreProvider.overrideWithValue(_bookmarks),
         novelApiProvider.overrideWithValue(_Api()),
       ],
-      child: MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: NovelReaderPage(pathWord: book, volumeId: volume),
+      child: wrapWithApp(
+        NovelReaderPage(pathWord: book, volumeId: volume),
+        wrapInScaffold: false,
       ),
     ),
   );
@@ -790,6 +787,151 @@ void main() {
       }
     }
   }
+
+  for (final mode in NovelReaderMode.values) {
+    for (final key in [
+      'novel-focus-top',
+      'novel-focus-bottom',
+      'novel-focus-opacity',
+    ]) {
+      testWidgets('focus preview $mode $key hides and restores both bars', (
+        tester,
+      ) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(375, 850);
+        addTearDown(tester.view.reset);
+        await _mount(
+          tester,
+          repository: repository,
+          store: store,
+          settings: NovelReaderSettings(mode: mode, focusModeEnabled: true),
+        );
+        await _openSettings(tester);
+        final expand = find.byKey(const ValueKey('novel-focus-details-toggle'));
+        await tester.ensureVisible(expand);
+        await _settle(tester);
+        await tester.tap(expand);
+        await _settle(tester);
+        final slider = find.byKey(ValueKey(key));
+        await tester.ensureVisible(slider);
+        await _settle(tester);
+        final surface = mode == NovelReaderMode.paged
+            ? find.byType(NovelReaderPageView)
+            : find.byType(NovelReaderViewport);
+        final surfaceState = tester.state(surface);
+        final surfaceRect = tester.getRect(surface);
+        final anchor = mode == NovelReaderMode.paged
+            ? _pagedLocation(tester).anchor
+            : null;
+        final fade = find.byKey(const ValueKey('app-sheet-fade'));
+        final systemUiCalls = <MethodCall>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'SystemChrome.setEnabledSystemUIMode') {
+              systemUiCalls.add(call);
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+
+        final gesture = await tester.startGesture(tester.getCenter(slider));
+        await gesture.moveBy(const Offset(30, 0));
+        await _settle(tester);
+        for (final barKey in ['novel-reader-back', 'novel-reader-settings']) {
+          final bar = find.byKey(ValueKey(barKey));
+          final slide = tester.widget<AnimatedSlide>(
+            find.ancestor(of: bar, matching: find.byType(AnimatedSlide)),
+          );
+          expect(slide.offset.dy, barKey == 'novel-reader-back' ? -1.05 : 1.05);
+          expect(bar.hitTestable(), findsNothing);
+        }
+        expect(tester.widget<AnimatedOpacity>(fade).opacity, 0);
+        final before = tester.widget<Slider>(slider).value;
+        await gesture.moveBy(Offset(key == 'novel-focus-top' ? -300 : 300, 0));
+        await _settle(tester);
+        expect(tester.widget<Slider>(slider).value, isNot(before));
+        if (key == 'novel-focus-top') {
+          expect(
+            tester
+                .getSize(find.byKey(const ValueKey('novel-focus-mask-top')))
+                .height,
+            closeTo(0, 1),
+          );
+        } else if (key == 'novel-focus-bottom') {
+          expect(
+            tester
+                .getSize(find.byKey(const ValueKey('novel-focus-mask-bottom')))
+                .height,
+            closeTo(0, 1),
+          );
+        }
+        expect(tester.state(surface), same(surfaceState));
+        expect(tester.getRect(surface), surfaceRect);
+        if (anchor != null) {
+          final current = _pagedLocation(tester).anchor;
+          expect(current.entryIndex, anchor.entryIndex);
+          expect(current.paragraphIndex, anchor.paragraphIndex);
+          expect(current.alignment, closeTo(anchor.alignment, 1e-6));
+          expect(current.volumeId, anchor.volumeId);
+        }
+        expect(systemUiCalls, isEmpty, reason: '拖动预览不能切换系统栏');
+
+        await gesture.up();
+        await _settle(tester);
+        expect(_toolbarHidden(tester), isFalse);
+        expect(tester.widget<AnimatedOpacity>(fade).opacity, 1);
+        final bottomSlide = tester.widget<AnimatedSlide>(
+          find.ancestor(
+            of: find.byKey(const ValueKey('novel-reader-settings')),
+            matching: find.byType(AnimatedSlide),
+          ),
+        );
+        expect(bottomSlide.offset, Offset.zero);
+        expect(systemUiCalls, isEmpty);
+        await tester.binding.handlePopRoute();
+        await _settle(tester);
+        expect(_toolbarHidden(tester), isFalse);
+        expect(tester.takeException(), isNull);
+        await _remove(tester);
+      });
+    }
+  }
+
+  testWidgets('closing settings during focus preview restores the toolbar', (
+    tester,
+  ) async {
+    await _mount(
+      tester,
+      repository: repository,
+      store: store,
+      settings: const NovelReaderSettings(focusModeEnabled: true),
+    );
+    await _openSettings(tester);
+    final expand = find.byKey(const ValueKey('novel-focus-details-toggle'));
+    await tester.ensureVisible(expand);
+    await _settle(tester);
+    await tester.tap(expand);
+    await _settle(tester);
+    final slider = find.byKey(const ValueKey('novel-focus-top'));
+    await tester.ensureVisible(slider);
+    await _settle(tester);
+    final control = tester.widget<Slider>(slider);
+    control.onChangeStart!(control.value);
+    await _settle(tester);
+    expect(_toolbarHidden(tester), isTrue);
+    await tester.binding.handlePopRoute();
+    await _settle(tester);
+    expect(_toolbarHidden(tester), isFalse);
+    expect(tester.takeException(), isNull);
+    await _remove(tester);
+  });
 
   testWidgets('focus status visibility updates live and persists', (
     tester,

@@ -154,6 +154,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   bool _volumeChannelAvailable = true;
   bool _loading = true;
   bool _toolbarVisible = false;
+  bool _settingsDragPreview = false;
 
   /// 工具栏滑出屏幕的位移倍数（留一点余量，避免边缘露出）。
   static const _hiddenToolbarSlideOffset = 1.05;
@@ -312,13 +313,14 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   /// 工具栏显隐过渡：隐藏时滑出屏幕，并交回点击（隐藏态不拦正文手势）。
   /// 时长走 [adaptiveDuration]，开启「减少动画」时直接切换。
   Widget _slideOnToolbar(Widget child, {required bool fromTop}) {
+    final visible = _toolbarVisible && !_settingsDragPreview;
     final hiddenOffset = _hiddenToolbarSlideOffset * (fromTop ? -1 : 1);
     return IgnorePointer(
-      ignoring: !_toolbarVisible,
+      ignoring: !visible,
       child: AnimatedSlide(
         duration: adaptiveDuration(context, const Duration(milliseconds: 200)),
         curve: adaptiveCurve(context, Curves.easeOutCubic),
-        offset: Offset(0, _toolbarVisible ? 0 : hiddenOffset),
+        offset: Offset(0, visible ? 0 : hiddenOffset),
         child: child,
       ),
     );
@@ -1040,6 +1042,13 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
 
   Future<void> _showSettings() async {
     final dragPreview = ValueNotifier<bool>(false);
+    void syncDragPreview() {
+      if (!mounted || _settingsDragPreview == dragPreview.value) return;
+      // 仅收起阅读 chrome，不切换系统栏，避免预览时屏幕尺寸变化。
+      setState(() => _settingsDragPreview = dragPreview.value);
+    }
+
+    dragPreview.addListener(syncDragPreview);
     try {
       await showAppSheet<void>(
         context,
@@ -1055,7 +1064,11 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         ),
       );
     } finally {
+      dragPreview.removeListener(syncDragPreview);
       dragPreview.dispose();
+      if (mounted && _settingsDragPreview) {
+        setState(() => _settingsDragPreview = false);
+      }
     }
   }
 
