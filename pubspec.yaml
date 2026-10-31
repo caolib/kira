@@ -1,7 +1,7 @@
 name: kira
 description: "A comic reader app."
 publish_to: "none"
-version: 1.7.5+613
+version: 1.7.5+614
 environment:
   sdk: ^3.11.0
 
