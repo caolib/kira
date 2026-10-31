@@ -11,8 +11,10 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/toast.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/error_retry_view.dart';
 import '../widgets/select_tile.dart';
+import '../widgets/settings_section.dart';
 
 class AppLogPage extends StatefulWidget {
   const AppLogPage({super.key, this.logger});
@@ -178,9 +180,10 @@ class _AppLogPageState extends State<AppLogPage> {
   }
 
   void _showSettings(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => _LogSettingsPanel(
+    showAppSheet<void>(
+      context,
+      maxHeightFactor: 0.9,
+      child: _LogSettingsPanel(
         loggingEnabled: _loggingEnabled,
         minimumLevel: _minimumLevel,
         onLoggingEnabledChanged: _setLoggingEnabled,
@@ -351,70 +354,61 @@ class _LogSettingsPanelState extends State<_LogSettingsPanel> {
     final l10n = AppLocalizations.of(context)!;
     final tt = Theme.of(context).textTheme;
 
-    return SafeArea(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.md),
-          Center(
-            child: Container(
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(l10n.appLogSettingsTitle, style: tt.titleMedium),
-            ),
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-            secondary: const Icon(Icons.fact_check_outlined),
-            title: Text(l10n.appLogRecordLogs),
-            value: _loggingEnabled,
-            onChanged: (value) {
-              setState(() => _loggingEnabled = value);
-              widget.onLoggingEnabledChanged(value);
-            },
-          ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-            leading: const Icon(Icons.tune_rounded),
-            title: Text(l10n.appLogLevel),
-            trailing: SelectTile<AppLogLevel>(
-              value: _minimumLevel,
-              foregroundColor: _levelColor(
-                Theme.of(context).colorScheme,
-                _minimumLevel,
-              ),
-              leadingIcon: _levelIcon(_minimumLevel),
-              items: [
-                for (final level in AppLogLevel.values)
-                  SelectItem(
-                    level,
-                    level.displayName(l10n),
-                    icon: _levelIcon(level),
-                    color: _levelColor(Theme.of(context).colorScheme, level),
-                  ),
-              ],
-              onChanged: (level) {
-                if (level == _minimumLevel) return;
-                setState(() => _minimumLevel = level);
-                widget.onMinimumLevelChanged(level);
-              },
-            ),
-          ),
+          Text(l10n.appLogSettingsTitle, style: tt.titleMedium),
           const SizedBox(height: AppSpacing.sm),
+          SettingsSection(
+            key: const ValueKey('log-recording-settings-card'),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.fact_check_outlined),
+                  title: Text(l10n.appLogRecordLogs),
+                  value: _loggingEnabled,
+                  onChanged: (value) {
+                    setState(() => _loggingEnabled = value);
+                    widget.onLoggingEnabledChanged(value);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.tune_rounded),
+                  title: Text(l10n.appLogLevel),
+                  trailing: SelectTile<AppLogLevel>(
+                    value: _minimumLevel,
+                    foregroundColor: _levelColor(
+                      Theme.of(context).colorScheme,
+                      _minimumLevel,
+                    ),
+                    leadingIcon: _levelIcon(_minimumLevel),
+                    items: [
+                      for (final level in AppLogLevel.values)
+                        SelectItem(
+                          level,
+                          level.displayName(l10n),
+                          icon: _levelIcon(level),
+                          color: _levelColor(
+                            Theme.of(context).colorScheme,
+                            level,
+                          ),
+                        ),
+                    ],
+                    onChanged: (level) {
+                      if (level == _minimumLevel) return;
+                      setState(() => _minimumLevel = level);
+                      widget.onMinimumLevelChanged(level);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

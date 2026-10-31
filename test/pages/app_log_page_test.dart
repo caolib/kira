@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/pages/app_log_page.dart';
 import 'package:kira/utils/app_logger.dart';
+import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/select_tile.dart';
+import 'package:kira/widgets/settings_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_helpers.dart';
@@ -279,6 +281,15 @@ void main() {
 
     await tester.tap(find.byTooltip('设置'));
     await tester.pumpAndSettle();
+    expect(find.byType(AppSheet), findsOneWidget);
+    expect(find.byType(SettingsSection), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('log-recording-settings-card')),
+        matching: find.byType(SwitchListTile),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.byType(SelectTile<AppLogLevel>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('错误').last);

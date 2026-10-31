@@ -4,6 +4,10 @@ import 'package:kira/api/ai_api.dart';
 import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/chapter_comments_sheet.dart';
+import 'package:kira/widgets/collapsible_content.dart';
+import 'package:kira/widgets/reader_settings_fold.dart';
+import 'package:kira/widgets/section_header.dart';
+import 'package:kira/widgets/settings_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../test_helpers.dart';
@@ -11,6 +15,7 @@ import '../../test_helpers.dart';
 CommentSettingsPanel _panel({
   bool isChapterComments = true,
   bool showFilteringSettings = true,
+  bool preload = true,
   int initialPages = 2,
   ValueChanged<int>? onInitialPagesChanged,
 }) => CommentSettingsPanel(
@@ -21,7 +26,7 @@ CommentSettingsPanel _panel({
   showUserName: true,
   showCommentTime: true,
   commentFontScale: 1,
-  commentPreload: true,
+  commentPreload: preload,
   commentInitialPages: initialPages,
   onLayoutChanged: (_) {},
   onShowAvatarChanged: (_) {},
@@ -37,6 +42,7 @@ Future<void> _pumpPanel(
   Widget? panel,
   bool dark = false,
   double textScale = 1,
+  bool reducedMotion = false,
 }) async {
   await tester.pumpWidget(
     wrapWithApp(
@@ -46,9 +52,10 @@ Future<void> _pumpPanel(
             brightness: dark ? Brightness.dark : Brightness.light,
           ),
           child: MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScale),
+              disableAnimations: reducedMotion,
+            ),
             child: panel ?? _panel(),
           ),
         ),
@@ -69,6 +76,19 @@ void _expectOrder(WidgetTester tester, List<String> labels) {
       reason: '${labels[i - 1]} 应在 ${labels[i]} 前面',
     );
   }
+}
+
+Finder _aiHeader() => find.descendant(
+  of: find.byType(ReaderSettingsFold),
+  matching: find.byType(SectionHeader),
+);
+
+Future<void> _toggleAiSection(WidgetTester tester) async {
+  final header = _aiHeader();
+  await tester.ensureVisible(header);
+  await tester.pumpAndSettle();
+  await tester.tap(header);
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -143,26 +163,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('章节单列分组顺序为显示、加载、AI 总结、屏蔽', (tester) async {
+  testWidgets('章节按显示、加载、AI 总结、屏蔽分为四张独立卡片', (tester) async {
     await _pumpPanel(tester);
     final l10n = _l10n(tester);
     expect(find.text(l10n.commentSettingsTitle), findsNothing);
-    final dividers = find.byWidgetPredicate(
-      (widget) =>
-          widget is Divider &&
-          widget.key.toString().contains('comment-settings-divider-'),
+    expect(find.byType(Divider), findsNothing);
+    final sections = find.byType(SettingsSection);
+    expect(sections, findsNWidgets(4));
+    expect(
+      tester
+          .widgetList<SettingsSection>(sections)
+          .map((section) => section.title),
+      [
+        l10n.commentSettingsDisplaySection,
+        l10n.commentSettingsLoadingSection,
+        null,
+        l10n.commentSettingsFilteringSection,
+      ],
     );
-    expect(dividers, findsNWidgets(3));
-    final headings = [
-      l10n.commentSettingsLoadingSection,
-      l10n.commentSettingsAiSummarySection,
-      l10n.commentSettingsFilteringSection,
-    ];
-    for (var i = 0; i < headings.length; i++) {
-      final gap =
-          tester.getTopLeft(find.text(headings[i])).dy -
-          tester.getBottomLeft(dividers.at(i)).dy;
-      expect(gap, greaterThanOrEqualTo(16));
+    expect(find.byType(ReaderSettingsFold), findsOneWidget);
+    expect(find.byType(CollapsibleContent), findsOneWidget);
+    expect(find.text(l10n.commentSettingsAiSummarySection), findsOneWidget);
+    expect(
+      tester
+          .widget<CollapsibleContent>(find.byType(CollapsibleContent))
+          .expanded,
+      isFalse,
+    );
+    expect(find.byType(Card), findsNWidgets(4));
+    for (var i = 0; i < 4; i++) {
+      final section = sections.at(i);
+      expect(
+        find.descendant(of: section, matching: find.byType(SettingsSection)),
+        findsNothing,
+      );
+      final card = find.descendant(of: section, matching: find.byType(Card));
+      expect(
+        tester.widget<Card>(card).color,
+        Theme.of(tester.element(card)).colorScheme.surfaceBright,
+      );
+      if (i > 0) {
+        expect(
+          tester.getTopLeft(section).dy -
+              tester.getBottomLeft(sections.at(i - 1)).dy,
+          greaterThanOrEqualTo(12),
+        );
+      }
     }
     _expectOrder(tester, [
       l10n.commentSettingsDisplaySection,
@@ -182,6 +228,199 @@ void main() {
     ]);
     expect(find.text(l10n.commentSettingsPreloadDesc), findsOneWidget);
     expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AI 主开关与依赖项同卡，普通开关即时保存并保持条件显示', (tester) async {
+    final settings = AiSettings();
+    await settings.setApiKey('test-only-key');
+    await settings.setSummaryEnabled(true);
+    await settings.setAutoSummary(true);
+    await settings.setSpoilerAnalysis(true);
+    await _pumpPanel(tester, panel: _panel(preload: false));
+    final l10n = _l10n(tester);
+    await _toggleAiSection(tester);
+    final aiSection = find.byType(ReaderSettingsFold);
+    for (final label in [
+      l10n.commentSettingsEnableAiSummary,
+      l10n.commentSettingsCollapseAiComment,
+    ]) {
+      final tile = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(SwitchListTile),
+      );
+      expect(tester.widget<SwitchListTile>(tile).subtitle, isNull);
+    }
+    for (final label in [
+      l10n.commentSettingsEnableAiSummary,
+      l10n.commentSettingsAutoAiSummary,
+      l10n.commentSettingsMinCommentCount,
+      l10n.commentSettingsTriggerTiming,
+      l10n.commentSettingsSpoilerAnalysis,
+      l10n.commentSettingsSpoilerWarn,
+      l10n.commentSettingsPromptPresets,
+    ]) {
+      expect(
+        find.descendant(of: aiSection, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
+    final timing = tester.widget<SegmentedButton<AiAutoSummaryTiming>>(
+      find.byType(SegmentedButton<AiAutoSummaryTiming>),
+    );
+    expect(timing.selected, {AiAutoSummaryTiming.onOpen});
+    expect(timing.segments.last.enabled, isFalse);
+    expect(
+      find.text(l10n.commentSettingsPreloadRequiredForTiming),
+      findsOneWidget,
+    );
+
+    for (final label in [
+      l10n.commentSettingsAutoAiSummary,
+      l10n.commentSettingsSpoilerAnalysis,
+      l10n.commentSettingsEnableAiSummary,
+    ]) {
+      final tile = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(SwitchListTile),
+      );
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      if (label == l10n.commentSettingsAutoAiSummary) {
+        expect(settings.autoSummary, isFalse);
+        expect(find.text(l10n.commentSettingsTriggerTiming), findsNothing);
+      } else if (label == l10n.commentSettingsSpoilerAnalysis) {
+        expect(settings.spoilerAnalysis, isFalse);
+        expect(find.text(l10n.commentSettingsSpoilerWarn), findsNothing);
+      } else {
+        expect(settings.summaryEnabled, isFalse);
+        expect(find.text(l10n.commentSettingsAutoAiSummary), findsNothing);
+        expect(find.text(l10n.commentSettingsPromptPresets), findsNothing);
+      }
+    }
+    await settings.reloadFromPrefs(persistMigrations: false);
+    expect(settings.summaryEnabled, isFalse);
+    expect(settings.autoSummary, isFalse);
+    expect(settings.spoilerAnalysis, isFalse);
+    expect(find.byType(SettingsSection), findsNWidgets(4));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AI 卡片默认收起，折叠不写偏好、不清空未提交输入或 AI 配置', (tester) async {
+    final settings = AiSettings();
+    await settings.setApiKey('test-only-key');
+    await settings.setSummaryEnabled(true);
+    await settings.setAutoSummary(true);
+    await settings.setSpoilerAnalysis(true);
+    final minimum = settings.autoSummaryMin;
+    final prefs = await SharedPreferences.getInstance();
+    final before = {for (final key in prefs.getKeys()) key: prefs.get(key)};
+    await _pumpPanel(tester);
+    final l10n = _l10n(tester);
+    final content = find.byType(CollapsibleContent);
+    expect(tester.widget<CollapsibleContent>(content).expanded, isFalse);
+    expect(tester.getSize(content).height, 0);
+    expect(
+      find.text(l10n.commentSettingsEnableAiSummary).hitTestable(),
+      findsNothing,
+    );
+    expect(
+      find.text(l10n.commentSettingsShowAvatar).hitTestable(),
+      findsOneWidget,
+    );
+
+    await _toggleAiSection(tester);
+    expect(tester.widget<CollapsibleContent>(content).expanded, isTrue);
+    final field = find.byType(TextFormField);
+    await tester.ensureVisible(field);
+    await tester.pumpAndSettle();
+    await tester.enterText(field, '123');
+    final editable = find.descendant(
+      of: field,
+      matching: find.byType(EditableText),
+    );
+    final controller = tester.widget<EditableText>(editable).controller;
+    expect(settings.autoSummaryMin, minimum);
+    await _toggleAiSection(tester);
+    expect(tester.getSize(content).height, 0);
+    expect(
+      find.text(l10n.commentSettingsEnableAiSummary).hitTestable(),
+      findsNothing,
+    );
+    await _toggleAiSection(tester);
+    expect(tester.widget<EditableText>(editable).controller, same(controller));
+    expect(controller.text, '123');
+    expect(settings.autoSummaryMin, minimum);
+    expect(settings.summaryEnabled, isTrue);
+    expect(settings.autoSummary, isTrue);
+    expect(settings.spoilerAnalysis, isTrue);
+    expect({for (final key in prefs.getKeys()) key: prefs.get(key)}, before);
+    expect(find.byType(SettingsSection), findsNWidgets(4));
+    expect(find.text(l10n.commentSettingsAiSummarySection), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('减少动画时 AI 分组一帧展开或收起，不改变主开关', (tester) async {
+    final settings = AiSettings();
+    await settings.setApiKey('test-only-key');
+    await settings.setSummaryEnabled(true);
+    await _pumpPanel(tester, reducedMotion: true);
+    final content = find.byType(CollapsibleContent);
+    final header = _aiHeader();
+    await tester.ensureVisible(header);
+    await tester.pumpAndSettle();
+    await tester.tap(header);
+    await tester.pump();
+    expect(tester.widget<CollapsibleContent>(content).expanded, isTrue);
+    expect(tester.getSize(content).height, greaterThan(0));
+    final heightAlign = find
+        .descendant(
+          of: content,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Align && widget.heightFactor != null,
+          ),
+        )
+        .first;
+    expect(tester.widget<Align>(heightAlign).heightFactor, 1);
+    await tester.tap(header);
+    await tester.pump();
+    expect(tester.widget<CollapsibleContent>(content).expanded, isFalse);
+    expect(tester.getSize(content).height, 0);
+    expect(tester.widget<Align>(heightAlign).heightFactor, 0);
+    expect(settings.summaryEnabled, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('章节设置入口关闭重开后 AI 卡片仍默认收起，但保留启用状态', (tester) async {
+    final settings = AiSettings();
+    await settings.setApiKey('test-only-key');
+    await settings.setSummaryEnabled(true);
+    await tester.pumpWidget(
+      wrapWithApp(
+        const ChapterCommentsSheet(
+          chapterUuid: 'comment-settings-ai-fold',
+          chapterName: '测试章节',
+          initialComments: [],
+          initialTotal: 0,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('评论区设置'));
+    await tester.pumpAndSettle();
+    final content = find.byType(CollapsibleContent);
+    expect(tester.widget<CollapsibleContent>(content).expanded, isFalse);
+    await _toggleAiSection(tester);
+    expect(tester.widget<CollapsibleContent>(content).expanded, isTrue);
+    Navigator.of(tester.element(find.byType(CommentSettingsPanel))).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('评论区设置'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<CollapsibleContent>(content).expanded, isFalse);
+    expect(settings.summaryEnabled, isTrue);
+    expect(find.byType(SettingsSection), findsNWidgets(4));
     expect(tester.takeException(), isNull);
   });
 
@@ -212,15 +451,12 @@ void main() {
       ]) {
         expect(find.text(label), findsNothing);
       }
+      expect(find.byType(ReaderSettingsFold), findsNothing);
+      expect(find.byType(CollapsibleContent), findsNothing);
       expect(find.byType(SwitchListTile), findsNWidgets(filtering ? 4 : 3));
-      expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Divider &&
-              widget.key.toString().contains('comment-settings-divider-'),
-        ),
-        filtering ? findsOneWidget : findsNothing,
-      );
+      expect(find.byType(SettingsSection), findsNWidgets(filtering ? 2 : 1));
+      expect(find.byType(Card), findsNWidgets(filtering ? 2 : 1));
+      expect(find.byType(Divider), findsNothing);
       for (final label in [
         l10n.commentSettingsFilteringSection,
         l10n.commentSettingsBlockwordsSection,
@@ -266,6 +502,7 @@ void main() {
         expect(rect.right, lessThanOrEqualTo(375));
         expect(rect.width / 5, greaterThanOrEqualTo(48));
         expect(rect.height, greaterThanOrEqualTo(48));
+        await _toggleAiSection(tester);
         await tester.ensureVisible(
           find.text(l10n.commentSettingsTriggerTiming),
         );

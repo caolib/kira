@@ -14,6 +14,7 @@ import 'package:kira/widgets/collapsible_content.dart';
 import 'package:kira/widgets/reader_settings_fold.dart';
 import 'package:kira/widgets/reader_status_settings.dart';
 import 'package:kira/widgets/select_tile.dart';
+import 'package:kira/widgets/settings_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_helpers.dart';
@@ -209,6 +210,90 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  for (final (size, textScale, brightness) in [
+    (const Size(375, 812), 1.0, Brightness.light),
+    (const Size(320, 850), 2.0, Brightness.dark),
+    (const Size(812, 375), 1.0, Brightness.dark),
+  ]) {
+    testWidgets('theme settings use independent cards at $size', (
+      tester,
+    ) async {
+      var latest = const NovelReaderSettings();
+      await _mount(
+        tester,
+        onChanged: (value) => latest = value,
+        size: size,
+        textScale: textScale,
+        systemBrightness: brightness,
+      );
+      await _openTheme(tester);
+      final colorCard = find.byKey(const ValueKey('novel-color-scheme-card'));
+      final dialogueCard = find.byKey(const ValueKey('novel-dialogue-card'));
+      expect(
+        find.descendant(
+          of: colorCard,
+          matching: find.byKey(const ValueKey('novel-theme-edit-mode')),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: colorCard,
+          matching: find.byKey(const ValueKey('novel-dialogue-enabled')),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: dialogueCard,
+          matching: find.byKey(const ValueKey('novel-dialogue-enabled')),
+        ),
+        findsOneWidget,
+      );
+      final toggle = find.byKey(const ValueKey('novel-dialogue-enabled'));
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      tester.widget<SwitchListTile>(toggle).onChanged!(true);
+      await tester.pumpAndSettle();
+      for (final key in [
+        'novel-dialogue-color-mode',
+        'novel-dialogue-weight',
+        'novel-dialogue-background-enabled',
+      ]) {
+        final control = find.descendant(
+          of: dialogueCard,
+          matching: find.byKey(ValueKey(key)),
+        );
+        await tester.ensureVisible(control);
+        await tester.pumpAndSettle();
+        final target = find
+            .descendant(of: control, matching: find.byType(InkWell))
+            .first;
+        expect(target.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+      expect(
+        find.descendant(
+          of: dialogueCard,
+          matching: find.byType(SettingsSection),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('novel-custom-theme-settings')),
+          matching: find.byType(SettingsSection),
+        ),
+        findsOneWidget,
+      );
+      // 主题面板仍在返回时统一提交，不因卡片包装提前写入宿主。
+      expect(latest.dialogueEnabled, isFalse);
+      await _closeTheme(tester);
+      expect(latest.dialogueEnabled, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets(
     'font slider keeps live updates and theme entry owns the preview',
@@ -941,18 +1026,69 @@ void main() {
   ) async {
     var latest = const NovelReaderSettings();
     await _mount(tester, onChanged: (value) => latest = value);
-    // 默认关闭：只有关开行，没有滑块。
+    final focusCard = find.byKey(const ValueKey('novel-focus-card'));
+    final focusControls = find.descendant(
+      of: focusCard,
+      matching: find.byType(Slider),
+    );
+    expect(focusControls, findsNWidgets(3));
+    expect(
+      find.descendant(
+        of: focusCard,
+        matching: find.byKey(const ValueKey('novel-keep-screen-on')),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: focusCard,
+        matching: find.byType(ReaderStatusSettingsSection),
+      ),
+      findsNothing,
+    );
+    final typographyCard = find.byKey(const ValueKey('novel-typography-card'));
+    for (final key in [
+      'novel-font-family',
+      'novel-font-size',
+      'novel-line-height',
+      'novel-paragraph-spacing',
+      'novel-content-width',
+      'novel-ignore-blank-paragraphs',
+    ]) {
+      expect(
+        find.descendant(
+          of: typographyCard,
+          matching: find.byKey(ValueKey(key)),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.ancestor(
+        of: find.byKey(const ValueKey('novel-keep-screen-on')),
+        matching: find.byType(SettingsSection),
+      ),
+      findsOneWidget,
+    );
+    // 默认关闭且收起；开关与展开分别操作。
     expect(
       tester
-          .widget<SwitchListTile>(
-            find.byKey(const ValueKey('novel-focus-mode')),
-          )
+          .widget<Switch>(find.byKey(const ValueKey('novel-focus-mode')))
           .value,
       isFalse,
     );
-    expect(find.byKey(const ValueKey('novel-focus-top')), findsNothing);
-    expect(find.byKey(const ValueKey('novel-focus-bottom')), findsNothing);
-    expect(find.byKey(const ValueKey('novel-focus-opacity')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('novel-focus-top')).hitTestable(),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('novel-focus-bottom')).hitTestable(),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('novel-focus-opacity')).hitTestable(),
+      findsNothing,
+    );
     await _tapVisible(tester, 'novel-focus-mode');
     expect(latest.focusModeEnabled, isTrue);
     expect(find.byKey(const ValueKey('novel-focus-top')), findsOneWidget);
@@ -1017,10 +1153,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(latest.focusBottomRatio, 0.65);
     expect(latest.focusOpacity, 0.7);
-    // 关闭开关收起滑块，数值仍保留。
+    // 关闭开关不改变展开状态，数值仍保留。
     await _tapVisible(tester, 'novel-focus-mode');
     expect(latest.focusModeEnabled, isFalse);
-    expect(find.byKey(const ValueKey('novel-focus-top')), findsNothing);
+    expect(
+      tester
+          .widget<CollapsibleContent>(
+            find.byKey(const ValueKey('novel-focus-details')),
+          )
+          .expanded,
+      isTrue,
+    );
     expect(latest.focusTopRatio, 0.3);
     await tester.runAsync(() async {
       await latest.save();
@@ -1076,7 +1219,7 @@ void main() {
         final finder = find.byKey(
           const ValueKey('novel-focus-keep-status-visible'),
         );
-        expect(finder, findsNothing);
+        expect(finder.hitTestable(), findsNothing);
         await _tapVisible(tester, 'novel-focus-mode');
         expect(tester.widget<SwitchListTile>(finder).value, isFalse);
         expect(finder.hitTestable(), findsNothing);
@@ -1086,11 +1229,11 @@ void main() {
         expect(latest.focusKeepStatusVisible, isTrue);
         expect(tester.widget<SwitchListTile>(finder).value, isTrue);
         await _tapVisible(tester, 'novel-focus-mode');
-        expect(finder, findsNothing);
+        expect(finder, findsOneWidget);
+        expect(latest.focusModeEnabled, isFalse);
         expect(latest.focusKeepStatusVisible, isTrue);
         await _tapVisible(tester, 'novel-focus-mode');
         expect(tester.widget<SwitchListTile>(finder).value, isTrue);
-        await _tapVisible(tester, 'novel-focus-details-toggle');
         await _tapVisible(tester, 'novel-focus-keep-status-visible');
         expect(latest.focusKeepStatusVisible, isFalse);
         expect(tester.takeException(), isNull);
@@ -1138,7 +1281,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(latest.mode, NovelReaderMode.paged);
       expect(latest.focusModeEnabled, isFalse);
-      expect(find.byKey(const ValueKey('novel-focus-top')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('novel-focus-top')).hitTestable(),
+        findsNothing,
+      );
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.byType(SnackBar), findsNothing);
 
@@ -1168,8 +1314,13 @@ void main() {
     );
     final details = find.byKey(const ValueKey('novel-focus-details'));
     expect(tester.widget<CollapsibleContent>(details).expanded, isFalse);
-    await _tapVisible(tester, 'novel-focus-details-toggle');
+    final title = find.text('专注模式');
+    await tester.ensureVisible(title);
+    await tester.pumpAndSettle();
+    await tester.tap(title);
+    await tester.pumpAndSettle();
     expect(tester.widget<CollapsibleContent>(details).expanded, isTrue);
+    expect(latest.focusModeEnabled, isTrue);
     tester
         .widget<Slider>(find.byKey(const ValueKey('novel-focus-top')))
         .onChanged!(0.4);
@@ -1179,7 +1330,7 @@ void main() {
     expect(latest.focusTopRatio, 0.4);
     expect(latest.focusModeEnabled, isTrue);
     await _tapVisible(tester, 'novel-focus-mode');
-    expect(details, findsNothing);
+    expect(tester.widget<CollapsibleContent>(details).expanded, isFalse);
     await _tapVisible(tester, 'novel-focus-mode');
     expect(tester.widget<CollapsibleContent>(details).expanded, isFalse);
     expect(latest.focusTopRatio, 0.4);

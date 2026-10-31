@@ -7,8 +7,9 @@ import '../models/reader_status_prefs.dart';
 import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
-import '../utils/adaptive_motion.dart';
 import 'collapsible_content.dart';
+import 'collapsible_switch_tile.dart';
+import 'settings_section.dart';
 
 /// 阅读器状态组件设置区：开关、六位摆放、不透明度、前景/背景色与段位
 /// 顺序。通过 [prefs] 读写配置（漫画侧全局 [ReaderSettings]、轻小说侧
@@ -122,52 +123,28 @@ class _ReaderStatusSettingsSectionState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: SwitchListTile(
-                key: const ValueKey('reader-status-overlay-switch'),
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.readerStatusOverlay),
-                value: _reader.statusOverlay,
-                onChanged: (v) {
-                  _reader.setStatusOverlay(v);
-                  if (!v) _expanded = false;
-                  _changed();
-                },
-              ),
-            ),
-            if (_reader.statusOverlay)
-              Semantics(
-                expanded: _expanded,
-                child: IconButton(
-                  key: const ValueKey('reader-status-details-toggle'),
-                  tooltip: _expanded
-                      ? l10n.chapterCommentsCollapse
-                      : l10n.chapterCommentsExpand,
-                  onPressed: () => setState(() => _expanded = !_expanded),
-                  icon: AnimatedRotation(
-                    key: ValueKey(prefersReducedMotion(context)),
-                    turns: _expanded ? 0.5 : 0,
-                    duration: adaptiveDuration(
-                      context,
-                      const Duration(milliseconds: 180),
-                    ),
-                    child: const Icon(Icons.expand_more, size: AppIconSize.xl),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        if (_reader.statusOverlay)
+    return SettingsSection(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CollapsibleSwitchTile(
+            title: l10n.readerStatusOverlay,
+            switchKey: const ValueKey('reader-status-overlay-switch'),
+            expandKey: const ValueKey('reader-status-details-toggle'),
+            value: _reader.statusOverlay,
+            expanded: _expanded,
+            onChanged: (v) {
+              _reader.setStatusOverlay(v);
+              _changed();
+            },
+            onToggleExpanded: () => setState(() => _expanded = !_expanded),
+          ),
           CollapsibleContent(
             expanded: _expanded,
             child: _buildDetails(context, l10n),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -193,7 +170,7 @@ class _ReaderStatusSettingsSectionState
       Icons.south_west,
     ];
     return Padding(
-      padding: const EdgeInsets.only(left: AppSpacing.lg),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

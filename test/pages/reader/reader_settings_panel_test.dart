@@ -16,6 +16,7 @@ import 'package:kira/utils/reading_history.dart';
 import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/collapsible_content.dart';
 import 'package:kira/widgets/reader_settings_fold.dart';
+import 'package:kira/widgets/settings_section.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -262,6 +263,29 @@ void main() {
     expect(find.text('翻页'), findsOneWidget);
     expect(find.text('图片加载'), findsOneWidget);
     expect(find.text('长按缩放'), findsOneWidget);
+    for (final label in ['自动滚动', '长按缩放', '状态显示', '图片加载']) {
+      expect(
+        find.ancestor(
+          of: find.text(label),
+          matching: find.byType(SettingsSection),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('reader-auto-scroll-card')),
+        matching: find.text('滚动幅度'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('reader-auto-scroll-card')),
+        matching: find.text('长按缩放'),
+      ),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -439,24 +463,27 @@ void main() {
     await _pumpReader(tester);
     await _openSettings(tester);
 
-    final switchTile = find.widgetWithText(SwitchListTile, '自动滚动');
+    final switchTile = find.byKey(const ValueKey('reader-auto-scroll-switch'));
+    final expand = find.byKey(
+      const ValueKey('reader-auto-scroll-details-toggle'),
+    );
     await _ensureVisible(tester, switchTile);
-    expect(tester.widget<SwitchListTile>(switchTile).value, isFalse);
-    expect(find.byTooltip('自动滚动'), findsNothing);
-
-    await tester.tap(switchTile);
-    await tester.pumpAndSettle();
-
-    expect(UserManager().reader.autoScrollEnabled, isTrue);
-    expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
-    expect(find.byTooltip('自动滚动'), findsOneWidget);
+    expect(tester.widget<Switch>(switchTile).value, isFalse);
+    expect(expand, findsOneWidget);
 
     final autoDetails = _detailsOf('滚动幅度');
     expect(_isExpanded(tester, autoDetails), isFalse);
     expect(find.text('滚动幅度').hitTestable(), findsNothing);
-
-    await tester.tap(find.byTooltip('自动滚动'));
+    await tester.tap(find.text('自动滚动'));
     await tester.pumpAndSettle();
+    expect(_isExpanded(tester, autoDetails), isTrue);
+    expect(UserManager().reader.autoScrollEnabled, isFalse);
+
+    await _ensureVisible(tester, switchTile);
+    await tester.tap(switchTile);
+    await tester.pumpAndSettle();
+    expect(UserManager().reader.autoScrollEnabled, isTrue);
+    expect(tester.widget<Switch>(switchTile).value, isTrue);
     expect(_isExpanded(tester, autoDetails), isTrue);
     expect(_isExpanded(tester, _detailsOf('拖动灵敏度')), isFalse);
 
@@ -475,8 +502,13 @@ void main() {
     expect(find.text('恢复延迟').hitTestable(), findsOneWidget);
     expect(find.text('2.0 秒'), findsOneWidget);
 
-    await _ensureVisible(tester, find.byTooltip('自动滚动'));
-    await tester.tap(find.byTooltip('自动滚动'));
+    await _ensureVisible(
+      tester,
+      find.byKey(const ValueKey('reader-auto-scroll-details-toggle')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('reader-auto-scroll-details-toggle')),
+    );
     await tester.pumpAndSettle();
     expect(_isExpanded(tester, autoDetails), isFalse);
 
@@ -490,19 +522,24 @@ void main() {
     await _pumpReader(tester);
     await _openSettings(tester);
 
-    final switchTile = find.widgetWithText(SwitchListTile, '长按缩放');
+    final switchTile = find.byKey(
+      const ValueKey('reader-long-press-zoom-switch'),
+    );
     await _ensureVisible(tester, switchTile);
-    expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
-    expect(find.byTooltip('拖动灵敏度'), findsOneWidget);
+    expect(tester.widget<Switch>(switchTile).value, isTrue);
+    expect(
+      find.byKey(const ValueKey('reader-long-press-zoom-details-toggle')),
+      findsOneWidget,
+    );
 
     final zoomDetails = _detailsOf('拖动灵敏度');
     expect(_isExpanded(tester, zoomDetails), isFalse);
     expect(find.text('拖动灵敏度').hitTestable(), findsNothing);
 
-    await tester.tap(find.byTooltip('拖动灵敏度'));
+    await tester.tap(find.text('长按缩放'));
     await tester.pumpAndSettle();
     expect(_isExpanded(tester, zoomDetails), isTrue);
-    expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
+    expect(tester.widget<Switch>(switchTile).value, isTrue);
     expect(_isExpanded(tester, _detailsOf('滚动幅度')), isFalse);
 
     final sensitivitySlider = find.descendant(
@@ -522,8 +559,13 @@ void main() {
 
     // Collapse the details before toggling the master switch so re-enabling
     // cannot be mistaken for "the switch forced the details open".
-    await _ensureVisible(tester, find.byTooltip('拖动灵敏度'));
-    await tester.tap(find.byTooltip('拖动灵敏度'));
+    await _ensureVisible(
+      tester,
+      find.byKey(const ValueKey('reader-long-press-zoom-details-toggle')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('reader-long-press-zoom-details-toggle')),
+    );
     await tester.pumpAndSettle();
     expect(_isExpanded(tester, zoomDetails), isFalse);
 
@@ -531,14 +573,20 @@ void main() {
     await tester.tap(switchTile);
     await tester.pumpAndSettle();
     expect(UserManager().reader.longPressZoomEnabled, isFalse);
-    expect(find.byTooltip('拖动灵敏度'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('reader-long-press-zoom-details-toggle')),
+      findsOneWidget,
+    );
     expect(_isExpanded(tester, zoomDetails), isFalse);
 
     await _ensureVisible(tester, switchTile);
     await tester.tap(switchTile);
     await tester.pumpAndSettle();
     expect(UserManager().reader.longPressZoomEnabled, isTrue);
-    expect(find.byTooltip('拖动灵敏度'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('reader-long-press-zoom-details-toggle')),
+      findsOneWidget,
+    );
     expect(_isExpanded(tester, zoomDetails), isFalse);
 
     final prefs = await SharedPreferences.getInstance();
@@ -581,5 +629,19 @@ void main() {
     await _ensureVisible(tester, sliders.first);
     expect(sliders.first.hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
+    for (final label in ['自动滚动', '长按缩放', '状态显示']) {
+      final header = find.text(label);
+      await _ensureVisible(tester, header);
+      await tester.tap(header);
+      await tester.pumpAndSettle();
+      final card = find.ancestor(
+        of: header,
+        matching: find.byType(SettingsSection),
+      );
+      final controls = find.descendant(of: card, matching: find.byType(Slider));
+      await _ensureVisible(tester, controls.first);
+      expect(controls.first.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 }

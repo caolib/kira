@@ -95,7 +95,7 @@ void main() {
     final toggle = find.byKey(const ValueKey('reader-status-details-toggle'));
     final slider = find.byType(Slider);
     expect(slider.hitTestable(), findsNothing);
-    await tester.tap(toggle);
+    await tester.tap(find.text('状态显示'));
     await tester.pump();
     expect(slider.hitTestable(), findsOneWidget);
     await tester.tap(toggle);
@@ -108,8 +108,20 @@ void main() {
     );
     await tester.pump();
     expect(reader.statusOverlay, isFalse);
-    expect(toggle, findsNothing);
+    expect(toggle, findsOneWidget);
     expect(changes, 1);
+    await tester.tap(find.text('状态显示'));
+    await tester.pump();
+    expect(slider.hitTestable(), findsOneWidget);
+    expect(reader.statusOverlay, isFalse);
+    expect(changes, 1);
+    await tester.tap(
+      find.byKey(const ValueKey('reader-status-overlay-switch')),
+    );
+    await tester.pump();
+    expect(reader.statusOverlay, isTrue);
+    expect(slider.hitTestable(), findsOneWidget);
+    expect(changes, 2);
     expect(tester.takeException(), isNull);
   });
 }

@@ -4,7 +4,11 @@ import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/reader_settings.dart';
 import 'package:kira/pages/stats_page.dart';
 import 'package:kira/utils/reading_stats.dart';
+import 'package:kira/widgets/app_sheet.dart';
+import 'package:kira/widgets/settings_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../test_helpers.dart';
 
 Widget _buildTestApp(Widget child) {
   return MaterialApp(
@@ -17,7 +21,10 @@ Widget _buildTestApp(Widget child) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  tearDown(teardownSecureCredentialStoreForTest);
+
   setUp(() async {
+    setupSecureCredentialStoreForTest();
     SharedPreferences.setMockInitialValues({});
     ReadingStats.reloadFromPrefs();
     ReaderSettings().resetPrefsCache();
@@ -83,6 +90,28 @@ void main() {
     expect(find.text('0'), findsNWidgets(3));
   });
 
+  testWidgets('settings cards remain scrollable at narrow large-text size', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await ReaderSettings().setReadingStatsEnabled(true);
+    await tester.pumpWidget(
+      wrapWithApp(const StatsPage(), wrapInScaffold: false),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.tune_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsSection), findsNWidgets(4));
+    await tester.ensureVisible(find.text('清除'));
+    await tester.pumpAndSettle();
+    expect(find.text('清除').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'enabled state shows FAB; tapping opens settings sheet with 关闭/清除',
     (tester) async {
@@ -113,6 +142,20 @@ void main() {
       expect(find.text('阅读统计设置'), findsOneWidget);
       expect(find.text('统计功能'), findsOneWidget);
       expect(find.text('清除'), findsOneWidget);
+      expect(find.byType(AppSheet), findsOneWidget);
+      expect(find.byType(SettingsSection), findsNWidgets(4));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('stats-chart-settings-card')),
+          matching: find.byType(RadioGroup<int>),
+        ),
+        findsOneWidget,
+      );
+      final clear = find.text('清除');
+      await tester.ensureVisible(clear);
+      await tester.pumpAndSettle();
+      expect(clear.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
 }

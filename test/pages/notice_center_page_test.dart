@@ -4,6 +4,11 @@ import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/remote_notice.dart';
 import 'package:kira/pages/notice_center_page.dart';
 import 'package:kira/utils/remote_notice_service.dart';
+import 'package:kira/widgets/app_sheet.dart';
+import 'package:kira/widgets/settings_section.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../test_helpers.dart';
 
 Widget _buildTestApp(Widget child) {
   return MaterialApp(
@@ -20,9 +25,40 @@ Widget _buildTestApp(Widget child) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  tearDown(teardownSecureCredentialStoreForTest);
+
   setUp(() {
+    setupSecureCredentialStoreForTest();
+    SharedPreferences.setMockInitialValues({});
     RemoteNoticeService.unreadActiveCount.value = 0;
   });
+
+  testWidgets(
+    'notice settings use a single card and retain switch interaction',
+    (tester) async {
+      await tester.pumpWidget(
+        wrapWithApp(
+          NoticeCenterPage(service: _FakeNoticeService(notices: [])),
+          wrapInScaffold: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.settings_outlined));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppSheet), findsOneWidget);
+      final card = find.byKey(const ValueKey('notice-settings-card'));
+      expect(find.byType(SettingsSection), findsOneWidget);
+      final toggle = find.descendant(
+        of: card,
+        matching: find.byType(SwitchListTile),
+      );
+      final before = tester.widget<SwitchListTile>(toggle).value;
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(toggle).value, !before);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('does not mark notices as read when opened', (tester) async {
     final notice = RemoteNotice(

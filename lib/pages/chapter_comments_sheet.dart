@@ -29,6 +29,8 @@ import '../utils/toast.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/confetti_celebration.dart';
 import '../widgets/load_more_footer.dart';
+import '../widgets/reader_settings_fold.dart';
+import '../widgets/settings_section.dart';
 import '../widgets/text_controller_scope.dart';
 import 'chapter_comment_display.dart';
 import 'chapter_comments/comment_paging.dart';

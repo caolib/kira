@@ -19,6 +19,7 @@ import '../../utils/app_logger.dart';
 import '../../utils/network_error.dart';
 import '../../utils/toast.dart';
 import '../../widgets/app_sheet.dart';
+import '../../widgets/settings_section.dart';
 
 /// Full-screen single-image viewer shared by the manga reader and the novel
 /// illustration gallery. Accepts a network URL, a downloaded file path, or
@@ -594,79 +595,97 @@ class _ReaderImageViewerSettingsPanelState
     final tt = Theme.of(context).textTheme;
 
     return AppSheet(
-      padding: const EdgeInsets.fromLTRB(24, AppSpacing.lg, 24, 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppLocalizations.of(context)!.readerImageViewerSettingsTitle,
-            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              AppLocalizations.of(context)!.readerAutoRotateLandscape,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              AppLocalizations.of(context)!.readerImageViewerSettingsTitle,
+              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text(
-              AppLocalizations.of(context)!.readerAutoRotateLandscapeDesc,
-            ),
-            value: _user.imageViewerAutoRotateLandscape,
-            onChanged: (value) {
-              _user.setImageViewerAutoRotateLandscape(value);
-              setState(() {});
-              widget.onChanged();
-            },
-          ),
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 180),
-            opacity: _user.imageViewerAutoRotateLandscape ? 1 : 0.45,
-            child: IgnorePointer(
-              ignoring: !_user.imageViewerAutoRotateLandscape,
+            const SizedBox(height: AppSpacing.md),
+            SettingsSection(
+              key: const ValueKey('reader-image-rotation-card'),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    AppLocalizations.of(context)!.readerRotationDirection,
-                    style: tt.bodyMedium,
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      AppLocalizations.of(context)!.readerAutoRotateLandscape,
+                    ),
+                    subtitle: Text(
+                      AppLocalizations.of(
+                        context,
+                      )!.readerAutoRotateLandscapeDesc,
+                    ),
+                    value: _user.imageViewerAutoRotateLandscape,
+                    onChanged: (value) {
+                      _user.setImageViewerAutoRotateLandscape(value);
+                      setState(() {});
+                      widget.onChanged();
+                    },
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<int>(
-                      segments: [
-                        ButtonSegment(
-                          value: -1,
-                          icon: const Icon(Icons.rotate_left),
-                          label: Text(
-                            AppLocalizations.of(context)!.readerRotateLeftShort,
-                          ),
-                        ),
-                        ButtonSegment(
-                          value: 1,
-                          icon: const Icon(Icons.rotate_right),
-                          label: Text(
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
+                    opacity: _user.imageViewerAutoRotateLandscape ? 1 : 0.45,
+                    child: IgnorePointer(
+                      ignoring: !_user.imageViewerAutoRotateLandscape,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
                             AppLocalizations.of(
                               context,
-                            )!.readerRotateRightShort,
+                            )!.readerRotationDirection,
+                            style: tt.bodyMedium,
                           ),
-                        ),
-                      ],
-                      selected: {_user.imageViewerLandscapeRotation},
-                      onSelectionChanged: (selection) {
-                        _user.setImageViewerLandscapeRotation(selection.first);
-                        setState(() {});
-                        widget.onChanged();
-                      },
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: SegmentedButton<int>(
+                              segments: [
+                                ButtonSegment(
+                                  value: -1,
+                                  icon: const Icon(Icons.rotate_left),
+                                  label: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.readerRotateLeftShort,
+                                  ),
+                                ),
+                                ButtonSegment(
+                                  value: 1,
+                                  icon: const Icon(Icons.rotate_right),
+                                  label: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.readerRotateRightShort,
+                                  ),
+                                ),
+                              ],
+                              selected: {_user.imageViewerLandscapeRotation},
+                              onSelectionChanged: (selection) {
+                                _user.setImageViewerLandscapeRotation(
+                                  selection.first,
+                                );
+                                setState(() {});
+                                widget.onChanged();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

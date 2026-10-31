@@ -7,9 +7,11 @@ import '../theme/app_spacing.dart';
 import '../utils/reading_stats.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/bar_chart_grid.dart';
 import '../widgets/error_retry_view.dart';
 import '../widgets/heatmap_grid.dart';
+import '../widgets/settings_section.dart';
 import '../widgets/shimmer_skeleton.dart';
 
 /// 阅读统计页。
@@ -120,32 +122,22 @@ class _StatsPageState extends State<StatsPage> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    showModalBottomSheet<void>(
-      context: context,
-      // 内容较高（拖拽列表 + 图表样式 + 清除按钮），允许占满更多屏幕高度并滚动。
-      isScrollControlled: true,
+    showAppSheet<void>(
+      context,
+      maxHeightFactor: 0.9,
       // 抽屉弹出后值可能变化（关闭统计），用 StatefulBuilder 重建。
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => SafeArea(
-          // 内容可能超出可视高（拖拽列表 + 图表样式 + 清除按钮），
-          // 用可滚动容器而非固定 Column，避免底部按钮被裁。
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.xs,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(l10n.statsSettings, style: tt.titleMedium),
-                  ),
-                ),
-                SwitchListTile(
+      child: StatefulBuilder(
+        builder: (ctx, setSheetState) => SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l10n.statsSettings, style: tt.titleMedium),
+              const SizedBox(height: AppSpacing.sm),
+              SettingsSection(
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
                   secondary: const Icon(Icons.insights_rounded),
                   title: Text(l10n.statsDisableButton),
                   value: _reader.readingStatsEnabled,
@@ -165,94 +157,106 @@ class _StatsPageState extends State<StatsPage> {
                     // 开启在未开启态的 body 内处理，此抽屉仅在已开启态可见
                   },
                 ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                // 显示组件：概览 / 常看类型 / 阅读活跃度，至少保留一个。
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                    AppSpacing.lg,
-                    0,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        l10n.statsShowSections,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SettingsSection(
+                key: const ValueKey('stats-section-settings-card'),
+                child: Column(
+                  children: [
+                    // 显示组件：概览 / 常看类型 / 阅读活跃度，至少保留一个。
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.xs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            l10n.statsShowSections,
+                            style: tt.labelMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            l10n.statsDragToReorder,
+                            style: tt.labelSmall?.copyWith(color: cs.outline),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 可拖拽排序 + 显示开关。拖拽把手在行首，长按拖动。
+                    _SectionReorderList(
+                      ctx: ctx,
+                      setSheetState: setSheetState,
+                      onToggle: _toggleSection,
+                      onReorder: (newOrder) async {
+                        await _reader.setReadingStatsSectionOrder(newOrder);
+                        if (!ctx.mounted) return;
+                        setSheetState(() {});
+                        if (!mounted) return;
+                        setState(() {}); // 页面卡片列表按新顺序重建
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SettingsSection(
+                key: const ValueKey('stats-chart-settings-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 图表样式：热力图 / 条形图
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: Text(
+                        l10n.statsChartStyle,
                         style: tt.labelMedium?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        l10n.statsDragToReorder,
-                        style: tt.labelSmall?.copyWith(color: cs.outline),
+                    ),
+                    RadioGroup<int>(
+                      groupValue: _reader.readingStatsChartStyle,
+                      onChanged: (value) async {
+                        if (value == null) return;
+                        await _reader.setReadingStatsChartStyle(value);
+                        if (!ctx.mounted) return;
+                        setSheetState(() {});
+                        if (!mounted) return;
+                        setState(() {}); // 图表区重建
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          RadioListTile<int>(
+                            value: 0,
+                            title: Text(l10n.statsChartStyleHeatmap),
+                            subtitle: Text(
+                              l10n.statsChartStyleHeatmapDesc,
+                              style: tt.bodySmall,
+                            ),
+                            dense: true,
+                          ),
+                          RadioListTile<int>(
+                            value: 1,
+                            title: Text(l10n.statsChartStyleBar),
+                            subtitle: Text(
+                              l10n.statsChartStyleBarDesc,
+                              style: tt.bodySmall,
+                            ),
+                            dense: true,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                // 可拖拽排序 + 显示开关。拖拽把手在行首，长按拖动。
-                _SectionReorderList(
-                  ctx: ctx,
-                  setSheetState: setSheetState,
-                  onToggle: _toggleSection,
-                  onReorder: (newOrder) async {
-                    await _reader.setReadingStatsSectionOrder(newOrder);
-                    if (!ctx.mounted) return;
-                    setSheetState(() {});
-                    if (!mounted) return;
-                    setState(() {}); // 页面卡片列表按新顺序重建
-                  },
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                // 图表样式：热力图 / 条形图
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                    AppSpacing.lg,
-                    0,
-                  ),
-                  child: Text(
-                    l10n.statsChartStyle,
-                    style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-                RadioGroup<int>(
-                  groupValue: _reader.readingStatsChartStyle,
-                  onChanged: (value) async {
-                    if (value == null) return;
-                    await _reader.setReadingStatsChartStyle(value);
-                    if (!ctx.mounted) return;
-                    setSheetState(() {});
-                    if (!mounted) return;
-                    setState(() {}); // 图表区重建
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      RadioListTile<int>(
-                        value: 0,
-                        title: Text(l10n.statsChartStyleHeatmap),
-                        subtitle: Text(
-                          l10n.statsChartStyleHeatmapDesc,
-                          style: tt.bodySmall,
-                        ),
-                        dense: true,
-                      ),
-                      RadioListTile<int>(
-                        value: 1,
-                        title: Text(l10n.statsChartStyleBar),
-                        subtitle: Text(
-                          l10n.statsChartStyleBarDesc,
-                          style: tt.bodySmall,
-                        ),
-                        dense: true,
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                ListTile(
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SettingsSection(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.delete_sweep_outlined),
                   title: Text(l10n.statsClearButton),
                   onTap: () {
@@ -260,9 +264,8 @@ class _StatsPageState extends State<StatsPage> {
                     _clearData();
                   },
                 ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -237,35 +237,14 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
     }
   }
 
-  Widget _buildSectionHeader(
-    String title,
-    ColorScheme cs,
-    TextTheme tt, {
-    bool first = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!first) ...[
-          const SizedBox(height: AppSpacing.xxl),
-          Divider(
-            key: ValueKey('comment-settings-divider-$title'),
-            height: 1,
-            color: cs.outlineVariant,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-          child: Text(
-            title,
-            style: tt.titleSmall?.copyWith(
-              color: cs.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
+  Widget _buildSection(String title, List<Widget> children) {
+    return SettingsSection(
+      key: ValueKey('comment-settings-section-$title'),
+      title: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
     );
   }
 
@@ -286,152 +265,146 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
     ).clamp(minFontSizePx, maxFontSizePx);
 
     return AppSheet(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xxl,
-        AppSpacing.lg,
-        AppSpacing.xxl,
-        AppSpacing.lg,
-      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              l10n.commentSettingsDisplaySection,
-              cs,
-              tt,
-              first: true,
-            ),
-            if (widget.isChapterComments) ...[
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<bool>(
-                  segments: [
-                    ButtonSegment(
-                      value: true,
-                      icon: const Icon(Icons.dashboard_outlined),
-                      label: Text(l10n.commentSettingsCompactLayout),
-                    ),
-                    ButtonSegment(
-                      value: false,
-                      icon: const Icon(Icons.view_agenda_outlined),
-                      label: Text(l10n.commentSettingsListLayout),
-                    ),
-                  ],
-                  selected: {_useCompactLayout},
-                  onSelectionChanged: (values) {
-                    final value = values.first;
-                    setState(() => _useCompactLayout = value);
-                    widget.onLayoutChanged(value);
-                  },
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.commentSettingsShowAvatar),
-              value: _showUserAvatar,
-              onChanged: (value) {
-                setState(() => _showUserAvatar = value);
-                widget.onShowAvatarChanged(value);
-              },
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.commentSettingsShowUserName),
-              value: _showUserName,
-              onChanged: (value) {
-                setState(() => _showUserName = value);
-                widget.onShowUserNameChanged(value);
-              },
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.commentSettingsShowCommentTime),
-              value: _showCommentTime,
-              onChanged: (value) {
-                setState(() => _showCommentTime = value);
-                widget.onShowCommentTimeChanged(value);
-              },
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.commentSettingsFontSizeTitle,
-                    style: tt.bodyMedium,
+            _buildSection(l10n.commentSettingsDisplaySection, [
+              if (widget.isChapterComments) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(
+                        value: true,
+                        icon: const Icon(Icons.dashboard_outlined),
+                        label: Text(l10n.commentSettingsCompactLayout),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        icon: const Icon(Icons.view_agenda_outlined),
+                        label: Text(l10n.commentSettingsListLayout),
+                      ),
+                    ],
+                    selected: {_useCompactLayout},
+                    onSelectionChanged: (values) {
+                      final value = values.first;
+                      setState(() => _useCompactLayout = value);
+                      widget.onLayoutChanged(value);
+                    },
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  '${currentFontSizePx.round()} px',
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
+                const SizedBox(height: AppSpacing.lg),
               ],
-            ),
-            Slider(
-              value: currentFontSizePx,
-              min: minFontSizePx,
-              max: maxFontSizePx,
-              divisions: ((maxFontSizePx - minFontSizePx) / 1).round(),
-              label: '${currentFontSizePx.round()} px',
-              onChanged: (value) {
-                final nextScale = _commentFontPxToScale(
-                  defaultFontSizePx,
-                  value,
-                );
-                setState(() => _commentFontScale = nextScale);
-                widget.onFontScaleChanged(nextScale);
-              },
-            ),
-            if (widget.isChapterComments) ...[
-              _buildSectionHeader(l10n.commentSettingsLoadingSection, cs, tt),
-              Text(
-                l10n.commentSettingsInitialCountTitle(
-                  _commentInitialPages * chapterCommentPageSize,
-                ),
-                style: tt.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<int>(
-                  showSelectedIcon: false,
-                  style: SegmentedButton.styleFrom(
-                    minimumSize: const Size(48, 48),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                    ),
-                  ),
-                  segments: [
-                    for (var pages = 1; pages <= 5; pages++)
-                      ButtonSegment(value: pages, label: Text('$pages')),
-                  ],
-                  selected: {_commentInitialPages},
-                  onSelectionChanged: (values) {
-                    final pages = values.first;
-                    setState(() => _commentInitialPages = pages);
-                    widget.onInitialPagesChanged(pages);
-                  },
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(l10n.commentSettingsPreloadTitle),
-                subtitle: Text(l10n.commentSettingsPreloadDesc),
-                value: _commentPreload,
+                title: Text(l10n.commentSettingsShowAvatar),
+                value: _showUserAvatar,
                 onChanged: (value) {
-                  setState(() => _commentPreload = value);
-                  widget.onPreloadChanged(value);
+                  setState(() => _showUserAvatar = value);
+                  widget.onShowAvatarChanged(value);
                 },
               ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.commentSettingsShowUserName),
+                value: _showUserName,
+                onChanged: (value) {
+                  setState(() => _showUserName = value);
+                  widget.onShowUserNameChanged(value);
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.commentSettingsShowCommentTime),
+                value: _showCommentTime,
+                onChanged: (value) {
+                  setState(() => _showCommentTime = value);
+                  widget.onShowCommentTimeChanged(value);
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.commentSettingsFontSizeTitle,
+                      style: tt.bodyMedium,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    '${currentFontSizePx.round()} px',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+              Slider(
+                value: currentFontSizePx,
+                min: minFontSizePx,
+                max: maxFontSizePx,
+                divisions: ((maxFontSizePx - minFontSizePx) / 1).round(),
+                label: '${currentFontSizePx.round()} px',
+                onChanged: (value) {
+                  final nextScale = _commentFontPxToScale(
+                    defaultFontSizePx,
+                    value,
+                  );
+                  setState(() => _commentFontScale = nextScale);
+                  widget.onFontScaleChanged(nextScale);
+                },
+              ),
+            ]),
+            if (widget.isChapterComments) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildSection(l10n.commentSettingsLoadingSection, [
+                Text(
+                  l10n.commentSettingsInitialCountTitle(
+                    _commentInitialPages * chapterCommentPageSize,
+                  ),
+                  style: tt.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<int>(
+                    showSelectedIcon: false,
+                    style: SegmentedButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                      ),
+                    ),
+                    segments: [
+                      for (var pages = 1; pages <= 5; pages++)
+                        ButtonSegment(value: pages, label: Text('$pages')),
+                    ],
+                    selected: {_commentInitialPages},
+                    onSelectionChanged: (values) {
+                      final pages = values.first;
+                      setState(() => _commentInitialPages = pages);
+                      widget.onInitialPagesChanged(pages);
+                    },
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.commentSettingsPreloadTitle),
+                  subtitle: Text(l10n.commentSettingsPreloadDesc),
+                  value: _commentPreload,
+                  onChanged: (value) {
+                    setState(() => _commentPreload = value);
+                    widget.onPreloadChanged(value);
+                  },
+                ),
+              ]),
             ],
             // AI summary settings
-            if (widget.isChapterComments)
+            if (widget.isChapterComments) ...[
+              const SizedBox(height: AppSpacing.md),
               ListenableBuilder(
                 listenable: AiSettings(),
                 builder: (context, _) {
@@ -440,293 +413,277 @@ class _CommentSettingsPanelState extends State<CommentSettingsPanel> {
                   final enabled = zhipu.summaryEnabled;
                   final spoiler = zhipu.spoilerAnalysis;
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionHeader(
-                        AppLocalizations.of(
-                          context,
-                        )!.commentSettingsAiSummarySection,
-                        cs,
-                        tt,
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          AppLocalizations.of(
-                            context,
-                          )!.commentSettingsEnableAiSummary,
-                        ),
-                        subtitle: Text(
-                          hasKey
-                              ? (enabled
-                                    ? AppLocalizations.of(
-                                        context,
-                                      )!.commentSettingsAiSummaryEnabledDesc
-                                    : AppLocalizations.of(
-                                        context,
-                                      )!.commentSettingsAiSummaryDisabled)
-                              : AppLocalizations.of(
-                                  context,
-                                )!.commentSettingsConfigureAiFirst,
-                          style: tt.bodySmall?.copyWith(
-                            color: hasKey ? null : cs.error,
-                          ),
-                        ),
-                        value: enabled && hasKey,
-                        onChanged: hasKey
-                            ? (v) => zhipu.setSummaryEnabled(v)
-                            : null,
-                      ),
-                      if (enabled && hasKey) ...[
+                  return ReaderSettingsFold(
+                    key: const ValueKey('comment-settings-ai-fold'),
+                    title: l10n.commentSettingsAiSummarySection,
+                    icon: Icons.auto_awesome_outlined,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
                             AppLocalizations.of(
                               context,
-                            )!.commentSettingsCollapseAiComment,
+                            )!.commentSettingsEnableAiSummary,
                           ),
-                          subtitle: Text(
-                            AppLocalizations.of(
-                              context,
-                            )!.commentSettingsCollapseAiCommentDesc,
-                          ),
-                          value: zhipu.summaryCollapsed,
-                          onChanged: (v) => zhipu.setSummaryCollapsed(v),
+                          value: enabled && hasKey,
+                          onChanged: hasKey
+                              ? (v) => zhipu.setSummaryEnabled(v)
+                              : null,
                         ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            AppLocalizations.of(
-                              context,
-                            )!.commentSettingsAutoAiSummary,
-                          ),
-                          subtitle: Text(
-                            AppLocalizations.of(
-                              context,
-                            )!.commentSettingsAutoAiSummaryDesc(
-                              zhipu.autoSummaryMin,
-                            ),
-                          ),
-                          value: zhipu.autoSummary,
-                          onChanged: (v) => zhipu.setAutoSummary(v),
-                        ),
-                        if (zhipu.autoSummary)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.commentSettingsMinCommentCount,
-                                        style: tt.bodySmall,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    SizedBox(
-                                      width: 64,
-                                      child: TextFormField(
-                                        initialValue: zhipu.autoSummaryMin
-                                            .toString(),
-                                        keyboardType: TextInputType.number,
-                                        style: tt.bodySmall,
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 6,
-                                          ),
-                                          border: OutlineInputBorder(),
-                                        ),
-                                        onFieldSubmitted: (v) {
-                                          final n = int.tryParse(v);
-                                          if (n != null && n > 0) {
-                                            zhipu.setAutoSummaryMin(n);
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                Text(
-                                  AppLocalizations.of(
-                                    context,
-                                  )!.commentSettingsTriggerTiming,
-                                  style: tt.bodySmall,
-                                ),
-                                const SizedBox(height: 6),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: SegmentedButton<AiAutoSummaryTiming>(
-                                    segments: [
-                                      ButtonSegment(
-                                        value: AiAutoSummaryTiming.onOpen,
-                                        label: Text(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.commentSettingsTimingOnOpen,
-                                        ),
-                                      ),
-                                      ButtonSegment(
-                                        value: AiAutoSummaryTiming.afterPreload,
-                                        label: Text(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.commentSettingsTimingAfterPreload,
-                                        ),
-                                        enabled: _commentPreload,
-                                      ),
-                                    ],
-                                    selected: {
-                                      _commentPreload
-                                          ? zhipu.autoSummaryTiming
-                                          : AiAutoSummaryTiming.onOpen,
-                                    },
-                                    onSelectionChanged: (values) {
-                                      zhipu.setAutoSummaryTiming(values.first);
-                                    },
-                                  ),
-                                ),
-                                if (!_commentPreload) ...[
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.commentSettingsPreloadRequiredForTiming,
-                                    style: tt.bodySmall?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            AppLocalizations.of(
-                              context,
-                            )!.commentSettingsSpoilerAnalysis,
-                          ),
-                          subtitle: Text(
-                            AppLocalizations.of(
-                              context,
-                            )!.commentSettingsSpoilerAnalysisDesc,
-                          ),
-                          value: spoiler,
-                          onChanged: (v) => zhipu.setSpoilerAnalysis(v),
-                        ),
-                        if (spoiler)
+                        if (enabled && hasKey) ...[
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Text(
                               AppLocalizations.of(
                                 context,
-                              )!.commentSettingsSpoilerWarn,
+                              )!.commentSettingsCollapseAiComment,
                             ),
-                            value: zhipu.spoilerWarn,
-                            onChanged: (v) => zhipu.setSpoilerWarn(v),
+                            value: zhipu.summaryCollapsed,
+                            onChanged: (v) => zhipu.setSummaryCollapsed(v),
                           ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          AppLocalizations.of(
-                            context,
-                          )!.commentSettingsPromptPresets,
-                          style: tt.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        RadioGroup<String>(
-                          groupValue: zhipu.activePresetId,
-                          onChanged: (v) {
-                            if (v != null) zhipu.setActivePreset(v);
-                          },
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              for (final p in zhipu.presets)
-                                ListTile(
-                                  contentPadding: const EdgeInsets.only(
-                                    right: 8,
-                                  ),
-                                  leading: Radio<String>(value: p.id),
-                                  title: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          p.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      if (p.isBuiltIn &&
-                                          zhipu.isPresetModified(p.id))
-                                        Icon(
-                                          Icons.edit_note,
-                                          size: 16,
-                                          color: cs.primary,
-                                        ),
-                                    ],
-                                  ),
-                                  subtitle: Text(
-                                    p.prompt,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: tt.bodySmall?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: const Icon(
-                                      Icons.edit_outlined,
-                                      size: 20,
-                                    ),
-                                    tooltip: AppLocalizations.of(
-                                      context,
-                                    )!.aiConfigEdit,
-                                    onPressed: () => _editPreset(
-                                      context,
-                                      preset: p,
-                                      isBuiltIn: p.isBuiltIn,
-                                    ),
-                                  ),
-                                  onTap: () => zhipu.setActivePreset(p.id),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            icon: const Icon(Icons.add, size: 18),
-                            label: Text(
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
                               AppLocalizations.of(
                                 context,
-                              )!.commentSettingsAddPromptTitle,
+                              )!.commentSettingsAutoAiSummary,
                             ),
-                            onPressed: () => _addPreset(context),
+                            subtitle: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsAutoAiSummaryDesc(
+                                zhipu.autoSummaryMin,
+                              ),
+                            ),
+                            value: zhipu.autoSummary,
+                            onChanged: (v) => zhipu.setAutoSummary(v),
                           ),
-                        ),
+                          if (zhipu.autoSummary)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.commentSettingsMinCommentCount,
+                                          style: tt.bodySmall,
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      SizedBox(
+                                        width: 64,
+                                        child: TextFormField(
+                                          initialValue: zhipu.autoSummaryMin
+                                              .toString(),
+                                          keyboardType: TextInputType.number,
+                                          style: tt.bodySmall,
+                                          decoration: const InputDecoration(
+                                            isDense: true,
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 6,
+                                                ),
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          onFieldSubmitted: (v) {
+                                            final n = int.tryParse(v);
+                                            if (n != null && n > 0) {
+                                              zhipu.setAutoSummaryMin(n);
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                  Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.commentSettingsTriggerTiming,
+                                    style: tt.bodySmall,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: SegmentedButton<AiAutoSummaryTiming>(
+                                      segments: [
+                                        ButtonSegment(
+                                          value: AiAutoSummaryTiming.onOpen,
+                                          label: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.commentSettingsTimingOnOpen,
+                                          ),
+                                        ),
+                                        ButtonSegment(
+                                          value:
+                                              AiAutoSummaryTiming.afterPreload,
+                                          label: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.commentSettingsTimingAfterPreload,
+                                          ),
+                                          enabled: _commentPreload,
+                                        ),
+                                      ],
+                                      selected: {
+                                        _commentPreload
+                                            ? zhipu.autoSummaryTiming
+                                            : AiAutoSummaryTiming.onOpen,
+                                      },
+                                      onSelectionChanged: (values) {
+                                        zhipu.setAutoSummaryTiming(
+                                          values.first,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  if (!_commentPreload) ...[
+                                    const SizedBox(height: AppSpacing.xs),
+                                    Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.commentSettingsPreloadRequiredForTiming,
+                                      style: tt.bodySmall?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsSpoilerAnalysis,
+                            ),
+                            subtitle: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.commentSettingsSpoilerAnalysisDesc,
+                            ),
+                            value: spoiler,
+                            onChanged: (v) => zhipu.setSpoilerAnalysis(v),
+                          ),
+                          if (spoiler)
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.commentSettingsSpoilerWarn,
+                              ),
+                              value: zhipu.spoilerWarn,
+                              onChanged: (v) => zhipu.setSpoilerWarn(v),
+                            ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.commentSettingsPromptPresets,
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          RadioGroup<String>(
+                            groupValue: zhipu.activePresetId,
+                            onChanged: (v) {
+                              if (v != null) zhipu.setActivePreset(v);
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (final p in zhipu.presets)
+                                  ListTile(
+                                    contentPadding: const EdgeInsets.only(
+                                      right: 8,
+                                    ),
+                                    leading: Radio<String>(value: p.id),
+                                    title: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            p.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (p.isBuiltIn &&
+                                            zhipu.isPresetModified(p.id))
+                                          Icon(
+                                            Icons.edit_note,
+                                            size: 16,
+                                            color: cs.primary,
+                                          ),
+                                      ],
+                                    ),
+                                    subtitle: Text(
+                                      p.prompt,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: tt.bodySmall?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 20,
+                                      ),
+                                      tooltip: AppLocalizations.of(
+                                        context,
+                                      )!.aiConfigEdit,
+                                      onPressed: () => _editPreset(
+                                        context,
+                                        preset: p,
+                                        isBuiltIn: p.isBuiltIn,
+                                      ),
+                                    ),
+                                    onTap: () => zhipu.setActivePreset(p.id),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              icon: const Icon(Icons.add, size: 18),
+                              label: Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.commentSettingsAddPromptTitle,
+                              ),
+                              onPressed: () => _addPreset(context),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   );
                 },
               ),
+            ],
             if (widget.showFilteringSettings) ...[
-              _buildSectionHeader(l10n.commentSettingsFilteringSection, cs, tt),
-              _buildBlockwordsSection(cs, tt),
-              const SizedBox(height: AppSpacing.sm),
-              _buildBlockPresetsSection(cs, tt),
-              const SizedBox(height: AppSpacing.sm),
-              _buildBlockedUsersSection(cs, tt),
+              const SizedBox(height: AppSpacing.md),
+              _buildSection(l10n.commentSettingsFilteringSection, [
+                _buildBlockwordsSection(cs, tt),
+                const SizedBox(height: AppSpacing.sm),
+                _buildBlockPresetsSection(cs, tt),
+                const SizedBox(height: AppSpacing.sm),
+                _buildBlockedUsersSection(cs, tt),
+              ]),
             ],
             const SizedBox(height: AppSpacing.sm),
           ],

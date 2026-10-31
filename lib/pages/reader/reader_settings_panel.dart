@@ -32,7 +32,13 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
   }
 
   Widget _details({required bool expanded, required Widget child}) =>
-      CollapsibleContent(expanded: expanded, child: child);
+      CollapsibleContent(
+        expanded: expanded,
+        child: Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.sm),
+          child: child,
+        ),
+      );
 
   Widget _slider({
     required String title,
@@ -226,222 +232,252 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.xl),
-              SegmentedButton<int>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(
-                    value: 0,
-                    icon: const Icon(Icons.view_day),
-                    label: Text(l10n.readerScrollMode),
-                  ),
-                  ButtonSegment(
-                    value: 1,
-                    icon: const Icon(Icons.auto_stories),
-                    label: Text(l10n.readerPageMode),
-                  ),
-                ],
-                selected: {_user.readerMode},
-                onSelectionChanged: (v) {
-                  _user.setReaderMode(v.first);
-                  setState(() {});
-                  widget.onChanged();
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              SegmentedButton<int>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(
-                    value: 0,
-                    icon: const Icon(Icons.arrow_forward),
-                    label: Text(l10n.readerLeftToRight),
-                  ),
-                  ButtonSegment(
-                    value: 1,
-                    icon: const Icon(Icons.arrow_back),
-                    label: Text(l10n.readerRightToLeft),
-                  ),
-                  ButtonSegment(
-                    value: 2,
-                    icon: const Icon(Icons.arrow_downward),
-                    label: Text(l10n.readerTopToBottom),
-                  ),
-                ],
-                selected: {_user.readerScrollDirection},
-                onSelectionChanged: (v) {
-                  _user.setReaderScrollDirection(v.first);
-                  setState(() {});
-                  widget.onChanged();
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              if (isDark)
-                _slider(
-                  title: l10n.readerDimming,
-                  valueText: '${(_user.readerDimming * 100).round()}%',
-                  value: _user.readerDimming,
-                  max: 0.7,
-                  divisions: 14,
-                  onChangeStart: (_) =>
-                      setState(() => _isDraggingBrightness = true),
-                  onChangeEnd: (_) =>
-                      setState(() => _isDraggingBrightness = false),
-                  onChanged: (v) {
-                    _user.setReaderDimming(v);
-                    setState(() {});
-                    widget.onChanged();
-                  },
+              SettingsSection(
+                key: const ValueKey('reader-mode-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SegmentedButton<int>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: 0,
+                          icon: const Icon(Icons.view_day),
+                          label: Text(l10n.readerScrollMode),
+                        ),
+                        ButtonSegment(
+                          value: 1,
+                          icon: const Icon(Icons.auto_stories),
+                          label: Text(l10n.readerPageMode),
+                        ),
+                      ],
+                      selected: {_user.readerMode},
+                      onSelectionChanged: (v) {
+                        _user.setReaderMode(v.first);
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    SegmentedButton<int>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: 0,
+                          icon: const Icon(Icons.arrow_forward),
+                          label: Text(l10n.readerLeftToRight),
+                        ),
+                        ButtonSegment(
+                          value: 1,
+                          icon: const Icon(Icons.arrow_back),
+                          label: Text(l10n.readerRightToLeft),
+                        ),
+                        ButtonSegment(
+                          value: 2,
+                          icon: const Icon(Icons.arrow_downward),
+                          label: Text(l10n.readerTopToBottom),
+                        ),
+                      ],
+                      selected: {_user.readerScrollDirection},
+                      onSelectionChanged: (v) {
+                        _user.setReaderScrollDirection(v.first);
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                    ),
+                  ],
                 ),
-              if (!isPageMode) ...[
-                _slider(
-                  title: l10n.readerImageGap,
-                  valueText: '${_user.readerImageGap.round()} px',
-                  value: _user.readerImageGap,
-                  max: 20,
-                  divisions: 20,
-                  onChanged: (v) {
-                    _user.setReaderImageGap(v);
-                    setState(() {});
-                    widget.onChanged();
-                  },
-                ),
-                if (isHorizontalScroll)
-                  _slider(
-                    title: l10n.readerHorizontalImageScale,
-                    valueText:
-                        '${(_user.readerHorizontalImageScale * 100).round()}%',
-                    value: _user.readerHorizontalImageScale,
-                    min: 0.7,
-                    max: 1,
-                    divisions: 6,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (isDark) ...[
+                SettingsSection(
+                  child: _slider(
+                    title: l10n.readerDimming,
+                    valueText: '${(_user.readerDimming * 100).round()}%',
+                    value: _user.readerDimming,
+                    max: 0.7,
+                    divisions: 14,
+                    onChangeStart: (_) =>
+                        setState(() => _isDraggingBrightness = true),
+                    onChangeEnd: (_) =>
+                        setState(() => _isDraggingBrightness = false),
                     onChanged: (v) {
-                      _user.setReaderHorizontalImageScale(v);
+                      _user.setReaderDimming(v);
                       setState(() {});
                       widget.onChanged();
                     },
                   ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.readerContinuousReading),
-                  subtitle: Text(l10n.readerContinuousReadingDesc),
-                  value: _user.readerContinuousReading,
-                  onChanged: (v) {
-                    _user.setReaderContinuousReading(v);
-                    setState(() {});
-                    widget.onChanged();
-                  },
                 ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SwitchListTile(
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              if (!isPageMode) ...[
+                SettingsSection(
+                  key: const ValueKey('reader-scroll-card'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _slider(
+                        title: l10n.readerImageGap,
+                        valueText: '${_user.readerImageGap.round()} px',
+                        value: _user.readerImageGap,
+                        max: 20,
+                        divisions: 20,
+                        onChanged: (v) {
+                          _user.setReaderImageGap(v);
+                          setState(() {});
+                          widget.onChanged();
+                        },
+                      ),
+                      if (isHorizontalScroll)
+                        _slider(
+                          title: l10n.readerHorizontalImageScale,
+                          valueText:
+                              '${(_user.readerHorizontalImageScale * 100).round()}%',
+                          value: _user.readerHorizontalImageScale,
+                          min: 0.7,
+                          max: 1,
+                          divisions: 6,
+                          onChanged: (v) {
+                            _user.setReaderHorizontalImageScale(v);
+                            setState(() {});
+                            widget.onChanged();
+                          },
+                        ),
+                      SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(l10n.readerAutoScroll),
-                        subtitle: Text(l10n.readerAutoScrollDesc),
+                        title: Text(l10n.readerContinuousReading),
+                        subtitle: Text(l10n.readerContinuousReadingDesc),
+                        value: _user.readerContinuousReading,
+                        onChanged: (v) {
+                          _user.setReaderContinuousReading(v);
+                          setState(() {});
+                          widget.onChanged();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SettingsSection(
+                  key: const ValueKey('reader-auto-scroll-card'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CollapsibleSwitchTile(
+                        title: l10n.readerAutoScroll,
+                        subtitle: l10n.readerAutoScrollDesc,
+                        switchKey: const ValueKey('reader-auto-scroll-switch'),
+                        expandKey: const ValueKey(
+                          'reader-auto-scroll-details-toggle',
+                        ),
                         value: _user.readerAutoScrollEnabled,
+                        expanded: _autoScrollExpanded,
                         onChanged: (v) {
                           _user.setReaderAutoScrollEnabled(v);
                           setState(() {});
                           widget.onChanged();
                         },
-                      ),
-                    ),
-                    if (_user.readerAutoScrollEnabled)
-                      IconButton(
-                        tooltip: l10n.readerAutoScroll,
-                        onPressed: () => setState(
+                        onToggleExpanded: () => setState(
                           () => _autoScrollExpanded = !_autoScrollExpanded,
                         ),
-                        icon: Icon(
-                          _autoScrollExpanded
-                              ? Icons.expand_less
-                              : Icons.expand_more,
-                        ),
                       ),
-                  ],
-                ),
-                _details(
-                  expanded:
-                      _user.readerAutoScrollEnabled && _autoScrollExpanded,
-                  child: _buildAutoScrollSettings(l10n),
-                ),
-              ],
-              if (isPageMode) ...[
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.readerVolumeKeyPageTurn),
-                  subtitle: Text(l10n.readerVolumeKeyPageTurnDesc),
-                  value: _user.readerVolumeKey,
-                  onChanged: (v) {
-                    _user.setReaderVolumeKey(v);
-                    setState(() {});
-                    widget.onChanged();
-                  },
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.readerInstantPageTurn),
-                  value: _user.readerInstantPageTurn,
-                  onChanged: (v) {
-                    _user.setReaderInstantPageTurn(v);
-                    setState(() {});
-                    widget.onChanged();
-                  },
+                      _details(
+                        expanded: _autoScrollExpanded,
+                        child: _buildAutoScrollSettings(l10n),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-              const Divider(height: AppSpacing.xxl),
-              Row(
-                children: [
-                  Expanded(
-                    child: SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(l10n.readerLongPressZoom),
-                      subtitle: Text(l10n.readerLongPressZoomDesc),
+              if (isPageMode)
+                SettingsSection(
+                  key: const ValueKey('reader-page-turn-card'),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l10n.readerVolumeKeyPageTurn),
+                        subtitle: Text(l10n.readerVolumeKeyPageTurnDesc),
+                        value: _user.readerVolumeKey,
+                        onChanged: (v) {
+                          _user.setReaderVolumeKey(v);
+                          setState(() {});
+                          widget.onChanged();
+                        },
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l10n.readerInstantPageTurn),
+                        value: _user.readerInstantPageTurn,
+                        onChanged: (v) {
+                          _user.setReaderInstantPageTurn(v);
+                          setState(() {});
+                          widget.onChanged();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.sm),
+              SettingsSection(
+                key: const ValueKey('reader-long-press-zoom-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CollapsibleSwitchTile(
+                      title: l10n.readerLongPressZoom,
+                      subtitle: l10n.readerLongPressZoomDesc,
+                      switchKey: const ValueKey(
+                        'reader-long-press-zoom-switch',
+                      ),
+                      expandKey: const ValueKey(
+                        'reader-long-press-zoom-details-toggle',
+                      ),
                       value: _user.reader.longPressZoomEnabled,
+                      expanded: _zoomExpanded,
                       onChanged: (value) async {
                         await _user.reader.setLongPressZoomEnabled(value);
                         if (!mounted) return;
                         setState(() {});
                         widget.onChanged();
                       },
-                    ),
-                  ),
-                  if (_user.reader.longPressZoomEnabled)
-                    IconButton(
-                      tooltip: l10n.readerLongPressZoomPanSensitivity,
-                      onPressed: () =>
+                      onToggleExpanded: () =>
                           setState(() => _zoomExpanded = !_zoomExpanded),
-                      icon: Icon(
-                        _zoomExpanded ? Icons.expand_less : Icons.expand_more,
+                    ),
+                    _details(
+                      expanded: _zoomExpanded,
+                      child: ReaderLongPressZoomSensitivityControl(
+                        title: l10n.readerLongPressZoomPanSensitivity,
+                        value: _user.reader.longPressZoomPanSensitivity,
+                        onCommitted: (value) async {
+                          await _user.reader.setLongPressZoomPanSensitivity(
+                            value,
+                          );
+                          if (!mounted) return;
+                          widget.onChanged();
+                        },
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-              _details(
-                expanded: _user.reader.longPressZoomEnabled && _zoomExpanded,
-                child: ReaderLongPressZoomSensitivityControl(
-                  title: l10n.readerLongPressZoomPanSensitivity,
-                  value: _user.reader.longPressZoomPanSensitivity,
-                  onCommitted: (value) async {
-                    await _user.reader.setLongPressZoomPanSensitivity(value);
+              const SizedBox(height: AppSpacing.sm),
+              SettingsSection(
+                child: SwitchListTile.adaptive(
+                  key: const ValueKey('reader-keep-screen-on'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.novelReaderKeepScreenOn),
+                  value: _user.reader.keepScreenOn,
+                  onChanged: (value) async {
+                    await _user.reader.setKeepScreenOn(value);
                     if (!mounted) return;
-                    widget.onChanged();
+                    setState(() {});
                   },
                 ),
               ),
-              SwitchListTile.adaptive(
-                key: const ValueKey('reader-keep-screen-on'),
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.novelReaderKeepScreenOn),
-                value: _user.reader.keepScreenOn,
-                onChanged: (value) async {
-                  await _user.reader.setKeepScreenOn(value);
-                  if (!mounted) return;
-                  setState(() {});
-                },
-              ),
+              const SizedBox(height: AppSpacing.sm),
               ReaderStatusSettingsSection(onChanged: widget.onChanged),
-              const Divider(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.sm),
               _buildImageLoadingSettings(l10n),
             ],
           ),

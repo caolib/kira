@@ -235,148 +235,175 @@ class _NovelThemeSettingsSheetState extends State<_NovelThemeSettingsSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SegmentedButton<bool>(
-                      key: const ValueKey('novel-theme-edit-mode'),
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(
-                          value: false,
-                          label: Text(l10n.appearanceLightMode),
-                        ),
-                        ButtonSegment(
-                          value: true,
-                          label: Text(l10n.appearanceDarkMode),
-                        ),
-                      ],
-                      selected: {_dark},
-                      onSelectionChanged: (selection) =>
-                          setState(() => _dark = selection.first),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    _modeTile(
-                      key: ValueKey(
-                        _dark ? 'novel-dark-theme' : 'novel-light-theme',
-                      ),
-                      label: l10n.novelReaderColorScheme,
-                      value: _dark
-                          ? _settings.darkThemeId
-                          : _settings.lightThemeId,
-                      dark: _dark,
-                      onChanged: (id) => _selectTheme(_dark, id),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    SwitchListTile.adaptive(
-                      key: const ValueKey('novel-dialogue-enabled'),
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(l10n.novelReaderDialogueStyle),
-                      value: _settings.dialogueEnabled,
-                      onChanged: (value) =>
-                          _change(_settings.copyWith(dialogueEnabled: value)),
-                    ),
-                    if (_settings.dialogueEnabled) ...[
-                      _selectRow<NovelDialogueColorMode>(
-                        key: const ValueKey('novel-dialogue-color-mode'),
-                        label: l10n.novelReaderTextColor,
-                        value: style.colorMode,
-                        items: [
-                          SelectItem(
-                            NovelDialogueColorMode.automatic,
-                            l10n.novelReaderDialogueAutomatic,
+                    SettingsSection(
+                      key: const ValueKey('novel-color-scheme-card'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SegmentedButton<bool>(
+                            key: const ValueKey('novel-theme-edit-mode'),
+                            showSelectedIcon: false,
+                            segments: [
+                              ButtonSegment(
+                                value: false,
+                                label: Text(l10n.appearanceLightMode),
+                              ),
+                              ButtonSegment(
+                                value: true,
+                                label: Text(l10n.appearanceDarkMode),
+                              ),
+                            ],
+                            selected: {_dark},
+                            onSelectionChanged: (selection) =>
+                                setState(() => _dark = selection.first),
                           ),
-                          SelectItem(
-                            NovelDialogueColorMode.body,
-                            l10n.novelReaderDialogueFollowBody,
-                          ),
-                          SelectItem(
-                            NovelDialogueColorMode.custom,
-                            l10n.novelReaderDialogueCustom,
+                          const SizedBox(height: AppSpacing.md),
+                          _modeTile(
+                            key: ValueKey(
+                              _dark ? 'novel-dark-theme' : 'novel-light-theme',
+                            ),
+                            label: l10n.novelReaderColorScheme,
+                            value: _dark
+                                ? _settings.darkThemeId
+                                : _settings.lightThemeId,
+                            dark: _dark,
+                            onChanged: (id) => _selectTheme(_dark, id),
                           ),
                         ],
-                        onChanged: (value) =>
-                            _changeDialogue(style.copyWith(colorMode: value)),
                       ),
-                      if (style.colorMode == NovelDialogueColorMode.custom)
-                        _ColorField(
-                          key: const ValueKey('novel-dialogue-text-color'),
-                          label: l10n.novelReaderTextColor,
-                          color: Color(style.textColor),
-                          onChanged: (color) => _changeDialogue(
-                            style.copyWith(textColor: color.toARGB32()),
-                          ),
-                        ),
-                      _selectRow<NovelDialogueWeight>(
-                        key: const ValueKey('novel-dialogue-weight'),
-                        label: l10n.novelReaderDialogueWeight,
-                        value: style.weight,
-                        items: [
-                          SelectItem(
-                            NovelDialogueWeight.body,
-                            l10n.novelReaderDialogueFollowBody,
-                          ),
-                          SelectItem(
-                            NovelDialogueWeight.medium,
-                            l10n.novelReaderDialogueMedium,
-                          ),
-                          SelectItem(
-                            NovelDialogueWeight.bold,
-                            l10n.novelReaderDialogueBold,
-                          ),
-                        ],
-                        onChanged: (value) =>
-                            _changeDialogue(style.copyWith(weight: value)),
-                      ),
-                      SwitchListTile.adaptive(
-                        key: const ValueKey(
-                          'novel-dialogue-background-enabled',
-                        ),
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l10n.novelReaderDialogueBackground),
-                        value: style.backgroundEnabled,
-                        onChanged: (value) => _changeDialogue(
-                          style.copyWith(backgroundEnabled: value),
-                        ),
-                      ),
-                      if (style.backgroundEnabled) ...[
-                        _ColorField(
-                          key: const ValueKey(
-                            'novel-dialogue-background-color',
-                          ),
-                          label: l10n.novelReaderBackgroundColor,
-                          color: Color(style.backgroundColor),
-                          onChanged: (color) => _changeDialogue(
-                            style.copyWith(backgroundColor: color.toARGB32()),
-                          ),
-                        ),
-                        Text(
-                          '${l10n.novelReaderDialogueBackgroundStrength} · ${(style.backgroundOpacity * 100).round()}%',
-                        ),
-                        Slider(
-                          key: const ValueKey(
-                            'novel-dialogue-background-opacity',
-                          ),
-                          value: style.backgroundOpacity,
-                          divisions: 100,
-                          label: '${(style.backgroundOpacity * 100).round()}%',
-                          onChanged: (value) => _changeDialogue(
-                            style.copyWith(backgroundOpacity: value),
-                          ),
-                        ),
-                      ],
-                      if (lowContrast)
-                        Padding(
-                          key: const ValueKey('novel-dialogue-low-contrast'),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.sm,
-                          ),
-                          child: Text(
-                            l10n.novelReaderDialogueLowContrast,
-                            style: tt.bodySmall?.copyWith(
-                              color: AppStatusColors.warning(cs),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    SettingsSection(
+                      key: const ValueKey('novel-dialogue-card'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SwitchListTile.adaptive(
+                            key: const ValueKey('novel-dialogue-enabled'),
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(l10n.novelReaderDialogueStyle),
+                            value: _settings.dialogueEnabled,
+                            onChanged: (value) => _change(
+                              _settings.copyWith(dialogueEnabled: value),
                             ),
                           ),
-                        ),
-                    ],
-                    const Divider(height: AppSpacing.xxl),
+                          if (_settings.dialogueEnabled) ...[
+                            _selectRow<NovelDialogueColorMode>(
+                              key: const ValueKey('novel-dialogue-color-mode'),
+                              label: l10n.novelReaderTextColor,
+                              value: style.colorMode,
+                              items: [
+                                SelectItem(
+                                  NovelDialogueColorMode.automatic,
+                                  l10n.novelReaderDialogueAutomatic,
+                                ),
+                                SelectItem(
+                                  NovelDialogueColorMode.body,
+                                  l10n.novelReaderDialogueFollowBody,
+                                ),
+                                SelectItem(
+                                  NovelDialogueColorMode.custom,
+                                  l10n.novelReaderDialogueCustom,
+                                ),
+                              ],
+                              onChanged: (value) => _changeDialogue(
+                                style.copyWith(colorMode: value),
+                              ),
+                            ),
+                            if (style.colorMode ==
+                                NovelDialogueColorMode.custom)
+                              _ColorField(
+                                key: const ValueKey(
+                                  'novel-dialogue-text-color',
+                                ),
+                                label: l10n.novelReaderTextColor,
+                                color: Color(style.textColor),
+                                onChanged: (color) => _changeDialogue(
+                                  style.copyWith(textColor: color.toARGB32()),
+                                ),
+                              ),
+                            _selectRow<NovelDialogueWeight>(
+                              key: const ValueKey('novel-dialogue-weight'),
+                              label: l10n.novelReaderDialogueWeight,
+                              value: style.weight,
+                              items: [
+                                SelectItem(
+                                  NovelDialogueWeight.body,
+                                  l10n.novelReaderDialogueFollowBody,
+                                ),
+                                SelectItem(
+                                  NovelDialogueWeight.medium,
+                                  l10n.novelReaderDialogueMedium,
+                                ),
+                                SelectItem(
+                                  NovelDialogueWeight.bold,
+                                  l10n.novelReaderDialogueBold,
+                                ),
+                              ],
+                              onChanged: (value) => _changeDialogue(
+                                style.copyWith(weight: value),
+                              ),
+                            ),
+                            SwitchListTile.adaptive(
+                              key: const ValueKey(
+                                'novel-dialogue-background-enabled',
+                              ),
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(l10n.novelReaderDialogueBackground),
+                              value: style.backgroundEnabled,
+                              onChanged: (value) => _changeDialogue(
+                                style.copyWith(backgroundEnabled: value),
+                              ),
+                            ),
+                            if (style.backgroundEnabled) ...[
+                              _ColorField(
+                                key: const ValueKey(
+                                  'novel-dialogue-background-color',
+                                ),
+                                label: l10n.novelReaderBackgroundColor,
+                                color: Color(style.backgroundColor),
+                                onChanged: (color) => _changeDialogue(
+                                  style.copyWith(
+                                    backgroundColor: color.toARGB32(),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${l10n.novelReaderDialogueBackgroundStrength} · ${(style.backgroundOpacity * 100).round()}%',
+                              ),
+                              Slider(
+                                key: const ValueKey(
+                                  'novel-dialogue-background-opacity',
+                                ),
+                                value: style.backgroundOpacity,
+                                divisions: 100,
+                                label:
+                                    '${(style.backgroundOpacity * 100).round()}%',
+                                onChanged: (value) => _changeDialogue(
+                                  style.copyWith(backgroundOpacity: value),
+                                ),
+                              ),
+                            ],
+                            if (lowContrast)
+                              Padding(
+                                key: const ValueKey(
+                                  'novel-dialogue-low-contrast',
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.sm,
+                                ),
+                                child: Text(
+                                  l10n.novelReaderDialogueLowContrast,
+                                  style: tt.bodySmall?.copyWith(
+                                    color: AppStatusColors.warning(cs),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     ReaderSettingsFold(
                       key: const ValueKey('novel-custom-theme-settings'),
                       title: l10n.novelReaderThemeCustom,
