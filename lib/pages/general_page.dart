@@ -102,6 +102,12 @@ class _GeneralPageState extends State<GeneralPage> {
           onChanged: _user.setBannerVisible,
         ),
         SwitchListTile(
+          secondary: const Icon(Icons.content_paste_search_rounded),
+          title: Text(l10n.autoCheckClipboardSharedLinksTitle),
+          value: _user.general.autoCheckClipboardSharedLinks,
+          onChanged: _user.general.setAutoCheckClipboardSharedLinks,
+        ),
+        SwitchListTile(
           secondary: const Icon(Icons.exit_to_app_rounded),
           title: Text(l10n.backExitConfirmTitle),
           value: _user.theme.backExitConfirm,

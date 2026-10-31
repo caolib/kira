@@ -50,6 +50,35 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('剪贴板分享链接开关默认关闭、即时同步并持久化', (tester) async {
+    final user = UserManager();
+    await user.init();
+    await tester.pumpWidget(
+      wrapWithApp(const GeneralPage(), wrapInScaffold: false),
+    );
+    await tester.pumpAndSettle();
+    final tile = find.widgetWithText(SwitchListTile, '自动识别剪贴板分享链接');
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect(user.general.autoCheckClipboardSharedLinks, isTrue);
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('auto_check_clipboard_shared_links'), isTrue);
+
+    await user.init();
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
+
+    await user.general.setAutoCheckClipboardSharedLinks(false);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+    expect(prefs.getBool('auto_check_clipboard_shared_links'), isFalse);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('reset app requires exact confirmation text', (tester) async {
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1.0;

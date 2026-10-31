@@ -1,11 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/comment_settings.dart';
+import '../models/general_settings.dart';
 import '../models/network_settings.dart';
 import '../models/reader_settings.dart';
 import '../models/theme_settings.dart';
 import '../models/user_manager.dart';
 import 'app_providers.dart';
+
+/// Provides the [GeneralSettings] sub-store from [UserManager].
+final generalSettingsProvider = Provider<GeneralSettings>((ref) {
+  return ref.watch(userManagerProvider).general;
+});
 
 /// Provides the [ReaderSettings] sub-store from [UserManager].
 final readerSettingsProvider = Provider<ReaderSettings>((ref) {

@@ -907,6 +907,12 @@ abstract class AppLocalizations {
   /// **'显示Banner'**
   String get bannerVisibleTitle;
 
+  /// No description provided for @autoCheckClipboardSharedLinksTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动识别剪贴板分享链接'**
+  String get autoCheckClipboardSharedLinksTitle;
+
   /// No description provided for @backExitConfirmTitle.
   ///
   /// In zh, this message translates to:

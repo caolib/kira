@@ -457,6 +457,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bannerVisibleTitle => '显示Banner';
 
   @override
+  String get autoCheckClipboardSharedLinksTitle => '自动识别剪贴板分享链接';
+
+  @override
   String get backExitConfirmTitle => '返回两次退出应用';
 
   @override
@@ -4476,6 +4479,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get bannerVisibleTitle => '顯示 Banner';
+
+  @override
+  String get autoCheckClipboardSharedLinksTitle => '自動識別剪貼簿分享連結';
 
   @override
   String get backExitConfirmTitle => '返回兩次退出應用';

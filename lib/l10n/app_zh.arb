@@ -260,6 +260,7 @@
   "remoteNoticeDesc": "开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取",
   "noticeSettingsTooltip": "通知设置",
   "bannerVisibleTitle": "显示Banner",
+  "autoCheckClipboardSharedLinksTitle": "自动识别剪贴板分享链接",
   "backExitConfirmTitle": "返回两次退出应用",
   "backAgainToExitToast": "再次返回退出应用",
   "languageTitle": "语言",

@@ -41,6 +41,7 @@ abstract final class BackupSchema {
   static const _boolKeys = {
     'amoled_dark',
     'app_logging_enabled',
+    'auto_check_clipboard_shared_links',
     'auto_check_update',
     'auto_login',
     'back_exit_confirm',

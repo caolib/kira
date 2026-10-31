@@ -329,8 +329,7 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
       DisplayModePreference.applyRefreshRate(_user.displayModeRefreshRate),
     );
     unawaited(_loadDynamicPalettes());
-    // 冷启动后检测一次剪贴板中的分享链接（浏览器/聊天 App 里点不开
-    // kira:// 时，接收方可复制文本后打开 kira 跳转）。
+    // 开启自动识别后，冷启动检测剪贴板分享链接；默认不读取剪贴板。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkSharedLinkClipboard());
     });
@@ -413,8 +412,10 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
 
   /// 剪贴板里有漫画分享链接时弹 SnackBar，点击「打开」跳转对应详情页。
   Future<void> _checkSharedLinkClipboard() async {
+    if (!mounted || !_user.general.autoCheckClipboardSharedLinks) return;
     try {
       if (!await Clipboard.hasStrings()) return;
+      if (!mounted || !_user.general.autoCheckClipboardSharedLinks) return;
       final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
       if (text == null || text.isEmpty) return;
       final pathWord = KiraLinks.extractComicPathWord(text);
