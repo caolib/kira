@@ -433,16 +433,15 @@ class _ComicBookmarksPageState extends State<_ComicBookmarksPage>
 
   Future<void> _clearGroup(String pathWord) async {
     final group = _groupMetaOf(pathWord);
-    final empty = !_store.bookmarks.any((b) => b.pathWord == pathWord);
-    final removed = await (empty
-        ? _store.removeGroup(pathWord)
-        : _store.removeForComic(pathWord));
-    if (!mounted || (removed.isEmpty && (!empty || group == null))) return;
+    final removed = await _store.removeGroup(pathWord);
+    if (!mounted || (removed.isEmpty && group == null)) return;
     final l10n = AppLocalizations.of(context)!;
     _showUndoSnackBar(
-      empty ? l10n.bookmarkDeleted : l10n.bookmarksGroupDeleted(removed.length),
+      removed.isEmpty
+          ? l10n.bookmarkDeleted
+          : l10n.bookmarksGroupDeleted(removed.length),
       removed,
-      removedGroups: empty && group != null ? [group] : const [],
+      removedGroups: group != null ? [group] : const [],
     );
   }
 

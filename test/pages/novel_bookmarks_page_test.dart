@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/novel_reading_progress.dart';
 import 'package:kira/pages/bookmarks_page.dart';
 import 'package:kira/providers/novel_providers.dart';
@@ -203,25 +202,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('group clear and undo affect only that novel', (tester) async {
+  testWidgets('整组删除仅移除目标小说组头，撤销完整恢复并持久化', (tester) async {
     await seedBookmarks();
     await novelStore.toggle(progress: _position().copyWith(paragraphIndex: 44));
     await novelStore.toggle(
       progress: _position().copyWith(pathWord: 'novel-b', name: '小说 B'),
     );
+    final bookmarks = novelStore.bookmarks.map((b) => b.toJson()).toList();
+    final groups = novelStore.groups.map((g) => g.toJson()).toList();
     await _pump(tester, novelStore);
     await _showNovels(tester);
-    // 分组头部按钮已移除（与漫画一致），清空走左滑头部。
     await tester.drag(
       find.byKey(const ValueKey('novel_bookmark_group_novel-a')),
       const Offset(-550, 0),
     );
     await _settleBookmarks(tester, novelStore);
     expect(novelStore.bookmarks.single.pathWord, 'novel-b');
+    expect(novelStore.groups.single.pathWord, 'novel-b');
+    expect(find.text('小说 A'), findsNothing);
+    expect(find.text('小说 B'), findsOneWidget);
+    await novelStore.reload();
+    await tester.pumpAndSettle();
+    expect(novelStore.bookmarks.single.pathWord, 'novel-b');
+    expect(novelStore.groups.single.pathWord, 'novel-b');
+
     await tester.tap(find.text('撤销'));
     await _settleBookmarks(tester, novelStore);
-    expect(novelStore.bookmarks, hasLength(3));
+    expect(novelStore.bookmarks.map((b) => b.toJson()).toList(), bookmarks);
+    expect(novelStore.groups.map((g) => g.toJson()).toList(), groups);
+    expect(find.text('小说 A'), findsOneWidget);
+    expect(find.text('小说 B'), findsOneWidget);
+    await novelStore.reload();
+    await tester.pumpAndSettle();
+    expect(novelStore.bookmarks.map((b) => b.toJson()).toList(), bookmarks);
+    expect(novelStore.groups.map((g) => g.toJson()).toList(), groups);
     expect(BookmarkStore().bookmarks, hasLength(1));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('clear current type confirms novels only and supports undo', (
@@ -420,7 +436,18 @@ void main() {
     );
     await _settleBookmarks(tester, novelStore);
     expect(novelStore.bookmarks, isEmpty);
+    expect(novelStore.groups, isEmpty);
+    expect(find.text('小说 A'), findsNothing);
+    expect(find.text('没有找到相关书签，试试其他关键词'), findsOneWidget);
     expect(find.text('已删除 2 条书签'), findsOneWidget);
+    await tester.tap(find.text('撤销'));
+    await _settleBookmarks(tester, novelStore);
+    expect(novelStore.bookmarks, hasLength(2));
+    expect(novelStore.hasGroup('novel-a'), isTrue);
+    expect(find.text('小说 A'), findsOneWidget);
+    expect(find.text('第一卷 · 第二章'), findsOneWidget);
+    expect(find.text('第一卷 · 第三章'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 
@@ -474,12 +501,12 @@ Future<GoRouter> _pump(WidgetTester tester, NovelBookmarkStore store) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [novelBookmarkStoreProvider.overrideWithValue(store)],
-      child: MaterialApp.router(
-        theme: ThemeData(cardTheme: const CardThemeData(elevation: 8)),
-        routerConfig: router,
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+      child: wrapWithApp(
+        Theme(
+          data: ThemeData(cardTheme: const CardThemeData(elevation: 8)),
+          child: Router.withConfig(config: router),
+        ),
+        wrapInScaffold: false,
       ),
     ),
   );

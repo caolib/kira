@@ -210,12 +210,9 @@ class NovelBookmarksPageState extends ConsumerState<NovelBookmarksPage>
 
   Future<void> _clearGroup(String pathWord) {
     final group = _groupMetaOf(pathWord);
-    final empty = !_store.bookmarks.any((b) => b.pathWord == pathWord);
     return _update(
-      () => empty
-          ? _store.removeGroup(pathWord)
-          : _store.removeForNovel(pathWord),
-      removedGroups: empty && group != null ? [group] : const [],
+      () => _store.removeGroup(pathWord),
+      removedGroups: group != null ? [group] : const [],
     );
   }
 

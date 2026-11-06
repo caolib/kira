@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/pages/bookmarks_page.dart';
 import 'package:kira/routing/app_router.dart';
 import 'package:kira/utils/bookmark_store.dart';
@@ -73,9 +72,7 @@ void main() {
     expect(find.text('reader:comic-a:chapter-1:7'), findsOneWidget);
   });
 
-  testWidgets('swiping comic header removes all bookmarks for that comic', (
-    tester,
-  ) async {
+  testWidgets('整组删除移除漫画组头，撤销完整恢复并持久化', (tester) async {
     final router = _createRouter();
     addTearDown(router.dispose);
 
@@ -90,17 +87,36 @@ void main() {
     await tester.pumpWidget(_buildTestApp(router));
     await tester.pumpAndSettle();
 
-    expect(BookmarkStore().bookmarks, hasLength(2));
+    final store = BookmarkStore();
+    final bookmarks = store.bookmarks.map((b) => b.toJson()).toList();
+    final group = store.groups.single.toJson();
+    expect(store.bookmarks, hasLength(2));
     await tester.drag(
       find.byKey(const ValueKey('bookmark_group_comic-a')),
       const Offset(-500, 0),
     );
     await tester.pumpAndSettle();
 
-    expect(BookmarkStore().bookmarks, isEmpty);
-    expect(find.text('漫画 A'), findsOneWidget);
-    expect(find.text('0 条书签'), findsOneWidget);
-    expect(find.text('还没有书签'), findsNothing);
+    expect(store.bookmarks, isEmpty);
+    expect(store.groups, isEmpty);
+    expect(_groupFinder('comic-a'), findsNothing);
+    expect(find.text('还没有书签'), findsOneWidget);
+    await store.reload();
+    await tester.pumpAndSettle();
+    expect(store.bookmarks, isEmpty);
+    expect(store.groups, isEmpty);
+
+    await tester.tap(find.text('撤销'));
+    await tester.pumpAndSettle();
+    expect(store.bookmarks.map((b) => b.toJson()).toList(), bookmarks);
+    expect(store.groups.single.toJson(), group);
+    expect(_groupFinder('comic-a'), findsOneWidget);
+    expect(find.text('2 条书签'), findsOneWidget);
+    await store.reload();
+    await tester.pumpAndSettle();
+    expect(store.bookmarks.map((b) => b.toJson()).toList(), bookmarks);
+    expect(store.groups.single.toJson(), group);
+    expect(tester.takeException(), isNull);
   });
 
   for (final width in [360.0, 800.0]) {
@@ -205,6 +221,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('已删除 2 条书签'), findsOneWidget);
     expect(BookmarkStore().bookmarks.single.pathWord, 'comic-b');
+    expect(BookmarkStore().groups.single.pathWord, 'comic-b');
+    await tester.tap(find.text('撤销'));
+    await tester.pumpAndSettle();
+    expect(BookmarkStore().bookmarks, hasLength(3));
+    expect(BookmarkStore().groups, hasLength(2));
+    expect(_groupFinder('comic-a'), findsOneWidget);
+    expect(_bookmarkFinder('chapter-2:3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 
@@ -219,11 +243,9 @@ Finder _bookmarkFinder(String bookmarkId) =>
 /// 因此测试树必须自带 ProviderScope。
 Widget _buildTestApp(GoRouter router) {
   return ProviderScope(
-    child: MaterialApp.router(
-      routerConfig: router,
-      locale: const Locale('zh'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+    child: wrapWithApp(
+      Router.withConfig(config: router),
+      wrapInScaffold: false,
     ),
   );
 }
