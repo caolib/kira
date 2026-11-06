@@ -1,6 +1,6 @@
 # Platform Build Notes
 
-Windows / Android 构建故障排查与禁改项。`AGENTS.md` 只保留指针与硬性禁令；报错出现时先来本文，不要直接改构建配置。
+Windows / Android 构建故障排查与禁改项。`CLAUDE.md` 只保留指针与硬性禁令；报错出现时先来本文，不要直接改构建配置。
 
 ## Windows
 

@@ -21,7 +21,7 @@
 
 进程级、非持久化。重启即失。
 
-### 1.1 `AppMemoryCache`（`lib/utils/app_storage.dart:25`）
+### 1.1 `AppMemoryCache`（`lib/utils/app_storage.dart`）
 通用 `Map` + TTL（懒删除）。入口 `AppStorage.memory`。**当前为死代码**，无业务调用——新增内存缓存可考虑用它，但需先确认是否真的需要内存层（多数场景直接用 `AppStorage.cache` 持久化即可）。
 
 ### 1.2 Reader 页面 State 持有的 Map（`lib/pages/reader_page.dart`）
@@ -32,7 +32,7 @@
 这些属于页面私有缓存，**不要跨页面共享**。
 
 ### 1.3 单例持有的内存副本
-- `UserManager`（`lib/models/user_manager.dart:82`）：单例，`init()` 时从 prefs 一次性加载 60+ 字段的内存副本。
+- `UserManager`（`lib/models/user_manager.dart`）：单例，`init()` 时从 prefs 一次性加载 60+ 字段的内存副本。
 - `Services`（`lib/utils/services.dart`）：自建 service locator，缓存所有领域 singleton。
 - `DownloadManager._manifest`：下载清单内存副本，启动时由 `manifest.json` 加载。
 - `ApiTransport._hostWeights` / `_cookies`：host 测速权重与 cookie，**内存级、不持久化**，进程重启丢失。
@@ -42,7 +42,7 @@
 
 ## 2. 持久化业务缓存（非用户偏好）
 
-### 2.1 核心入口：`AppStorage.cache`（`lib/utils/app_storage.dart:95`）
+### 2.1 核心入口：`AppStorage.cache`（`lib/utils/app_storage.dart`）
 
 后端是 **SharedPreferences**，数据以 JSON 字符串存在 `cache_<key>` 键里。TTL 通过包一层 `{__cache_data__, __cache_expires_at__}` 实现，读取时自动检查并删除过期项。
 
@@ -58,7 +58,7 @@ await AppStorage.cache.clear();
 
 `DataCache`（`lib/utils/data_cache.dart`）是兼容 facade，方法直接转发到 `AppStorage.cache`。`ApiClient` 注入的是 `DataCache()`，但 **`ApiTransport.cache` 字段当前未被使用**（死字段）。
 
-### 2.2 `CachedRepository`（cache-then-API，`lib/models/cached_repository.dart:44`）
+### 2.2 `CachedRepository`（cache-then-API，`lib/models/cached_repository.dart`）
 
 标准缓存模式，后端固定为 `AppStorage.cache`。子类指定 `cacheKey` / `ttl` / `serialize` / `deserialize` / `skipApiIfCacheFresh`。
 
@@ -88,10 +88,8 @@ Future<T> load() async {
 | CopyTopicRepository（专题列表） | `copy_topics_v1_<limit>_<offset>` | 1d | 是 | `cache_copy_topics_v1_*` |
 | CopyTopicRepository（专题介绍） | `copy_topic_info_v1_<pathWord>` | 7d | 是 | `cache_copy_topic_info_v1_*` |
 | CopyTopicRepository（专题漫画） | `copy_topic_comics_v1_<pathWord>_<limit>_<offset>` | 3d | 是 | `cache_copy_topic_comics_v1_*` |
-| AnimeHomeRepository | `anime_home_v1` | **无** | 否 | `cache_anime_home_v1` |
 | ComicBookshelfRepository | `bookshelf_comic` | 30min | 是 | `cache_bookshelf_comic` |
 | NovelBookshelfRepository | `bookshelf_novel_v2_<scope>_<ordering>` | 30min | 是 | `cache_bookshelf_novel_v2_*` |
-| AnimeBookshelfRepository | `bookshelf_anime` | 30min | 是 | `cache_bookshelf_anime` |
 | ComicDetailRepository | `comic_detail_$pathWord` | **无** | 否 | `cache_comic_detail_<pathWord>` |
 | SearchInitRepository | `search_init_v2` | 1h | 否 | `cache_search_init_v2` |
 
@@ -99,7 +97,7 @@ Future<T> load() async {
 - 业务类 cacheKey **不带 `cache_` 前缀**（`AppPersistentCache.fullKey` 自动加）。
 - 版本化用 `_v1` / `_v2` 后缀；结构变更时 bump 版本，旧 key 自动失效。
 - 按实体区分用 `_$identifier` 后缀（如 `comic_detail_$pathWord`）。
-- **明确设 TTL**，否则永久缓存只能靠 `invalidateCache()` 或手动清理（如 `AnimeHomeRepository` / `ComicDetailRepository` 当前是无 TTL 的，新增不要沿用此模式）。
+- **明确设 TTL**，否则永久缓存只能靠 `invalidateCache()` 或手动清理（如 `ComicDetailRepository` 当前无 TTL，新增不要沿用此模式）。
 
 ### 2.4 直接写 SharedPreferences 的业务数据（不走 `AppPersistentCache`）
 
@@ -107,12 +105,10 @@ Future<T> load() async {
 
 | 模块 | 前缀/键 | 文件 |
 | ---- | ---------- | ---- |
-| 漫画阅读历史 | `reading_history_$pathWord` / `..._group_$g` | `lib/utils/reading_history.dart:6` |
+| 漫画阅读历史 | `reading_history_$pathWord` / `..._group_$g` | `lib/utils/reading_history.dart` |
 | 阅读统计 | `reading_stats_v1` / `reader_reading_stats_enabled` | `lib/utils/reading_stats.dart` |
-| 动漫播放历史 | `anime_playback_history_${pathWord}_${chapterUuid}` | `lib/utils/anime_playback_history.dart:7` |
-| dandanplay 绑定 | `dandanplay_binding_$pathWord` | `lib/utils/dandanplay_binding_store.dart:102` |
-| AI 章节总结 | `zhipu_chapter_summary_$chapterUuid` | `lib/utils/chapter_summary_cache.dart:64` |
-| 远程公告已读 | `remote_notice_seen_keys_v2` | `lib/utils/remote_notice_service.dart:32` |
+| AI 章节总结 | `zhipu_chapter_summary_$chapterUuid` | `lib/utils/chapter_summary_cache.dart` |
+| 远程公告已读 | `remote_notice_seen_keys_v2` | `lib/utils/remote_notice_service.dart` |
 | 分享链接已处理标记 | `shared_link_last_handled` | `lib/utils/kira_links.dart` |
 
 新增此类"按实体 ID 索引的历史/记录"时，沿用对应前缀，并确保 `cache_management_page._categoryOf` 能识别分类。
@@ -120,23 +116,26 @@ Future<T> load() async {
 ## 3. 用户偏好（持久化）
 
 ### 后端与基类
-- 统一后端：**SharedPreferences**（`shared_preferences: 2.5.5`）。
-- `PrefsStore`（`lib/models/prefs_store.dart:11`）：所有领域子 store 的基类，`extends ChangeNotifier`，提供 lazy 缓存的 `SharedPreferences` 实例（`prefs` getter + `syncPrefs` 锁定实例）。
-- `UserManager`（`lib/models/user_manager.dart:82`）：facade，单例，**不继承 `PrefsStore`**，直接读写 prefs。`init()`（line 459-655）加载全部字段，并调用各子 store 的 `initFromPrefs(prefs)` 把同一实例传下去。
+- 统一后端：**SharedPreferences**（版本以 `pubspec.lock` 为准）。
+- `PrefsStore`（`lib/models/prefs_store.dart`）：所有领域子 store 的基类，`extends ChangeNotifier`，提供 lazy 缓存的 `SharedPreferences` 实例（`prefs` getter + `syncPrefs` 锁定实例）。
+- `UserManager`（`lib/models/user_manager.dart`）：facade，单例，**不继承 `PrefsStore`**，直接读写 prefs。`init()` 加载全部字段，并调用各子 store 的 `initFromPrefs(prefs)` 把同一实例传下去。
 
 ### 子 store（均 `extends PrefsStore`，独立 singleton）
 | 子 store | 文件 | 前缀示例 |
 | ---- | ---- | ---- |
+| GeneralSettings | `lib/models/general_settings.dart` | `auto_check_*` |
 | ReaderSettings | `lib/models/reader_settings.dart` | `reader_*`、`image_viewer_*` |
-| DanmakuSettings | `lib/models/danmaku_settings.dart` | `danmaku_*` |
+| NovelReaderStatusSettings | `lib/models/novel_reader_status_settings.dart` | `novel_status_overlay*` |
 | CommentSettings | `lib/models/comment_settings.dart` | `comment_*` |
 | ThemeSettings | `lib/models/theme_settings.dart` | `theme_*`、`dark_mode_*`、`bottom_nav_*`、`*_font_*` |
 | NetworkSettings | `lib/models/network_settings.dart` | `api_route`、`network_*` |
 
+`CopyAccountStore` 同为 facade 子 store，但 `extends ChangeNotifier`，不走 `PrefsStore`。
+
 `AiSettings`（`lib/api/ai_api.dart`）独立，键名混用 `zhipu_` / `ai_` 前缀；API key 与连接配置仍以明文存在 prefs，未纳入 `SecureCredentialStore`，备份归入需显式选择的敏感「AI 连接」分类。
 
 ### 键名前缀族（缓存管理页 `_looksLikeSettingKey` 用以区分设置 vs 缓存）
-`theme_` `custom_theme_` `dark_mode_` `bottom_nav_` `nav_` `last_nav_` `desktop_font_` `bookshelf_` `reader_` `image_` `comment_` `auto_check_` `skipped_update_` `update_mirror_` `use_update_mirror` `disclaimer_` `api_route` `anime_feature_` `banner_` `anime_home_` `anime_skip_` `anime_playback_progress_` `download_` `danmaku_` `local_bookshelf_`（见 `cache_management_page.dart` 的 `_looksLikeSettingKey`）。
+`theme_` `custom_theme_` `dark_mode_` `bottom_nav_` `nav_` `last_nav_` `desktop_font_` `bookshelf_` `reader_` `image_` `comment_` `auto_check_` `skipped_update_` `update_mirror_` `use_update_mirror` `disclaimer_` `api_route` `banner_` `download_` `local_bookshelf_` `backup_`（见 `lib/pages/cache_management/entry_format.dart` 的 `_looksLikeSettingKey`）。
 
 新增用户偏好 key 时，归入上述某一前缀族，否则可能被缓存清理误判或备份遗漏。
 
@@ -196,16 +195,16 @@ Future<void> deleteAll();
 
 ## 5. 网络层缓存
 
-- 主 `dio`（`api_client.dart:32`）：经 `AppDio.create` 构造，拦截器注入 token/cookie/UA，`onError` 处理 401 自动登录。**无 Dio 磁盘缓存拦截器、无 `pretty_dio_logger`**。
+- 主 `dio`（`lib/api/api_client.dart`）：经 `AppDio.create` 构造，拦截器注入 token/cookie/UA，`onError` 处理 401 自动登录。**无 Dio 磁盘缓存拦截器、无 `pretty_dio_logger`**。
 - `commentDio`：显式 `cache-control: no-cache` / `pragma: no-cache`（禁用 HTTP 缓存）。
-- host rotation：`ApiTransport.nextHost()`（`api_transport.dart:187`）按 `_hostWeights` 加权选优；`_hostWeights` 内存级、不持久化。
+- host rotation：`ApiTransport.nextHost()`（`lib/api/api_transport.dart`）按 `_hostWeights` 加权选优；`_hostWeights` 内存级、不持久化。
 - cookie：`ApiTransport._cookies` 内存级、不持久化，重启丢失。
 
 ## 6. 文件级缓存
 
 | 项 | 路径/键 | 管理 |
 | ---- | ---------- | ---- |
-| 阅读器图片 | `CacheManager(Config('readerImageCache', ...))`（`reader_page.dart:68`） | 缓存管理页可清 |
+| 阅读器图片 | `CacheManager(Config('readerImageCache', ...))`（`lib/pages/reader/reader_image_pipeline.dart` 的 `_readerImageCacheManager`） | 缓存管理页可清 |
 | 封面/头像图片 | `DefaultCacheManager`（默认 key `libCachedNetworkImageData`） | 缓存管理页可清 |
 | 漫画下载 | 默认 `getApplicationDocumentsDirectory()/comic_downloads/`，清单 `manifest.json`；可通过 `download_save_directory` 自定义为公共目录（Android，见下） | `DownloadManager` |
 | 漫画下载队列 | prefs 键 `download_queue_state_v1`：队列任务、暂停状态与批次失败快照，启动时恢复并自动续传（`main.dart` 初始化 `DownloadManager`） | `DownloadManager` |
@@ -218,7 +217,7 @@ Future<void> deleteAll();
 - Android 侧授权:API 30+ 走 `MANAGE_EXTERNAL_STORAGE`("所有文件访问"系统开关页,**不是**应用内运行时弹窗);API ≤29 期望退化到 `WRITE_EXTERNAL_STORAGE` 的运行时授权。两者都**必须**声明在 `android/app/src/main/AndroidManifest.xml` 的 `<uses-permission>` —— `permission_handler` 的 `determinePermissionStatus`/`requestPermissions` 会先查 manifest,缺声明时直接判定 `denied` 并 `continue`,不会调用 `launchSpecialPermission`,表现为点"保存位置"立刻提示"未授予存储权限"、无任何系统页或弹窗。选目录用 `file_picker`(`lib/utils/download_directory.dart`)。
   - 已知缺口:Android 10(API 29)下 `Permission.storage` 仅在 `WRITE_EXTERNAL_STORAGE` 已声明**且** `Environment.isExternalStorageLegacy()` 为真时才请求;当前未声明 `requestLegacyExternalStorage`,该分支 manifest names 为空,同样静默失败(API 24-28 不受影响)。
 
-`_ReaderImageFileService`（`reader_image_cache.dart:3`）按响应 `Cache-Control: max-age` 解析有效期，默认 7 天，`no-cache` 立即过期。
+`_ReaderImageFileService`（`lib/pages/reader/reader_image_cache.dart`）按响应 `Cache-Control: max-age` 解析有效期，默认 7 天，`no-cache` 立即过期。
 
 ## 7. 备份/恢复（设置迁移）
 

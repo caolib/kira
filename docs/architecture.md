@@ -1,6 +1,6 @@
 # Architecture Deep-Dive
 
-`AGENTS.md` 保留日常规则与约定；本文收录按需查阅的架构细节：API 分层结构、CachedRepository 解剖、模型序列化清单、UserManager 双写 key 现状、拷贝接口登录的密钥注入。
+`CLAUDE.md` 保留日常规则与约定；本文收录按需查阅的架构细节：API 分层结构、CachedRepository 解剖、模型序列化清单、UserManager 偏好归属与通知、拷贝接口登录的密钥注入。
 
 ## 拷贝登录：三条通道与签名密钥
 
@@ -59,7 +59,7 @@ CI 从 `secrets.COPY_AUTH_KEY` 注入（四个 workflow 均已接好）。
 
 ## UserManager: Facade + Sub-stores 偏好归属与通知
 
-- `UserManager` is a singleton facade. Internally delegates to `ReaderSettings`, `CommentSettings`, `ThemeSettings`, `NetworkSettings`, `NovelReaderStatusSettings` and `CopyAccountStore` — all singletons too, so `Services.reader` and `UserManager().reader` are the same object. `NovelReaderStatusSettings`（小说状态组件独立配置，键前缀 `novel_status_overlay*`）首启继承漫画侧 `ReaderSettings` 现值后两侧独立演化。
+- `UserManager` is a singleton facade. Internally delegates to `GeneralSettings`, `ReaderSettings`, `CommentSettings`, `ThemeSettings`, `NetworkSettings`, `NovelReaderStatusSettings` and `CopyAccountStore` — all singletons too, so `Services.reader` and `UserManager().reader` are the same object. `NovelReaderStatusSettings`（小说状态组件独立配置，键前缀 `novel_status_overlay*`）首启继承漫画侧 `ReaderSettings` 现值后两侧独立演化。
 - Sub-stores are independent `ChangeNotifier`s. Sub-store changes are forwarded through the facade's single `notifyListeners()`, so a listener on `UserManager` rebuilds on *any* settings change, not just the domain it cares about. Listen to the sub-store directly when that matters.
 - **Shared preference ownership is consolidated**: no preference key is declared in both `UserManager` and `ReaderSettings` / `CommentSettings` / `ThemeSettings` / `NetworkSettings`. The facade retains compatibility getters/setters for these formerly duplicated keys as pure delegates, including derived theme options. Its remaining own keys (e.g. `desktop_font_family`, `reader_horizontal_image_scale`) are not duplicates.
 - Keep each preference's state, defaults, normalization and persistence in its owning sub-store; a facade wrapper adds neither a field nor another notification. `ThemeSettings` owns the floating-nav label downgrade, custom-color activation and native logo switching. On mobile, logo initialization reads the actual launcher icon without rewriting prefs; a logo change saves and notifies before invoking the native switch, and native failures retain the saved preference and original warning.
