@@ -39,9 +39,14 @@ import '../widgets/update_badge.dart';
 
 /// 与漫画书架同款：封面网格 + 30 分钟缓存 + tab 激活/回前台时静默刷新。
 class NovelBookshelfPage extends ConsumerStatefulWidget {
-  const NovelBookshelfPage({super.key, this.active = false});
+  const NovelBookshelfPage({
+    super.key,
+    this.active = false,
+    this.onTotalChanged,
+  });
 
   final bool active;
+  final ValueChanged<int>? onTotalChanged;
 
   @override
   ConsumerState<NovelBookshelfPage> createState() => _NovelBookshelfPageState();
@@ -125,6 +130,15 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
     if (!oldWidget.active && widget.active) {
       _ensureFresh();
     }
+    if (oldWidget.onTotalChanged != widget.onTotalChanged) {
+      _notifyTotalChanged();
+    }
+  }
+
+  void _notifyTotalChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onTotalChanged?.call(_total);
+    });
   }
 
   void _ensureFresh() {
@@ -174,6 +188,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
     _loadingMore = _refreshing = _forceLoading = false;
     _failed = _moreFailed = _showBackToTop = false;
     _loadFuture = null;
+    _notifyTotalChanged();
   }
 
   void _onAccountChanged() {
@@ -245,6 +260,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
         _cacheTime = data.cacheTime;
         _loadError = null;
       });
+      _notifyTotalChanged();
       if (!silent && mounted) {
         showToast(context, AppLocalizations.of(context)!.refreshSuccess);
       }
@@ -318,6 +334,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
         final next = page.offset + page.list.length;
         _offset = next > offset ? next : _total;
       });
+      _notifyTotalChanged();
     } catch (error, stack) {
       if (!_isCurrent(generation, scope)) {
         return;

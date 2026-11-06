@@ -80,6 +80,7 @@ class _BookshelfTabsState extends State<_BookshelfDualTabs>
   late final TabController _tabs;
   late int _selected;
   final _visited = [false, false];
+  final _totals = [0, 0];
 
   @override
   void initState() {
@@ -105,6 +106,11 @@ class _BookshelfTabsState extends State<_BookshelfDualTabs>
     });
   }
 
+  void _updateTotal(int index, int total) {
+    if (!mounted || _totals[index] == total) return;
+    setState(() => _totals[index] = total);
+  }
+
   @override
   void dispose() {
     _tabs.dispose();
@@ -123,8 +129,16 @@ class _BookshelfTabsState extends State<_BookshelfDualTabs>
           controller: _tabs,
           onTap: _select,
           tabs: [
-            Tab(text: l10n.comicTabLabel),
-            Tab(text: l10n.novelTitle),
+            Tab(
+              text: _totals[0] > 0
+                  ? '${l10n.comicTabLabel} (${_totals[0]})'
+                  : l10n.comicTabLabel,
+            ),
+            Tab(
+              text: _totals[1] > 0
+                  ? '${l10n.novelTitle} (${_totals[1]})'
+                  : l10n.novelTitle,
+            ),
           ],
         ),
       ),
@@ -135,13 +149,19 @@ class _BookshelfTabsState extends State<_BookshelfDualTabs>
           _visited[0]
               ? TickerMode(
                   enabled: _selected == 0,
-                  child: _ComicBookshelfPage(active: _selected == 0),
+                  child: _ComicBookshelfPage(
+                    active: _selected == 0,
+                    onTotalChanged: (total) => _updateTotal(0, total),
+                  ),
                 )
               : const SizedBox.shrink(),
           _visited[1]
               ? TickerMode(
                   enabled: _selected == 1,
-                  child: NovelBookshelfPage(active: _selected == 1),
+                  child: NovelBookshelfPage(
+                    active: _selected == 1,
+                    onTotalChanged: (total) => _updateTotal(1, total),
+                  ),
                 )
               : const SizedBox.shrink(),
         ],
@@ -151,10 +171,11 @@ class _BookshelfTabsState extends State<_BookshelfDualTabs>
 }
 
 class _ComicBookshelfPage extends ConsumerStatefulWidget {
-  const _ComicBookshelfPage({required this.active});
+  const _ComicBookshelfPage({required this.active, this.onTotalChanged});
 
   /// 共享 Tab 是否处于前台：重新激活时按缓存年龄决定是否静默刷新。
   final bool active;
+  final ValueChanged<int>? onTotalChanged;
 
   @override
   ConsumerState<_ComicBookshelfPage> createState() => _BookshelfPageState();
@@ -166,7 +187,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
   ApiClient get _api => ref.read(apiClientProvider);
   ComicBookshelfRepository get _comicRepo =>
       ref.read(comicBookshelfRepoProvider);
-  UserManager get _user => ref.read(userManagerProvider);
+  late final UserManager _user = ref.read(userManagerProvider);
   final _scrollController = ScrollController();
   Timer? _cacheTimeTimer;
   List<BookshelfItem> _items = [];
@@ -183,8 +204,8 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
   String? _loadMoreError;
   bool _refreshing = false;
   bool _showingLoginPrompt = false;
-  late bool _lastIsLoggedIn = _user.isLoggedIn;
-  late String? _lastToken = _user.token;
+  late bool _lastIsLoggedIn;
+  late String? _lastToken;
   late String _ordering = _user.bookshelfOrdering;
   bool _showUpdateOnly = false;
   bool _showBackToTop = false;
@@ -206,6 +227,8 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
   @override
   void initState() {
     super.initState();
+    _lastIsLoggedIn = _user.isLoggedIn;
+    _lastToken = _user.token;
     WidgetsBinding.instance.addObserver(this);
     _user.addListener(_onUserChanged);
     _startCacheTimeTimer();
@@ -242,6 +265,15 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
   void didUpdateWidget(covariant _ComicBookshelfPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!oldWidget.active && widget.active) _ensureFresh();
+    if (oldWidget.onTotalChanged != widget.onTotalChanged) {
+      _notifyTotalChanged();
+    }
+  }
+
+  void _notifyTotalChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onTotalChanged?.call(_total);
+    });
   }
 
   /// 缓存过期（或缺失）时静默重拉；新鲜则什么都不做。
@@ -289,6 +321,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
           _refreshing = false;
           _ordering = nextOrdering;
         });
+        _notifyTotalChanged();
       } else if (orderingChanged) {
         setState(() {
           _ordering = nextOrdering;
@@ -348,6 +381,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
         _comicCacheTime = comicCached.cacheTime;
         _loading = false;
       });
+      _notifyTotalChanged();
     }
   }
 
@@ -394,6 +428,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
         _loading = false;
         _loadError = null;
       });
+      _notifyTotalChanged();
       unawaited(_saveComicCache(data.list, data.total, now));
       if (!silent && mounted) {
         showToast(context, AppLocalizations.of(context)!.refreshSuccess);
@@ -454,6 +489,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
         _total = data.total;
         _offset = data.list.length;
       });
+      _notifyTotalChanged();
     } catch (e, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
@@ -485,8 +521,10 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
       if (!mounted) return;
       setState(() {
         _items.addAll(data.list);
+        _total = data.total;
         _offset = _items.length;
       });
+      _notifyTotalChanged();
     } catch (e, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
