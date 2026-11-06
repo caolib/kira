@@ -892,7 +892,7 @@ abstract class AppLocalizations {
   /// No description provided for @remoteNoticeDesc.
   ///
   /// In zh, this message translates to:
-  /// **'开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取'**
+  /// **'开启后启动时自动检查通知，6小时内不重复检查；进入通知中心始终获取最新通知'**
   String get remoteNoticeDesc;
 
   /// No description provided for @noticeSettingsTooltip.

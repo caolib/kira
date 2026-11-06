@@ -331,6 +331,97 @@ void main() {
     );
   });
 
+  testWidgets('opening and both refresh actions always request notices', (
+    tester,
+  ) async {
+    final service = _FakeNoticeService(
+      notices: [
+        RemoteNotice(
+          id: 'refresh',
+          title: '刷新通知',
+          content: '内容',
+          publishedAt: DateTime.now(),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      wrapWithApp(NoticeCenterPage(service: service), wrapInScaffold: false),
+    );
+    await tester.pumpAndSettle();
+    expect(service.syncCalls, 1);
+
+    await tester.tap(find.byTooltip('刷新通知'));
+    await tester.pumpAndSettle();
+    expect(service.syncCalls, 2);
+
+    await tester.drag(find.byType(ListView), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(service.syncCalls, 3);
+  });
+
+  testWidgets('refresh failure preserves the existing unread badge', (
+    tester,
+  ) async {
+    final service = _FakeNoticeService(
+      notices: [
+        RemoteNotice(
+          id: 'unread',
+          title: '未读通知',
+          content: '内容',
+          publishedAt: DateTime.now(),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      wrapWithApp(NoticeCenterPage(service: service), wrapInScaffold: false),
+    );
+    await tester.pumpAndSettle();
+    expect(RemoteNoticeService.unreadActiveCount.value, 1);
+
+    service.syncError = StateError('Injected notice refresh failure');
+    await tester.tap(find.byTooltip('刷新通知'));
+    await tester.pumpAndSettle();
+    expect(RemoteNoticeService.unreadActiveCount.value, 1);
+    expect(
+      find.textContaining('Injected notice refresh failure'),
+      findsWidgets,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final markAll in [false, true]) {
+    testWidgets('read persistence failure is shown (mark all: $markAll)', (
+      tester,
+    ) async {
+      final service = _FakeNoticeService(
+        notices: [
+          RemoteNotice(
+            id: 'save-failure',
+            title: '未读通知',
+            content: '内容',
+            publishedAt: DateTime.now(),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        wrapWithApp(NoticeCenterPage(service: service), wrapInScaffold: false),
+      );
+      await tester.pumpAndSettle();
+      service.unreadCountError = StateError(
+        'Injected unread persistence failure',
+      );
+      await tester.tap(markAll ? find.byTooltip('全部已读') : find.text('未读通知'));
+      await tester.pumpAndSettle();
+
+      expect(RemoteNoticeService.unreadActiveCount.value, 1);
+      expect(
+        find.textContaining('Injected unread persistence failure'),
+        findsWidgets,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('shows only relative time on notice cards', (tester) async {
     final notice = RemoteNotice(
       id: 'relative-time',
@@ -363,9 +454,15 @@ class _FakeNoticeService extends RemoteNoticeService {
   final Set<String> _seenKeys;
   final List<String> markedNoticeIds = [];
   int markSeenCalls = 0;
+  int syncCalls = 0;
+  Object? syncError;
+  Object? unreadCountError;
 
   @override
   Future<RemoteNoticeSyncResult> sync() async {
+    syncCalls++;
+    final error = syncError;
+    if (error != null) throw error;
     final unseenActive = _unseenActive();
     RemoteNoticeService.unreadActiveCount.value = unseenActive.length;
     return RemoteNoticeSyncResult(notices: notices, unseenActive: unseenActive);
@@ -386,6 +483,8 @@ class _FakeNoticeService extends RemoteNoticeService {
 
   @override
   Future<int> updateUnreadActiveCount(List<RemoteNotice> notices) async {
+    final error = unreadCountError;
+    if (error != null) throw error;
     final count = _unseenActive().length;
     RemoteNoticeService.unreadActiveCount.value = count;
     return count;

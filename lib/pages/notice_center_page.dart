@@ -86,7 +86,6 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
         ),
       );
       if (!mounted) return;
-      RemoteNoticeService.unreadActiveCount.value = 0;
       final l10n = AppLocalizations.of(context)!;
       final detail = NetworkError.message(e, l10n: l10n);
       setState(() {
@@ -117,10 +116,8 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
     final notices = _activeUnreadNotices().toList();
     if (notices.isEmpty) return;
 
-    await _service.markSeen(notices);
-    final seenKeys = await _service.loadSeenKeys();
-    await _service.updateUnreadActiveCount(_notices);
-    if (!mounted) return;
+    final seenKeys = await _markSeen(notices);
+    if (!mounted || seenKeys == null) return;
     setState(() {
       _seenKeys = seenKeys;
     });
@@ -130,10 +127,8 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
   Future<void> _handleNoticeTap(RemoteNotice notice) async {
     final seenKey = RemoteNoticeService.seenKeyFor(notice);
     if (!_seenKeys.contains(seenKey)) {
-      await _service.markSeen([notice]);
-      final seenKeys = await _service.loadSeenKeys();
-      await _service.updateUnreadActiveCount(_notices);
-      if (!mounted) return;
+      final seenKeys = await _markSeen([notice]);
+      if (!mounted || seenKeys == null) return;
       setState(() {
         _seenKeys = seenKeys;
         _expandedSeenKeys = {..._expandedSeenKeys, seenKey};
@@ -148,6 +143,31 @@ class _NoticeCenterPageState extends State<NoticeCenterPage> {
       }
       _expandedSeenKeys = next;
     });
+  }
+
+  Future<Set<String>?> _markSeen(Iterable<RemoteNotice> notices) async {
+    try {
+      await _service.markSeen(notices);
+      final seenKeys = await _service.loadSeenKeys();
+      await _service.updateUnreadActiveCount(_notices);
+      return seenKeys;
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'notice_center',
+        ),
+      );
+      if (mounted) {
+        showToast(
+          context,
+          NetworkError.message(e, l10n: AppLocalizations.of(context)!),
+          isError: true,
+        );
+      }
+      return null;
+    }
   }
 
   Future<void> _openNoticeSettings() async {

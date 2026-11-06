@@ -8,6 +8,7 @@ import '../models/remote_notice.dart';
 import 'app_dio.dart';
 import 'app_logger.dart';
 import 'app_storage.dart';
+import 'json_helpers.dart';
 
 class RemoteNoticeSyncResult {
   const RemoteNoticeSyncResult({
@@ -23,12 +24,16 @@ class RemoteNoticeService {
   RemoteNoticeService({
     Dio? dio,
     AppPreferences? preferences,
+    DateTime Function()? now,
     this.noticeUrl = defaultNoticeUrl,
   }) : _dio = dio ?? _defaultDio,
-       _preferences = preferences ?? AppStorage.preferences;
+       _preferences = preferences ?? AppStorage.preferences,
+       _now = now ?? DateTime.now;
 
   static const defaultNoticeUrl = 'https://cdn.caolib.qzz.io/kira/notices.json';
   static const _seenKeysKey = 'remote_notice_seen_keys_v2';
+  static const _syncStateKey = 'remote_notice_sync_state_v1';
+  static const _startupCheckInterval = Duration(hours: 6);
 
   static final ValueNotifier<int> unreadActiveCount = ValueNotifier<int>(0);
 
@@ -43,6 +48,7 @@ class RemoteNoticeService {
 
   final Dio _dio;
   final AppPreferences _preferences;
+  final DateTime Function() _now;
   final String noticeUrl;
 
   Future<List<RemoteNotice>> fetchRemoteNotices() async {
@@ -76,13 +82,34 @@ class RemoteNoticeService {
   Future<RemoteNoticeSyncResult> sync() async {
     final notices = await fetchRemoteNotices();
     final seenKeys = await _retainSeenKeysForNotices(notices);
+    final now = _now();
     final unseenActive = _unseenActiveNotices(
       notices: notices,
       seenKeys: seenKeys,
+      now: now,
+    );
+    await _saveSyncState(
+      lastSuccessAt: now.millisecondsSinceEpoch,
+      unreadCount: unseenActive.length,
     );
     unreadActiveCount.value = unseenActive.length;
 
     return RemoteNoticeSyncResult(notices: notices, unseenActive: unseenActive);
+  }
+
+  Future<void> syncOnStartup() async {
+    final state = await _loadSyncState();
+    final count = jsonInt(state, 'unreadActiveCount');
+    unreadActiveCount.value = count < 0 ? 0 : count;
+
+    final lastSuccessAt = jsonInt(state, 'lastSuccessAt');
+    final elapsed = _now().millisecondsSinceEpoch - lastSuccessAt;
+    if (lastSuccessAt > 0 &&
+        elapsed >= 0 &&
+        elapsed < _startupCheckInterval.inMilliseconds) {
+      return;
+    }
+    await sync();
   }
 
   Future<int> refreshUnreadActiveCount() async {
@@ -95,14 +122,20 @@ class RemoteNoticeService {
     final count = _unseenActiveNotices(
       notices: notices,
       seenKeys: seenKeys,
+      now: _now(),
     ).length;
+    final state = await _loadSyncState();
+    await _saveSyncState(
+      lastSuccessAt: jsonInt(state, 'lastSuccessAt'),
+      unreadCount: count,
+    );
     unreadActiveCount.value = count;
     return count;
   }
 
   static Future<void> syncSilently() async {
     try {
-      await RemoteNoticeService().sync();
+      await RemoteNoticeService().syncOnStartup();
     } catch (e, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
@@ -111,7 +144,6 @@ class RemoteNoticeService {
           source: 'remote_notice',
         ),
       );
-      unreadActiveCount.value = 0;
     }
   }
 
@@ -146,8 +178,61 @@ class RemoteNoticeService {
     return retained;
   }
 
+  Future<Map<String, dynamic>?> _loadSyncState() async {
+    try {
+      final raw = await _preferences.getJson(_syncStateKey);
+      return raw is Map<String, dynamic> ? raw : null;
+    } on FormatException catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          e,
+          stackTrace: stack,
+          source: 'remote_notice',
+        ),
+      );
+      return null;
+    }
+  }
+
+  Future<void> _saveSyncState({
+    required int lastSuccessAt,
+    required int unreadCount,
+  }) async {
+    final previous = await _preferences.getString(_syncStateKey);
+    try {
+      final saved = await _preferences.setJson(_syncStateKey, {
+        'lastSuccessAt': lastSuccessAt,
+        'unreadActiveCount': unreadCount,
+      });
+      if (!saved) throw StateError('Failed to save remote notice sync state');
+    } catch (e, stack) {
+      // A failed prefs write can still replace its in-memory value.
+      try {
+        final restored = previous == null
+            ? await _preferences.remove(_syncStateKey)
+            : await _preferences.setString(_syncStateKey, previous);
+        if (!restored) {
+          throw StateError('Failed to restore remote notice sync state');
+        }
+      } catch (restoreError, restoreStack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            restoreError,
+            stackTrace: restoreStack,
+            source: 'remote_notice',
+          ),
+        );
+      }
+      Error.throwWithStackTrace(e, stack);
+    }
+  }
+
   Future<void> _saveSeenKeys(Set<String> keys) async {
-    await _preferences.setStringList(_seenKeysKey, keys.toList()..sort());
+    final saved = await _preferences.setStringList(
+      _seenKeysKey,
+      keys.toList()..sort(),
+    );
+    if (!saved) throw StateError('Failed to save remote notice read state');
   }
 }
 
@@ -163,8 +248,8 @@ Uri _cacheBustedUri(Uri uri) {
 List<RemoteNotice> _unseenActiveNotices({
   required Iterable<RemoteNotice> notices,
   required Set<String> seenKeys,
+  required DateTime now,
 }) {
-  final now = DateTime.now();
   return notices
       .where((notice) => notice.isActive(now))
       .where(

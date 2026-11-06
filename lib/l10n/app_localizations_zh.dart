@@ -448,7 +448,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remoteNoticeTitle => '通知';
 
   @override
-  String get remoteNoticeDesc => '开启后应用启动时自动检查通知；关闭后仅在进入通知中心时获取';
+  String get remoteNoticeDesc => '开启后启动时自动检查通知，6小时内不重复检查；进入通知中心始终获取最新通知';
 
   @override
   String get noticeSettingsTooltip => '通知设置';
@@ -4493,7 +4493,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get remoteNoticeTitle => '通知';
 
   @override
-  String get remoteNoticeDesc => '開啟後應用啟動時自動檢查通知；關閉後僅在進入通知中心時獲取';
+  String get remoteNoticeDesc => '開啟後啟動時自動檢查通知，6小時內不重複檢查；進入通知中心始終獲取最新通知';
 
   @override
   String get noticeSettingsTooltip => '通知設定';

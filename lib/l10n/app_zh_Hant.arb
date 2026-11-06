@@ -257,7 +257,7 @@
   "chapterUnit": "章",
   "generalTitle": "通用",
   "remoteNoticeTitle": "通知",
-  "remoteNoticeDesc": "開啟後應用啟動時自動檢查通知；關閉後僅在進入通知中心時獲取",
+  "remoteNoticeDesc": "開啟後啟動時自動檢查通知，6小時內不重複檢查；進入通知中心始終獲取最新通知",
   "noticeSettingsTooltip": "通知設定",
   "bannerVisibleTitle": "顯示 Banner",
   "autoCheckClipboardSharedLinksTitle": "自動識別剪貼簿分享連結",

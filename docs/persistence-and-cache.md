@@ -108,7 +108,7 @@ Future<T> load() async {
 | 漫画阅读历史 | `reading_history_$pathWord` / `..._group_$g` | `lib/utils/reading_history.dart` |
 | 阅读统计 | `reading_stats_v1` / `reader_reading_stats_enabled` | `lib/utils/reading_stats.dart` |
 | AI 章节总结 | `zhipu_chapter_summary_$chapterUuid` | `lib/utils/chapter_summary_cache.dart` |
-| 远程公告已读 | `remote_notice_seen_keys_v2` | `lib/utils/remote_notice_service.dart` |
+| 远程公告已读与检查记录 | `remote_notice_seen_keys_v2` / `remote_notice_sync_state_v1` | `lib/utils/remote_notice_service.dart` |
 | 分享链接已处理标记 | `shared_link_last_handled` | `lib/utils/kira_links.dart` |
 
 新增此类"按实体 ID 索引的历史/记录"时，沿用对应前缀，并确保 `cache_management_page._categoryOf` 能识别分类。
@@ -143,6 +143,12 @@ Future<T> load() async {
 1. 在对应子 store 定义 `static const _keyXxx = '<prefix>_xxx';`。
 2. 写 getter（`await prefs` → `getBool/getInt/...`）和 setter（`setBool/...` + `notifyListeners()`）。
 3. 若通过 `UserManager` 暴露，在 facade 加转发方法。
+
+### 远程通知启动检查
+
+- `RemoteNoticeService.syncOnStartup` 读取 `remote_notice_sync_state_v1`（JSON 字符串），保存最近成功获取时间 `lastSuccessAt` 与未读数量 `unreadActiveCount`；仅留本机，不纳入备份，不缓存通知正文。
+- 启动检查固定间隔 6 小时，跨重启有效；进入通知中心与手动刷新始终请求，成功后同样计时，空列表也算成功。失败不推进时间、不清除红点；时间戳在未来时重新检查，避免系统时钟回拨阻断请求。
+- 跳过启动检查时恢复上次未读数量；单条阅读与全部已读同步保存数量，不重置检查时间。未获取远端期间，红点可能暂时保留已过期通知的状态。读取按需访问 prefs，无需额外单例重载。
 
 ### 应用更新检查
 
