@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/backup/backup_runtime.dart';
+import 'package:kira/models/novel_reader_status_settings.dart';
+import 'package:kira/models/reader_settings.dart';
 import 'package:kira/models/secure_credential_store.dart';
 import 'package:kira/utils/reading_history.dart';
 import 'package:kira/utils/settings_backup.dart';
@@ -108,6 +110,85 @@ void main() {
       expect(prefs.containsKey('comment_auto_load_all'), isFalse);
     },
   );
+
+  test('reader overlay colors round-trip as integer preferences', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final manga = ReaderSettings();
+    final novel = NovelReaderStatusSettings();
+    await manga.initFromPrefs(prefs);
+    await novel.initFromPrefs(prefs);
+    const colors = {
+      'reader_status_overlay_foreground': 0xFFF5F5F5,
+      'reader_status_overlay_background': 0xFF102030,
+      'novel_status_overlay_foreground': 0xFF203040,
+      'novel_status_overlay_background': 0xFFE8DCC8,
+    };
+    await manga.setStatusOverlayForeground(
+      colors['reader_status_overlay_foreground'],
+    );
+    await manga.setStatusOverlayBackground(
+      colors['reader_status_overlay_background'],
+    );
+    await novel.setStatusOverlayForeground(
+      colors['novel_status_overlay_foreground'],
+    );
+    await novel.setStatusOverlayBackground(
+      colors['novel_status_overlay_background'],
+    );
+
+    final service = createService();
+    final backup = await service.exportPlainText();
+    final preferences = preferencesOf(decodeBackup(backup));
+    for (final entry in colors.entries) {
+      expect(BackupSchema.categoryOf(entry.key), BackupCategory.settings);
+      expect(preferences[entry.key], {'type': 'int', 'value': entry.value});
+    }
+    expect(service.inspectPlainText(backup).preferenceCount, greaterThan(0));
+
+    await manga.setStatusOverlayForeground(null);
+    await manga.setStatusOverlayBackground(null);
+    await novel.setStatusOverlayForeground(null);
+    await novel.setStatusOverlayBackground(null);
+    final defaultColorsBackup = await service.exportPlainText();
+    final defaultPreferences = preferencesOf(decodeBackup(defaultColorsBackup));
+    for (final key in colors.keys) {
+      expect(defaultPreferences.containsKey(key), isFalse);
+    }
+
+    await service.importPlainText(backup);
+    for (final entry in colors.entries) {
+      expect(prefs.getInt(entry.key), entry.value);
+    }
+    await manga.initFromPrefs(prefs);
+    await novel.initFromPrefs(prefs);
+    expect(
+      manga.statusOverlayForeground,
+      colors['reader_status_overlay_foreground'],
+    );
+    expect(
+      manga.statusOverlayBackground,
+      colors['reader_status_overlay_background'],
+    );
+    expect(
+      novel.statusOverlayForeground,
+      colors['novel_status_overlay_foreground'],
+    );
+    expect(
+      novel.statusOverlayBackground,
+      colors['novel_status_overlay_background'],
+    );
+
+    await service.importPlainText(defaultColorsBackup);
+    for (final key in colors.keys) {
+      expect(prefs.containsKey(key), isFalse);
+    }
+    await manga.initFromPrefs(prefs);
+    await novel.initFromPrefs(prefs);
+    expect(manga.statusOverlayForeground, isNull);
+    expect(manga.statusOverlayBackground, isNull);
+    expect(novel.statusOverlayForeground, isNull);
+    expect(novel.statusOverlayBackground, isNull);
+  });
 
   test('exports sensitive settings only when requested', () async {
     final prefs = await SharedPreferences.getInstance();
