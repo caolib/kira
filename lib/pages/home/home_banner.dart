@@ -45,70 +45,12 @@ class _MangaBannerCarousel extends StatefulWidget {
 }
 
 class _MangaBannerCarouselState extends State<_MangaBannerCarousel> {
-  late final PageController _controller;
-  Timer? _timer;
-  late int _page;
-
-  @override
-  void initState() {
-    super.initState();
-    _page = _initialPage(widget.items.length);
-    _controller = PageController(initialPage: _page);
-    _restartTimer();
-  }
+  int _page = 0;
 
   @override
   void didUpdateWidget(covariant _MangaBannerCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.items.length != widget.items.length) {
-      _page = _initialPage(widget.items.length);
-      if (_controller.hasClients) {
-        _controller.jumpToPage(_page);
-      }
-      _restartTimer();
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _restartTimer() {
-    _timer?.cancel();
-    if (widget.items.length <= 1) return;
-    _timer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => _nextPage(restartTimer: false),
-    );
-  }
-
-  int _initialPage(int count) {
-    return count > 1 ? count * 1000 : 0;
-  }
-
-  void _nextPage({bool restartTimer = true}) {
-    if (!mounted || widget.items.length <= 1) return;
-    if (!_controller.hasClients) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _nextPage(restartTimer: restartTimer),
-      );
-      return;
-    }
-    _animateToPage(_page + 1, restartTimer: restartTimer);
-  }
-
-  void _animateToPage(int page, {bool restartTimer = true}) {
-    _controller.animateToPage(
-      page,
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutCubic,
-    );
-    if (restartTimer) {
-      _restartTimer();
-    }
+    if (oldWidget.items.length != widget.items.length) _page = 0;
   }
 
   @override
@@ -129,14 +71,10 @@ class _MangaBannerCarouselState extends State<_MangaBannerCarousel> {
                 height: bannerHeight + 8,
                 child: Stack(
                   children: [
-                    PageView.builder(
-                      controller: _controller,
-                      physics: const PageScrollPhysics(),
-                      itemCount: widget.items.length > 1
-                          ? null
-                          : widget.items.length,
+                    CrossfadeCarousel(
+                      itemCount: widget.items.length,
                       onPageChanged: (page) => setState(() => _page = page),
-                      itemBuilder: (_, i) {
+                      itemBuilder: (_, i, imageScale) {
                         final item = widget.items[i % widget.items.length];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
@@ -144,6 +82,7 @@ class _MangaBannerCarouselState extends State<_MangaBannerCarousel> {
                             aspectRatio: 16 / 9,
                             child: _MangaBannerCard(
                               item: item,
+                              imageScale: imageScale,
                               onTap: item.comic == null
                                   ? null
                                   : () => widget.onTap(item.comic!),
@@ -163,7 +102,10 @@ class _MangaBannerCarouselState extends State<_MangaBannerCarousel> {
                     children: [
                       for (var i = 0; i < widget.items.length; i++)
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
+                          duration: adaptiveDuration(
+                            context,
+                            const Duration(milliseconds: 180),
+                          ),
                           width: i == _page % widget.items.length ? 16 : 6,
                           height: 6,
                           margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -188,8 +130,13 @@ class _MangaBannerCarouselState extends State<_MangaBannerCarousel> {
 class _MangaBannerCard extends StatelessWidget {
   final _MangaBannerItem item;
   final VoidCallback? onTap;
+  final double imageScale;
 
-  const _MangaBannerCard({required this.item, required this.onTap});
+  const _MangaBannerCard({
+    required this.item,
+    required this.onTap,
+    required this.imageScale,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -202,11 +149,16 @@ class _MangaBannerCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            CoverBrightnessFilter(
-              child: CoverImage(
-                url: item.cover,
-                placeholder: const _ImagePlaceholder(icon: Icons.book),
-                errorWidget: const _ImagePlaceholder(icon: Icons.broken_image),
+            Transform.scale(
+              scale: imageScale,
+              child: CoverBrightnessFilter(
+                child: CoverImage(
+                  url: item.cover,
+                  placeholder: const _ImagePlaceholder(icon: Icons.book),
+                  errorWidget: const _ImagePlaceholder(
+                    icon: Icons.broken_image,
+                  ),
+                ),
               ),
             ),
             DecoratedBox(

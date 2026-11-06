@@ -29,6 +29,7 @@ import '../widgets/collapsible_content.dart';
 import '../widgets/comic_card_surface.dart';
 import '../widgets/comic_hero_tags.dart';
 import '../widgets/cover_image.dart';
+import '../widgets/crossfade_carousel.dart';
 import '../widgets/error_retry_view.dart';
 import '../widgets/section_header.dart';
 
