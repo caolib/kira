@@ -17,19 +17,25 @@
 
 ## 简介
 
-[kira](https://kirakira.dpdns.org/) 是一个拷贝漫画、热辣漫画的第三方客户端，支持漫画、轻小说
+一个拷贝漫画、热辣漫画的第三方客户端，支持漫画、轻小说
 
+[![](https://files.seeusercontent.com/2026/11/06/bGa0/20261106180342267.png)](https://kirakira.dpdns.org/)
+
+
+
+<details>
+  <summary>查看更多截图</summary>
 <table>
   <tr>
     <td><img src="https://files.seeusercontent.com/2026/10/26/yPa3/1.jpg"/></td>
     <td><img src="https://files.seeusercontent.com/2026/10/26/hMo3/2.jpg"/></td>
-  </tr> 
+  </tr>
   <tr>
     <td><img src="https://files.seeusercontent.com/2026/10/26/j3jM/3.jpg"/></td>
     <td><img src="https://files.seeusercontent.com/2026/10/26/gMh0/4.jpg"/></td>
   </tr>
 </table>
-
+</details>
 
 ## 开发
 
@@ -37,9 +43,7 @@
 
 ## 免责声明
 
-**请在使用本应用前仔细阅读以下声明：**
-
-> [!caution]
+> **请在使用本应用前仔细阅读以下声明：**
 >
 > - 本应用为非官方第三方客户端，仅基于第三方平台提供的接口或公开可访问资源进行内容展示与访问。
 > - 本应用不生产、上传、编辑、修改或预先审查具体展示内容，相关内容均来源于第三方返回结果，开发者无法对其进行完全控制。
