@@ -144,6 +144,12 @@ Future<T> load() async {
 2. 写 getter（`await prefs` → `getBool/getInt/...`）和 setter（`setBool/...` + `notifyListeners()`）。
 3. 若通过 `UserManager` 暴露，在 facade 加转发方法。
 
+### 应用更新检查
+
+- `UserManager.updateCheckFrequency` 保存为字符串键 `auto_check_update_frequency`（`never` / `startup` / `daily` / `weekly` / `monthly`），归入设置备份。缺失或未知值兼容读取旧布尔键 `auto_check_update`：关闭对应 `never`，其他情况默认 `startup`；初始化只读映射，不补写迁移键。
+- `auto_check_update_last_success_stable` / `auto_check_update_last_success_beta` 为各渠道最近成功检查的毫秒时间戳，仅留本机，不进入备份或更新结果缓存。恢复设置不覆盖这两个记录。
+- `UserManager.isUpdateCheckDue` 按启动时检查或 24 小时 / 7 天 / 30 天固定间隔判断；`AppUpdateService.checkOnStartup` 仅由启动流程调用。手动检查与主动切换渠道不受频率限制，成功后同样计时；失败不推进时间。修改频率沿用原时间，不立即检查。
+
 ## 4. 敏感凭据存储
 
 ### 正式后端与兼容命名

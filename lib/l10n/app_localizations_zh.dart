@@ -1602,7 +1602,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutCheckUpdateTitle => '检查更新';
 
   @override
-  String get aboutAutoCheckUpdateTitle => '启动时检查更新';
+  String get aboutAutoCheckUpdateTitle => '自动检查更新';
+
+  @override
+  String get updateCheckNever => '从不检查';
+
+  @override
+  String get updateCheckStartup => '启动时检查';
+
+  @override
+  String get updateCheckDaily => '每天一次';
+
+  @override
+  String get updateCheckWeekly => '每周一次';
+
+  @override
+  String get updateCheckMonthly => '每月一次';
 
   @override
   String get aboutLogTitle => '日志';
@@ -5626,7 +5641,22 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutCheckUpdateTitle => '檢查更新';
 
   @override
-  String get aboutAutoCheckUpdateTitle => '啟動時檢查更新';
+  String get aboutAutoCheckUpdateTitle => '自動檢查更新';
+
+  @override
+  String get updateCheckNever => '從不檢查';
+
+  @override
+  String get updateCheckStartup => '啟動時檢查';
+
+  @override
+  String get updateCheckDaily => '每天一次';
+
+  @override
+  String get updateCheckWeekly => '每週一次';
+
+  @override
+  String get updateCheckMonthly => '每月一次';
 
   @override
   String get aboutLogTitle => '日誌';

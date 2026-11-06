@@ -8,6 +8,7 @@ import '../api/api_client.dart';
 import '../api/api_transport.dart';
 import '../api/user/user_api.dart';
 import '../utils/app_logger.dart';
+import '../utils/app_storage.dart';
 import '../utils/copy_web_login.dart' show CopyWebLoginForm, canApplyLoginForm;
 import 'account_identity.dart';
 import 'api_ordering.dart';
@@ -21,10 +22,12 @@ import 'novel_reader_status_settings.dart';
 import 'reader_settings.dart';
 import 'secure_credential_store.dart';
 import 'theme_settings.dart';
+import 'update_check_frequency.dart';
 
 export 'network_proxy_types.dart';
 export 'network_settings.dart' show NetworkSelectionMode;
 export 'theme_settings.dart' show BottomNavLabelMode;
+export 'update_check_frequency.dart';
 
 part 'user_manager_parts/account_reconciliation.dart';
 part 'user_manager_parts/app_settings.dart';
@@ -109,7 +112,9 @@ class UserManager extends ChangeNotifier {
   static const _keyDesktopFontFamily = 'desktop_font_family';
   static const _keyBookshelfOrdering = 'bookshelf_ordering';
   static const _keyReaderHorizontalImageScale = 'reader_horizontal_image_scale';
-  static const _keyAutoCheckUpdate = 'auto_check_update';
+  static const _keyAutoCheckUpdate = 'auto_check_update'; // Legacy bool.
+  static const _keyUpdateCheckFrequency = 'auto_check_update_frequency';
+  static const _keyUpdateLastSuccessPrefix = 'auto_check_update_last_success_';
   static const _keySkippedUpdateVersion = 'skipped_update_version';
   static const _keyUpdateMirrorPrefix = 'update_mirror_prefix';
   static const _keyUpdateMirrorCustomPrefixes = 'update_mirror_custom_prefixes';
@@ -152,7 +157,8 @@ class UserManager extends ChangeNotifier {
   String _bookshelfOrdering = ApiOrdering.datetimeUpdated;
   // 横向滚动模式下图片相对视口高度的缩放档位，1.0 = 填满高度。
   double _readerHorizontalImageScale = 1.0;
-  bool _autoCheckUpdate = true;
+  UpdateCheckFrequency _updateCheckFrequency = UpdateCheckFrequency.startup;
+  final Map<String, int> _updateLastSuccess = {};
   String? _skippedUpdateVersion;
   String _updateMirrorPrefix = defaultUpdateMirrorPrefix;
 
@@ -256,7 +262,12 @@ class UserManager extends ChangeNotifier {
   double get commentFontScale => comment.fontScale;
   bool get commentPreload => comment.preload;
   int get commentInitialPages => comment.initialPages;
-  bool get autoCheckUpdate => _autoCheckUpdate;
+  UpdateCheckFrequency get updateCheckFrequency => _updateCheckFrequency;
+
+  bool isUpdateCheckDue({DateTime? now}) => _updateCheckFrequency.isDue(
+    now: now ?? DateTime.now(),
+    lastSuccessMilliseconds: _updateLastSuccess[_updateChannel],
+  );
   String? get skippedUpdateVersion => _skippedUpdateVersion;
   String get updateMirrorPrefix => _updateMirrorPrefix;
 

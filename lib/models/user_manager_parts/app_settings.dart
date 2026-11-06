@@ -1,11 +1,44 @@
 part of '../user_manager.dart';
 
 extension UserManagerAppSettingsPart on UserManager {
-  Future<void> setAutoCheckUpdate(bool enabled) async {
-    _autoCheckUpdate = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(UserManager._keyAutoCheckUpdate, enabled);
+  Future<void> setUpdateCheckFrequency(UpdateCheckFrequency frequency) async {
+    await _writeUpdatePreference(
+      (prefs) =>
+          prefs.setString(UserManager._keyUpdateCheckFrequency, frequency.name),
+    );
+    _updateCheckFrequency = frequency;
     _notifyListeners();
+  }
+
+  Future<void> recordUpdateCheckSuccess(String channel, {DateTime? at}) async {
+    final milliseconds = (at ?? DateTime.now()).millisecondsSinceEpoch;
+    await _writeUpdatePreference(
+      (prefs) => prefs.setInt(
+        '${UserManager._keyUpdateLastSuccessPrefix}$channel',
+        milliseconds,
+      ),
+    );
+    _updateLastSuccess[channel] = milliseconds;
+  }
+
+  Future<void> _writeUpdatePreference(
+    Future<bool> Function(SharedPreferences prefs) write,
+  ) async {
+    final prefs = await AppStorage.sharedPreferences();
+    try {
+      if (!await write(prefs)) {
+        throw StateError('Failed to save update preference');
+      }
+    } catch (error, stack) {
+      await AppLogger.instance.recordWarning(
+        error,
+        stackTrace: stack,
+        source: 'user_manager.update_settings',
+      );
+      // The plugin updates its memory cache even when the platform write fails.
+      await prefs.reload();
+      rethrow;
+    }
   }
 
   Future<void> setSkippedUpdateVersion(String? version) async {

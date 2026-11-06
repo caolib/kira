@@ -483,6 +483,13 @@ class AppUpdateService {
     return assets;
   }
 
+  static Future<void> checkOnStartup(BuildContext context) async {
+    if (!UserManager().isUpdateCheckDue()) return;
+    // Do not duplicate a manual/channel check already started during startup.
+    if (state.value.status == AppUpdateStatus.checking) return;
+    await checkAndPrompt(context, auto: true);
+  }
+
   /// Checks for an update and writes the result to [state]. No dialog.
   /// [auto] = true: silent background check, only surfaces an available update.
   /// [auto] = false: manual check from the About page — shows a toast on
@@ -499,6 +506,8 @@ class AppUpdateService {
     state.value = const AppUpdateState.checking();
     try {
       final updateInfo = await checkForUpdate(respectSkippedVersion: auto);
+      if (!isCurrentCheck()) return;
+      await UserManager().recordUpdateCheckSuccess(channel);
       if (!isCurrentCheck()) return;
       if (updateInfo == null) {
         state.value = const AppUpdateState.latest();
@@ -540,7 +549,7 @@ class AppUpdateService {
       hasUnseenUpdate.value = auto;
     } catch (e, st) {
       await AppLogger.instance.recordWarning(
-        'update check failed: $e',
+        e,
         stackTrace: st,
         source: 'app_update',
       );

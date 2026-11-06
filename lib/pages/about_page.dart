@@ -16,6 +16,7 @@ import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_status_colors.dart';
+import '../utils/app_logger.dart';
 import '../utils/app_update.dart';
 import '../utils/device_environment.dart';
 import '../utils/screen_layout.dart';
@@ -52,12 +53,6 @@ class _AboutPageState extends State<AboutPage> {
     );
     // Entry dots (profile "About" + bottom-nav) clear on open; update card keeps state.
     AppUpdateService.markUpdateBadgeSeen();
-    // If no check has run yet, silently fetch so the About page can show the
-    // current version's changelog (and surface an available update). The badge
-    // listener also marks results arriving while this page is open as seen.
-    if (AppUpdateService.state.value.status == AppUpdateStatus.idle) {
-      AppUpdateService.checkAndPrompt(context, auto: true);
-    }
   }
 
   @override

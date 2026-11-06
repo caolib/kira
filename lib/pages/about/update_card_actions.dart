@@ -86,7 +86,17 @@ extension _UpdateCardActions on _UpdateCardState {
     final info = AppUpdateService.state.value.info;
     if (info == null) return;
     if (info.isBetaChannel) {
-      await UserManager().setAutoCheckUpdate(false);
+      try {
+        await UserManager().setUpdateCheckFrequency(UpdateCheckFrequency.never);
+      } catch (error, stack) {
+        await AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'about.disable_update_check',
+        );
+        if (mounted) showToast(context, error.toString(), isError: true);
+        return;
+      }
     } else {
       await UserManager().setSkippedUpdateVersion(info.latestVersion);
     }

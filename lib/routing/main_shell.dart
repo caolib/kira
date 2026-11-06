@@ -109,7 +109,7 @@ class _MainShellState extends State<MainShell>
   /// 必须展平后再参与比较。
   @override
   Object watchedSettings() => (
-    _user.autoCheckUpdate,
+    _user.updateCheckFrequency,
     _user.bottomNavLabelMode,
     _user.disclaimerAccepted,
     _user.lastNavKey,
@@ -174,9 +174,9 @@ class _MainShellState extends State<MainShell>
   ];
 
   Future<void> _maybeAutoCheckUpdate() async {
-    if (!mounted || _didAutoCheckUpdate || !_user.autoCheckUpdate) return;
+    if (!mounted || _didAutoCheckUpdate) return;
     _didAutoCheckUpdate = true;
-    await AppUpdateService.checkAndPrompt(context, auto: true);
+    await AppUpdateService.checkOnStartup(context);
   }
 
   void _maybeCheckRemoteNotice() {

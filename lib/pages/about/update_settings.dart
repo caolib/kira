@@ -271,6 +271,21 @@ extension _AboutPageUpdateSettings on _AboutPageState {
     unawaited(AppUpdateService.checkAndPrompt(context));
   }
 
+  Future<void> _onUpdateCheckFrequencySelected(
+    UpdateCheckFrequency value,
+  ) async {
+    try {
+      await _user.setUpdateCheckFrequency(value);
+    } catch (error, stack) {
+      await AppLogger.instance.recordWarning(
+        error,
+        stackTrace: stack,
+        source: 'about.update_frequency',
+      );
+      if (mounted) showToast(context, error.toString(), isError: true);
+    }
+  }
+
   /// 更新设置卡：检查更新 / 自动检查 / 更新镜像。
   Widget _buildUpdateSettingsCard(ColorScheme cs, AppLocalizations l10n) {
     return SettingTileGroup(
@@ -288,11 +303,29 @@ extension _AboutPageUpdateSettings on _AboutPageState {
           ),
           onTap: () => AppUpdateService.checkAndPrompt(context),
         ),
-        SwitchListTile(
-          secondary: const Icon(Icons.autorenew),
+        ListTile(
+          leading: const Icon(Icons.autorenew),
           title: Text(l10n.aboutAutoCheckUpdateTitle),
-          value: _user.autoCheckUpdate,
-          onChanged: _user.setAutoCheckUpdate,
+          trailing: Semantics(
+            label: l10n.aboutAutoCheckUpdateTitle,
+            child: SelectTile<UpdateCheckFrequency>(
+              value: _user.updateCheckFrequency,
+              items: [
+                SelectItem(UpdateCheckFrequency.never, l10n.updateCheckNever),
+                SelectItem(
+                  UpdateCheckFrequency.startup,
+                  l10n.updateCheckStartup,
+                ),
+                SelectItem(UpdateCheckFrequency.daily, l10n.updateCheckDaily),
+                SelectItem(UpdateCheckFrequency.weekly, l10n.updateCheckWeekly),
+                SelectItem(
+                  UpdateCheckFrequency.monthly,
+                  l10n.updateCheckMonthly,
+                ),
+              ],
+              onChanged: _onUpdateCheckFrequencySelected,
+            ),
+          ),
         ),
         ListTile(
           leading: const Icon(Icons.public),

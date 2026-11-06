@@ -36,7 +36,17 @@ extension UserManagerInitPart on UserManager {
     _readerHorizontalImageScale =
         (prefs.getDouble(UserManager._keyReaderHorizontalImageScale) ?? 1.0)
             .clamp(0.7, 1.0);
-    _autoCheckUpdate = prefs.getBool(UserManager._keyAutoCheckUpdate) ?? true;
+    _updateCheckFrequency = UpdateCheckFrequency.fromPreference(
+      prefs.get(UserManager._keyUpdateCheckFrequency),
+      legacyEnabled: prefs.get(UserManager._keyAutoCheckUpdate) != false,
+    );
+    _updateLastSuccess.clear();
+    for (final channel in ['stable', 'beta']) {
+      final value = prefs.get(
+        '${UserManager._keyUpdateLastSuccessPrefix}$channel',
+      );
+      if (value is int) _updateLastSuccess[channel] = value;
+    }
     _skippedUpdateVersion = prefs.getString(
       UserManager._keySkippedUpdateVersion,
     );

@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/about_page.dart';
 import 'package:kira/theme/app_status_colors.dart';
+import 'package:kira/utils/app_logger.dart';
 import 'package:kira/utils/app_update.dart';
+import 'package:kira/widgets/select_tile.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,6 +52,8 @@ void main() {
     setupSecureCredentialStoreForTest();
     SharedPreferences.setMockInitialValues({});
     await UserManager().init();
+    // Initialize platform-backed logging outside the widget test's fake clock.
+    await AppLogger.instance.init();
     _setInstalledBuild('1');
     AppUpdateService.state.value = const AppUpdateState.idle();
     AppUpdateService.hasUnseenUpdate.value = false;
@@ -67,13 +71,13 @@ void main() {
     teardownSecureCredentialStoreForTest();
   });
 
-  void respond(int index, {bool beta = false}) {
+  void respond(int index, {bool beta = false, Map<String, Object>? release}) {
     final (options, handler) = requests[index];
     handler.resolve(
       Response<Object?>(
         requestOptions: options,
         statusCode: 200,
-        data: _release(beta: beta),
+        data: release ?? _release(beta: beta),
       ),
     );
   }
@@ -92,8 +96,8 @@ void main() {
     }
   }
 
-  Future<void> pumpAbout(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(800, 1200);
+  Future<void> pumpAbout(WidgetTester tester, {double width = 800}) async {
+    tester.view.physicalSize = Size(width, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
@@ -108,11 +112,147 @@ void main() {
     return tester.element(find.byKey(key));
   }
 
+  for (final width in [375.0, 800.0]) {
+    testWidgets('frequency dropdown saves without checking at width $width', (
+      tester,
+    ) async {
+      await pumpAbout(tester, width: width);
+      final select = find.byType(SelectTile<UpdateCheckFrequency>);
+      await tester.ensureVisible(select);
+      await tester.pumpAndSettle();
+      expect(find.byType(SwitchListTile), findsNothing);
+      const labels = ['从不检查', '启动时检查', '每天一次', '每周一次', '每月一次'];
+      expect(
+        tester
+            .widget<SelectTile<UpdateCheckFrequency>>(select)
+            .items
+            .map((item) => item.label),
+        labels,
+      );
+      for (final (index, frequency) in UpdateCheckFrequency.values.indexed) {
+        await tester.tap(select);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(labels[index]).last);
+        await tester.pumpAndSettle();
+        expect(UserManager().updateCheckFrequency, frequency);
+        expect(
+          (await SharedPreferences.getInstance()).getString(
+            'auto_check_update_frequency',
+          ),
+          frequency.name,
+        );
+        expect(requests, isEmpty);
+        expect(tester.takeException(), isNull);
+      }
+      await UserManager().init();
+      expect(UserManager().updateCheckFrequency, UpdateCheckFrequency.monthly);
+    });
+  }
+
+  testWidgets('never and unexpired periods skip startup requests', (
+    tester,
+  ) async {
+    final user = UserManager();
+    final context = await pumpHost(tester);
+    await user.setUpdateCheckFrequency(UpdateCheckFrequency.never);
+    await AppUpdateService.checkOnStartup(context);
+    for (final frequency in [
+      UpdateCheckFrequency.daily,
+      UpdateCheckFrequency.weekly,
+      UpdateCheckFrequency.monthly,
+    ]) {
+      await user.setUpdateCheckFrequency(frequency);
+      await user.recordUpdateCheckSuccess('stable');
+      await AppUpdateService.checkOnStartup(context);
+    }
+    await tester.pumpAndSettle();
+    expect(requests, isEmpty);
+    expect(AppUpdateService.state.value.status, AppUpdateStatus.idle);
+  });
+
+  testWidgets(
+    'expired startup check records success and suppresses next startup',
+    (tester) async {
+      final user = UserManager();
+      await user.setUpdateCheckFrequency(UpdateCheckFrequency.daily);
+      await user.recordUpdateCheckSuccess(
+        'stable',
+        at: DateTime.now().subtract(const Duration(days: 2)),
+      );
+      final context = await pumpHost(tester);
+      final check = AppUpdateService.checkOnStartup(context);
+      await waitForRequest(tester, 0);
+      await AppUpdateService.checkOnStartup(context);
+      expect(
+        requests,
+        hasLength(1),
+        reason: 'an in-flight check must not be duplicated',
+      );
+      respond(0);
+      await check;
+      expect(user.isUpdateCheckDue(), isFalse);
+      expect(AppUpdateService.hasUnseenUpdate.value, isTrue);
+      await user.init();
+      AppUpdateService.state.value = const AppUpdateState.idle();
+      await AppUpdateService.checkOnStartup(context);
+      expect(requests, hasLength(1));
+      expect(AppUpdateService.state.value.status, AppUpdateStatus.idle);
+    },
+  );
+
+  for (final result in ['available', 'latest', 'skipped', 'no-assets']) {
+    testWidgets('successful $result check advances frequency clock', (
+      tester,
+    ) async {
+      final user = UserManager();
+      await user.setUpdateCheckFrequency(UpdateCheckFrequency.monthly);
+      if (result == 'skipped') await user.setSkippedUpdateVersion('1.1.0');
+      final context = await pumpHost(tester);
+      // Manual checks count too, while automatic checks respect skipped versions.
+      final check = AppUpdateService.checkAndPrompt(
+        context,
+        auto: result == 'skipped',
+      );
+      await waitForRequest(tester, 0);
+      final release = _release();
+      if (result == 'latest') release['tag_name'] = 'v1.0.0';
+      if (result == 'no-assets') release['assets'] = <Object>[];
+      respond(0, release: release);
+      await check;
+      await tester.pumpAndSettle();
+      expect(user.isUpdateCheckDue(), isFalse);
+      expect(
+        AppUpdateService.state.value.status,
+        result == 'available'
+            ? AppUpdateStatus.available
+            : AppUpdateStatus.latest,
+      );
+      await AppUpdateService.checkOnStartup(context);
+      expect(requests, hasLength(1));
+      await tester.pump(const Duration(seconds: 5));
+    });
+  }
+
+  testWidgets('startup frequency checks again after a successful check', (
+    tester,
+  ) async {
+    final context = await pumpHost(tester);
+    for (var i = 0; i < 2; i++) {
+      final check = AppUpdateService.checkOnStartup(context);
+      await waitForRequest(tester, i);
+      respond(i);
+      await check;
+    }
+    expect(requests, hasLength(2));
+  });
+
   testWidgets('Beta cancel disables and persists startup checks', (
     tester,
   ) async {
     await UserManager().setUpdateChannel('beta');
+    await UserManager().setUpdateCheckFrequency(UpdateCheckFrequency.weekly);
     await pumpAbout(tester);
+    await tester.tap(find.text('检查更新'));
     await waitForRequest(tester, 0);
     respond(0, beta: true);
     await tester.pumpAndSettle();
@@ -120,13 +260,17 @@ void main() {
     await tester.tap(find.text('取消自动检查更新'));
     await tester.pumpAndSettle();
 
-    expect(UserManager().autoCheckUpdate, isFalse);
+    expect(UserManager().updateCheckFrequency, UpdateCheckFrequency.never);
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getBool('auto_check_update'), isFalse);
+    expect(prefs.getString('auto_check_update_frequency'), 'never');
     expect(prefs.getString('skipped_update_version'), isNull);
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-      isFalse,
+      tester
+          .widget<SelectTile<UpdateCheckFrequency>>(
+            find.byType(SelectTile<UpdateCheckFrequency>),
+          )
+          .value,
+      UpdateCheckFrequency.never,
     );
 
     // Turning off startup checks must not prevent an explicit manual check.
@@ -135,12 +279,13 @@ void main() {
     respond(1, beta: true);
     await tester.pumpAndSettle();
     expect(AppUpdateService.state.value.status, AppUpdateStatus.available);
-    expect(UserManager().autoCheckUpdate, isFalse);
+    expect(UserManager().updateCheckFrequency, UpdateCheckFrequency.never);
     expect(AppUpdateService.hasUnseenUpdate.value, isFalse);
   });
 
   testWidgets('stable skip persists only the selected version', (tester) async {
     await pumpAbout(tester);
+    await tester.tap(find.text('检查更新'));
     await waitForRequest(tester, 0);
     respond(0);
     await tester.pumpAndSettle();
@@ -149,7 +294,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('skipped_update_version'), '1.1.0');
-    expect(UserManager().autoCheckUpdate, isTrue);
+    expect(UserManager().updateCheckFrequency, UpdateCheckFrequency.startup);
     expect(AppUpdateService.state.value.status, AppUpdateStatus.latest);
 
     // Auto checks stay quiet for the skipped version…
@@ -206,10 +351,15 @@ void main() {
     expect(AppUpdateService.hasUnseenUpdate.value, isFalse);
   });
 
-  testWidgets('About silent check keeps the card without leaving a badge', (
+  testWidgets('About opens without checking and manual check keeps badge off', (
     tester,
   ) async {
+    await UserManager().setUpdateCheckFrequency(UpdateCheckFrequency.never);
     await pumpAbout(tester);
+    await tester.pumpAndSettle();
+    expect(requests, isEmpty);
+    expect(AppUpdateService.state.value.status, AppUpdateStatus.idle);
+    await tester.tap(find.text('检查更新'));
     await waitForRequest(tester, 0);
     expect(requests.single.$1.path, endsWith('/releases/latest'));
     respond(0);
@@ -242,12 +392,15 @@ void main() {
   testWidgets('result arriving after leaving About still lights the badge', (
     tester,
   ) async {
-    await pumpAbout(tester);
+    final context = await pumpHost(tester);
+    final check = AppUpdateService.checkOnStartup(context);
     await waitForRequest(tester, 0);
+    await pumpAbout(tester);
     await tester.pumpWidget(wrapWithApp(const SizedBox()));
     await tester.pumpAndSettle();
     respond(0);
     await tester.pumpAndSettle();
+    await check;
 
     expect(AppUpdateService.state.value.status, AppUpdateStatus.available);
     expect(AppUpdateService.hasUnseenUpdate.value, isTrue);
@@ -256,7 +409,9 @@ void main() {
   for (final oldRequestFails in [false, true]) {
     testWidgets('channel switch refreshes immediately and ignores old '
         '${oldRequestFails ? 'failure' : 'success'}', (tester) async {
+      await UserManager().setUpdateCheckFrequency(UpdateCheckFrequency.never);
       await pumpAbout(tester);
+      await tester.tap(find.text('检查更新'));
       await waitForRequest(tester, 0);
       expect(requests.single.$1.path, endsWith('/releases/latest'));
 
@@ -304,6 +459,9 @@ void main() {
       expect(AppUpdateService.state.value.status, AppUpdateStatus.available);
       expect(AppUpdateService.state.value.info!.isBetaChannel, isTrue);
       expect(AppUpdateService.hasUnseenUpdate.value, isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('auto_check_update_last_success_beta'), isNotNull);
+      expect(prefs.getInt('auto_check_update_last_success_stable'), isNull);
 
       // The reverse switch also replaces the old card and rechecks at once.
       await tester.tap(find.text('beta'));
@@ -321,9 +479,7 @@ void main() {
   }
 
   group('更新镜像源', () {
-    // 页面打开后更新检查一直处于 checking（CircularProgressIndicator 常驻动画），
-    // 因此这里一律用固定时长的 pump，不用 pumpAndSettle；弹出菜单的收起动画
-    // 比 300ms 长，需要多给一轮才能等到菜单真正从树上移除。
+    // 弹出菜单的收起动画比 300ms 长，多给一轮以确保菜单从树上移除。
     Future<void> settle(WidgetTester tester) async {
       for (var i = 0; i < 3; i++) {
         await tester.pump(const Duration(milliseconds: 300));

@@ -2992,8 +2992,38 @@ abstract class AppLocalizations {
   /// No description provided for @aboutAutoCheckUpdateTitle.
   ///
   /// In zh, this message translates to:
-  /// **'启动时检查更新'**
+  /// **'自动检查更新'**
   String get aboutAutoCheckUpdateTitle;
+
+  /// No description provided for @updateCheckNever.
+  ///
+  /// In zh, this message translates to:
+  /// **'从不检查'**
+  String get updateCheckNever;
+
+  /// No description provided for @updateCheckStartup.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动时检查'**
+  String get updateCheckStartup;
+
+  /// No description provided for @updateCheckDaily.
+  ///
+  /// In zh, this message translates to:
+  /// **'每天一次'**
+  String get updateCheckDaily;
+
+  /// No description provided for @updateCheckWeekly.
+  ///
+  /// In zh, this message translates to:
+  /// **'每周一次'**
+  String get updateCheckWeekly;
+
+  /// No description provided for @updateCheckMonthly.
+  ///
+  /// In zh, this message translates to:
+  /// **'每月一次'**
+  String get updateCheckMonthly;
 
   /// No description provided for @aboutLogTitle.
   ///

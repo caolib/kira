@@ -146,6 +146,7 @@ abstract final class BackupSchema {
   static const _stringKeys = {
     'app_font_family',
     'app_logging_minimum_level',
+    'auto_check_update_frequency',
     'bookshelf_ordering',
     'bottom_nav_label_mode',
     'copy_api_host',

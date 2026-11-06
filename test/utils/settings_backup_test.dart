@@ -5,6 +5,7 @@ import 'package:kira/backup/backup_runtime.dart';
 import 'package:kira/models/novel_reader_status_settings.dart';
 import 'package:kira/models/reader_settings.dart';
 import 'package:kira/models/secure_credential_store.dart';
+import 'package:kira/models/user_manager.dart';
 import 'package:kira/utils/reading_history.dart';
 import 'package:kira/utils/settings_backup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,6 +38,73 @@ void main() {
     if (preferences is! Map) fail('preferences is not a JSON object');
     return Map<String, dynamic>.from(preferences);
   }
+
+  test(
+    'update frequency round-trips while timestamps stay on this device',
+    () async {
+      final user = UserManager();
+      await user.init();
+      final service = createService();
+      final now = DateTime.utc(2026, 11, 6);
+      await user.recordUpdateCheckSuccess('stable', at: now);
+      await user.recordUpdateCheckSuccess('beta', at: now);
+      for (final frequency in UpdateCheckFrequency.values) {
+        await user.setUpdateCheckFrequency(frequency);
+        final backup = await service.exportPlainText();
+        final preferences = preferencesOf(decodeBackup(backup));
+        expect(preferences['auto_check_update_frequency'], {
+          'type': 'string',
+          'value': frequency.name,
+        });
+        expect(
+          preferences.containsKey('auto_check_update_last_success_stable'),
+          isFalse,
+        );
+        expect(
+          preferences.containsKey('auto_check_update_last_success_beta'),
+          isFalse,
+        );
+        expect(
+          service.inspectPlainText(backup).preferenceCount,
+          greaterThan(0),
+        );
+        await user.setUpdateCheckFrequency(UpdateCheckFrequency.startup);
+        await service.importPlainText(backup);
+        // The test runtime skips global reloads; reload the owning store here.
+        await user.init(persistMigrations: false);
+        expect(user.updateCheckFrequency, frequency);
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+          prefs.getInt('auto_check_update_last_success_stable'),
+          now.millisecondsSinceEpoch,
+        );
+        expect(
+          prefs.getInt('auto_check_update_last_success_beta'),
+          now.millisecondsSinceEpoch,
+        );
+      }
+    },
+  );
+
+  test('restoring an old update toggle replaces a newer frequency', () async {
+    final user = UserManager();
+    await user.init();
+    final service = createService();
+    for (final enabled in [false, true]) {
+      await user.setUpdateCheckFrequency(UpdateCheckFrequency.monthly);
+      final legacy = decodeBackup(await service.exportPlainText());
+      final preferences = preferencesOf(legacy)
+        ..remove('auto_check_update_frequency')
+        ..['auto_check_update'] = {'type': 'bool', 'value': enabled};
+      legacy['preferences'] = preferences;
+      await service.importPlainText(jsonEncode(legacy));
+      await user.init(persistMigrations: false);
+      expect(
+        user.updateCheckFrequency,
+        enabled ? UpdateCheckFrequency.startup : UpdateCheckFrequency.never,
+      );
+    }
+  });
 
   test('exports only portable app settings by default', () async {
     final prefs = await SharedPreferences.getInstance();
