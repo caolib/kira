@@ -252,8 +252,12 @@ Future<void> submitSearch(WidgetTester tester, String query) async {
 }
 
 /// 与真实 app / main_shell_test 的分支序号保持一致，并挂真实 SearchPage。
-GoRouter searchShellRouter(SearchTestRig rig) => GoRouter(
-  initialLocation: '/search',
+GoRouter searchShellRouter(
+  SearchTestRig rig, {
+  String initialLocation = '/search',
+  Widget? novelPage,
+}) => GoRouter(
+  initialLocation: initialLocation,
   routes: [
     StatefulShellRoute(
       navigatorContainerBuilder: buildMainShellNavigatorContainer,
@@ -299,11 +303,16 @@ GoRouter searchShellRouter(SearchTestRig rig) => GoRouter(
             GoRoute(
               path: '/novels',
               builder: (_, _) =>
+                  novelPage ??
                   const Scaffold(body: Center(child: Text('主导航-轻小说'))),
             ),
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/test-detail',
+      builder: (_, _) => const Scaffold(body: Center(child: Text('测试详情页'))),
     ),
   ],
 );

@@ -437,7 +437,7 @@ class _NovelSearchTabState extends ConsumerState<NovelSearchTab>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final hp = ScreenLayout.horizontalPadding(screenWidth);
 
-    return Stack(
+    final body = Stack(
       children: [
         Column(
           children: [
@@ -645,6 +645,16 @@ class _NovelSearchTabState extends ConsumerState<NovelSearchTab>
             child: BackToTopButton(onPressed: _scrollToTop),
           ),
       ],
+    );
+
+    return PopScope<Object?>(
+      canPop: !_hasSearchText && _idle,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _searchFocus.unfocus();
+        _clearSearch();
+      },
+      child: body,
     );
   }
 }

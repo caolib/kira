@@ -116,11 +116,14 @@ class _SearchPageState extends State<SearchPage>
               children: [
                 AnimatedBuilder(
                   animation: _tabController,
-                  builder: (context, child) => ExcludeFocus(
+                  builder: (context, _) => ExcludeFocus(
                     excluding: _tabController.index != 0,
-                    child: child!,
+                    child: _SearchTab(
+                      api: _api,
+                      initRepository: _initRepository,
+                      isActive: _tabController.index == 0,
+                    ),
                   ),
-                  child: _SearchTab(api: _api, initRepository: _initRepository),
                 ),
                 _DiscoverTab(api: _api, initRepository: _initRepository),
               ],

@@ -5,10 +5,15 @@ part of '../search_page.dart';
 /// 不提供源切换与筛选——`/api/v3/search/comic` 不认 `theme` / `top`，
 /// 摆出筛选控件只会误导用户以为能叠加。要按 tag 浏览请用「发现」页。
 class _SearchTab extends StatefulWidget {
-  const _SearchTab({required this.api, required this.initRepository});
+  const _SearchTab({
+    required this.api,
+    required this.initRepository,
+    required this.isActive,
+  });
 
   final ApiClient api;
   final SearchInitRepository initRepository;
+  final bool isActive;
 
   @override
   State<_SearchTab> createState() => _SearchTabState();
@@ -342,7 +347,7 @@ class _SearchTabState extends State<_SearchTab>
     final hp = ScreenLayout.horizontalPadding(screenWidth);
     final cardExtent = ScreenLayout.cardExtent(screenWidth);
 
-    return Stack(
+    final body = Stack(
       children: [
         Column(
           children: [
@@ -543,6 +548,17 @@ class _SearchTabState extends State<_SearchTab>
             child: BackToTopButton(onPressed: _scrollToTop),
           ),
       ],
+    );
+
+    // 只消费当前搜索标签的返回，发现页保留原来的退出行为。
+    return PopScope<Object?>(
+      canPop: !widget.isActive || (!_hasSearchText && _idle),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || !widget.isActive) return;
+        _searchFocus.unfocus();
+        _clearSearch();
+      },
+      child: body,
     );
   }
 }
