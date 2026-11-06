@@ -173,7 +173,10 @@ extension UserManagerInitPart on UserManager {
     await general.initFromPrefs(prefs);
     await reader.initFromPrefs(prefs);
     // 小说状态组件 store 依赖漫画侧已就绪（首启继承其现值）。
-    await novelStatus.initFromPrefs(prefs);
+    await novelStatus.initFromPrefs(
+      prefs,
+      persistMigrations: persistMigrations,
+    );
     await comment.initFromPrefs(prefs);
     await theme.initFromPrefs(prefs, persistMigrations: persistMigrations);
     await network.initFromPrefs(prefs, persistMigrations: persistMigrations);

@@ -110,6 +110,9 @@ _CredentialMerge _mergeCredentials(
       avatar: value((item) => item.avatar),
       accountId:
           copy?.accountId ?? existingId ?? value((item) => item.accountId),
+      extraFields: Map.unmodifiable({
+        for (final item in fields.reversed) ...item._extraFields,
+      }),
     );
     result.add(merged);
     for (final original in group) {
@@ -133,6 +136,7 @@ extension UserManagerAccountReconciliation on UserManager {
   }) async {
     final secure = SecureCredentialStore();
     final prefs = await SharedPreferences.getInstance();
+    final previousRecord = await secure.readCredentialsRecord();
     final previousCredentials = await secure.readCredentials();
     final credentialsCleared =
         previousCredentials.isEmpty && await secure.hasCredentialsRecord();
@@ -152,7 +156,7 @@ extension UserManagerAccountReconciliation on UserManager {
     var published = false;
     Future<void> rollback() async {
       if (credentialsTouched) {
-        await secure.writeCredentials(previousCredentials);
+        await secure.writeCredentialsRecord(previousRecord);
       }
       if (selectionTouched) {
         await secure.writeToken(_token);
@@ -188,13 +192,35 @@ extension UserManagerAccountReconciliation on UserManager {
           ).forAccount(currentWithPassword);
         }
         if (!persistMigrations) return;
-        if (jsonEncode(previousCredentials.map((c) => c.toJson()).toList()) !=
-            jsonEncode(next.map((c) => c.toJson()).toList())) {
+        // Startup enrichment is memory-only. Persist saved identities only
+        // when deduplication actually merges rows or remaps a COPY binding.
+        final savedMerge = _mergeCredentials(
+          _savedCredentials,
+          preferred: currentWithPassword,
+          copyAccounts: merge.accounts,
+        );
+        final deduplicated =
+            savedMerge.accounts.length < _savedCredentials.length ||
+            merge.idRemap.entries.any(
+              (entry) =>
+                  entry.key != entry.value &&
+                  _savedCredentials.any(
+                    (credential) =>
+                        credential.source == 'copy' &&
+                        credential.accountId == entry.key,
+                  ),
+            );
+        if (deduplicated &&
+            jsonEncode(previousCredentials.map((c) => c.toJson()).toList()) !=
+                jsonEncode(
+                  savedMerge.accounts.map((c) => c.toJson()).toList(),
+                )) {
           credentialsTouched = true;
-          await secure.writeCredentials(next);
+          await secure.writeCredentials(savedMerge.accounts);
         }
         final target = selected;
-        if (target != null &&
+        if (deduplicated &&
+            target != null &&
             active?.source == 'copy' &&
             jsonEncode(target.copyWith(password: '').toJson()) !=
                 jsonEncode(active!.toJson())) {

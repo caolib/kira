@@ -1907,7 +1907,14 @@ void main() {
       await _mount(tester, repository, store);
       await _tapToolbar(tester, 'novel-reader-settings');
       await _settle(tester);
-      // 浅色模式下拉选择「纸张」。
+      final themeEntry = find.byKey(
+        const ValueKey('novel-theme-settings-entry'),
+      );
+      await tester.ensureVisible(themeEntry);
+      await tester.pumpAndSettle();
+      await tester.tap(themeEntry);
+      await tester.pumpAndSettle();
+      // 进入主题子面板后，在浅色模式下拉选择「纸张」。
       final lightTile = find.byKey(const ValueKey('novel-light-theme'));
       await tester.ensureVisible(lightTile);
       await tester.pumpAndSettle();
@@ -1920,10 +1927,22 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('纸张').last);
       await tester.pumpAndSettle();
+      // 子面板内仅修改草稿，返回主设置时才保存并应用到正文。
+      expect(
+        (await _readSettings(tester)).lightThemeId,
+        const NovelReaderSettings().lightThemeId,
+      );
+      await tester.tap(find.byKey(const ValueKey('novel-theme-settings-back')));
+      await _settle(tester);
+      expect((await _readSettings(tester)).lightThemeId, 'paper');
       final keepSwitch = find.byKey(const ValueKey('novel-keep-screen-on'));
       await tester.ensureVisible(keepSwitch);
       await tester.pumpAndSettle();
-      tester.widget<SwitchListTile>(keepSwitch).onChanged!(false);
+      expect(tester.widget<SwitchListTile>(keepSwitch).value, isTrue);
+      // 测试环境没有常亮插件，切换失败仍应保存本地偏好且不影响阅读。
+      await tester.tap(keepSwitch);
+      await _settle(tester);
+      Navigator.of(tester.element(find.byType(AppSheet))).pop();
       await _settle(tester);
       final settings = await _readSettings(tester);
       expect(settings.lightThemeId, 'paper');
@@ -1934,8 +1953,6 @@ void main() {
         NovelReaderPalette.forThemeId(settings, 'paper').background,
       );
       expect(tester.takeException(), isNull);
-      Navigator.of(tester.element(find.byType(AppSheet))).pop();
-      await _settle(tester);
       await _remove(tester);
     },
   );
@@ -2223,8 +2240,37 @@ void main() {
     expect(button, findsOneWidget);
 
     await tester.tap(button);
+    await tester.pump();
+    await tester.pump();
+    final image = find.descendant(
+      of: find.byType(NovelReaderIllustrations),
+      matching: find.byType(Image),
+    );
+    expect(image, findsOneWidget);
+    // Native decoding uses real async work. Await the actual image provider
+    // before settling virtual frames, rather than racing its loading spinner.
+    Object? imageError;
+    await tester.runAsync(
+      () => precacheImage(
+        tester.widget<Image>(image).image,
+        tester.element(image),
+        onError: (error, stack) => imageError = error,
+      ),
+    );
+    expect(imageError, isNull);
     await _settle(tester);
     expect(find.byType(NovelReaderIllustrations), findsOneWidget);
+    expect(
+      tester
+          .widget<RawImage>(
+            find.descendant(
+              of: find.byType(NovelReaderIllustrations),
+              matching: find.byType(RawImage),
+            ),
+          )
+          .image,
+      isNotNull,
+    );
     expect(
       find.descendant(
         of: find.byType(NovelReaderIllustrations),

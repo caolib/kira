@@ -8,7 +8,8 @@ import 'reader_status_prefs.dart';
 /// 与漫画侧 `ReaderSettings` 的 `reader_status_overlay*` 互不影响。
 ///
 /// 首次初始化（prefs 中无任何 `novel_status_overlay*` 键）时，一次性继承
-/// 漫画侧现值并立即固化——老用户升级后两侧初始一致，之后各自独立演化。
+/// 漫画侧现值并固化（只读初始化仅继承到内存）——老用户升级后两侧
+/// 初始一致，之后各自独立演化。
 class NovelReaderStatusSettings extends PrefsStore
     implements ReaderStatusPrefs {
   static final NovelReaderStatusSettings _instance =
@@ -121,7 +122,10 @@ class NovelReaderStatusSettings extends PrefsStore
   // ── Init ───────────────────────────────────────────────────────────
 
   /// 由 `UserManager.init` 调用（与漫画侧同一 prefs 实例）。
-  Future<void> initFromPrefs(SharedPreferences prefs) async {
+  Future<void> initFromPrefs(
+    SharedPreferences prefs, {
+    bool persistMigrations = true,
+  }) async {
     syncPrefs(prefs);
     final fresh =
         !_allKeys.any(prefs.containsKey) && prefs.getBool(_keySeeded) != true;
@@ -149,8 +153,10 @@ class NovelReaderStatusSettings extends PrefsStore
       _followTheme = true;
       _foreground = null;
       _background = null;
-      await _persistSnapshot(prefs);
-      await prefs.setBool(_keySeeded, true);
+      if (persistMigrations) {
+        await _persistSnapshot(prefs);
+        await prefs.setBool(_keySeeded, true);
+      }
       return;
     }
     _overlay = prefs.getBool(_keyOverlay) ?? _overlay;

@@ -174,14 +174,31 @@ void main() {
   });
 
   tearDown(() {
-    expect(mainAdapter.requests, hasLength(expectedPrimaryRequests));
     primaryDio.close();
     commentDio.close();
     LoginNodeStatusCard.probeOverride = null;
     LoginNodeStatusCard.hotHostOverride = null;
     ApiClient.setTestInstance(originalApi);
     SecureCredentialStore.resetInstance();
+    expect(mainAdapter.requests, hasLength(expectedPrimaryRequests));
   });
+
+  Future<void> settleLogin(WidgetTester tester) async {
+    final watch = Stopwatch()..start();
+    do {
+      // Login futures run outside fakeAsync. Yield real work until the busy
+      // indicator disappears; a fixed 30ms sleep races slower hosts.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 1)),
+      );
+      await tester.pump(const Duration(milliseconds: 20));
+      if (find.byType(CircularProgressIndicator).evaluate().isEmpty) break;
+      if (watch.elapsed > const Duration(seconds: 5)) {
+        fail('Login did not finish within 5 seconds');
+      }
+    } while (true);
+    await tester.pumpAndSettle();
+  }
 
   Future<void> pumpLogin(
     WidgetTester tester, {
@@ -263,9 +280,8 @@ void main() {
       } else {
         await tester.tap(find.widgetWithText(FilledButton, '登录'));
       }
-      await Future<void>.delayed(const Duration(milliseconds: 30));
     });
-    await tester.pumpAndSettle();
+    await settleLogin(tester);
   }
 
   // COPY's password API remains for legacy auto-login, but is no longer
@@ -288,9 +304,8 @@ void main() {
     );
     await tester.runAsync(() async {
       await tester.tap(button);
-      await Future<void>.delayed(const Duration(milliseconds: 30));
     });
-    await tester.pumpAndSettle();
+    await settleLogin(tester);
   }
 
   test(
@@ -1055,14 +1070,18 @@ void main() {
       (tester) async {
         await tester.runAsync(() => user.copyAccount.saveSession(_oldSession));
         expectedPrimaryRequests = 1;
-        primaryResponse = (_) => _jsonResponse({
-          'code': 200,
-          'results': {
-            'token': 'new-hot',
-            'user_id': 'new-hot-id',
-            'username': 'same-username',
-          },
-        });
+        primaryResponse = (_) async {
+          // Longer than the old helper's fixed wait, for both tap and keyboard.
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+          return _jsonResponse({
+            'code': 200,
+            'results': {
+              'token': 'new-hot',
+              'user_id': 'new-hot-id',
+              'username': 'same-username',
+            },
+          });
+        };
         await pumpLogin(tester, copyOnly: false);
         if (!remember) {
           await tester.ensureVisible(find.byType(CheckboxListTile));

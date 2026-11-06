@@ -50,6 +50,11 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('CopySignature', () {
+    setUp(() {
+      final previousOverride = CopySignature.debugKeyOverride;
+      addTearDown(() => CopySignature.debugKeyOverride = previousOverride);
+    });
+
     test('签名是密钥对时间戳字符串的 HMAC-SHA256 hex', () {
       // 独立复算：dart:crypto 的 HMAC-SHA256，只验证算法形态与确定性，
       // 不牵涉任何真实协议密钥。
@@ -75,11 +80,50 @@ void main() {
       expect(CopySignature.pseudoId(), first);
     });
 
-    test('未注入密钥时 headers 抛错而不是发出无效签名', () {
-      // 测试构建不带 --dart-define，因此密钥缺失。
-      expect(CopySignature.authKey, isNull);
+    test('显式注入缺失密钥时 headers 抛错而不是发出无效签名', () {
+      // 不依赖宿主的 COPY_AUTH_KEY，也不修改环境变量。
+      for (final missing in ['', ' \t\n']) {
+        CopySignature.debugKeyOverride = missing;
+        expect(CopySignature.authKey == null, isTrue);
+        expect(CopySignature.isConfigured, isFalse);
+        expect(CopySignature.umString, isNull);
+        expect(() => CopySignature.headers(), throwsStateError);
+      }
+    });
+
+    test('测试注入可覆盖已有缓存，清除后恢复原配置且不污染缓存', () {
+      CopySignature.debugKeyOverride = null;
+      // 如果宿主配置了密钥，先触发正常缓存；断言仅比较布尔值，
+      // 即使失败也不会把真实密钥写入测试输出。
+      final originalKey = CopySignature.authKey;
+      final originalUmString = CopySignature.umString;
+      expect(CopySignature.authKey == originalKey, isTrue);
+
+      CopySignature.debugKeyOverride = ' $_testKey ';
+      expect(CopySignature.authKey == _testKey, isTrue);
+      expect(CopySignature.isConfigured, isTrue);
+      expect(CopySignature.umString, isNotNull);
+      final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
+      final headers = CopySignature.headers(now: now);
+      expect(headers['X-Auth-Timestamp'], '1700000000');
+      expect(
+        headers['X-Auth-Signature'],
+        CopySignature.sign('1700000000', key: _testKey),
+      );
+
+      CopySignature.debugKeyOverride = '';
+      expect(CopySignature.authKey == null, isTrue);
       expect(CopySignature.isConfigured, isFalse);
-      expect(() => CopySignature.headers(), throwsStateError);
+      expect(CopySignature.umString, isNull);
+      expect(() => CopySignature.headers(now: now), throwsStateError);
+
+      CopySignature.debugKeyOverride = _testKey;
+      expect(CopySignature.headers(now: now), headers);
+      CopySignature.debugKeyOverride = null;
+      expect(CopySignature.authKey == originalKey, isTrue);
+      expect(CopySignature.isConfigured, originalKey != null);
+      expect(CopySignature.umString == originalUmString, isTrue);
+      expect(CopySignature.authKey == originalKey, isTrue);
     });
   });
 

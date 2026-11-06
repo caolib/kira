@@ -9,6 +9,18 @@ class SavedCredential {
   final String? nickname;
   final String? avatar;
   final String? accountId;
+  final Map<String, dynamic> _extraFields;
+
+  static const _knownFields = {
+    'username',
+    'password',
+    'token',
+    'login_source',
+    'user_id',
+    'nickname',
+    'avatar',
+    'account_id',
+  };
 
   const SavedCredential({
     required this.username,
@@ -19,7 +31,8 @@ class SavedCredential {
     this.nickname,
     this.avatar,
     this.accountId,
-  });
+    Map<String, dynamic> extraFields = const {},
+  }) : _extraFields = extraFields;
 
   factory SavedCredential.fromJson(Map<String, dynamic> json) =>
       SavedCredential(
@@ -34,9 +47,14 @@ class SavedCredential {
           final String value when value.trim().isNotEmpty => value.trim(),
           _ => null,
         },
+        extraFields: Map.unmodifiable({
+          for (final entry in json.entries)
+            if (!_knownFields.contains(entry.key)) entry.key: entry.value,
+        }),
       );
 
   Map<String, dynamic> toJson() => {
+    ..._extraFields,
     'username': username,
     'password': password,
     if (token != null) 'token': token,
@@ -81,6 +99,7 @@ class SavedCredential {
     String? nickname,
     String? avatar,
     String? accountId,
+    Map<String, dynamic>? extraFields,
   }) => SavedCredential(
     username: username ?? this.username,
     password: password ?? this.password,
@@ -90,6 +109,7 @@ class SavedCredential {
     nickname: nickname ?? this.nickname,
     avatar: avatar ?? this.avatar,
     accountId: accountId ?? this.accountId,
+    extraFields: extraFields ?? _extraFields,
   );
 }
 
@@ -190,7 +210,9 @@ extension UserManagerCredentialsPart on UserManager {
     // Resolve before either domain writes: existing COPY handles win over an
     // incoming token-only handle. A new unknown token borrows no current user.
     final session = copyAccount.resolveSession(_copySession(known));
-    return _copyCredential(session).copyWith(password: known.password);
+    return _copyCredential(
+      session,
+    ).copyWith(password: known.password, extraFields: known._extraFields);
   }
 
   Future<bool> _commitLogin(
@@ -260,7 +282,7 @@ extension UserManagerCredentialsPart on UserManager {
     final prefs = await SharedPreferences.getInstance();
     // Read the actual stored snapshot: a read-only reload may have normalized
     // the in-memory list while intentionally leaving historical rows on disk.
-    final previousCredentials = await secure.readCredentials();
+    final previousRecord = await secure.readCredentialsRecord();
     final previousUsername = await secure.readUsername();
     final previousPassword = await secure.readPassword();
     final previousToken = await secure.readToken();
@@ -276,7 +298,7 @@ extension UserManagerCredentialsPart on UserManager {
     };
 
     Future<void> restorePrimary() async {
-      await secure.writeCredentials(previousCredentials);
+      await secure.writeCredentialsRecord(previousRecord);
       await secure.writeUsername(previousUsername);
       await secure.writePassword(previousPassword);
       await secure.writeToken(previousToken);

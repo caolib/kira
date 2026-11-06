@@ -31,7 +31,8 @@ class CopySignature {
   static String? _cached;
   static bool _warnedMissing = false;
 
-  /// 测试注入的密钥；非 null 时优先于编译期与环境变量。
+  /// 测试注入的密钥；非 null 时优先于缓存、编译期与环境变量。
+  /// 空白值显式模拟未配置，null 则恢复正常取值，不改写生产缓存。
   @visibleForTesting
   static String? debugKeyOverride;
 
@@ -41,7 +42,7 @@ class CopySignature {
   /// 调用时结果会被缓存 —— 环境变量不会在进程内变化，反复读没有意义。
   static String? get authKey {
     final override = debugKeyOverride?.trim();
-    if (override != null && override.isNotEmpty) return override;
+    if (override != null) return override.isEmpty ? null : override;
     if (_cached != null) return _cached;
     final compiled = _compiledKey.trim();
     if (compiled.isNotEmpty) return _cached = compiled;

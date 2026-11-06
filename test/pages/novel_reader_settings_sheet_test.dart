@@ -164,7 +164,7 @@ void main() {
 
   for (final (locale, label) in [
     (const Locale('zh'), '自定义主题'),
-    (const Locale('zh', 'Hant'), '自訂主題'),
+    (const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'), '自訂主題'),
   ]) {
     testWidgets('custom theme group uses its complete label in $locale', (
       tester,
@@ -1625,23 +1625,70 @@ void main() {
         );
         await tester.pumpAndSettle();
         await _tapVisible(tester, 'novel-dialogue-enabled');
-        for (final key in [
-          'novel-dialogue-color-mode',
-          'novel-dialogue-weight',
-          'novel-dialogue-background-enabled',
-        ]) {
-          final control = find.byKey(ValueKey(key));
-          await tester.ensureVisible(control);
-          await tester.pumpAndSettle();
-          expect(control.hitTestable(), findsOneWidget);
-          expect(tester.takeException(), isNull);
-        }
+        final colorSelect = find.descendant(
+          of: find.byKey(const ValueKey('novel-dialogue-color-mode')),
+          matching: find.byType(SelectTile<NovelDialogueColorMode>),
+        );
+        await tester.ensureVisible(colorSelect);
+        await tester.pumpAndSettle();
+        // 行容器中心可能是空白，命中检查与点击都定位实际胶囊。
+        expect(colorSelect.hitTestable(), findsOneWidget);
+        final l10n = AppLocalizations.of(tester.element(colorSelect))!;
+        await tester.tap(colorSelect);
+        await tester.pumpAndSettle();
+        final customOption = find.text(l10n.novelReaderDialogueCustom).last;
+        await tester.ensureVisible(customOption);
+        await tester.pumpAndSettle();
+        await tester.tap(customOption);
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<SelectTile<NovelDialogueColorMode>>(colorSelect).value,
+          NovelDialogueColorMode.custom,
+        );
+        expect(
+          find.byKey(const ValueKey('novel-dialogue-text-color')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+
+        final weightSelect = find.descendant(
+          of: find.byKey(const ValueKey('novel-dialogue-weight')),
+          matching: find.byType(SelectTile<NovelDialogueWeight>),
+        );
+        await tester.ensureVisible(weightSelect);
+        await tester.pumpAndSettle();
+        expect(weightSelect.hitTestable(), findsOneWidget);
+        await tester.tap(weightSelect);
+        await tester.pumpAndSettle();
+        final boldOption = find.text(l10n.novelReaderDialogueBold).last;
+        await tester.ensureVisible(boldOption);
+        await tester.pumpAndSettle();
+        await tester.tap(boldOption);
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<SelectTile<NovelDialogueWeight>>(weightSelect).value,
+          NovelDialogueWeight.bold,
+        );
+        expect(tester.takeException(), isNull);
+
         final backgroundToggle = find.byKey(
           const ValueKey('novel-dialogue-background-enabled'),
         );
         await tester.ensureVisible(backgroundToggle);
-        tester.widget<SwitchListTile>(backgroundToggle).onChanged!(true);
         await tester.pumpAndSettle();
+        expect(backgroundToggle.hitTestable(), findsOneWidget);
+        await tester.tap(backgroundToggle);
+        await tester.pumpAndSettle();
+        expect(tester.widget<SwitchListTile>(backgroundToggle).value, isFalse);
+        expect(
+          find.byKey(const ValueKey('novel-dialogue-background-opacity')),
+          findsNothing,
+        );
+        await tester.ensureVisible(backgroundToggle);
+        await tester.pumpAndSettle();
+        await tester.tap(backgroundToggle);
+        await tester.pumpAndSettle();
+        expect(tester.widget<SwitchListTile>(backgroundToggle).value, isTrue);
         await tester.ensureVisible(
           find.byKey(const ValueKey('novel-dialogue-background-opacity')),
         );
@@ -1656,6 +1703,15 @@ void main() {
           expect(tile, findsOneWidget);
           expect(tester.takeException(), isNull);
         }
+        expect(latest.dialogueEnabled, isFalse);
+        await _closeTheme(tester);
+        expect(latest.dialogueEnabled, isTrue);
+        expect(
+          latest.lightDialogueStyle.colorMode,
+          NovelDialogueColorMode.custom,
+        );
+        expect(latest.lightDialogueStyle.weight, NovelDialogueWeight.bold);
+        expect(latest.lightDialogueStyle.backgroundEnabled, isTrue);
         expect(tester.takeException(), isNull);
       },
     );

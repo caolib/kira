@@ -173,7 +173,9 @@ Future<void> deleteAll();
 - `read*` **只读、不迁移、不回写**：先读取正式记录，仅在缺失时读取同名旧裸键。正式记录里的空 token、空字符串、`[]` 和 COPY 清空记录仍是有效状态，不得用旧值覆盖。
 - `writeToken(null)` 写入空字符串作为退出标记，区别于「从未保存」；`writeCredentials([])` 持久化空数组，`hasCredentialsRecord()` 区分显式清空与旧单账号缺少列表，只有后者可从记住的用户名/密码合成账号。COPY 退出/清空通过记录内的 `cleared`、`migrationHandled` 等状态表达，不能直接删键后让旧会话复活。
 - 迁移标记 `credentials_migrated_to_secure == 'true'` 只阻止三个已清空保存字段（`saved_username`、`saved_password`、`saved_credentials`）重新读到旧值；不能据此屏蔽 token、COPY 或备份凭据的旧裸键。
-- `UserManager.init(persistMigrations: false)` 用于备份恢复后的只读重载：读取现有有效状态，不补写凭据、不移动旧键。COPY 初始化同样受 `persistMigrations` 控制。
+- `UserManager.init(persistMigrations: false)` 用于备份恢复后的只读重载：读取现有有效状态，不补写凭据、不移动旧键。COPY 初始化及小说状态组件的首次继承同样受 `persistMigrations` 控制；只读继承只更新内存，不写配置或迁移哨兵，后续正常启动仍可完成持久化。
+- 普通启动补推账号来源、补入当前主账号只影响内存，不因此重写原始凭据列表。只有真实去重、COPY 去重绑定调整或用户操作才保存账号变更；去重不把仅在内存补入的当前账号顺带写入列表。
+- `SavedCredential` 在读取、复制与合并时保留未知字段；`SecureCredentialStore.writeCredentials` 在非空列表更新时保留无法识别的兼容条目，显式清空仍写入 `[]`。初始化和登录事务通过 `readCredentialsRecord` / `writeCredentialsRecord` 保存、恢复原始 JSON，写失败回滚不经过有损规范化。
 
 ### 显式迁移与写入失败
 

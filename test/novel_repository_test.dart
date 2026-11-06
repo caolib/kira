@@ -111,42 +111,93 @@ void main() {
 
   tearDown(() => api.close());
 
+  test('home and details use explicit TTL persistent caches', () async {
+    final home = await repository.loadHome();
+    expect(home.popular.single.pathWord, 'book');
+    await repository.loadHome();
+    expect(apiAdapter.requests.length, 2);
+    await repository.loadDetail('book');
+    await repository.loadDetail('book');
+    expect(apiAdapter.requests.length, 3);
+    await repository.loadVolumeDetail('book', '7');
+    await repository.loadVolumeDetail('book', '7');
+    expect(apiAdapter.requests.length, 4);
+    expect(store.ttls, [
+      NovelRepository.homeTtl,
+      NovelRepository.detailTtl,
+      NovelRepository.volumeDetailTtl,
+    ]);
+    expect(
+      store.metadata.keys.every(
+        (key) =>
+            key.startsWith('novel_') &&
+            key.endsWith('_v1') &&
+            !key.startsWith('cache_'),
+      ),
+      isTrue,
+    );
+    store.now = store.now.add(const Duration(hours: 2));
+    await repository.loadHome();
+    expect(apiAdapter.requests.length, 6);
+    await repository.loadDetail('book');
+    expect(apiAdapter.requests.length, 6);
+    await repository.loadDetail('book', refresh: true);
+    expect(apiAdapter.requests.length, 7);
+    store.now = store.now.add(NovelRepository.detailTtl);
+    await repository.loadDetail('book');
+    expect(apiAdapter.requests.length, 8);
+    expect(store.ttls, [
+      NovelRepository.homeTtl,
+      NovelRepository.detailTtl,
+      NovelRepository.volumeDetailTtl,
+      NovelRepository.homeTtl,
+      NovelRepository.detailTtl,
+      NovelRepository.detailTtl,
+    ]);
+  });
+
   test(
-    'home, detail and directory use explicit TTL persistent caches',
+    'directory refreshes every load and keeps a cache-only snapshot',
     () async {
-      final home = await repository.loadHome();
-      expect(home.popular.single.pathWord, 'book');
-      await repository.loadHome();
-      expect(apiAdapter.requests.length, 2);
-      await repository.loadDetail('book');
-      await repository.loadDetail('book');
-      expect(apiAdapter.requests.length, 3);
-      await repository.loadVolumes('book');
-      await repository.loadVolumes('book');
-      expect(apiAdapter.requests.length, 4);
-      await repository.loadVolumeDetail('book', '7');
-      await repository.loadVolumeDetail('book', '7');
-      expect(apiAdapter.requests.length, 5);
-      expect(store.ttls, [
-        NovelRepository.homeTtl,
-        NovelRepository.detailTtl,
-        NovelRepository.volumesTtl,
-        NovelRepository.volumeDetailTtl,
-      ]);
+      expect(await repository.loadVolumesFromCache('book'), isNull);
+      expect(apiAdapter.requests, isEmpty);
+      final first = await repository.loadVolumes('book');
+      expect(first.single.toJson(), novelFixtureDetail().volume.toJson());
+      expect(apiAdapter.requests.length, 1);
       expect(
-        store.metadata.keys.every(
-          (key) =>
-              key.startsWith('novel_') &&
-              key.endsWith('_v1') &&
-              !key.startsWith('cache_'),
-        ),
-        isTrue,
+        store.metadata.values.single.expires,
+        store.now.add(NovelRepository.volumesTtl),
       );
-      store.now = store.now.add(const Duration(hours: 2));
-      await repository.loadHome();
-      expect(apiAdapter.requests.length, 7);
-      await repository.loadDetail('book', refresh: true);
-      expect(apiAdapter.requests.length, 8);
+
+      // 串行调用即使仍在 TTL 内也要拉新，并刷新缓存的清理期限。
+      store.now = store.now.add(const Duration(hours: 1));
+      final refreshed = await repository.loadVolumes('book');
+      expect(refreshed.single.toJson(), first.single.toJson());
+      expect(apiAdapter.requests.length, 2);
+      expect(store.ttls, [
+        NovelRepository.volumesTtl,
+        NovelRepository.volumesTtl,
+      ]);
+      expect(store.metadata.keys.single, startsWith('novel_volumes_'));
+      expect(store.metadata.keys.single, endsWith('_v1'));
+      expect(
+        store.metadata.values.single.expires,
+        store.now.add(NovelRepository.volumesTtl),
+      );
+
+      offline = true;
+      final restarted = NovelRepository(
+        api: api,
+        store: store,
+        now: () => store.now,
+      );
+      final cached = await restarted.loadVolumesFromCache('book');
+      expect(cached?.single.toJson(), refreshed.single.toJson());
+      expect(apiAdapter.requests.length, 2);
+      expect(store.ttls, [
+        NovelRepository.volumesTtl,
+        NovelRepository.volumesTtl,
+      ]);
     },
   );
 

@@ -260,21 +260,21 @@ class SecureCredentialStore {
   Future<bool> hasCredentialsRecord() async =>
       await _read(_keyCredentials) != null;
 
-  Future<List<SavedCredential>> readCredentials() async {
-    final raw = await _read(_keyCredentials);
+  /// Raw snapshots let account transactions roll back without normalization.
+  Future<String?> readCredentialsRecord() => _read(_keyCredentials);
+
+  Future<void> writeCredentialsRecord(String? value) =>
+      _writeOptional(_keyCredentials, value);
+
+  List<dynamic> _decodeCredentialsRecord(String? raw) {
     if (raw == null || raw.isEmpty) return [];
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
-      return decoded
-          .whereType<Map>()
-          .map((e) => SavedCredential.fromJson(Map<String, dynamic>.from(e)))
-          .where((e) => e.hasAccountKey)
-          .toList();
+      return decoded is List ? decoded : [];
     } catch (error, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
-          const FormatException('Invalid saved credentials'),
+          error,
           stackTrace: stack,
           source: 'credential_store.decode',
         ),
@@ -282,6 +282,13 @@ class SecureCredentialStore {
       return [];
     }
   }
+
+  Future<List<SavedCredential>> readCredentials() async =>
+      _decodeCredentialsRecord(await readCredentialsRecord())
+          .whereType<Map>()
+          .map((e) => SavedCredential.fromJson(Map<String, dynamic>.from(e)))
+          .where((e) => e.hasAccountKey)
+          .toList();
 
   Future<void> writeUsername(String? value) => value == null || value.isEmpty
       ? _delete(_keyUsername)
@@ -292,10 +299,27 @@ class SecureCredentialStore {
       : _write(_keyPassword, value);
 
   // An explicit [] prevents old remembered credentials being synthesized again.
-  Future<void> writeCredentials(List<SavedCredential> credentials) => _write(
-    _keyCredentials,
-    jsonEncode(credentials.map((e) => e.toJson()).toList()),
-  );
+  Future<void> writeCredentials(List<SavedCredential> credentials) =>
+      _serializeWrite(() async {
+        final records = <dynamic>[
+          for (final credential in credentials) credential.toJson(),
+        ];
+        if (credentials.isNotEmpty) {
+          // Opaque records belong to newer versions, not the visible account
+          // list. Keep them during edits; an explicit clear still removes all.
+          for (final record in _decodeCredentialsRecord(
+            await readCredentialsRecord(),
+          )) {
+            if (record is! Map ||
+                !SavedCredential.fromJson(
+                  Map<String, dynamic>.from(record),
+                ).hasAccountKey) {
+              records.add(record);
+            }
+          }
+        }
+        await doWrite(_keyCredentials, jsonEncode(records));
+      });
 
   Future<void> deleteAll() => _serializeWrite(() async {
     if (legacyPreferencesEnabled) {

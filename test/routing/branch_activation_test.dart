@@ -85,9 +85,15 @@ Widget _buildApp(GoRouter router) {
   );
 }
 
-/// 未登录默认视口（800x600）走左侧 NavigationRail，用图标点按切换分支。
-Future<void> _tapDestination(WidgetTester tester, IconData icon) async {
-  await tester.tap(find.byIcon(icon));
+/// 默认视口（800x600）走左侧 NavigationRail，按目的地标签切换，
+/// 不依赖图标样式或选中态。
+Future<void> _tapDestination(WidgetTester tester, String label) async {
+  final destination = find.descendant(
+    of: find.byType(NavigationRail),
+    matching: find.text(label),
+  );
+  expect(destination, findsOneWidget);
+  await tester.tap(destination);
   await tester.pump();
 }
 
@@ -125,13 +131,13 @@ void main() {
     await tester.pumpWidget(_buildApp(_buildRouter(loads)));
     await _pumpSettled(tester);
 
-    // comic(person_outline) → profile(person)。
-    await _tapDestination(tester, Icons.person_outline);
+    // 漫画 → 我的。
+    await _tapDestination(tester, '我的');
     await _pumpSettled(tester);
     expect(loads, ['page-comic', 'page-profile']);
 
     // 切回漫画分支：状态保留，首次加载不重放。
-    await _tapDestination(tester, Icons.menu_book_outlined);
+    await _tapDestination(tester, '漫画');
     await _pumpSettled(tester);
     expect(loads, ['page-comic', 'page-profile']);
   });
@@ -142,9 +148,9 @@ void main() {
     await _pumpSettled(tester);
 
     // 点书架后 50ms 内切回漫画：书架从未成为「停稳激活」分支。
-    await _tapDestination(tester, Icons.bookmark_border);
+    await _tapDestination(tester, '书架');
     await tester.pump(const Duration(milliseconds: 50));
-    await _tapDestination(tester, Icons.menu_book_outlined);
+    await _tapDestination(tester, '漫画');
     await _pumpSettled(tester);
 
     expect(loads, ['page-comic']);
