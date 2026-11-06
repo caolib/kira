@@ -19,6 +19,7 @@ import '../theme/app_status_colors.dart';
 import '../utils/app_logger.dart';
 import '../utils/app_update.dart';
 import '../utils/device_environment.dart';
+import '../utils/kira_links.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
 import '../widgets/github_markdown.dart';
@@ -66,6 +67,35 @@ class _AboutPageState extends State<AboutPage> {
 
   void _onChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _openExternalLink(String url) async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final opened = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened && mounted) {
+        showToast(context, l10n.aboutOpenLinkFailed, isError: true);
+      }
+    } catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'about.open_link',
+          context: {'url': url},
+        ),
+      );
+      if (!mounted) return;
+      final detail = error.toString().trim();
+      showToast(
+        context,
+        detail.isEmpty ? l10n.aboutOpenLinkFailed : detail,
+        isError: true,
+      );
+    }
   }
 
   @override
@@ -145,34 +175,17 @@ class _AboutPageState extends State<AboutPage> {
                       axis: Axis.horizontal,
                       children: [
                         SettingActionTile(
-                          icon: SvgPicture.asset(
-                            'assets/github.svg',
-                            width: 24,
-                            height: 24,
-                            colorFilter: ColorFilter.mode(
-                              cs.onSurfaceVariant,
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          label: l10n.aboutRepositoryLabel,
-                          onTap: () async {
-                            await launchUrl(
-                              Uri.parse(_repoUrl),
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
+                          icon: const Icon(Icons.language),
+                          label: l10n.aboutWebsiteLabel,
+                          onTap: () =>
+                              _openExternalLink('https://${KiraLinks.webHost}'),
                         ),
                         SettingActionTile(
                           icon: const Icon(Icons.feedback_outlined),
                           label: l10n.aboutFeedbackLabel,
-                          onTap: () async {
-                            await launchUrl(
-                              Uri.parse(
-                                'https://github.com/caolib/kira/issues/new/choose',
-                              ),
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
+                          onTap: () => _openExternalLink(
+                            'https://github.com/caolib/kira/issues/new/choose',
+                          ),
                         ),
                         SettingActionTile(
                           icon: const Icon(Icons.bug_report_outlined),

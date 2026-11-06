@@ -846,7 +846,7 @@
   },
   "bookmarksSwipeHint": "向左滑動書籤可以刪除",
   "aboutTitle": "關於",
-  "aboutBrandTagline": "Kira 是一個開源免費的漫畫閱讀 App",
+  "aboutBrandTagline": "一個開源免費的漫畫閱讀軟體",
   "notLoggedInTitle": "未登入",
   "refreshUserButton": "重新整理使用者",
   "copyTokenButton": "複製權杖",
@@ -919,7 +919,9 @@
       "arch": { "type": "String" }
     }
   },
-  "aboutRepositoryLabel": "倉庫",
+  "aboutWebsiteLabel": "官網",
+  "aboutRepositoryLabel": "原始碼",
+  "aboutOpenLinkFailed": "無法開啟連結，請稍後重試",
   "aboutFeedbackLabel": "回饋",
   "aboutCheckUpdateTitle": "檢查更新",
   "aboutAutoCheckUpdateTitle": "自動檢查更新",

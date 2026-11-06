@@ -1441,7 +1441,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于';
 
   @override
-  String get aboutBrandTagline => 'Kira 是一个开源免费的漫画阅读 App';
+  String get aboutBrandTagline => '一个开源免费的漫画阅读软件';
 
   @override
   String get notLoggedInTitle => '未登录';
@@ -1593,7 +1593,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get aboutRepositoryLabel => '仓库';
+  String get aboutWebsiteLabel => '官网';
+
+  @override
+  String get aboutRepositoryLabel => '源代码';
+
+  @override
+  String get aboutOpenLinkFailed => '无法打开链接，请稍后重试';
 
   @override
   String get aboutFeedbackLabel => '反馈';
@@ -5480,7 +5486,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutTitle => '關於';
 
   @override
-  String get aboutBrandTagline => 'Kira 是一個開源免費的漫畫閱讀 App';
+  String get aboutBrandTagline => '一個開源免費的漫畫閱讀軟體';
 
   @override
   String get notLoggedInTitle => '未登入';
@@ -5632,7 +5638,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get aboutRepositoryLabel => '倉庫';
+  String get aboutWebsiteLabel => '官網';
+
+  @override
+  String get aboutRepositoryLabel => '原始碼';
+
+  @override
+  String get aboutOpenLinkFailed => '無法開啟連結，請稍後重試';
 
   @override
   String get aboutFeedbackLabel => '回饋';

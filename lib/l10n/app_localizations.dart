@@ -2698,7 +2698,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutBrandTagline.
   ///
   /// In zh, this message translates to:
-  /// **'Kira 是一个开源免费的漫画阅读 App'**
+  /// **'一个开源免费的漫画阅读软件'**
   String get aboutBrandTagline;
 
   /// No description provided for @notLoggedInTitle.
@@ -2971,11 +2971,23 @@ abstract class AppLocalizations {
   /// **'当前设备：{os} {arch}。'**
   String aboutBetaChannelDevice(String os, String arch);
 
+  /// No description provided for @aboutWebsiteLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'官网'**
+  String get aboutWebsiteLabel;
+
   /// No description provided for @aboutRepositoryLabel.
   ///
   /// In zh, this message translates to:
-  /// **'仓库'**
+  /// **'源代码'**
   String get aboutRepositoryLabel;
+
+  /// No description provided for @aboutOpenLinkFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开链接，请稍后重试'**
+  String get aboutOpenLinkFailed;
 
   /// No description provided for @aboutFeedbackLabel.
   ///

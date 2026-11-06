@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/about_page.dart';
@@ -7,6 +10,8 @@ import 'package:kira/theme/app_status_colors.dart';
 import 'package:kira/utils/app_logger.dart';
 import 'package:kira/utils/app_update.dart';
 import 'package:kira/widgets/select_tile.dart';
+import 'package:kira/widgets/setting_action_tile.dart';
+import 'package:kira/widgets/setting_tile_group.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -111,6 +116,138 @@ void main() {
     await tester.pumpWidget(wrapWithApp(const SizedBox(key: key)));
     return tester.element(find.byKey(key));
   }
+
+  group('关于页外链', () {
+    const channel = MethodChannel('plugins.flutter.io/url_launcher');
+    final calls = <MethodCall>[];
+    Future<bool> Function() launch = () async => true;
+
+    setUp(() {
+      calls.clear();
+      launch = () async => true;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            return launch();
+          });
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    for (final width in [320.0, 375.0, 800.0, 1200.0]) {
+      testWidgets('官网保持三项快捷入口，源代码在许可下方：$width', (tester) async {
+        await pumpAbout(tester, width: width);
+        await tester.pumpAndSettle();
+
+        expect(
+          tester
+              .widgetList<SettingActionTile>(find.byType(SettingActionTile))
+              .map((tile) => tile.label),
+          ['官网', '反馈', '日志'],
+        );
+        expect(find.text('仓库'), findsNothing);
+        expect(find.byIcon(Icons.language), findsOneWidget);
+        final source = find.widgetWithText(ListTile, '源代码');
+        await tester.ensureVisible(source);
+        await tester.pumpAndSettle();
+        final group = find.ancestor(
+          of: source,
+          matching: find.byType(SettingTileGroup),
+        );
+        expect(group, findsOneWidget);
+        expect(
+          find.descendant(of: group, matching: find.text('开源许可')),
+          findsOneWidget,
+        );
+        expect(
+          tester.getTopLeft(source).dy,
+          greaterThan(
+            tester.getTopLeft(find.widgetWithText(ListTile, '开源许可')).dy,
+          ),
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    for (final (label, url) in [
+      ('官网', 'https://kirakira.dpdns.org'),
+      ('源代码', 'https://github.com/caolib/kira'),
+      ('反馈', 'https://github.com/caolib/kira/issues/new/choose'),
+    ]) {
+      testWidgets('$label直接通过外部浏览器打开正确地址', (tester) async {
+        await pumpAbout(tester, width: 375);
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+
+        expect(calls, hasLength(1));
+        expect(calls.single.method, 'launch');
+        expect(calls.single.arguments, containsPair('url', url));
+        expect(calls.single.arguments, containsPair('useWebView', false));
+        expect(calls.single.arguments, containsPair('useSafariVC', false));
+        expect(
+          calls.single.arguments,
+          containsPair('universalLinksOnly', false),
+        );
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(find.byType(AboutPage), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    for (final throwsError in [false, true]) {
+      testWidgets('官网打开${throwsError ? '异常显示原始原因' : '返回失败时提示重试'}', (
+        tester,
+      ) async {
+        launch = () async {
+          if (throwsError) {
+            throw PlatformException(code: 'launch_failed', message: '浏览器被系统限制');
+          }
+          return false;
+        };
+        await pumpAbout(tester);
+        await tester.tap(find.text('官网'));
+        await tester.pumpAndSettle();
+
+        expect(
+          throwsError
+              ? find.textContaining('浏览器被系统限制')
+              : find.text('无法打开链接，请稍后重试'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets('离开关于页后忽略迟到的${throwsError ? '异常' : '失败'}提示', (tester) async {
+        final result = Completer<bool>();
+        launch = () => result.future;
+        await pumpAbout(tester);
+        await tester.tap(find.text('官网'));
+        await tester.pump();
+        expect(calls, hasLength(1));
+        await tester.pumpWidget(wrapWithApp(const SizedBox()));
+        await tester.pumpAndSettle();
+
+        if (throwsError) {
+          result.completeError(
+            PlatformException(code: 'launch_failed', message: '浏览器被系统限制'),
+          );
+        } else {
+          result.complete(false);
+        }
+        await tester.pumpAndSettle();
+        expect(find.textContaining('浏览器被系统限制'), findsNothing);
+        expect(find.text('无法打开链接，请稍后重试'), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
 
   for (final width in [375.0, 800.0]) {
     testWidgets('frequency dropdown saves without checking at width $width', (

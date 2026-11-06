@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 
 /// A compact, tappable「图标 + 文字」动作项,用于并排的动作行
-/// (关于页的「仓库 / 反馈 / 日志」、设置页的「导出 / 导入」)。
+/// (关于页的「官网 / 反馈 / 日志」、设置页的「导出 / 导入」)。
 ///
 /// 只负责内容与点击,不含背景与圆角 —— 与 [ListTile] 一样由
 /// [SettingTileGroup] 包裹并裁剪水波纹,因此必须放在该组内使用。

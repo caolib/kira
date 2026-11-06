@@ -336,7 +336,7 @@ extension _AboutPageUpdateSettings on _AboutPageState {
     );
   }
 
-  /// 法律/致谢卡：免责声明 / 鸣谢 / 许可证。
+  /// 项目信息卡：免责声明 / 开源许可 / 源代码。
   Widget _buildLegalCard(ColorScheme cs, AppLocalizations l10n) {
     return SettingTileGroup(
       children: [
@@ -351,6 +351,17 @@ extension _AboutPageUpdateSettings on _AboutPageState {
           title: Text(l10n.aboutLicenseTitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.pushNamed(AppRoutes.license),
+        ),
+        ListTile(
+          leading: SvgPicture.asset(
+            'assets/github.svg',
+            width: AppIconSize.xl,
+            height: AppIconSize.xl,
+            colorFilter: ColorFilter.mode(cs.onSurfaceVariant, BlendMode.srcIn),
+          ),
+          title: Text(l10n.aboutRepositoryLabel),
+          trailing: const Icon(Icons.open_in_new),
+          onTap: () => _openExternalLink(_AboutPageState._repoUrl),
         ),
       ],
     );
