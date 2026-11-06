@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/backup/backup_codec.dart';
+import 'package:kira/utils/app_logger.dart';
 import 'package:kira/utils/settings_backup.dart';
 
 import 'backup_test_support.dart';
@@ -13,6 +14,7 @@ void main() {
   late MemoryBackupPreferences preferences;
   late MemoryBackupJournal journal;
   late TestBackupRuntime runtime;
+  late TestBackupLogger logger;
   late SettingsBackupService service;
 
   setUp(() {
@@ -35,10 +37,12 @@ void main() {
     });
     journal = MemoryBackupJournal();
     runtime = TestBackupRuntime();
+    logger = TestBackupLogger();
     service = SettingsBackupService(
       preferences: preferences,
       journal: journal,
       runtime: runtime,
+      logger: logger,
     );
   });
 
@@ -162,6 +166,91 @@ void main() {
     },
   );
 
+  test(
+    'identical settings skip writes and reuse the original snapshot',
+    () async {
+      preferences.values.addAll({
+        'theme_mode': 1,
+        'comment_font_scale': 1.25,
+        'comment_blockwords': <Object?>['a', '简繁'],
+      });
+      final snapshot = (await service.capture()).select({
+        BackupCategory.settings,
+      });
+      final before = Map.of(preferences.values);
+      preferences.reads = 0;
+
+      await service.restore(snapshot, {BackupCategory.settings});
+
+      expect(preferences.values, before);
+      expect(preferences.reads, 1);
+      expect(preferences.writes, 0);
+      expect(journal.saves, 1);
+      expect(journal.pending, isNull);
+      expect(runtime.reloads, 1);
+      final record = logger.records.single;
+      expect(record.level, anyOf(AppLogLevel.info, AppLogLevel.warning));
+      expect(record.source, 'backup.restore');
+      expect(record.context['outcome'], 'completed');
+      expect(record.context['write_count'], 0);
+      expect(record.context['remove_count'], 0);
+      expect(record.context['unchanged_count'], snapshot.preferences.length);
+      for (final stage in [
+        'total',
+        'pause',
+        'snapshot',
+        'journal_save',
+        'replace',
+        'reload',
+        'journal_clear',
+      ]) {
+        expect(record.context['${stage}_ms'], greaterThanOrEqualTo(0));
+      }
+      expect(jsonEncode(record.context), isNot(contains('local-account')));
+      expect(jsonEncode(record.context), isNot(contains('local-key')));
+    },
+  );
+
+  test(
+    'diff only deletes obsolete keys and overwrites changed values',
+    () async {
+      await service.restore(
+        backupDocument({'banner_visible': false, 'theme_mode': 1}),
+        {BackupCategory.settings},
+      );
+
+      expect(preferences.removedKeys, ['theme_color']);
+      expect(preferences.writtenKeys, ['banner_visible', 'theme_mode']);
+      expect(preferences.values['banner_visible'], isFalse);
+      expect(preferences.values['theme_mode'], 1);
+      expect(preferences.values['cache_home'], 'local-cache');
+      expect(preferences.values['user_token'], 'local-account');
+      expect(logger.records.single.context['write_count'], 2);
+      expect(logger.records.single.context['remove_count'], 1);
+    },
+  );
+
+  for (final changed in [
+    <String>['b', 'a', 'b'],
+    <String>['a', 'b'],
+  ]) {
+    test('string list order and duplicates are preserved: $changed', () async {
+      preferences.values['comment_blockwords'] = <Object?>['a', 'b', 'b'];
+      await service.restore(
+        backupDocument({
+          'banner_visible': true,
+          'theme_color': 'old-color',
+          'comment_blockwords': changed,
+        }),
+        {BackupCategory.settings},
+      );
+      expect(preferences.removedKeys, isEmpty);
+      expect(preferences.writtenKeys, ['comment_blockwords']);
+      expect(preferences.values['comment_blockwords'], changed);
+      expect(logger.records.single.context['unchanged_count'], 2);
+    });
+  }
+
   test('selected empty category clears only that category', () async {
     final before = Map.of(preferences.values)..remove('reading_history_a');
     await service.restore(
@@ -199,7 +288,8 @@ void main() {
     'write failure rolls back exact original values before resuming',
     () async {
       final before = Map.of(preferences.values);
-      preferences.failAtWrite = 3;
+      // One obsolete key is removed, then the changed banner value is written.
+      preferences.failAtWrite = 2;
       await expectLater(
         service.restore(backupDocument({'banner_visible': false}), {
           BackupCategory.settings,
@@ -215,6 +305,13 @@ void main() {
       expect(preferences.values, before);
       expect(journal.pending, isNull);
       expect(runtime.paused, isFalse);
+      final record = logger.records.single;
+      expect(record.level, AppLogLevel.warning);
+      expect(record.message, isA<StateError>());
+      expect(record.stackTrace, isNotNull);
+      expect(record.context['outcome'], 'rolled_back');
+      expect(record.context['rollback_replace_ms'], greaterThanOrEqualTo(0));
+      expect(record.context['rollback_reload_ms'], greaterThanOrEqualTo(0));
     },
   );
 
@@ -276,6 +373,22 @@ void main() {
       expect(runtime.reloads, 0);
       expect(runtime.paused, isFalse);
       expect(await service.recoverPendingRestore(), isFalse);
+    },
+  );
+
+  test(
+    'startup recovery replays values even when its cache is unchanged',
+    () async {
+      final original = (await service.capture()).select({
+        BackupCategory.settings,
+      });
+      await journal.save(original);
+
+      expect(await service.recoverPendingRestore(), isTrue);
+
+      expect(preferences.writtenKeys, original.preferences.keys);
+      expect(journal.pending, isNull);
+      expect(runtime.reloads, 0);
     },
   );
 

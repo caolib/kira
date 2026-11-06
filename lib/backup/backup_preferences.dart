@@ -88,12 +88,9 @@ class SharedBackupPreferences implements BackupPreferences {
               SettingsBackupErrorCode.invalidFieldFormat,
             );
           }
-          await _secure.writeCredentials(
-            decoded
-                .whereType<Map<String, dynamic>>()
-                .map(SavedCredential.fromJson)
-                .toList(),
-          );
+          // Restore is replacement, not an account-list edit: do not merge
+          // opaque entries from the profile being replaced into the backup.
+          await _secure.writeCredentialsRecord(value);
       }
       await _checkWrite(prefs.remove(key));
       return;

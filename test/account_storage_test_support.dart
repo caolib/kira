@@ -25,7 +25,9 @@ class FailingAccountSecureStore extends InMemorySecureCredentialStore {
 class AccountPreferencesPlatform {
   static const channel = MethodChannel('plugins.flutter.io/shared_preferences');
   final values = <String, Object>{};
+  final operations = <({String method, String key, Object? value})>[];
   String? failKey;
+  String? failRemoveKey;
   Object? failValue;
   bool throwOnFailure = false;
   Future<void> Function(String key, Object? value)? beforeWrite;
@@ -41,7 +43,17 @@ class AccountPreferencesPlatform {
           }
           final key = arguments['key'];
           if (key is! String) throw StateError('Missing preference key');
+          operations.add((
+            method: call.method,
+            key: key,
+            value: arguments['value'],
+          ));
           if (call.method == 'remove') {
+            if (key == 'flutter.$failRemoveKey') {
+              failRemoveKey = null;
+              if (throwOnFailure) throw PlatformException(code: 'injected');
+              return false;
+            }
             values.remove(key);
             return true;
           }

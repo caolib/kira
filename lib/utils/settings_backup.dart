@@ -63,6 +63,7 @@ class SettingsBackupService {
   final BackupPreferences _preferences;
   final BackupJournal _journal;
   final BackupRuntime _runtime;
+  final AppLogger _logger;
   static bool _restoring = false;
   static bool _recoveryRequired = false;
 
@@ -70,9 +71,11 @@ class SettingsBackupService {
     BackupPreferences? preferences,
     BackupJournal? journal,
     BackupRuntime? runtime,
+    AppLogger? logger,
   }) : _preferences = preferences ?? SharedBackupPreferences(),
        _journal = journal ?? EncryptedBackupJournal(),
-       _runtime = runtime ?? SettingsBackupRuntime();
+       _runtime = runtime ?? SettingsBackupRuntime(),
+       _logger = logger ?? AppLogger.instance;
 
   Future<BackupDocument> capture() async {
     _ensureAvailable();
@@ -166,47 +169,104 @@ class SettingsBackupService {
     final replacement = document.select(categories);
     replacement.validate();
     _restoring = true;
+    final diagnostics = _RestoreDiagnostics(_logger, replacement.categories);
     var mayResume = true;
     try {
       // Pause first, then drain: no older asynchronous reading write can land
       // after this point, including writes already removed from debounce maps.
-      await _runtime.pause();
-      final original = _documentFrom(
-        await _preferences.readAll(),
-        replacement.categories,
+      await diagnostics.measure('pause', _runtime.pause);
+      final current = await diagnostics.measure(
+        'snapshot',
+        _preferences.readAll,
       );
-      await _journal.save(original);
+      final original = _documentFrom(current, replacement.categories);
+      await diagnostics.measure('journal_save', () => _journal.save(original));
       try {
-        await _replace(replacement);
-        await _runtime.reload(replacement.categories);
+        await diagnostics.measure(
+          'replace',
+          () =>
+              _replace(replacement, current: current, diagnostics: diagnostics),
+        );
+        await diagnostics.measure(
+          'reload',
+          () => _runtime.reload(replacement.categories),
+        );
         // Journal deletion is the commit point. A crash before it causes
         // startup recovery; a crash after it leaves the fully written backup.
-        await _journal.clear();
-      } catch (_) {
+        await diagnostics.measure('journal_clear', _journal.clear);
+      } catch (error, stack) {
+        diagnostics.recordFailure(error, stack);
         try {
-          await _replace(original);
-          await _runtime.reload(replacement.categories);
-          await _journal.clear();
-        } catch (_) {
+          // A failed platform write can leave its cache ahead of the disk.
+          // Rollback must replay values even if that cache claims they match.
+          await diagnostics.measure(
+            'rollback_replace',
+            () => _replace(original, forceWrite: true),
+          );
+          await diagnostics.measure(
+            'rollback_reload',
+            () => _runtime.reload(replacement.categories),
+          );
+          await diagnostics.measure('rollback_journal_clear', _journal.clear);
+        } catch (rollbackError, rollbackStack) {
+          unawaited(
+            _logger.recordWarning(
+              rollbackError,
+              stackTrace: rollbackStack,
+              source: 'backup.restore.rollback',
+            ),
+          );
+          diagnostics.outcome = 'recovery_required';
           mayResume = false;
           _recoveryRequired = true;
           throw const SettingsBackupException(
             SettingsBackupErrorCode.recoveryRequired,
           );
         }
+        diagnostics.outcome = 'rolled_back';
         throw const SettingsBackupException(
           SettingsBackupErrorCode.writeFailed,
         );
       }
+      diagnostics.outcome = 'completed';
       return SettingsBackupSummary.fromDocument(replacement);
+    } catch (error, stack) {
+      diagnostics.recordFailure(error, stack);
+      rethrow;
     } finally {
       if (mayResume) _runtime.resume();
       _restoring = false;
+      diagnostics.report();
     }
   }
 
-  Future<void> _replace(BackupDocument document) async {
-    final current = await _preferences.readAll();
+  Future<void> _replace(
+    BackupDocument document, {
+    Map<String, Object>? current,
+    bool forceWrite = false,
+    _RestoreDiagnostics? diagnostics,
+  }) async {
+    current ??= await _preferences.readAll();
+    final desired = document.preferences.map(
+      (key, preference) => MapEntry(key, preference.value),
+    );
+    // Materialize legacy single-account backups before diffing. An explicit []
+    // remains authoritative and must never synthesize remembered credentials.
+    if (document.categories.contains(BackupCategory.account) &&
+        !desired.containsKey('saved_credentials')) {
+      final username = desired['saved_username'];
+      final password = desired['saved_password'];
+      final source = desired['login_source'];
+      if (username is String && username.isNotEmpty && password is String) {
+        desired['saved_credentials'] = jsonEncode([
+          SavedCredential(
+            username: username,
+            password: password,
+            loginSource: source is String ? source : null,
+          ).toJson(),
+        ]);
+      }
+    }
     final keys = {
       ...current.keys,
       // A migrated, absent credential can mask a stale legacy alias. Clear
@@ -215,35 +275,36 @@ class SettingsBackupService {
         ...SharedBackupPreferences.secureAccountKeys,
     };
     for (final key in keys) {
-      if (document.categories.contains(BackupSchema.categoryOf(key))) {
+      if (document.categories.contains(BackupSchema.categoryOf(key)) &&
+          !desired.containsKey(key)) {
         await _preferences.remove(key);
+        if (diagnostics != null) diagnostics.removed++;
       }
     }
-    for (final entry in document.preferences.entries) {
-      await _preferences.write(entry.key, entry.value.value);
-    }
-    // Older backups stored only the remembered username/password. The clearing
-    // phase now writes an explicit [], so materialize that legacy account only
-    // when the source really omitted the list, never when it explicitly cleared it.
-    if (document.categories.contains(BackupCategory.account) &&
-        !document.preferences.containsKey('saved_credentials')) {
-      final username = document.preferences['saved_username']?.value;
-      final password = document.preferences['saved_password']?.value;
-      final source = document.preferences['login_source']?.value;
-      if (username is String && username.isNotEmpty && password is String) {
-        await _preferences.write(
-          'saved_credentials',
-          jsonEncode([
-            SavedCredential(
-              username: username,
-              password: password,
-              loginSource: source is String ? source : null,
-            ).toJson(),
-          ]),
-        );
+    for (final entry in desired.entries) {
+      // Effective credential reads can hide a stale alias or use legacy-only
+      // storage. Still route these keys through the credential writer to clean
+      // aliases and persist logout/clear records in the authoritative backend.
+      if (!forceWrite &&
+          !SharedBackupPreferences.secureAccountKeys.contains(entry.key) &&
+          _samePreferenceValue(current[entry.key], entry.value)) {
+        if (diagnostics != null) diagnostics.unchanged++;
+        continue;
       }
+      await _preferences.write(entry.key, entry.value);
+      if (diagnostics != null) diagnostics.written++;
     }
   }
+
+  bool _samePreferenceValue(Object? current, Object desired) =>
+      switch ((current, desired)) {
+        (final String a, final String b) => a == b,
+        (final bool a, final bool b) => a == b,
+        (final int a, final int b) => a == b,
+        (final double a, final double b) => a == b,
+        (final List<Object?> a, final List<String> b) => listEquals(a, b),
+        _ => false,
+      };
 
   /// Called before ANY preference-backed singleton is initialized.
   /// Recovery is idempotent; failures leave the encrypted journal in place.
@@ -255,11 +316,18 @@ class SettingsBackupService {
     try {
       final original = await _journal.read();
       if (original == null) return false;
-      await _replace(original);
+      await _replace(original, forceWrite: true);
       await _journal.clear();
       _recoveryRequired = false;
       return true;
-    } catch (_) {
+    } catch (error, stack) {
+      unawaited(
+        _logger.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'backup.restore.recovery',
+        ),
+      );
       _recoveryRequired = true;
       throw const SettingsBackupException(
         SettingsBackupErrorCode.recoveryRequired,
@@ -300,5 +368,71 @@ class SettingsBackupService {
     if (_restoring) {
       throw const SettingsBackupException(SettingsBackupErrorCode.busy);
     }
+  }
+}
+
+class _RestoreDiagnostics {
+  final AppLogger _logger;
+  final Set<BackupCategory> _categories;
+  final Stopwatch _total = Stopwatch()..start();
+  final _timings = <String, int>{};
+  Object? _error;
+  StackTrace? _stack;
+  String outcome = 'failed';
+  int written = 0;
+  int removed = 0;
+  int unchanged = 0;
+
+  _RestoreDiagnostics(this._logger, this._categories);
+
+  Future<T> measure<T>(String stage, Future<T> Function() operation) async {
+    final watch = Stopwatch()..start();
+    try {
+      return await operation();
+    } finally {
+      watch.stop();
+      _timings['${stage}_ms'] = watch.elapsedMilliseconds;
+      debugPrint('Backup restore $stage: ${watch.elapsedMilliseconds}ms');
+    }
+  }
+
+  void recordFailure(Object error, StackTrace stack) {
+    _error ??= error;
+    _stack ??= stack;
+  }
+
+  void report() {
+    _total.stop();
+    // Counts and timings only: never log preference values, credentials or paths.
+    final context = <String, Object?>{
+      'categories': BackupCategory.values
+          .where(_categories.contains)
+          .map((category) => category.name)
+          .join(','),
+      'outcome': outcome,
+      'total_ms': _total.elapsedMilliseconds,
+      ..._timings,
+      'write_count': written,
+      'remove_count': removed,
+      'unchanged_count': unchanged,
+    };
+    debugPrint('Backup restore: $context');
+    final message = _error ?? 'Settings restore $outcome';
+    // Keep slow restores visible at the default warning threshold, without
+    // enabling logs or changing the user's chosen logging settings.
+    unawaited(
+      _error != null || _total.elapsed >= const Duration(seconds: 2)
+          ? _logger.recordWarning(
+              message,
+              stackTrace: _stack,
+              source: 'backup.restore',
+              context: context,
+            )
+          : _logger.recordInfo(
+              message,
+              source: 'backup.restore',
+              context: context,
+            ),
+    );
   }
 }

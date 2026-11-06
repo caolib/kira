@@ -3,6 +3,7 @@ import 'package:kira/backup/backup_document.dart';
 import 'package:kira/backup/backup_journal.dart';
 import 'package:kira/backup/backup_preferences.dart';
 import 'package:kira/backup/backup_runtime.dart';
+import 'package:kira/utils/app_logger.dart';
 
 BackupDocument backupDocument(
   Map<String, Object> values, {
@@ -82,10 +83,42 @@ class TestBackupRuntime implements BackupRuntime {
   }
 }
 
+class TestBackupLogger extends AppLogger {
+  final records =
+      <
+        ({
+          AppLogLevel level,
+          Object message,
+          StackTrace? stackTrace,
+          String source,
+          Map<String, Object?> context,
+        })
+      >[];
+
+  @override
+  Future<void> record(
+    Object message, {
+    required AppLogLevel level,
+    StackTrace? stackTrace,
+    String source = 'app',
+    Map<String, Object?>? context,
+  }) async {
+    records.add((
+      level: level,
+      message: message,
+      stackTrace: stackTrace,
+      source: source,
+      context: Map.of(context ?? const {}),
+    ));
+  }
+}
+
 class MemoryBackupPreferences implements BackupPreferences {
   final Map<String, Object> values;
   int reads = 0;
   int writes = 0;
+  final writtenKeys = <String>[];
+  final removedKeys = <String>[];
   int? failAtWrite;
   bool failAllWrites = false;
   Future<void> Function()? beforeWrite;
@@ -110,12 +143,14 @@ class MemoryBackupPreferences implements BackupPreferences {
   @override
   Future<void> write(String key, Object value) async {
     await _writeGate();
+    writtenKeys.add(key);
     values[key] = value;
   }
 
   @override
   Future<void> remove(String key) async {
     await _writeGate();
+    removedKeys.add(key);
     values.remove(key);
   }
 }

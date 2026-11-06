@@ -76,6 +76,7 @@ void main() {
       preferences: backend,
       journal: journal,
       runtime: SettingsBackupRuntime(),
+      logger: TestBackupLogger(),
     );
     user.resumeAccountMutationsAfterRestore();
     final prefs = await SharedPreferences.getInstance();
@@ -170,6 +171,53 @@ void main() {
       expect(user.copyToken, 'novel-token');
     },
   );
+
+  test(
+    'account replacement does not merge opaque records from old accounts',
+    () async {
+      await secure.writeCredentialsRecord(
+        jsonEncode([
+          _originalAccount.toJson(),
+          {'futureAccount': 'old-opaque-record'},
+        ]),
+      );
+      final imported = _importedAccount.toJson()
+        ..['futureField'] = {'version': 3};
+      final record = jsonEncode([imported]);
+      final values = _accountValues(_importedAccount)
+        ..['saved_credentials'] = record;
+
+      await service.restore(backupDocument(values), {BackupCategory.account});
+
+      expect(await secure.readCredentialsRecord(), record);
+      expect(await secure.readCopyAccountRecord(), copyRecord);
+    },
+  );
+
+  for (final explicitClear in [false, true]) {
+    test(
+      'legacy remembered account synthesis respects explicit clear: $explicitClear',
+      () async {
+        final values = _accountValues(_importedAccount)
+          ..remove('saved_credentials');
+        if (explicitClear) values['saved_credentials'] = '[]';
+
+        await service.restore(backupDocument(values), {BackupCategory.account});
+
+        expect(await secure.hasCredentialsRecord(), isTrue);
+        final credentials = await secure.readCredentials();
+        if (explicitClear) {
+          expect(credentials, isEmpty);
+        } else {
+          expect(credentials, hasLength(1));
+          expect(credentials.single.username, _importedAccount.username);
+          expect(credentials.single.password, _importedAccount.password);
+          expect(credentials.single.source, _importedAccount.source);
+        }
+        expect(await secure.readCopyAccountRecord(), copyRecord);
+      },
+    );
+  }
 
   test(
     'token-only account backup round-trips its handle without touching novel credentials',
