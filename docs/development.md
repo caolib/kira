@@ -37,3 +37,5 @@ flutter run -d <设备ID>
 ## 发布
 
 在 Claude Code 中使用项目 [`/release` skill](../.claude/skills/release/SKILL.md)，先确认版本与渠道、审查更新日志，再批准发布。
+
+正式版 Actions 自动生成 [`release.json` 发布清单](release-manifest.md)，提供全部安装包的下载链接与发布元信息。
