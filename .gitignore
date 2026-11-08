@@ -55,13 +55,19 @@ ref/
 # Environment Variables
 .env
 
-# Share only the project release skill; keep local configuration and other skills private.
+# Share selected project skills; keep local configuration and other skills private.
 .claude/*
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/release/
 .claude/skills/release/*
 !.claude/skills/release/SKILL.md
+!.claude/skills/run-kira/
+.claude/skills/run-kira/*
+!.claude/skills/run-kira/SKILL.md
+!.claude/skills/run-kira/driver.mjs
+!.claude/skills/run-kira/driver_test.mjs
+!.claude/skills/run-kira/run_script_test.mjs
 .pi
 .agents
 
