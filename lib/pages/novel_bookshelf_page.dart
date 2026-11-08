@@ -21,6 +21,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_status_colors.dart';
 import '../utils/app_logger.dart';
 import '../utils/network_error.dart';
+import '../utils/novel_reading_store.dart';
 import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
@@ -62,6 +63,8 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
   final _scrollController = ScrollController();
   Timer? _cacheTimeTimer;
   List<NovelShelfEntry> _items = [];
+  Map<String, Set<String>> _readVolumes = {};
+  int _historyGeneration = 0;
   int _offset = 0;
   int _total = 0;
   DateTime? _cacheTime;
@@ -91,6 +94,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
     WidgetsBinding.instance.addObserver(this);
     _user.addListener(_onAccountChanged);
     _repo.addListener(_onShelfInvalidated);
+    NovelReadingStore.changes.addListener(_onReadingHistoryChanged);
     _cacheTimeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -114,6 +118,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
     _scrollController.dispose();
     _user.removeListener(_onAccountChanged);
     _repo.removeListener(_onShelfInvalidated);
+    NovelReadingStore.changes.removeListener(_onReadingHistoryChanged);
     super.dispose();
   }
 
@@ -141,6 +146,35 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
     });
   }
 
+  bool _hasUpdate(NovelShelfEntry entry) =>
+      entry.hasUpdate &&
+      !(_readVolumes[entry.book.pathWord]?.contains(entry.book.lastChapterId) ??
+          false);
+
+  Future<Map<String, Set<String>>> _readLocalVolumes(
+    Iterable<NovelShelfEntry> items,
+  ) async {
+    try {
+      return await ref
+          .read(novelReadingStoreProvider)
+          .readVolumeIdsForBooks(items.map((entry) => entry.book.pathWord));
+    } catch (error, stack) {
+      _log(error, stack, 'local_read_volumes');
+      return {};
+    }
+  }
+
+  void _onReadingHistoryChanged() {
+    if (_items.isNotEmpty) unawaited(_reloadLocalVolumes());
+  }
+
+  Future<void> _reloadLocalVolumes() async {
+    final generation = ++_historyGeneration;
+    final volumes = await _readLocalVolumes(_items);
+    if (!mounted || generation != _historyGeneration) return;
+    setState(() => _readVolumes = volumes);
+  }
+
   void _ensureFresh() {
     if (!_user.isCopyLoggedIn || _unauthorized || _refreshing || _loading) {
       return;
@@ -149,6 +183,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
     if (cacheTime != null &&
         DateTime.now().difference(cacheTime) <
             NovelBookshelfRepository.cacheTtl) {
+      unawaited(_reloadLocalVolumes());
       return;
     }
     unawaited(_load(force: true));
@@ -182,6 +217,8 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
   void _clearList() {
     ++_generation;
     _items = [];
+    _readVolumes = {};
+    ++_historyGeneration;
     _offset = _total = 0;
     _cacheTime = null;
     _loading = _user.isCopyLoggedIn && !_unauthorized;
@@ -253,8 +290,13 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
       if (!_isCurrent(generation, scope)) {
         return;
       }
+      final items = _unique(data.items);
+      final volumes = await _readLocalVolumes(items);
+      if (!_isCurrent(generation, scope)) return;
       setState(() {
-        _items = _unique(data.items);
+        _items = items;
+        _readVolumes = volumes;
+        ++_historyGeneration;
         _total = data.total;
         _offset = data.nextOffset;
         _cacheTime = data.cacheTime;
@@ -328,8 +370,13 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
       if (!_isCurrent(generation, scope)) {
         return;
       }
+      final items = _unique([..._items, ...page.list]);
+      final volumes = await _readLocalVolumes(items);
+      if (!_isCurrent(generation, scope)) return;
       setState(() {
-        _items = _unique([..._items, ...page.list]);
+        _items = items;
+        _readVolumes = volumes;
+        ++_historyGeneration;
         _total = page.total;
         final next = page.offset + page.list.length;
         _offset = next > offset ? next : _total;
@@ -638,7 +685,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
 
   Widget _buildShelfGrid(double hp, double cardExtent) {
     final filtered = _showUpdateOnly
-        ? _items.where((entry) => entry.hasUpdate).toList()
+        ? _items.where(_hasUpdate).toList()
         : _items;
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: hp),
@@ -661,7 +708,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
                     ? null
                     : () => unawaited(_confirmUncollect(entry.book)),
               ),
-              if (entry.hasUpdate) const UpdateBadge(),
+              if (_hasUpdate(entry)) const UpdateBadge(),
             ],
           );
         }, childCount: filtered.length),
@@ -767,8 +814,7 @@ class _NovelBookshelfPageState extends ConsumerState<NovelBookshelfPage>
                         hasScrollBody: false,
                         child: _buildEmptyState(context),
                       )
-                    else if (_showUpdateOnly &&
-                        _items.every((entry) => !entry.hasUpdate))
+                    else if (_showUpdateOnly && !_items.any(_hasUpdate))
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: _buildEmptyState(context, noUpdates: true),

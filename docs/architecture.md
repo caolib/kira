@@ -52,6 +52,12 @@ CI 从 `secrets.COPY_AUTH_KEY` 注入（四个 workflow 均已接好）。
 - Each repository defines: `cacheKey`, `ttl`, `skipApiIfCacheFresh`, `deserialize`/`serialize`, `fetchFromApi()`.
 - Strategies: parallel (default), sequential, TTL-gate (`skipApiIfCacheFresh`) and API-transparent — configured via constructor params.
 
+## 书架更新标记
+
+- 漫画与轻小说统一使用「本地已读优先、远端兜底」：本地累计已读包含最新章/卷时隐藏标记；否则沿用 `BookshelfItem.hasUpdate` / `NovelShelfEntry.hasUpdate` 的远端 ID 比较。标记与「有更新」筛选共用页面的 `_hasUpdate`，不把续读断点改成最新章/卷，也不将派生判断写入书架缓存。
+- 漫画通过 `lib/utils/reading_history.dart` 的 `ReadingHistory.readChapterUuidsForComics` 跨分组合并累计已读；小说通过 `lib/utils/novel_reading_store.dart` 的 `NovelReadingStore.readVolumeIdsForBooks` 查询累计已读卷。沿用保存过进度即已读、本机跨账号共用的语义，旧记录的当前章/卷同样计入。
+- 首次加载、缓存命中、分页与刷新均重新读取本地状态；阅读历史变更通知只刷新本地判定，不增加网络请求。删除本地记录后失去纠正依据，重新由远端兜底。
+
 ## Model Serialization
 
 - **Generated models**: `Author`, `MangaTopic`, `Theme`, `ComicGroup` (in `comic.dart`), `ComicComment`, `ChapterComment` use `json_serializable` with `@JsonSerializable(fieldRename: FieldRename.snake)`. Run `dart run build_runner build` after changes. Only three `.g.dart` files exist — most models are not generated.

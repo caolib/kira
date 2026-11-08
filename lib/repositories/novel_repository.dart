@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -196,7 +195,6 @@ class NovelRepository {
   final DateTime Function() _now;
   final _metadata = <String, _NovelMetadataRepository>{};
   final _textLoads = <String, Future<NovelVolumeSnapshot>>{};
-  final _reportedReads = <String>{};
 
   NovelRepository({
     required this.api,
@@ -430,11 +428,6 @@ class NovelRepository {
         text: cached.text,
       );
       snapshot.validate(pathWord: pathWord, volumeId: volumeId);
-      if (cancelToken == null) {
-        // 服务端靠 txt 请求记录浏览记录。缓存命中跳过了该请求，改为后台
-        // 静默重放一次；下载任务与离线续读不算浏览，其余入口都要上报。
-        unawaited(_reportVolumeRead(pathWord, volumeId, identity));
-      }
       return snapshot;
     }
     // No silent stale fallback after an explicit server lock/401. The reader may
@@ -459,31 +452,5 @@ class NovelRepository {
     );
     api.ensureIdentity(identity);
     return result;
-  }
-
-  /// Cache hits must still reach the txt endpoint once so the server keeps
-  /// browse history in sync. Volume detail reuses its own cache; failures
-  /// only log and allow a later visit to retry — reading is never disturbed.
-  /// [identity] pins the dedupe scope: switching account or host re-reports.
-  Future<void> _reportVolumeRead(
-    String pathWord,
-    String volumeId,
-    NovelRequestIdentity identity,
-  ) async {
-    final reportKey = '${identity.cacheScope}_$pathWord/$volumeId';
-    if (!_reportedReads.add(reportKey)) return;
-    try {
-      await api.withIdentity(() async {
-        final detail = await loadVolumeDetail(pathWord, volumeId);
-        await api.getVolumeText(detail);
-      });
-    } catch (error, stack) {
-      _reportedReads.remove(reportKey);
-      await AppLogger.instance.recordWarning(
-        error,
-        stackTrace: stack,
-        source: 'novel_cache.read_report',
-      );
-    }
   }
 }

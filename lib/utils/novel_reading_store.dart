@@ -30,6 +30,19 @@ class NovelReadingStore {
   Future<NovelReadingProgress?> readProgress(String pathWord) =>
       _enqueue((prefs) => _read(prefs, '$prefix$pathWord'));
 
+  /// 批量查询累计已读卷；旧记录的当前卷也视为已读。
+  Future<Map<String, Set<String>>> readVolumeIdsForBooks(
+    Iterable<String> pathWords,
+  ) => _enqueue((prefs) {
+    final volumes = <String, Set<String>>{};
+    for (final pathWord in pathWords.toSet()) {
+      final record = _read(prefs, '$prefix$pathWord');
+      if (record == null) continue;
+      volumes[pathWord] = {...record.readVolumeIds, record.volumeId};
+    }
+    return volumes;
+  });
+
   Future<List<NovelReadingProgress>> readRecent({int? limit = 30}) =>
       _enqueue((prefs) {
         if (limit != null && limit <= 0) {

@@ -191,6 +191,8 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
   final _scrollController = ScrollController();
   Timer? _cacheTimeTimer;
   List<BookshelfItem> _items = [];
+  Map<String, Set<String>> _readChapters = {};
+  int _historyGeneration = 0;
   bool _loading = true;
 
   /// 首屏加载失败的原因。失败时若只把列表留空，用户看到的是「书架是空的」，
@@ -198,7 +200,6 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
   String? _loadError;
   int _offset = 0;
   int _total = 0;
-  int _comicTotal = 0;
   DateTime? _comicCacheTime;
   bool _loadingMore = false;
   String? _loadMoreError;
@@ -231,6 +232,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
     _lastToken = _user.token;
     WidgetsBinding.instance.addObserver(this);
     _user.addListener(_onUserChanged);
+    ReadingHistory.changes.addListener(_onReadingHistoryChanged);
     _startCacheTimeTimer();
     deferInitialLoadToBranchActivation();
   }
@@ -253,6 +255,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
     _cacheTimeTimer?.cancel();
     _scrollController.dispose();
     _user.removeListener(_onUserChanged);
+    ReadingHistory.changes.removeListener(_onReadingHistoryChanged);
     super.dispose();
   }
 
@@ -276,11 +279,49 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
     });
   }
 
-  /// 缓存过期（或缺失）时静默重拉；新鲜则什么都不做。
+  bool _hasUpdate(BookshelfItem item) =>
+      item.hasUpdate &&
+      !(_readChapters[item.comic.pathWord]?.contains(
+            item.comic.lastChapterId,
+          ) ??
+          false);
+
+  Future<Map<String, Set<String>>> _readLocalChapters(
+    Iterable<BookshelfItem> items,
+  ) async {
+    try {
+      return await ReadingHistory.readChapterUuidsForComics(
+        items.map((item) => item.comic.pathWord),
+      );
+    } catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'bookshelf_page.local_read_chapters',
+        ),
+      );
+      return {};
+    }
+  }
+
+  void _onReadingHistoryChanged() {
+    if (_items.isNotEmpty) unawaited(_reloadLocalChapters());
+  }
+
+  Future<void> _reloadLocalChapters() async {
+    final generation = ++_historyGeneration;
+    final chapters = await _readLocalChapters(_items);
+    if (!mounted || generation != _historyGeneration) return;
+    setState(() => _readChapters = chapters);
+  }
+
+  /// 缓存新鲜时只重读本地已读状态，过期（或缺失）时静默重拉。
   void _ensureFresh() {
     if (!_user.isLoggedIn || _refreshing || _loading) return;
     final cacheTime = _comicCacheTime;
     if (cacheTime != null && DateTime.now().difference(cacheTime) < _cacheTtl) {
+      unawaited(_reloadLocalChapters());
       return;
     }
     unawaited(_load(silent: true));
@@ -311,8 +352,9 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
       if (loginChanged) {
         setState(() {
           _items = [];
+          _readChapters = {};
+          ++_historyGeneration;
           _total = 0;
-          _comicTotal = 0;
           _offset = 0;
           _loading = false;
           _loadingMore = false;
@@ -373,10 +415,13 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
   Future<void> _tryLoadCache() async {
     final comicCached = await _comicRepo.loadFromCache();
     if (comicCached != null && comicCached.items.isNotEmpty) {
+      final chapters = await _readLocalChapters(comicCached.items);
+      if (!mounted) return;
       setState(() {
         _items = comicCached.items;
+        _readChapters = chapters;
+        ++_historyGeneration;
         _total = comicCached.total;
-        _comicTotal = comicCached.total;
         _offset = comicCached.items.length;
         _comicCacheTime = comicCached.cacheTime;
         _loading = false;
@@ -417,12 +462,14 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
     _offset = 0;
     try {
       final data = await _api.manga.getBookshelf(ordering: _ordering);
+      final chapters = await _readLocalChapters(data.list);
       if (!mounted) return;
       final now = DateTime.now();
       setState(() {
         _items = data.list;
+        _readChapters = chapters;
+        ++_historyGeneration;
         _total = data.total;
-        _comicTotal = data.total;
         _offset = data.list.length;
         _comicCacheTime = now;
         _loading = false;
@@ -483,9 +530,12 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
         limit: currentCount,
         ordering: _ordering,
       );
+      final chapters = await _readLocalChapters(data.list);
       if (!mounted) return;
       setState(() {
         _items = data.list;
+        _readChapters = chapters;
+        ++_historyGeneration;
         _total = data.total;
         _offset = data.list.length;
       });
@@ -518,9 +568,13 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
         offset: _offset,
         ordering: _ordering,
       );
+      final items = [..._items, ...data.list];
+      final chapters = await _readLocalChapters(items);
       if (!mounted) return;
       setState(() {
-        _items.addAll(data.list);
+        _items = items;
+        _readChapters = chapters;
+        ++_historyGeneration;
         _total = data.total;
         _offset = _items.length;
       });
@@ -677,7 +731,7 @@ class _BookshelfPageState extends ConsumerState<_ComicBookshelfPage>
                 )
               else if (_currentItemsEmpty)
                 SliverFillRemaining(child: _buildEmptyState(context))
-              else if (_showUpdateOnly && _items.every((e) => !e.hasUpdate))
+              else if (_showUpdateOnly && !_items.any(_hasUpdate))
                 SliverFillRemaining(child: _buildNoUpdates(context))
               else
                 _buildComicGrid(context, hp),

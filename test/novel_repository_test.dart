@@ -220,10 +220,9 @@ void main() {
       final second = await restarted.loadVolumeContent('book', '7');
       expect(second.entries.first.paragraphs, first.entries.first.paragraphs);
       expect(apiAdapter.requests.length, 1);
-      // 缓存命中仍会后台重放 txt 上报浏览记录；离线只让上报失败，不影响阅读。
       await pumpEventQueue();
       expect(apiAdapter.requests.length, 1);
-      expect(textAdapter.requests.length, 2);
+      expect(textAdapter.requests.length, 1);
     },
   );
 
@@ -240,6 +239,22 @@ void main() {
       expect(textAdapter.requests.length, 1);
       expect(await repository.getCachedVolumeContent('book', 'unseen'), isNull);
       expect(apiAdapter.requests.length, 1);
+    },
+  );
+
+  test(
+    'expired text fetches volume detail and text again for normal reading',
+    () async {
+      await repository.loadVolumeContent('book', '7');
+      store.now = store.now.add(NovelRepository.textTtl);
+      final refreshed = await repository.loadVolumeContent('book', '7');
+      expect(refreshed.entries.first.paragraphs, ['正文', '']);
+      expect(apiAdapter.requests.length, 2);
+      expect(textAdapter.requests.length, 2);
+      expect(
+        store.texts.values.single.expiresAt,
+        store.now.add(NovelRepository.textTtl),
+      );
     },
   );
 
@@ -292,30 +307,36 @@ void main() {
   );
 
   test(
-    'cache hit reports a background read once per identity for browse history',
+    'fresh text cache skips volume detail and text requests across account switches',
     () async {
       user.copyToken = 'COPY_A';
       await repository.loadVolumeContent('book', '7');
-      expect(textAdapter.requests.length, 1);
-      await repository.loadVolumeContent('book', '7');
-      await pumpEventQueue();
-      // 上报复用 detail 缓存，只重放 txt 请求。
       expect(apiAdapter.requests.length, 1);
-      expect(textAdapter.requests.length, 2);
-      expect(textAdapter.requests.last.uri.host, 'cdn.invalid');
-      // 同一身份再次打开同一卷不再重复上报。
-      await repository.loadVolumeContent('book', '7');
-      await pumpEventQueue();
-      expect(textAdapter.requests.length, 2);
+      expect(textAdapter.requests.length, 1);
 
-      // 换账号后需要为该身份单独上报浏览记录。
+      // 正文快照自带目录，元数据缓存缺失也不应为浏览记录补发请求。
+      store.metadata.clear();
+      await repository.loadVolumeContent('book', '7');
+      await repository.loadVolumeSnapshot('book', '7');
+      await pumpEventQueue();
+      expect(apiAdapter.requests.length, 1);
+      expect(textAdapter.requests.length, 1);
+      expect(store.metadata, isEmpty);
+
+      // 新身份没有正文缓存，仍需正常请求卷详情与正文。
       user.copyToken = 'COPY_B';
       await repository.loadVolumeContent('book', '7');
-      await pumpEventQueue();
-      expect(textAdapter.requests.length, 3);
+      expect(apiAdapter.requests.length, 2);
+      expect(textAdapter.requests.length, 2);
+
+      store.metadata.clear();
+      await repository.loadVolumeContent('book', '7');
+      user.copyToken = 'COPY_A';
       await repository.loadVolumeContent('book', '7');
       await pumpEventQueue();
-      expect(textAdapter.requests.length, 4);
+      expect(apiAdapter.requests.length, 2);
+      expect(textAdapter.requests.length, 2);
+      expect(store.metadata, isEmpty);
     },
   );
 
@@ -345,9 +366,8 @@ void main() {
       await repository.loadVolumeContent('book', '7');
       await repository.loadVolumeContent('book', '7');
       expect(apiAdapter.requests.length, 1);
-      // 第二次命中缓存，后台重放 txt 上报浏览记录。
       await pumpEventQueue();
-      expect(textAdapter.requests.length, 2);
+      expect(textAdapter.requests.length, 1);
     },
   );
 
@@ -484,9 +504,8 @@ void main() {
         expect(snapshot.detail.volume.txtEncoding, encoding);
         final restored = await repo.loadVolumeSnapshot('book', '7');
         expect(restored.text, text);
-        // 缓存命中后后台重放 txt 上报；detail 复用自身缓存。
         await pumpEventQueue();
-        expect(contentAdapter.requests, hasLength(2));
+        expect(contentAdapter.requests, hasLength(1));
       },
     );
   }
@@ -525,9 +544,9 @@ void main() {
       expect((await old).text, '旧版本\n');
       expect((await fresh).text, '新版本\n');
       expect((await repo.loadVolumeSnapshot('book', '7')).text, '新版本\n');
-      // 最后一次命中缓存，后台重放 txt 上报。
       await pumpEventQueue();
-      expect(requests, 3);
+      expect(apiAdapter.requests, hasLength(2));
+      expect(requests, 2);
     },
   );
 

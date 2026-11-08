@@ -236,6 +236,28 @@ class ReadingHistory {
     });
   }
 
+  /// 批量查询作品全部分组的累计已读章节，不改变最近续读位置。
+  static Future<Map<String, Set<String>>> readChapterUuidsForComics(
+    Iterable<String> pathWords,
+  ) async {
+    final wanted = pathWords.toSet();
+    await flush();
+    return _enqueue((prefs) {
+      final chapters = <String, Set<String>>{};
+      for (final key in prefs.getKeys()) {
+        if (!key.startsWith(_prefix)) continue;
+        final pathWord = _pathWordOf(key);
+        if (!wanted.contains(pathWord)) continue;
+        final record = _readKey(prefs, key);
+        if (record == null) continue;
+        chapters
+            .putIfAbsent(pathWord, () => <String>{})
+            .addAll(record.readChapterUuids);
+      }
+      return chapters;
+    });
+  }
+
   /// 获取全库最近更新的阅读记录,用于「继续阅读」入口。
   ///
   /// 返回 null 表示本地还没有任何阅读记录。同时带回 pathWord——

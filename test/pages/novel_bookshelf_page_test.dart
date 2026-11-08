@@ -6,15 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kira/api/novel/novel_api.dart';
-import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/api_ordering.dart';
 import 'package:kira/models/novel.dart';
+import 'package:kira/models/novel_reading_progress.dart';
 import 'package:kira/pages/novel_bookshelf_page.dart';
 import 'package:kira/providers/app_providers.dart';
 import 'package:kira/providers/novel_providers.dart';
 import 'package:kira/repositories/novel_bookshelf_repository.dart';
 import 'package:kira/routing/app_router.dart';
 import 'package:kira/utils/app_storage.dart';
+import 'package:kira/utils/novel_reading_store.dart';
 import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/comic_card_skeleton.dart';
 import 'package:kira/widgets/filter_chip_row.dart';
@@ -25,6 +26,7 @@ import 'package:kira/widgets/update_badge.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../novel_api_test.dart' show NovelTestUser;
+import '../test_helpers.dart';
 
 NovelShelfEntry _entry(String id, {bool updated = false}) => NovelShelfEntry(
   uuid: id.hashCode,
@@ -140,20 +142,21 @@ class _Harness {
           novelApiProvider.overrideWithValue(api),
           novelShelfRepoProvider.overrideWithValue(repo),
         ],
-        child: MaterialApp.router(
-          routerConfig: router,
-          locale: const Locale('zh'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          theme: ThemeData(
-            brightness: dark ? Brightness.dark : Brightness.light,
+        child: wrapWithApp(
+          Builder(
+            builder: (context) => Theme(
+              data: ThemeData(
+                brightness: dark ? Brightness.dark : Brightness.light,
+              ),
+              child: MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
+                child: Router.withConfig(config: router),
+              ),
+            ),
           ),
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
-            child: child!,
-          ),
+          wrapInScaffold: false,
         ),
       ),
     );
@@ -205,10 +208,144 @@ Future<void> _refreshAndSettle(WidgetTester tester) async {
   await pending;
 }
 
+Future<void> _readVolume(
+  WidgetTester tester,
+  String pathWord,
+  String volumeId,
+) async {
+  await tester.runAsync(
+    () => NovelReadingStore().saveProgress(
+      NovelReadingProgress(
+        pathWord: pathWord,
+        name: pathWord,
+        cover: '',
+        volumeId: volumeId,
+        volumeName: volumeId,
+        chapterName: '',
+        updatedAt: DateTime.now(),
+      ),
+    ),
+  );
+  await _settle(tester);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() => SharedPreferences.setMockInitialValues({}));
-  setUp(() async => (await AppStorage.sharedPreferences()).clear());
+  setUp(() async {
+    setupSecureCredentialStoreForTest();
+    await (await AppStorage.sharedPreferences()).clear();
+  });
+  tearDown(teardownSecureCredentialStoreForTest);
+
+  testWidgets('本地已读最新卷后回看，缓存书架与筛选都不误标', (tester) async {
+    await _readVolume(tester, '读过最新', 'new');
+    await _readVolume(tester, '读过最新', 'old');
+    final h = _Harness();
+    h.api.respond = (_, _, _) async => _page([
+      _entry('读过最新', updated: true),
+      _entry('未读最新', updated: true),
+      _entry('远端已读'),
+    ]);
+    await _complete(tester, h.repo.load());
+    await h.pump(tester);
+    await _settle(tester);
+    expect(find.byType(UpdateBadge), findsOneWidget);
+    expect(h.api.calls.length, 1);
+
+    await tester.tap(find.text('有更新'));
+    await _settle(tester);
+    expect(find.text('未读最新'), findsOneWidget);
+    expect(find.text('读过最新'), findsNothing);
+    expect(find.text('远端已读'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('本地进度变更和清除直接刷新徽标，不额外请求书架', (tester) async {
+    final h = _Harness();
+    h.api.respond = (_, _, _) async => _page([_entry('小说', updated: true)]);
+    await h.pump(tester);
+    await _settle(tester);
+    expect(find.byType(UpdateBadge), findsOneWidget);
+    await _readVolume(tester, '小说', 'old');
+    expect(find.byType(UpdateBadge), findsOneWidget);
+    await _readVolume(tester, '小说', 'new');
+    expect(find.byType(UpdateBadge), findsNothing);
+    await _readVolume(tester, '小说', 'old');
+    expect(find.byType(UpdateBadge), findsNothing);
+    await tester.tap(find.text('有更新'));
+    await _settle(tester);
+    expect(find.text('没有轻小说更新'), findsOneWidget);
+
+    await tester.runAsync(() => NovelReadingStore().removeProgress('小说'));
+    await _settle(tester);
+    expect(find.byType(UpdateBadge), findsOneWidget);
+    expect(h.api.calls.length, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('详情返回仍保留旧卷续读断点，本地已读在账号间共用', (tester) async {
+    final h = _Harness();
+    h.api.respond = (_, _, _) async => _page([_entry('小说', updated: true)]);
+    await h.pump(tester);
+    await _settle(tester);
+    await tester.tap(find.text('小说'));
+    await _settle(tester);
+    await _readVolume(tester, '小说', 'new');
+    await _readVolume(tester, '小说', 'old');
+    h.router.pop();
+    await _settle(tester);
+    expect(find.byType(UpdateBadge), findsNothing);
+    final record = await tester.runAsync(
+      () => NovelReadingStore().readProgress('小说'),
+    );
+    expect(record?.volumeId, 'old');
+    expect(
+      (await _complete(tester, h.repo.load())).items.single.lastBrowseId,
+      'old',
+    );
+
+    h.user.copyToken = 'account-b';
+    await _settle(tester);
+    expect(find.text('小说'), findsOneWidget);
+    expect(find.byType(UpdateBadge), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('分页使用本地已读，新最新卷仍由远端标记更新', (tester) async {
+    await _readVolume(tester, '第二页', 'new');
+    final h = _Harness();
+    h.api.respond = (_, _, offset) async => _page(
+      [_entry(offset == 0 ? '第一页' : '第二页', updated: true)],
+      total: 2,
+      offset: offset,
+    );
+    await h.pump(tester);
+    await _settle(tester);
+    await _more(tester);
+    await _settle(tester);
+    expect(find.byType(UpdateBadge), findsOneWidget);
+    await tester.tap(find.text('有更新'));
+    await _settle(tester);
+    expect(find.text('第二页'), findsNothing);
+
+    h.api.respond = (_, _, _) async => _page([
+      const NovelShelfEntry(
+        uuid: 1,
+        book: NovelBook(
+          uuid: '第二页',
+          pathWord: '第二页',
+          name: '第二页',
+          lastChapterId: 'newer',
+        ),
+        lastBrowseId: 'old',
+      ),
+    ]);
+    await _refreshAndSettle(tester);
+    expect(find.text('第二页'), findsOneWidget);
+    expect(find.byType(UpdateBadge), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('排序与漫画一致，补齐浏览时间并复用独立缓存', (tester) async {
     final h = _Harness();
