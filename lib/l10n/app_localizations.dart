@@ -349,6 +349,12 @@ abstract class AppLocalizations {
   /// **'暂无内容'**
   String get noContent;
 
+  /// No description provided for @copyHomeEmptyResponse.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可显示内容'**
+  String get copyHomeEmptyResponse;
+
   /// No description provided for @hotRecommend.
   ///
   /// In zh, this message translates to:

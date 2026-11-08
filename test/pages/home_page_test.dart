@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,23 @@ class _HomeRepository extends MangaHomeRepository {
   Future<CopyMangaHomeData> loadB() async => data;
 }
 
+class _ControlledHomeRepository extends MangaHomeRepository {
+  CopyMangaHomeData? cached;
+  CopyMangaHomeData data = const CopyMangaHomeData(home: CopyMangaHome());
+  Object? error;
+  int calls = 0;
+
+  @override
+  Future<CopyMangaHomeData?> loadBFromCache() async => cached;
+
+  @override
+  Future<CopyMangaHomeData> loadB() async {
+    calls++;
+    if (error != null) throw error!;
+    return data;
+  }
+}
+
 void main() {
   setUp(() async {
     setupSecureCredentialStoreForTest();
@@ -39,14 +57,20 @@ void main() {
 
   tearDown(teardownSecureCredentialStoreForTest);
 
-  Future<void> mount(WidgetTester tester, {double textScale = 1}) async {
+  Future<void> mount(
+    WidgetTester tester, {
+    double textScale = 1,
+    MangaHomeRepository? repository,
+  }) async {
     tester.view.physicalSize = const Size(375, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          mangaHomeRepositoryProvider.overrideWithValue(_HomeRepository()),
+          mangaHomeRepositoryProvider.overrideWithValue(
+            repository ?? _HomeRepository(),
+          ),
         ],
         child: wrapWithApp(
           Builder(
@@ -65,6 +89,89 @@ void main() {
     await tester.pump();
     await tester.pump();
   }
+
+  testWidgets('empty copy home shows a message and can retry', (tester) async {
+    final repository = _ControlledHomeRepository();
+    await mount(tester, repository: repository);
+
+    expect(find.text('暂无可显示内容'), findsOneWidget);
+    expect(find.text('专题'), findsNothing);
+    repository.data = _HomeRepository().data;
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('测试作品'), findsOneWidget);
+    expect(find.text('暂无可显示内容'), findsNothing);
+    expect(repository.calls, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('empty copy cache does not hide the network failure', (
+    tester,
+  ) async {
+    final repository = _ControlledHomeRepository()
+      ..cached = const CopyMangaHomeData(home: CopyMangaHome())
+      ..error = DioException(
+        requestOptions: RequestOptions(path: '/home'),
+        message: '连接超时',
+        type: DioExceptionType.connectionTimeout,
+      );
+    await mount(tester, repository: repository);
+
+    expect(find.text('连接超时'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+    expect(find.text('专题'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('copy refresh failure keeps content and retry clears the error', (
+    tester,
+  ) async {
+    final repository = _ControlledHomeRepository()
+      ..data = _HomeRepository().data;
+    await mount(tester, repository: repository);
+    repository.error = DioException(
+      requestOptions: RequestOptions(path: '/home'),
+      response: Response(
+        requestOptions: RequestOptions(path: '/home'),
+        statusCode: 503,
+        data: {'code': 503, 'message': '服务器暂时不可用'},
+      ),
+      type: DioExceptionType.badResponse,
+    );
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+
+    expect(find.text('测试作品'), findsOneWidget);
+    expect(find.text('刷新失败：服务器暂时不可用'), findsOneWidget);
+    expect(find.byType(MaterialBanner), findsOneWidget);
+    repository.error = null;
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('测试作品'), findsOneWidget);
+    expect(find.byType(MaterialBanner), findsNothing);
+    expect(repository.calls, 3);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cached copy content also reports an empty response', (
+    tester,
+  ) async {
+    final repository = _ControlledHomeRepository()
+      ..cached = _HomeRepository().data
+      ..error = const EmptyCopyMangaHomeException();
+    await mount(tester, repository: repository);
+
+    expect(find.text('测试作品'), findsOneWidget);
+    expect(find.text('刷新失败：暂无可显示内容'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'copy section is unframed and collapses without changing titles',

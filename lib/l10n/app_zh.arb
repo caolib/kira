@@ -47,6 +47,7 @@
   "startupFailedBody": "应用初始化没有完成，通常是安装包与设备环境不匹配。可先重试；若仍失败，请卸载后重新安装，或把下面的错误信息反馈给开发者。",
   "startupFailedDetails": "错误信息",
   "noContent": "暂无内容",
+  "copyHomeEmptyResponse": "暂无可显示内容",
   "hotRecommend": "热门推荐",
   "comicRanking": "漫画排行",
   "rankingAuthorWorks": "作者作品",

@@ -21,6 +21,7 @@ import '../theme/app_typography.dart';
 import '../utils/adaptive_motion.dart';
 import '../utils/app_logger.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/network_error.dart';
 import '../utils/settings_rebuild_guard.dart';
 import '../utils/time_format.dart';
 import '../widgets/app_hero.dart';
@@ -142,7 +143,9 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _loadFromCache() async {
     if (_isCopySource) {
       final cached = await _repo.loadBFromCache();
-      if (!mounted || cached == null || !_loading) return;
+      if (!mounted || cached == null || !cached.home.hasContent || !_loading) {
+        return;
+      }
       setState(() {
         _copyHome = cached.home;
         _loading = false;
@@ -177,6 +180,7 @@ class _HomePageState extends ConsumerState<HomePage>
         _rankingPreview = data.ranking;
         _loading = false;
         _refreshing = false;
+        _error = null;
       });
     } catch (e, stack) {
       unawaited(
@@ -190,13 +194,13 @@ class _HomePageState extends ConsumerState<HomePage>
       setState(() {
         _loading = false;
         _refreshing = false;
-        _error = e.toString();
+        _error = NetworkError.message(e, l10n: AppLocalizations.of(context)!);
       });
     }
   }
 
   Future<void> _loadCopy({bool forceRefresh = false}) async {
-    final hasData = _copyHome != null;
+    final hasData = _copyHome?.hasContent ?? false;
     if (!hasData) {
       setState(() {
         _loading = true;
@@ -212,6 +216,7 @@ class _HomePageState extends ConsumerState<HomePage>
         _copyHome = data.home;
         _loading = false;
         _refreshing = false;
+        _error = null;
       });
     } catch (e, stack) {
       unawaited(
@@ -225,7 +230,9 @@ class _HomePageState extends ConsumerState<HomePage>
       setState(() {
         _loading = false;
         _refreshing = false;
-        _error = e.toString();
+        _error = e is EmptyCopyMangaHomeException
+            ? AppLocalizations.of(context)!.copyHomeEmptyResponse
+            : NetworkError.message(e, l10n: AppLocalizations.of(context)!);
       });
     }
   }
@@ -254,11 +261,15 @@ class _HomePageState extends ConsumerState<HomePage>
       );
     }
 
-    final hasData = isCopy ? copyHome != null : home != null;
-    if (_error != null && !hasData) {
+    final hasData = isCopy ? (copyHome?.hasContent ?? false) : home != null;
+    if (!hasData && (_error != null || isCopy)) {
       return Scaffold(
         floatingActionButton: _buildSourceFab(),
-        body: ErrorRetryView(message: _error, onRetry: _load),
+        body: ErrorRetryView(
+          message:
+              _error ?? AppLocalizations.of(context)!.copyHomeEmptyResponse,
+          onRetry: _load,
+        ),
       );
     }
 
@@ -268,6 +279,20 @@ class _HomePageState extends ConsumerState<HomePage>
       ),
       if (_refreshing)
         const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
+      if (_error != null && hasData)
+        SliverToBoxAdapter(
+          child: MaterialBanner(
+            content: Text(
+              AppLocalizations.of(context)!.refreshFailedDetail(_error!),
+            ),
+            actions: [
+              TextButton(
+                onPressed: _refreshing ? null : _load,
+                child: Text(AppLocalizations.of(context)!.retryButton),
+              ),
+            ],
+          ),
+        ),
     ];
 
     if (isCopy && copyHome != null) {
@@ -465,8 +490,6 @@ class _HomePageState extends ConsumerState<HomePage>
   /// COPY 首页各板块
   List<Widget> _buildCopySlivers(CopyMangaHome home, double hp) {
     final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final bannerSlivers = <Widget>[];
     final sections = <Widget>[];
     final primarySections = <Widget>[];
@@ -596,28 +619,7 @@ class _HomePageState extends ConsumerState<HomePage>
     sections.add(topicSection);
 
     final slivers = <Widget>[];
-    if (sections.isEmpty) {
-      slivers.addAll(bannerSlivers);
-      slivers.add(
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.inbox_outlined,
-                  size: 64,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(l10n.noContent, style: tt.titleMedium),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else if (MediaQuery.sizeOf(context).width >= 720) {
+    if (MediaQuery.sizeOf(context).width >= 720) {
       // 宽屏：左窄栏放 banner + 推荐 + 排行榜，右宽栏放其余板块（2:3）。
       final left = <Widget>[
         if (bannerCarousel != null)

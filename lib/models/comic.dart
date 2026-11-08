@@ -148,6 +148,17 @@ class CopyMangaHome {
     this.topicsList = const [],
   });
 
+  /// 专题列表不在首页展示，不能用它判断首页是否有内容。
+  bool get hasContent =>
+      banners.any((banner) => banner.cover.isNotEmpty) ||
+      recComics.isNotEmpty ||
+      rankDayComics.isNotEmpty ||
+      rankWeekComics.isNotEmpty ||
+      rankMonthComics.isNotEmpty ||
+      hotComics.isNotEmpty ||
+      newComics.isNotEmpty ||
+      finishComics.isNotEmpty;
+
   factory CopyMangaHome.fromJson(Map<String, dynamic> json) => CopyMangaHome(
     banners:
         (json['banners'] as List?)

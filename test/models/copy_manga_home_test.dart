@@ -48,6 +48,42 @@ void main() {
     expect(home.topics, isEmpty);
   });
 
+  test('hasContent 不把专题或空封面当作首页内容', () {
+    final sample = CopyMangaHome.fromJson(_sampleResults);
+    expect(const CopyMangaHome().hasContent, isFalse);
+    expect(
+      CopyMangaHome(
+        topics: sample.topics,
+        topicsList: sample.topicsList,
+        banners: const [MangaBanner(cover: '', brief: '', outUuid: '')],
+      ).hasContent,
+      isFalse,
+    );
+  });
+
+  test('hasContent 接受任一漫画板块或有效 banner', () {
+    final comics = [Comic(name: '作品', pathWord: 'comic', cover: '')];
+    final homes = [
+      CopyMangaHome(recComics: comics),
+      CopyMangaHome(rankDayComics: comics),
+      CopyMangaHome(rankWeekComics: comics),
+      CopyMangaHome(rankMonthComics: comics),
+      CopyMangaHome(hotComics: comics),
+      CopyMangaHome(newComics: comics),
+      CopyMangaHome(finishComics: comics),
+      const CopyMangaHome(
+        banners: [
+          MangaBanner(
+            cover: 'https://example.com/banner.jpg',
+            brief: '',
+            outUuid: '',
+          ),
+        ],
+      ),
+    ];
+    expect(homes.map((home) => home.hasContent), everyElement(isTrue));
+  });
+
   test('CopyMangaHome.toJson 可往返', () {
     final home = CopyMangaHome.fromJson(_sampleResults);
     final encoded = home.toJson();

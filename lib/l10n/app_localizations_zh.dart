@@ -148,6 +148,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noContent => '暂无内容';
 
   @override
+  String get copyHomeEmptyResponse => '暂无可显示内容';
+
+  @override
   String get hotRecommend => '热门推荐';
 
   @override
@@ -4194,6 +4197,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get noContent => '暫無內容';
+
+  @override
+  String get copyHomeEmptyResponse => '暫無可顯示內容';
 
   @override
   String get hotRecommend => '熱門推薦';

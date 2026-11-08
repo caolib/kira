@@ -67,8 +67,23 @@ class MangaHomeRepository
   }
 
   @override
+  Future<CopyMangaHomeData?> loadBFromCache() async {
+    final data = await super.loadBFromCache();
+    return data != null && data.home.hasContent ? data : null;
+  }
+
+  @override
   Future<CopyMangaHomeData> fetchBFromApi() async {
     final home = await _api.manga.getCopyMangaHome();
+    // 上游可能成功返回空数据，不让它覆盖仍可展示的缓存。
+    if (!home.hasContent) throw const EmptyCopyMangaHomeException();
     return CopyMangaHomeData(home: home);
   }
+}
+
+class EmptyCopyMangaHomeException implements Exception {
+  const EmptyCopyMangaHomeException();
+
+  @override
+  String toString() => 'COPY home response contains no displayable content';
 }
