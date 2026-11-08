@@ -8,6 +8,7 @@ import 'package:kira/models/novel_reader_status_settings.dart';
 import 'package:kira/models/reader_settings.dart';
 import 'package:kira/pages/novel_reader/novel_reader_dialogue.dart';
 import 'package:kira/pages/novel_reader/novel_reader_settings_sheet.dart';
+import 'package:kira/theme/app_icon_sizes.dart';
 import 'package:kira/theme/novel_reader_theme.dart';
 import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/collapsible_content.dart';
@@ -182,10 +183,213 @@ void main() {
     });
   }
 
+  for (final (size, textScale, brightness, reduceMotion) in [
+    (const Size(375, 812), 1.0, Brightness.light, false),
+    (const Size(320, 850), 2.0, Brightness.dark, true),
+    (const Size(812, 375), 1.0, Brightness.dark, true),
+  ]) {
+    testWidgets('typography defaults folded and retains edits at $size', (
+      tester,
+    ) async {
+      var latest = const NovelReaderSettings(
+        fontFamily: 'system',
+        fontSize: 28,
+        lineHeight: 2.2,
+        paragraphSpacing: 28,
+        contentWidth: 960,
+        ignoreBlankParagraphs: true,
+      );
+      var changes = 0;
+      await _mount(
+        tester,
+        settings: latest,
+        size: size,
+        textScale: textScale,
+        systemBrightness: brightness,
+        reduceMotion: reduceMotion,
+        onChanged: (value) {
+          latest = value;
+          changes++;
+        },
+      );
+      final card = find.byKey(const ValueKey('novel-typography-card'));
+      final details = find.descendant(
+        of: card,
+        matching: find.byType(CollapsibleContent),
+      );
+      final header = find
+          .descendant(of: card, matching: find.byType(InkWell))
+          .first;
+      final controls = [
+        find.descendant(
+          of: find.byKey(const ValueKey('novel-font-family')),
+          matching: find.byType(SelectTile<String>),
+        ),
+        for (final key in [
+          'novel-font-size',
+          'novel-line-height',
+          'novel-paragraph-spacing',
+          'novel-content-width',
+          'novel-ignore-blank-paragraphs',
+        ])
+          find.byKey(ValueKey(key)),
+      ];
+      expect(tester.widget<CollapsibleContent>(details).expanded, isFalse);
+      expect(find.text('排版'), findsOneWidget);
+      final titleStyle = tester.widget<Text>(find.text('排版')).style;
+      final settingsTitle = find.descendant(
+        of: find.descendant(
+          of: find.byKey(const ValueKey('novel-theme-settings-entry')),
+          matching: find.byType(Text),
+        ),
+        matching: find.byType(RichText),
+      );
+      final settingsTitleStyle = tester
+          .widget<RichText>(settingsTitle)
+          .text
+          .style;
+      expect(titleStyle?.fontSize, settingsTitleStyle?.fontSize);
+      expect(titleStyle?.fontWeight, settingsTitleStyle?.fontWeight);
+      expect(tester.getSize(header).height, greaterThanOrEqualTo(48));
+      for (final control in controls) {
+        expect(control.hitTestable(), findsNothing);
+      }
+      await tester.ensureVisible(header);
+      await tester.pumpAndSettle();
+      await tester.drag(header, const Offset(0, -60));
+      await tester.pumpAndSettle();
+      expect(tester.widget<CollapsibleContent>(details).expanded, isFalse);
+      expect(changes, 0);
+
+      await _toggleFold(tester, 'novel-typography-card');
+      expect(tester.widget<CollapsibleContent>(details).expanded, isTrue);
+      expect(changes, 0);
+      for (final control in controls) {
+        await tester.ensureVisible(control);
+        await tester.pumpAndSettle();
+        expect(control.hitTestable(), findsOneWidget);
+      }
+      final fontSize = find.byKey(const ValueKey('novel-font-size'));
+      tester.widget<Slider>(fontSize).onChanged!(32);
+      await tester.pumpAndSettle();
+      await _toggleFold(tester, 'novel-typography-card');
+      expect(tester.widget<CollapsibleContent>(details).expanded, isFalse);
+      expect(fontSize.hitTestable(), findsNothing);
+      await _toggleFold(tester, 'novel-typography-card');
+      expect(tester.widget<Slider>(fontSize).value, 32);
+      expect(latest.fontFamily, 'system');
+      expect(latest.lineHeight, 2.2);
+      expect(latest.paragraphSpacing, 28);
+      expect(latest.contentWidth, 960);
+      expect(latest.ignoreBlankParagraphs, isTrue);
+      expect(changes, 1);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('打开阅读设置'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<CollapsibleContent>(details).expanded, isFalse);
+      expect(changes, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final locale in [
+    const Locale('zh'),
+    const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+  ]) {
+    testWidgets(
+      'main card titles align with matching leading icons in $locale',
+      (tester) async {
+        await _mount(
+          tester,
+          settings: const NovelReaderSettings(mode: NovelReaderMode.paged),
+          locale: locale,
+          onChanged: (_) {},
+        );
+        final themeEntry = find.byKey(
+          const ValueKey('novel-theme-settings-entry'),
+        );
+        final themeTitle = find.descendant(
+          of: themeEntry,
+          matching: find.byType(Text),
+        );
+        final titleLeft = tester.getTopLeft(themeTitle).dx;
+        final color = Theme.of(tester.element(themeTitle)).colorScheme.primary;
+        final focusHeader = find
+            .descendant(
+              of: find.byKey(const ValueKey('novel-focus-card')),
+              matching: find.byType(ListTile),
+            )
+            .first;
+        final screenOnHeader = find.descendant(
+          of: find.byKey(const ValueKey('novel-keep-screen-on')),
+          matching: find.byType(ListTile),
+        );
+        final statusHeader = find.ancestor(
+          of: find.byKey(const ValueKey('reader-status-overlay-switch')),
+          matching: find.byType(ListTile),
+        );
+        for (final (header, expectedIcon) in [
+          (themeEntry, Icons.palette_outlined),
+          (focusHeader, Icons.center_focus_strong_outlined),
+          (screenOnHeader, Icons.lightbulb_outline),
+          (statusHeader, Icons.widgets_outlined),
+        ]) {
+          expect(tester.widget<ListTile>(header).leading, isA<Icon>());
+          final icon = tester.widget<Icon>(
+            find.descendant(of: header, matching: find.byIcon(expectedIcon)),
+          );
+          expect(icon.size, AppIconSize.lg);
+          expect(icon.color, color);
+          final title = find
+              .descendant(of: header, matching: find.byType(Text))
+              .first;
+          expect(tester.getTopLeft(title).dx, closeTo(titleLeft, 1));
+        }
+        expect(
+          find.descendant(
+            of: themeEntry,
+            matching: find.byIcon(Icons.chevron_right),
+          ),
+          findsOneWidget,
+        );
+        for (final (key, expectedIcon) in [
+          ('novel-typography-card', Icons.text_fields_outlined),
+          ('novel-page-turn-settings', Icons.auto_stories_outlined),
+        ]) {
+          final card = find.byKey(ValueKey(key));
+          final fold = tester.widget<ReaderSettingsFold>(card);
+          expect(fold.icon, expectedIcon);
+          final icon = tester.widget<Icon>(
+            find.descendant(of: card, matching: find.byIcon(expectedIcon)),
+          );
+          expect(icon.size, AppIconSize.lg);
+          expect(icon.color, color);
+          final title = find.descendant(
+            of: card,
+            matching: find.text(fold.title),
+          );
+          expect(tester.getTopLeft(title).dx, closeTo(titleLeft, 1));
+          expect(
+            tester.widget<Text>(title).style,
+            Theme.of(tester.element(title)).textTheme.bodyLarge,
+          );
+          expect(
+            find.descendant(of: card, matching: find.byIcon(Icons.expand_more)),
+            findsOneWidget,
+          );
+        }
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('font family sits above font size and stays out of the theme '
       'panel', (tester) async {
     var latest = const NovelReaderSettings();
     await _mount(tester, onChanged: (value) => latest = value);
+    await _toggleFold(tester, 'novel-typography-card');
     expect(find.byKey(const ValueKey('novel-font-family')), findsOneWidget);
     expect(
       tester.getTopLeft(find.byKey(const ValueKey('novel-font-family'))).dy,
@@ -300,6 +504,7 @@ void main() {
     (tester) async {
       var latest = const NovelReaderSettings();
       await _mount(tester, onChanged: (value) => latest = value);
+      await _toggleFold(tester, 'novel-typography-card');
       final finder = find.byKey(const ValueKey('novel-font-size'));
       final slider = tester.widget<Slider>(finder);
       expect(slider.min, 10);
@@ -326,6 +531,7 @@ void main() {
   ) async {
     var latest = const NovelReaderSettings();
     await _mount(tester, onChanged: (value) => latest = value);
+    await _toggleFold(tester, 'novel-typography-card');
     final line = tester.widget<Slider>(
       find.byKey(const ValueKey('novel-line-height')),
     );
@@ -358,6 +564,7 @@ void main() {
         settings: latest,
         onChanged: (value) => latest = value,
       );
+      await _toggleFold(tester, 'novel-typography-card');
       final finder = find.byKey(const ValueKey('novel-content-width'));
       await tester.ensureVisible(finder);
       await tester.pumpAndSettle();
@@ -971,6 +1178,7 @@ void main() {
     var latest = const NovelReaderSettings();
     await _mount(tester, onChanged: (value) => latest = value);
     // 默认关闭；开关在排版区（段距滑块之后）。
+    await _toggleFold(tester, 'novel-typography-card');
     final toggle = find.byKey(const ValueKey('novel-ignore-blank-paragraphs'));
     expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
     await _tapVisible(tester, 'novel-ignore-blank-paragraphs');
@@ -999,6 +1207,7 @@ void main() {
       settings: const NovelReaderSettings(paragraphSpacing: 4),
       onChanged: (_) {},
     );
+    await _toggleFold(tester, 'novel-typography-card');
     expect(await hintVisible(), isFalse);
     await _tapVisible(tester, 'novel-ignore-blank-paragraphs');
     // 开启隐藏且段距 < 20：出现提醒。
@@ -1544,7 +1753,7 @@ void main() {
       onChanged: (value) => latest = value,
       reduceMotion: true,
     );
-    expect(find.byType(ReaderSettingsFold), findsOneWidget);
+    expect(find.byType(ReaderSettingsFold), findsNWidgets(2));
     expect(
       find.byKey(const ValueKey('novel-volume-key')).hitTestable(),
       findsNothing,

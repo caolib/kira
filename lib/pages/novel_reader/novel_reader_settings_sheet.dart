@@ -50,7 +50,7 @@ class NovelReaderSettingsSheet extends StatefulWidget {
   final Brightness systemBrightness;
 
   /// 拖动专注遮罩参数时置 true：宿主据此让整个面板淡出，
-  /// 读者可直接看到正文上的遮罩效果（与漫画阅读器的亮度调整一致）。
+  /// 并临时显示遮罩；松手恢复原开关状态，不改变已保存的专注开关。
   final ValueNotifier<bool>? dragPreview;
 
   @override
@@ -166,15 +166,20 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
             child: ListTile(
               key: const ValueKey('novel-theme-settings-entry'),
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.palette_outlined),
+              leading: _cardIcon(Icons.palette_outlined),
+              minLeadingWidth: AppIconSize.lg,
+              horizontalTitleGap: AppSpacing.sm,
               title: Text(l10n.novelReaderTheme),
               trailing: const Icon(Icons.chevron_right),
               onTap: _openThemeSettings,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          SettingsSection(
+          ReaderSettingsFold(
             key: const ValueKey('novel-typography-card'),
+            title: l10n.novelReaderTypography,
+            titleStyle: tt.bodyLarge,
+            icon: Icons.text_fields_outlined,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -291,6 +296,7 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
               children: [
                 CollapsibleSwitchTile(
                   title: l10n.novelReaderFocusMode,
+                  leading: _cardIcon(Icons.center_focus_strong_outlined),
                   switchKey: const ValueKey('novel-focus-mode'),
                   expandKey: const ValueKey('novel-focus-details-toggle'),
                   adaptive: true,
@@ -371,6 +377,7 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
             ReaderSettingsFold(
               key: const ValueKey('novel-page-turn-settings'),
               title: l10n.readerPageSection,
+              titleStyle: tt.bodyLarge,
               icon: Icons.auto_stories_outlined,
               child: Column(
                 children: [
@@ -405,24 +412,36 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
           ],
           const SizedBox(height: AppSpacing.sm),
           SettingsSection(
-            child: SwitchListTile.adaptive(
-              key: const ValueKey('novel-keep-screen-on'),
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.novelReaderKeepScreenOn),
-              value: _settings.keepScreenOn,
-              onChanged: (value) =>
-                  _change(_settings.copyWith(keepScreenOn: value)),
+            child: ListTileTheme.merge(
+              minLeadingWidth: AppIconSize.lg,
+              horizontalTitleGap: AppSpacing.sm,
+              child: SwitchListTile.adaptive(
+                key: const ValueKey('novel-keep-screen-on'),
+                contentPadding: EdgeInsets.zero,
+                secondary: _cardIcon(Icons.lightbulb_outline),
+                title: Text(l10n.novelReaderKeepScreenOn),
+                value: _settings.keepScreenOn,
+                onChanged: (value) =>
+                    _change(_settings.copyWith(keepScreenOn: value)),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           ReaderStatusSettingsSection(
             prefs: NovelReaderStatusSettings(),
+            leading: _cardIcon(Icons.widgets_outlined),
             onChanged: () => widget.onChanged(_settings),
           ),
         ],
       ),
     );
   }
+
+  Widget _cardIcon(IconData icon) => Icon(
+    icon,
+    size: AppIconSize.lg,
+    color: Theme.of(context).colorScheme.primary,
+  );
 
   /// 专注模式比例按百分比展示（0.25 → 25%）。
   static String _focusPercent(double value) => '${(value * 100).round()}%';

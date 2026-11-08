@@ -10,12 +10,14 @@ class ReaderSettingsFold extends StatefulWidget {
   const ReaderSettingsFold({
     super.key,
     required this.title,
-    required this.icon,
+    this.titleStyle,
+    this.icon,
     required this.child,
   });
 
   final String title;
-  final IconData icon;
+  final TextStyle? titleStyle;
+  final IconData? icon;
   final Widget child;
 
   @override
@@ -37,6 +39,7 @@ class _ReaderSettingsFoldState extends State<ReaderSettingsFold> {
               color: Colors.transparent,
               child: SectionHeader(
                 title: widget.title,
+                titleStyle: widget.titleStyle,
                 icon: widget.icon,
                 onTap: () => setState(() => _expanded = !_expanded),
                 trailing: Icon(

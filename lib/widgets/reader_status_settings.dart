@@ -20,10 +20,12 @@ class ReaderStatusSettingsSection extends StatefulWidget {
     super.key,
     required this.onChanged,
     this.prefs,
+    this.leading,
   });
 
   /// 配置来源；null 时用漫画侧全局 [ReaderSettings]。
   final ReaderStatusPrefs? prefs;
+  final Widget? leading;
 
   /// 任意设置变化后的回调。
   final VoidCallback onChanged;
@@ -129,6 +131,7 @@ class _ReaderStatusSettingsSectionState
         children: [
           CollapsibleSwitchTile(
             title: l10n.readerStatusOverlay,
+            leading: widget.leading,
             switchKey: const ValueKey('reader-status-overlay-switch'),
             expandKey: const ValueKey('reader-status-details-toggle'),
             value: _reader.statusOverlay,

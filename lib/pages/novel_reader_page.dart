@@ -1042,9 +1042,10 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
 
   Future<void> _showSettings() async {
     final dragPreview = ValueNotifier<bool>(false);
+    ModalRoute<void>? sheetRoute;
     void syncDragPreview() {
       if (!mounted || _settingsDragPreview == dragPreview.value) return;
-      // 仅收起阅读 chrome，不切换系统栏，避免预览时屏幕尺寸变化。
+      // 临时显示专注遮罩并收起阅读 chrome；不改开关或系统栏，保持正文尺寸。
       setState(() => _settingsDragPreview = dragPreview.value);
     }
 
@@ -1055,20 +1056,27 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         maxHeightFactor: 0.7,
         barrierColor: Colors.transparent,
         fadeOutWhen: dragPreview,
-        child: NovelReaderSettingsSheet(
-          settings: _settings,
-          fontFamily: _contentFontFamily,
-          systemBrightness: MediaQuery.platformBrightnessOf(context),
-          dragPreview: dragPreview,
-          onChanged: _changeSettings,
+        child: Builder(
+          builder: (context) {
+            sheetRoute = ModalRoute.of<void>(context);
+            return NovelReaderSettingsSheet(
+              settings: _settings,
+              fontFamily: _contentFontFamily,
+              systemBrightness: MediaQuery.platformBrightnessOf(context),
+              dragPreview: dragPreview,
+              onChanged: _changeSettings,
+            );
+          },
         ),
       );
     } finally {
       dragPreview.removeListener(syncDragPreview);
-      dragPreview.dispose();
       if (mounted && _settingsDragPreview) {
         setState(() => _settingsDragPreview = false);
       }
+      // pop 先结束返回值 Future；退出动画期间滑块仍可能收到手势回调。
+      if (sheetRoute case final route?) await route.completed;
+      dragPreview.dispose();
     }
   }
 
@@ -1363,7 +1371,8 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
                         _buildStatusOverlay(),
                       NovelFocusMask(
                         key: const ValueKey('novel-focus-mask-widget'),
-                        enabled: _settings.focusModeEnabled,
+                        enabled:
+                            _settings.focusModeEnabled || _settingsDragPreview,
                         topRatio: _settings.focusTopRatio,
                         bottomRatio: _settings.focusBottomRatio,
                         opacity: _settings.focusOpacity,

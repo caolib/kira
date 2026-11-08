@@ -3808,6 +3808,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderRealisticPageTurn => '仿真翻页';
 
   @override
+  String get novelReaderTypography => '排版';
+
+  @override
   String get novelReaderFontSize => '字号';
 
   @override
@@ -7851,6 +7854,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get novelReaderRealisticPageTurn => '仿真翻頁';
+
+  @override
+  String get novelReaderTypography => '排版';
 
   @override
   String get novelReaderFontSize => '字級';

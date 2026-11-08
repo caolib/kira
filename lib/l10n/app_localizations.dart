@@ -6965,6 +6965,12 @@ abstract class AppLocalizations {
   /// **'仿真翻页'**
   String get novelReaderRealisticPageTurn;
 
+  /// No description provided for @novelReaderTypography.
+  ///
+  /// In zh, this message translates to:
+  /// **'排版'**
+  String get novelReaderTypography;
+
   /// No description provided for @novelReaderFontSize.
   ///
   /// In zh, this message translates to:

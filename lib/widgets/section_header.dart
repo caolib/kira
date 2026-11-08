@@ -15,6 +15,7 @@ class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
     required this.title,
+    this.titleStyle,
     this.icon,
     this.onMore,
     this.trailing,
@@ -22,6 +23,7 @@ class SectionHeader extends StatelessWidget {
   });
 
   final String title;
+  final TextStyle? titleStyle;
 
   /// Leading icon — section headers always lead with a primary-tinted glyph.
   final IconData? icon;
@@ -60,7 +62,9 @@ class SectionHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style:
+                      titleStyle ??
+                      tt.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               if (onMore != null)

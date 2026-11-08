@@ -15,6 +15,7 @@ import 'package:kira/models/novel_reader_status_settings.dart';
 import 'package:kira/models/novel_reading_progress.dart';
 import 'package:kira/models/reader_settings.dart';
 import 'package:kira/pages/novel_reader/novel_chapter_slider_track_shape.dart';
+import 'package:kira/pages/novel_reader/novel_focus_mask.dart';
 import 'package:kira/pages/novel_reader/novel_reader_contents_sheet.dart';
 import 'package:kira/pages/novel_reader/novel_reader_document.dart';
 import 'package:kira/pages/novel_reader/novel_reader_illustrations.dart';
@@ -1706,6 +1707,141 @@ void main() {
       await _remove(tester);
     });
   }
+
+  for (final (mode, key, initiallyEnabled) in [
+    for (final mode in NovelReaderMode.values)
+      for (final key in [
+        'novel-focus-top',
+        'novel-focus-bottom',
+        'novel-focus-opacity',
+      ])
+        (mode, key, false),
+    for (final mode in NovelReaderMode.values) (mode, 'novel-focus-top', true),
+  ]) {
+    testWidgets(
+      'focus drag preview restores the switch ($mode, $key, $initiallyEnabled)',
+      (tester) async {
+        await tester.runAsync(
+          () => NovelReaderSettings(
+            mode: mode,
+            focusModeEnabled: initiallyEnabled,
+          ).save(),
+        );
+        await _mount(tester, repository, store);
+        final maskWidget = find.byType(NovelFocusMask);
+        expect(
+          tester.widget<NovelFocusMask>(maskWidget).enabled,
+          initiallyEnabled,
+        );
+        if (mode == NovelReaderMode.paged) {
+          await tester.tapAt(
+            tester.getRect(find.byType(NovelReaderPageView)).center,
+          );
+          await _settle(tester);
+        }
+        await _tapToolbar(tester, 'novel-reader-settings');
+        await _settle(tester);
+        final expand = find.byKey(const ValueKey('novel-focus-details-toggle'));
+        await tester.ensureVisible(expand);
+        await _settle(tester);
+        await tester.tap(expand);
+        await _settle(tester);
+        final slider = find.byKey(ValueKey(key));
+        await tester.ensureVisible(slider);
+        await _settle(tester);
+        final before = tester.widget<Slider>(slider).value;
+        final gesture = await tester.startGesture(tester.getCenter(slider));
+        await gesture.moveBy(const Offset(50, 0));
+        await _settle(tester);
+
+        final preview = tester.widget<NovelFocusMask>(maskWidget);
+        expect(preview.enabled, isTrue);
+        final mask = find.byKey(const ValueKey('novel-focus-mask'));
+        expect(mask, findsOneWidget);
+        final height = tester.getSize(mask).height;
+        expect(
+          tester
+              .getSize(find.byKey(const ValueKey('novel-focus-mask-top')))
+              .height,
+          closeTo(height * preview.topRatio, 1),
+        );
+        expect(
+          tester
+              .getSize(find.byKey(const ValueKey('novel-focus-mask-bottom')))
+              .height,
+          closeTo(height * (1 - preview.bottomRatio), 1),
+        );
+        expect(
+          tester
+              .widget<ColoredBox>(
+                find.byKey(const ValueKey('novel-focus-mask-top')),
+              )
+              .color,
+          ReaderChrome.dimOverlay(preview.opacity),
+        );
+        final toggle = find.byKey(const ValueKey('novel-focus-mode'));
+        expect(tester.widget<Switch>(toggle).value, initiallyEnabled);
+        final fade = find.byKey(const ValueKey('app-sheet-fade'));
+        expect(tester.widget<AnimatedOpacity>(fade).opacity, 0);
+        expect(tester.widget<Slider>(slider).value, isNot(before));
+
+        await gesture.up();
+        await _settle(tester);
+        expect(
+          tester.widget<NovelFocusMask>(maskWidget).enabled,
+          initiallyEnabled,
+        );
+        expect(mask, initiallyEnabled ? findsOneWidget : findsNothing);
+        expect(tester.widget<Switch>(toggle).value, initiallyEnabled);
+        expect(tester.widget<AnimatedOpacity>(fade).opacity, 1);
+        final saved = await _readSettings(tester);
+        expect(saved.focusModeEnabled, initiallyEnabled);
+        expect(saved.focusTopRatio, preview.topRatio);
+        expect(saved.focusBottomRatio, preview.bottomRatio);
+        expect(saved.focusOpacity, preview.opacity);
+        expect(tester.takeException(), isNull);
+        Navigator.of(tester.element(find.byType(AppSheet))).pop();
+        await _settle(tester);
+        await _remove(tester);
+      },
+    );
+  }
+
+  testWidgets('focus drag preview ends when the settings sheet closes', (
+    tester,
+  ) async {
+    await _mount(tester, repository, store);
+    await _tapToolbar(tester, 'novel-reader-settings');
+    await _settle(tester);
+    final expand = find.byKey(const ValueKey('novel-focus-details-toggle'));
+    await tester.ensureVisible(expand);
+    await _settle(tester);
+    await tester.tap(expand);
+    await _settle(tester);
+    final slider = find.byKey(const ValueKey('novel-focus-top'));
+    await tester.ensureVisible(slider);
+    await _settle(tester);
+    final gesture = await tester.startGesture(tester.getCenter(slider));
+    await gesture.moveBy(const Offset(50, 0));
+    await _settle(tester);
+    expect(
+      tester.widget<NovelFocusMask>(find.byType(NovelFocusMask)).enabled,
+      isTrue,
+    );
+    Navigator.of(tester.element(find.byType(AppSheet))).pop();
+    await _settle(tester);
+    await gesture.cancel();
+    await _settle(tester);
+    expect(find.byType(AppSheet), findsNothing);
+    expect(
+      tester.widget<NovelFocusMask>(find.byType(NovelFocusMask)).enabled,
+      isFalse,
+    );
+    expect(find.byKey(const ValueKey('novel-focus-mask')), findsNothing);
+    expect((await _readSettings(tester)).focusModeEnabled, isFalse);
+    expect(tester.takeException(), isNull);
+    await _remove(tester);
+  });
 
   testWidgets('font, line and paragraph spacing changes preserve the anchor', (
     tester,

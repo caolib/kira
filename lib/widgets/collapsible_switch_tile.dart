@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme/app_icon_sizes.dart';
+import '../theme/app_spacing.dart';
 import '../utils/adaptive_motion.dart';
 
 /// 行与箭头只展开/收起，开关独立控制启停。
@@ -14,6 +15,7 @@ class CollapsibleSwitchTile extends StatelessWidget {
     required this.onChanged,
     required this.onToggleExpanded,
     this.subtitle,
+    this.leading,
     this.switchKey,
     this.expandKey,
     this.adaptive = false,
@@ -21,6 +23,7 @@ class CollapsibleSwitchTile extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+  final Widget? leading;
   final bool value;
   final bool expanded;
   final ValueChanged<bool> onChanged;
@@ -41,6 +44,9 @@ class CollapsibleSwitchTile extends StatelessWidget {
               expanded: expanded,
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
+                leading: leading,
+                minLeadingWidth: leading == null ? null : AppIconSize.lg,
+                horizontalTitleGap: leading == null ? null : AppSpacing.sm,
                 title: Text(title),
                 subtitle: subtitle == null ? null : Text(subtitle!),
                 onTap: onToggleExpanded,

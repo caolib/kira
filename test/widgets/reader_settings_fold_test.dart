@@ -49,6 +49,54 @@ void main() {
   setUp(setupSecureCredentialStoreForTest);
   tearDown(teardownSecureCredentialStoreForTest);
 
+  testWidgets('title style can change without affecting other folds', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrapWithApp(
+        Builder(
+          builder: (context) => Column(
+            children: [
+              ReaderSettingsFold(
+                title: '排版',
+                titleStyle: Theme.of(context).textTheme.bodyLarge,
+                child: const Text('字号'),
+              ),
+              const ReaderSettingsFold(
+                title: '翻页',
+                icon: Icons.auto_stories_outlined,
+                child: Text('音量键翻页'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final title = find.text('排版');
+    expect(
+      find.descendant(
+        of: find.byType(ReaderSettingsFold).first,
+        matching: find.byType(Icon),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.auto_stories_outlined), findsOneWidget);
+    expect(
+      tester.widget<Text>(title).style,
+      Theme.of(tester.element(title)).textTheme.bodyLarge,
+    );
+    expect(
+      tester.widget<Text>(find.text('翻页')).style?.fontWeight,
+      FontWeight.bold,
+    );
+    expect(find.text('字号').hitTestable(), findsNothing);
+    await tester.tap(title);
+    await tester.pumpAndSettle();
+    expect(find.text('字号').hitTestable(), findsOneWidget);
+    expect(find.text('音量键翻页').hitTestable(), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'fold stays interactive and retains child state across motion changes',
     (tester) async {
