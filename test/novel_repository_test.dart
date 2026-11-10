@@ -473,9 +473,9 @@ void main() {
 
   for (final encoding in ['UTF-8', 'GBK']) {
     test(
-      'snapshot keeps raw $encoding whitespace and directory indices',
+      'snapshot keeps raw $encoding references, whitespace and directory indices',
       () async {
-        const text = '\r\n第一行\r\n\r\n末行\r\n';
+        const text = '\r\n第一行&#16034;&#15970;狓\r\n\r\n末行\r\n';
         final contentAdapter = NovelTestAdapter(
           (options, body) => encoding == 'GBK'
               ? ResponseBody.fromBytes(gbk.encode(text), 200)
@@ -499,11 +499,23 @@ void main() {
         );
         final snapshot = await repo.loadVolumeSnapshot('book', '7');
         expect(snapshot.text, text);
-        expect(snapshot.content.entries.first.paragraphs, ['', '第一行']);
+        expect(snapshot.content.entries.first.paragraphs, ['', '第一行㺢㹢狓']);
         expect(snapshot.content.entries[1].entryIndex, 1);
         expect(snapshot.detail.volume.txtEncoding, encoding);
+        expect(store.texts.values.single.text, text);
         final restored = await repo.loadVolumeSnapshot('book', '7');
         expect(restored.text, text);
+        expect(restored.content.entries.first.paragraphs, ['', '第一行㺢㹢狓']);
+        // A new reader also decodes pre-existing raw cache, even when expired.
+        store.now = store.now.add(const Duration(days: 365));
+        final cachedRepo = NovelRepository(
+          api: client,
+          store: store,
+          now: () => store.now,
+        );
+        final cached = await cachedRepo.getCachedVolumeContent('book', '7');
+        expect(cached!.entries.first.paragraphs, ['', '第一行㺢㹢狓']);
+        expect(store.texts.values.single.text, text);
         await pumpEventQueue();
         expect(contentAdapter.requests, hasLength(1));
       },

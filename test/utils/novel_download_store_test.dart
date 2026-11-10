@@ -118,6 +118,35 @@ void main() {
   );
 
   test(
+    'downloaded TXT references decode after restart without rewriting the snapshot',
+    () async {
+      const snapshot = NovelVolumeSnapshot(
+        detail: NovelVolumeDetail(book: downloadBook, volume: downloadVolume),
+        text: '\r\n&#16034;&#15970;狓\r\n\r\n&#x20000;\r\n',
+      );
+      await store.saveSnapshot(
+        book: downloadBook,
+        volumes: [downloadVolume],
+        snapshot: snapshot,
+      );
+      final restored = NovelDownloadStore.forTesting(rootDirectory: root);
+      await restored.init();
+      final loaded = (await restored.readVolumeSnapshot('book', 'v1'))!;
+      expect(loaded.text, snapshot.text);
+      expect(loaded.content.entries.first.paragraphs, [
+        '',
+        '㺢㹢狓',
+        '',
+        '\u{20000}',
+      ]);
+      expect(
+        (await restored.readVolumeSnapshot('book', 'v1'))!.text,
+        snapshot.text,
+      );
+    },
+  );
+
+  test(
     'partial text is readable, missing or corrupted illustrations are not completed',
     () async {
       await saveFixture(store, complete: true);

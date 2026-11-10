@@ -123,7 +123,7 @@
 
 1. 卷详情提供 `txt_addr`、`txt_encoding` 和 `contents`。
 2. 按声明编码严格解码 UTF-8/GBK/GB18030，不根据 CDN 的 Content-Type 猜测，也不使用乱码容错替代 GBK 解码。同一本书各卷的声明编码可能不同（GBK / GB18030 / UTF-8 并存），必须逐卷读取 `txt_encoding`；GB18030 的差异集中在四字节平面，二字节部分复用 GBK 表。
-3. 保留空行，按零基左闭右开 `[start_lines, end_lines)` 提取章节。
+3. 保留空行，按零基左闭右开 `[start_lines, end_lines)` 提取章节。`lib/api/novel/novel_text.dart` 的 `NovelText.parse` 在分段后还原十进制/十六进制数字字符实体（如 `&#16034;` → `㺢`），在线、缓存与永久下载共用；不解析 HTML、不递归解码，无效码点与控制/换行实体保留原样。原始 TXT、目录行号及段落索引不变。
 4. 插图作为目录项显示；不推测服务端没有提供的段内插图位置。
 5. `count` 不作为目录项数，目录以完整 `contents` 为准。
 

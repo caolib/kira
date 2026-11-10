@@ -10,6 +10,7 @@ class NovelText {
 
   /// GB18030 four-byte ranges from WHATWG index-gb18030-ranges.txt:
   /// (pointer, codepoint). Pointer = first four-byte index of that run.
+  // dart format off
   static const _gb18030Ranges = <(int, int)>[
     (0, 0x80), (36, 0xA5), (38, 0xA9), (45, 0xB2), (50, 0xB8), (81, 0xD8),
     (89, 0xE2), (95, 0xEB), (96, 0xEE), (100, 0xF4), (103, 0xF8), (104, 0xFB),
@@ -62,6 +63,7 @@ class NovelText {
     (39115, 0xFE67), (39116, 0xFE6C), (39265, 0xFF5F), (39394, 0xFFE6),
     (189000, 0x10000),
   ];
+  // dart format on
 
   static String decode(List<int> bytes, String encoding) {
     final normalized = encoding.trim().toLowerCase().replaceAll('-', '');
@@ -159,6 +161,34 @@ class NovelText {
     return codepoint;
   }
 
+  static final _characterReferencePattern = RegExp(
+    r'&#(?:([0-9]+)|[xX]([0-9a-fA-F]+));',
+  );
+
+  /// Restore numeric character references in TXT, without parsing HTML or
+  /// recursively decoding escaped references. Invalid values stay visible.
+  static String _decodeCharacterReferences(String text) {
+    if (!text.contains('&#')) return text;
+    return text.replaceAllMapped(_characterReferencePattern, (match) {
+      final decimal = match.group(1);
+      final codePoint = int.tryParse(
+        decimal ?? match.group(2)!,
+        radix: decimal == null ? 16 : 10,
+      );
+      // Do not introduce controls or line separators into reader paragraphs.
+      if (codePoint == null ||
+          codePoint < 0x20 ||
+          (codePoint >= 0x7F && codePoint <= 0x9F) ||
+          (codePoint >= 0xD800 && codePoint <= 0xDFFF) ||
+          codePoint == 0x2028 ||
+          codePoint == 0x2029 ||
+          codePoint > 0x10FFFF) {
+        return match.group(0)!;
+      }
+      return String.fromCharCode(codePoint);
+    });
+  }
+
   static NovelVolumeContent parse(NovelVolumeDetail detail, String text) {
     // split (unlike LineSplitter) preserves leading/trailing empty lines.
     final lines = text.split(RegExp(r'\r\n|\n|\r'));
@@ -171,7 +201,11 @@ class NovelText {
         if (start < 0 || end < start || end > lines.length) {
           throw FormatException('正文目录行号超出范围（条目 $index）');
         }
-        paragraphs = List<String>.unmodifiable(lines.sublist(start, end));
+        // Decode only after slicing so source line/paragraph indices and the
+        // raw cached/downloaded TXT remain unchanged.
+        paragraphs = List<String>.unmodifiable(
+          lines.getRange(start, end).map(_decodeCharacterReferences),
+        );
       }
       // Images remain separate entries, in the original contents order.
       entries.add(
