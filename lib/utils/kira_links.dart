@@ -13,13 +13,13 @@ abstract final class KiraLinks {
   /// 自定义协议 scheme，AndroidManifest intent-filter 需与此保持一致。
   static const scheme = 'kira';
 
-  /// 分享落地页域名(kira 官网,部署在 Cloudflare Pages)。
+  /// 分享落地页域名(kira 官网)。
   ///
   /// ⚠️ 该域名必须与官网实际部署域名一致——修改时同步三处:
   /// 这里、`AndroidManifest.xml` 的 https intent-filter host、
   /// 以及 kira-web 仓库部署(含 `/.well-known/assetlinks.json`,
   /// 部署后可在 intent-filter 上加 `android:autoVerify="true"` 免确认直达)。
-  static const webHost = 'kirakira.dpdns.org';
+  static const webHost = 'kira.caolib.qzz.io';
 
   /// 漫画详情深链:`kira://open/comic/{pathWord}`(App 内路由直达)。
   static String comicDetail(String pathWord) =>

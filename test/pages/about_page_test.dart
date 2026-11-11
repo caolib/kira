@@ -173,7 +173,7 @@ void main() {
     }
 
     for (final (label, url) in [
-      ('官网', 'https://kirakira.dpdns.org'),
+      ('官网', 'https://kira.caolib.qzz.io'),
       ('源代码', 'https://github.com/caolib/kira'),
       ('反馈', 'https://github.com/caolib/kira/issues/new/choose'),
     ]) {
