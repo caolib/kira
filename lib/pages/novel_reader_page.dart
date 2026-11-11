@@ -26,6 +26,7 @@ import '../utils/adaptive_motion.dart';
 import '../utils/app_logger.dart';
 import '../utils/novel_bookmark_store.dart';
 import '../utils/novel_reading_store.dart';
+import '../utils/reader_system_ui.dart';
 import '../utils/toast.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/error_retry_view.dart';
@@ -91,6 +92,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   /// 与漫画阅读器共用同一个音量键通道；同一时刻只有一个阅读页在前台，
   /// 各自在 init/dispose 与设置变化时同步 enable/disable，避免双重拦截。
   static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
+  final _systemUi = ReaderSystemUi();
   late final NovelRepository _repository;
   late NovelReaderSource _source;
   late final NovelApi _api;
@@ -197,7 +199,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     WidgetsBinding.instance.addObserver(this);
     // 与漫画阅读器一致：阅读期间窗口允许延伸进刘海/挖孔区（SHORT_EDGES）。
     // 否则沉浸模式下挖孔区域不随窗口扩展，露出一条纯黑的窗口背景。
-    _volumeChannel.invokeMethod('enableImmersive').catchError((_) {});
+    _systemUi.enter();
     _volumeChannel.setMethodCallHandler(_handleVolumeMethod);
     _updateVolumeIntercept();
     _beginSession();
@@ -300,14 +302,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   }
 
   void _syncSystemUi() {
-    if (_toolbarVisible) {
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual,
-        overlays: SystemUiOverlay.values,
-      );
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    }
+    _systemUi.setToolbarVisible(_toolbarVisible);
   }
 
   /// 工具栏显隐过渡：隐藏时滑出屏幕，并交回点击（隐藏态不拦正文手势）。
@@ -948,6 +943,8 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
       await Navigator.of(context).maybePop();
       return;
     }
+    // 替换路由不会触发 PopScope，必须在目标页面开始布局前恢复。
+    _systemUi.restore();
     // pushReplacementNamed 返回 void：路由替换同步生效，无需 await。
     context.pushReplacementNamed(
       AppRoutes.novelDetail,
@@ -1292,15 +1289,10 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     _statusSettings.removeListener(_onStatusSettingsChanged);
     WidgetsBinding.instance.removeObserver(this);
     _setScreenOn(false);
-    // 沉浸模式是页面级状态，离开时恢复常规系统栏（与漫画阅读器一致）。
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
+    // 正常返回已在 pop 时恢复；直接移除页面时仍需兜底。
+    _systemUi.restore();
     unawaited(_setVolumeIntercept(false));
     _volumeChannel.setMethodCallHandler(null);
-    // 恢复默认的刘海区避让模式。
-    _volumeChannel.invokeMethod('disableImmersive').catchError((_) {});
     super.dispose();
   }
 
@@ -1347,7 +1339,9 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
       data: _themeForPalette(palette),
       child: PopScope(
         onPopInvokedWithResult: (didPop, result) {
-          if (didPop) unawaited(_flush());
+          if (!didPop) return;
+          _systemUi.restore();
+          unawaited(_flush());
         },
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           // 工具栏固定黑底白字，系统栏保持浅色图标。

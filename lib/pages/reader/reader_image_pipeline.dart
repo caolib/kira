@@ -252,18 +252,7 @@ extension _ReaderImagePipeline on _ReaderPageState {
     );
     if (!mounted) return;
     _resumeAutoScrollAfterOverlay();
-    if (_showToolbar) {
-      unawaited(
-        SystemChrome.setEnabledSystemUIMode(
-          SystemUiMode.manual,
-          overlays: SystemUiOverlay.values,
-        ),
-      );
-    } else {
-      unawaited(
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky),
-      );
-    }
+    _systemUi.setToolbarVisible(_showToolbar);
   }
 
   Widget _buildReaderImageGesture(

@@ -29,6 +29,7 @@ import '../utils/download_manager.dart';
 import '../utils/fling_brake_tap_guard.dart';
 import '../utils/image_load_stats.dart';
 import '../utils/network_error.dart';
+import '../utils/reader_system_ui.dart';
 import '../utils/reading_history.dart';
 import '../utils/reading_stats.dart';
 import '../utils/toast.dart';
@@ -104,6 +105,7 @@ class ReaderPage extends StatefulWidget {
 
 class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   static const _volumeChannel = MethodChannel('io.github.caolib.kira/volume');
+  final _systemUi = ReaderSystemUi();
   static const _hiddenToolbarSlideOffset = 1.05;
 
   /// 滚动模式整视图缩放上限。放大的是整个阅读视图（图片、间隙、分隔条
@@ -159,14 +161,7 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
 
   void _toggleToolbar() {
     _showToolbar = !_showToolbar;
-    if (_showToolbar) {
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual,
-        overlays: SystemUiOverlay.values,
-      );
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    }
+    _systemUi.setToolbarVisible(_showToolbar);
     setState(() {});
   }
 
@@ -347,8 +342,8 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
     // 此前只靠设置面板手动回调刷新——从其他入口改设置时阅读页不会更新。
     _user.addListener(_onUserSettingsChanged);
     _loadChapter();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _volumeChannel.invokeMethod('enableImmersive').catchError((_) {});
+    _systemUi.enter();
+    _systemUi.setToolbarVisible(_showToolbar);
     _volumeChannel.setMethodCallHandler(_handleVolumeMethod);
     _updateVolumeIntercept();
   }
@@ -361,7 +356,7 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
     // 进度保存是防抖的，离开阅读页必须立刻落盘，否则最后几页会丢。
     unawaited(ReadingHistory.flush());
     _setVolumeIntercept(false);
-    _volumeChannel.invokeMethod('disableImmersive').catchError((_) {});
+    _systemUi.restore();
     _volumeChannel.setMethodCallHandler(null);
     _bookmarks.removeListener(_onBookmarksChanged);
     _user.removeListener(_onUserSettingsChanged);
@@ -373,10 +368,6 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
     _autoScrollResumeTimer?.cancel();
     _pageController.dispose();
     _scrollZoomController.dispose();
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
     super.dispose();
   }
 
@@ -430,6 +421,8 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
       Navigator.pop(context);
       return;
     }
+    // 替换路由不会触发 PopScope，必须在目标页面开始布局前恢复。
+    _systemUi.restore();
     context.pushReplacementNamed(
       AppRoutes.comicDetail,
       pathParameters: {'pathWord': widget.pathWord},
@@ -518,7 +511,7 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    final content = AnnotatedRegion<SystemUiOverlayStyle>(
       value: _showToolbar
           ? ReaderChrome.systemUiToolbar
           : ReaderChrome.systemUiImmersive,
@@ -649,6 +642,12 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
           ],
         ),
       ),
+    );
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) _systemUi.restore();
+      },
+      child: content,
     );
   }
 }
