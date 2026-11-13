@@ -1777,16 +1777,22 @@ abstract class AppLocalizations {
   /// **'该域名已在列表中'**
   String get networkCopyLoginDomainDuplicate;
 
+  /// No description provided for @networkCopyApiUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'API URL'**
+  String get networkCopyApiUrl;
+
   /// No description provided for @networkCopyAppVersion.
   ///
   /// In zh, this message translates to:
-  /// **'COPY 请求版本号'**
+  /// **'请求版本号'**
   String get networkCopyAppVersion;
 
   /// No description provided for @networkCopyVersionCode.
   ///
   /// In zh, this message translates to:
-  /// **'COPY versionCode'**
+  /// **'versionCode'**
   String get networkCopyVersionCode;
 
   /// No description provided for @networkCopyAutoUpdate.

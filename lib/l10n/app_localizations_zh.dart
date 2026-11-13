@@ -933,10 +933,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkCopyLoginDomainDuplicate => '该域名已在列表中';
 
   @override
-  String get networkCopyAppVersion => 'COPY 请求版本号';
+  String get networkCopyApiUrl => 'API URL';
 
   @override
-  String get networkCopyVersionCode => 'COPY versionCode';
+  String get networkCopyAppVersion => '请求版本号';
+
+  @override
+  String get networkCopyVersionCode => 'versionCode';
 
   @override
   String get networkCopyAutoUpdate => '每天自动更新';
@@ -4984,10 +4987,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get networkCopyLoginDomainDuplicate => '該域名已在列表中';
 
   @override
-  String get networkCopyAppVersion => 'COPY 請求版本號';
+  String get networkCopyApiUrl => 'API URL';
 
   @override
-  String get networkCopyVersionCode => 'COPY versionCode';
+  String get networkCopyAppVersion => '請求版本號';
+
+  @override
+  String get networkCopyVersionCode => 'versionCode';
 
   @override
   String get networkCopyAutoUpdate => '每天自動更新';

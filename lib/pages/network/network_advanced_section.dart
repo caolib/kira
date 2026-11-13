@@ -36,15 +36,6 @@ extension _NetworkAdvancedSection on _NetworkPageState {
                         style: tt.titleSmall ?? tt.titleMedium,
                       ),
                     ),
-                    Text(
-                      'COPY',
-                      style: tt.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
                     Icon(
                       _advancedExpanded
                           ? Icons.expand_less_rounded
@@ -74,6 +65,8 @@ extension _NetworkAdvancedSection on _NetworkPageState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildCopyLoginHostSection(l10n, tt, cs),
+        const SizedBox(height: AppSpacing.md),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(l10n.networkCopyAutoUpdate, style: tt.bodyMedium),
@@ -93,45 +86,91 @@ extension _NetworkAdvancedSection on _NetworkPageState {
           value: _user.copyAutoUpdate,
           onChanged: _user.setCopyAutoUpdate,
         ),
-        const SizedBox(height: AppSpacing.lg),
-        _buildCopyLoginHostSection(l10n, tt, cs),
-        const SizedBox(height: AppSpacing.lg),
-        TextField(
+        const SizedBox(height: AppSpacing.md),
+        _buildCopySettingField(
           controller: _copyApiHostController,
-          decoration: const InputDecoration(
-            labelText: 'COPY API URL',
-            hintText: defaultCopyApiHost,
-            border: OutlineInputBorder(),
-          ),
+          label: l10n.networkCopyApiUrl,
+          hint: defaultCopyApiHost,
           keyboardType: TextInputType.url,
           textInputAction: TextInputAction.next,
         ),
-        const SizedBox(height: AppSpacing.lg),
-        TextField(
-          controller: _copyAppVersionController,
-          decoration: InputDecoration(
-            labelText: l10n.networkCopyAppVersion,
-            hintText: defaultCopyAppVersion,
-            border: const OutlineInputBorder(),
-          ),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _saveCopyAdvancedSettings(),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        TextField(
-          controller: _copyVersionCodeController,
-          decoration: InputDecoration(
-            labelText: l10n.networkCopyVersionCode,
-            hintText: defaultCopyVersionCode,
-            border: const OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _saveCopyAdvancedSettings(),
-        ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.md),
+        _buildCopyVersionFields(l10n),
+        const SizedBox(height: AppSpacing.md),
         _buildAdvancedActions(cs),
       ],
+    );
+  }
+
+  Widget _buildCopySettingField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    TextInputType? keyboardType,
+    TextInputAction textInputAction = TextInputAction.done,
+    ValueChanged<String>? onSubmitted,
+  }) {
+    // 浮动标签仅支持 start/center；装饰使用 RTL 把边框缺口放右侧，
+    // 输入内容与提示仍显式保持 LTR，避免 URL 和数字的光标方向变化；
+    // 方向覆盖仅限这三个输入框，不影响域名列表及操作区。
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: TextField(
+        controller: controller,
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.left,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          hintTextDirection: TextDirection.ltr,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          floatingLabelAlignment: FloatingLabelAlignment.start,
+          border: const OutlineInputBorder(),
+        ),
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
+      ),
+    );
+  }
+
+  Widget _buildCopyVersionFields(AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fontSize = Theme.of(context).textTheme.bodyLarge!.fontSize!;
+        final scale =
+            MediaQuery.textScalerOf(context).scale(fontSize) / fontSize;
+        // 两个短字段在普通手机上并排；窄屏/大字体保留足够的输入宽度。
+        final twoColumns = constraints.maxWidth >= 288 * scale + AppSpacing.md;
+        final width = twoColumns
+            ? (constraints.maxWidth - AppSpacing.md) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: [
+            SizedBox(
+              width: width,
+              child: _buildCopySettingField(
+                controller: _copyAppVersionController,
+                label: l10n.networkCopyAppVersion,
+                hint: defaultCopyAppVersion,
+                onSubmitted: (_) => _saveCopyAdvancedSettings(),
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _buildCopySettingField(
+                controller: _copyVersionCodeController,
+                label: l10n.networkCopyVersionCode,
+                hint: defaultCopyVersionCode,
+                keyboardType: TextInputType.number,
+                onSubmitted: (_) => _saveCopyAdvancedSettings(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -153,14 +192,28 @@ extension _NetworkAdvancedSection on _NetworkPageState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.networkCopyLoginDomain,
-          style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          l10n.networkCopyLoginDomainHint,
-          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.networkCopyLoginDomain,
+                style: tt.labelLarge?.copyWith(fontWeight: FontWeight.normal),
+              ),
+            ),
+            IconButton.filledTonal(
+              tooltip: _addingLoginHost
+                  ? l10n.cancelButton
+                  : l10n.commentSettingsAddButton,
+              onPressed: () {
+                if (_addingLoginHost) FocusScope.of(context).unfocus();
+                _setState(() => _addingLoginHost = !_addingLoginHost);
+              },
+              icon: Icon(
+                _addingLoginHost ? Icons.close_rounded : Icons.add_rounded,
+                size: AppIconSize.lg,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.sm),
         DecoratedBox(
@@ -182,7 +235,7 @@ extension _NetworkAdvancedSection on _NetworkPageState {
                     tt: tt,
                     cs: cs,
                   ),
-                _buildLoginHostAddRow(l10n, tt, cs),
+                if (_addingLoginHost) _buildLoginHostAddRow(l10n, tt, cs),
               ],
             ),
           ),
@@ -200,100 +253,92 @@ extension _NetworkAdvancedSection on _NetworkPageState {
     required TextTheme tt,
     required ColorScheme cs,
   }) {
-    final label = isCustom
-        ? l10n.networkCopyLoginDomainCustom
-        : (host == defaultCopyLoginHost
-              ? l10n.networkCopyLoginDomainDefault
-              : null);
     final isPending = _pendingLoginHosts.contains(host);
     final latency = _loginHostLatency[host];
     final tone = _nodeTone(isPending, latency);
 
+    final hostText = Text(
+      host,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: tt.bodyMedium?.copyWith(color: cs.onSurface),
+    );
+    final metadata = _buildLatencyText(
+      isPending: isPending,
+      untested: !isPending && !_loginHostLatency.containsKey(host),
+      latency: latency,
+      color: tone.color(cs),
+      tt: tt,
+      l10n: l10n,
+    );
     return Column(
       children: [
         if (showDivider)
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.6)),
         Material(
-          color: isSelected
-              ? Color.alphaBlend(cs.primary.withValues(alpha: 0.08), cs.surface)
-              : Colors.transparent,
+          color: Colors.transparent,
           child: InkWell(
             onTap: () => _setCopyLoginHost(host),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
-              child: Row(
-                children: [
-                  Icon(
-                    isSelected
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    size: 20,
-                    color: isSelected ? cs.primary : cs.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      host,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.bodyMedium?.copyWith(
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isSelected ? cs.primary : cs.onSurface,
-                      ),
-                    ),
-                  ),
-                  _buildLatencyText(
-                    isPending: isPending,
-                    untested:
-                        !isPending && !_loginHostLatency.containsKey(host),
-                    latency: latency,
-                    color: tone.color(cs),
-                    tt: tt,
-                    l10n: l10n,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  if (label != null) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isCustom
-                            ? cs.secondaryContainer
-                            : cs.surfaceContainerHighest,
-                        borderRadius: AppRadius.xsR,
-                      ),
-                      child: Text(
-                        label,
-                        style: tt.labelSmall?.copyWith(
-                          color: isCustom
-                              ? cs.onSecondaryContainer
-                              : cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w700,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final fontSize = tt.bodyMedium!.fontSize!;
+                    final scale =
+                        MediaQuery.textScalerOf(context).scale(fontSize) /
+                        fontSize;
+                    final stacked =
+                        constraints.maxWidth < (isCustom ? 360 : 220) * scale;
+                    return Row(
+                      children: [
+                        Icon(
+                          isSelected
+                              ? Icons.radio_button_checked_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          size: AppIconSize.lg,
+                          color: isSelected ? cs.primary : cs.onSurfaceVariant,
                         ),
-                      ),
-                    ),
-                  ],
-                  if (isCustom) ...[
-                    const SizedBox(width: AppSpacing.xs),
-                    _hostRowAction(
-                      icon: Icons.edit_outlined,
-                      tooltip: l10n.aiConfigEdit,
-                      color: cs.onSurfaceVariant,
-                      onTap: () => _editCustomLoginHost(host),
-                    ),
-                    _hostRowAction(
-                      icon: Icons.delete_outline_rounded,
-                      tooltip: l10n.deleteButton,
-                      color: cs.error,
-                      onTap: () => _removeCustomLoginHost(host),
-                    ),
-                  ],
-                ],
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: stacked
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    hostText,
+                                    const SizedBox(height: AppSpacing.xs),
+                                    metadata,
+                                  ],
+                                )
+                              : hostText,
+                        ),
+                        if (!stacked) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          metadata,
+                        ],
+                        if (isCustom) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          _hostRowAction(
+                            icon: Icons.edit_outlined,
+                            tooltip: l10n.aiConfigEdit,
+                            color: cs.onSurfaceVariant,
+                            onTap: () => _editCustomLoginHost(host),
+                          ),
+                          _hostRowAction(
+                            icon: Icons.delete_outline_rounded,
+                            tooltip: l10n.deleteButton,
+                            color: cs.error,
+                            onTap: () => _removeCustomLoginHost(host),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -310,11 +355,11 @@ extension _NetworkAdvancedSection on _NetworkPageState {
   }) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(icon, size: 18),
+      icon: Icon(icon, size: AppIconSize.md),
       tooltip: tooltip,
       color: color,
-      visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      visualDensity: VisualDensity.standard,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
       padding: EdgeInsets.zero,
     );
   }
@@ -336,6 +381,7 @@ extension _NetworkAdvancedSection on _NetworkPageState {
                   controller: _customLoginHostController,
                   decoration: const InputDecoration(
                     isDense: true,
+                    constraints: BoxConstraints(minHeight: 48),
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.url,
@@ -347,10 +393,13 @@ extension _NetworkAdvancedSection on _NetworkPageState {
               FilledButton.tonalIcon(
                 onPressed: _addCustomLoginHost,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  visualDensity: VisualDensity.compact,
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  visualDensity: VisualDensity.standard,
                 ),
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: const Icon(Icons.add_rounded, size: AppIconSize.md),
                 label: Text(l10n.commentSettingsAddButton),
               ),
             ],
@@ -362,40 +411,56 @@ extension _NetworkAdvancedSection on _NetworkPageState {
 
   Widget _buildAdvancedActions(ColorScheme cs) {
     final l10n = AppLocalizations.of(context)!;
-    return SizedBox(
-      width: double.infinity,
-      child: _ConnectedButtonGroup(
-        children: [
-          _ConnectedButtonGroupItem(
-            onPressed: _autoFillingCopySettings ? null : _autoFillCopySettings,
-            loadingWidget: _autoFillingCopySettings
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: cs.primary,
-                    ),
-                  )
-                : null,
-            icon: _autoFillingCopySettings ? null : Icons.auto_fix_high,
-            label: l10n.networkFill,
+    final secondaryStyle = TextButton.styleFrom(
+      minimumSize: const Size(48, 48),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+    );
+    return Row(
+      children: [
+        Expanded(
+          child: Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              TextButton.icon(
+                onPressed: _autoFillingCopySettings
+                    ? null
+                    : _autoFillCopySettings,
+                style: secondaryStyle,
+                icon: _autoFillingCopySettings
+                    ? SizedBox(
+                        width: AppIconSize.md,
+                        height: AppIconSize.md,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: cs.primary,
+                        ),
+                      )
+                    : const Icon(Icons.auto_fix_high, size: AppIconSize.md),
+                label: Text(l10n.networkFill),
+              ),
+              TextButton.icon(
+                onPressed: _autoFillingCopySettings
+                    ? null
+                    : _resetCopyAdvancedSettings,
+                style: secondaryStyle,
+                icon: const Icon(Icons.restart_alt, size: AppIconSize.md),
+                label: Text(l10n.commentSettingsResetButton),
+              ),
+            ],
           ),
-          _ConnectedButtonGroupItem(
-            onPressed: _autoFillingCopySettings
-                ? null
-                : _resetCopyAdvancedSettings,
-            icon: Icons.restart_alt,
-            label: l10n.commentSettingsResetButton,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        FilledButton.icon(
+          onPressed: _saveCopyAdvancedSettings,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           ),
-          _ConnectedButtonGroupItem(
-            onPressed: _saveCopyAdvancedSettings,
-            icon: Icons.save_outlined,
-            label: l10n.commentSettingsSaveButton,
-            isPrimary: true,
-          ),
-        ],
-      ),
+          icon: const Icon(Icons.save_outlined, size: AppIconSize.md),
+          label: Text(l10n.commentSettingsSaveButton),
+        ),
+      ],
     );
   }
 }

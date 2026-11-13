@@ -18,6 +18,12 @@ void main() {
     await user.init();
   });
 
+  test('内置域名包含 copy4000 和 copy5000，默认仍为 copy4000', () {
+    expect(copyLoginHostOptions, ['copy4000.com', 'copy5000.com']);
+    expect(user.copyLoginHostChoices, ['copy4000.com', 'copy5000.com']);
+    expect(user.copyLoginHost, 'copy4000.com');
+  });
+
   group('addCustomCopyLoginHost', () {
     test('原样保留（不校验合法性）并持久化', () async {
       expect(
@@ -49,20 +55,20 @@ void main() {
     });
 
     test('与内置或已有自定义域名重复返回 false', () async {
-      expect(await user.addCustomCopyLoginHost('copy3000.com'), isFalse);
-      expect(await user.addCustomCopyLoginHost('copy4000.com'), isFalse);
-      expect(await user.addCustomCopyLoginHost('copy5000.com'), isTrue);
+      expect(await user.addCustomCopyLoginHost(defaultCopyLoginHost), isFalse);
       expect(await user.addCustomCopyLoginHost('copy5000.com'), isFalse);
-      expect(user.customCopyLoginHosts, ['copy5000.com']);
+      expect(await user.addCustomCopyLoginHost('custom.example.test'), isTrue);
+      expect(await user.addCustomCopyLoginHost('custom.example.test'), isFalse);
+      expect(user.customCopyLoginHosts, ['custom.example.test']);
     });
   });
 
   group('removeCustomCopyLoginHost', () {
     test('删除指定域名并持久化', () async {
-      await user.addCustomCopyLoginHost('copy5000.com');
+      await user.addCustomCopyLoginHost('custom.example.test');
       await user.addCustomCopyLoginHost('copy6000.com');
 
-      await user.removeCustomCopyLoginHost('copy5000.com');
+      await user.removeCustomCopyLoginHost('custom.example.test');
       expect(user.customCopyLoginHosts, ['copy6000.com']);
 
       await user.init();
@@ -70,10 +76,10 @@ void main() {
     });
 
     test('删除当前启用的域名时回落到内置默认', () async {
-      await user.addCustomCopyLoginHost('copy5000.com');
-      await user.setCopyLoginHost('copy5000.com');
+      await user.addCustomCopyLoginHost('custom.example.test');
+      await user.setCopyLoginHost('custom.example.test');
 
-      await user.removeCustomCopyLoginHost('copy5000.com');
+      await user.removeCustomCopyLoginHost('custom.example.test');
       expect(user.copyLoginHost, defaultCopyLoginHost);
 
       await user.init();
@@ -84,11 +90,14 @@ void main() {
 
   group('updateCustomCopyLoginHost', () {
     test('重命名并持久化；旧值为当前域名时同步切换', () async {
-      await user.addCustomCopyLoginHost('copy5000.com');
-      await user.setCopyLoginHost('copy5000.com');
+      await user.addCustomCopyLoginHost('custom.example.test');
+      await user.setCopyLoginHost('custom.example.test');
 
       expect(
-        await user.updateCustomCopyLoginHost('copy5000.com', ' copy6000.com '),
+        await user.updateCustomCopyLoginHost(
+          'custom.example.test',
+          ' copy6000.com ',
+        ),
         isTrue,
       );
       expect(user.customCopyLoginHosts, ['copy6000.com']);
@@ -100,22 +109,31 @@ void main() {
     });
 
     test('新值为空或重复返回 false 且保持原状', () async {
-      await user.addCustomCopyLoginHost('copy5000.com');
+      await user.addCustomCopyLoginHost('custom.example.test');
       await user.addCustomCopyLoginHost('copy6000.com');
 
       expect(
-        await user.updateCustomCopyLoginHost('copy5000.com', '  '),
+        await user.updateCustomCopyLoginHost('custom.example.test', '  '),
         isFalse,
       );
       expect(
-        await user.updateCustomCopyLoginHost('copy5000.com', 'copy6000.com'),
+        await user.updateCustomCopyLoginHost(
+          'custom.example.test',
+          'copy6000.com',
+        ),
         isFalse,
       );
       expect(
-        await user.updateCustomCopyLoginHost('copy5000.com', 'copy3000.com'),
+        await user.updateCustomCopyLoginHost(
+          'custom.example.test',
+          defaultCopyLoginHost,
+        ),
         isFalse,
       );
-      expect(user.customCopyLoginHosts, ['copy5000.com', 'copy6000.com']);
+      expect(user.customCopyLoginHosts, [
+        'custom.example.test',
+        'copy6000.com',
+      ]);
       expect(user.copyLoginHost, defaultCopyLoginHost);
     });
   });
@@ -124,14 +142,17 @@ void main() {
     test('持久化数据仅做去空白与去重，不做合法性过滤', () async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList('copy_login_custom_hosts', [
-        'copy5000.com',
-        ' copy5000.com ', // 去空白后重复
-        'copy3000.com', // 与内置重复
+        'custom.example.test',
+        ' custom.example.test ', // 去空白后重复
+        defaultCopyLoginHost, // 与内置重复
         'not a domain', // 不校验，原样保留
       ]);
       await user.init();
 
-      expect(user.customCopyLoginHosts, ['copy5000.com', 'not a domain']);
+      expect(user.customCopyLoginHosts, [
+        'custom.example.test',
+        'not a domain',
+      ]);
     });
 
     test('曾被选中的旧内置域名并入自定义列表，保持可切换', () async {

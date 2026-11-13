@@ -9,12 +9,12 @@ import '../api/api_transport.dart'
         defaultCopyApiHost,
         defaultCopyAppVersion,
         defaultCopyVersionCode,
-        defaultCopyLoginHost,
         copyLoginHostOptions;
 import '../l10n/app_localizations.dart';
 import '../models/network_settings.dart';
 import '../models/user_manager.dart';
 import '../providers/app_providers.dart';
+import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_status_colors.dart';
@@ -68,6 +68,7 @@ class _NetworkPageState extends ConsumerState<NetworkPage>
   bool _refreshingSystemProxy = false;
   bool _autoFillingCopySettings = false;
   bool _advancedExpanded = false;
+  bool _addingLoginHost = false;
   NetworkProxyType _manualProxyType = NetworkProxyType.http;
 
   /// 节点延迟结果。key 为线路索引(>=0)或 -1(其他固定 host)。

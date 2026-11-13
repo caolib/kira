@@ -19,7 +19,7 @@ const defaultCopyVersionCode = '83';
 const defaultCopyLoginHost = 'copy4000.com';
 
 /// 可选的拷贝登录域名列表，用于高级设置中的切换。
-const copyLoginHostOptions = [defaultCopyLoginHost, 'copy3000.com'];
+const copyLoginHostOptions = [defaultCopyLoginHost, 'copy5000.com'];
 
 /// 默认 COPY App 版本号，用于 copy 接口请求头（User-Agent / version）。
 const copyAppVersion = defaultCopyAppVersion;
