@@ -181,6 +181,102 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final text in [
+    '「123」456',
+    '456「123」',
+    '456「123」789',
+    '前「中文」后',
+    'אב「123」גד',
+  ]) {
+    for (final direction in TextDirection.values) {
+      testWidgets('inline fill excludes narration in $text $direction', (
+        tester,
+      ) async {
+        final paragraph = NovelDialogueCache().paragraph(
+          NovelReaderParagraph(_entry([text]), 0),
+        );
+        final presentation = _presentation();
+        Widget view(bool withFill) => wrapWithApp(
+          Directionality(
+            textDirection: direction,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 400,
+                child: NovelDialogueText(
+                  paragraph: paragraph,
+                  baseStyle: _baseStyle,
+                  dialogue: NovelDialoguePresentation(
+                    foreground: presentation.foreground,
+                    background: withFill ? presentation.background : null,
+                    fontWeight: presentation.fontWeight,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        RenderParagraph renderParagraph() =>
+            tester.renderObject<RenderParagraph>(
+              find.descendant(
+                of: find.byType(NovelDialogueText),
+                matching: find.byType(RichText),
+              ),
+            );
+        List<Rect> boundsFor(RenderParagraph render, int start, int end) =>
+            novelDialogueBackgroundRuns(
+              render.getBoxesForSelection(
+                TextSelection(baseOffset: start, extentOffset: end),
+                boxHeightStyle: ui.BoxHeightStyle.max,
+              ),
+            );
+
+        await tester.pumpWidget(view(false));
+        await tester.pumpAndSettle();
+        final sizeBefore = renderParagraph().size;
+        final boxesBefore = boundsFor(renderParagraph(), 0, text.length);
+
+        await tester.pumpWidget(view(true));
+        await tester.pumpAndSettle();
+        final render = renderParagraph();
+        expect(render.size, sizeBefore);
+        expect(boundsFor(render, 0, text.length), boxesBefore);
+        final range = paragraph.ranges.single;
+        final narration = [
+          if (range.start > 0) ...boundsFor(render, 0, range.start),
+          if (range.end < text.length)
+            ...boundsFor(render, range.end, text.length),
+        ];
+        expect(narration, isNotEmpty);
+        expect(
+          tester.renderObject(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget.runtimeType.toString() == '_DialogueBackground',
+            ),
+          ),
+          paints..path(
+            color: presentation.background,
+            includes: [
+              for (final run in boundsFor(render, range.start, range.end))
+                run.center,
+            ],
+            excludes: [
+              for (final run in narration) ...[
+                Offset(run.left + 0.25, run.center.dy),
+                Offset(run.right - 0.25, run.center.dy),
+                Offset(run.left - 1, run.center.dy),
+                Offset(run.right + 1, run.center.dy),
+              ],
+            ],
+          ),
+        );
+        expect(render.text.toPlainText(), text);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   test('dialogue fill adds equal padding on all four sides', () {
     for (final height in [10.0, 20.0, 48.0, 96.0]) {
       final glyph = Rect.fromLTWH(12, 24, 100, height);
@@ -193,6 +289,52 @@ void main() {
       expect(fill.contains(glyph.topLeft), isTrue);
       expect(fill.height, greaterThan(glyph.height));
     }
+  });
+
+  test('inline padding leaves a gap on both sides of narration', () {
+    const glyph = Rect.fromLTRB(20, 10, 100, 30);
+    for (final whitespace in [0.0, 1.0, 4.0]) {
+      final fill = novelDialogueBackgroundRect(
+        glyph,
+        narrationBounds: [
+          Rect.fromLTRB(0, 10, glyph.left - whitespace, 30),
+          Rect.fromLTRB(glyph.right + whitespace, 10, 120, 30),
+        ],
+      );
+      expect(fill.left, glyph.left - whitespace + 2);
+      expect(fill.right, glyph.right + whitespace - 2);
+      expect(fill.top, lessThan(glyph.top));
+      expect(fill.bottom, greaterThan(glyph.bottom));
+    }
+  });
+
+  test('narrow visual runs retain a nonempty fill between narration', () {
+    const glyph = Rect.fromLTRB(20, 10, 22, 30);
+    final fill = novelDialogueBackgroundRect(
+      glyph,
+      narrationBounds: const [
+        Rect.fromLTRB(0, 10, 20, 30),
+        Rect.fromLTRB(22, 10, 40, 30),
+      ],
+    );
+    expect(fill.left, greaterThan(glyph.left));
+    expect(fill.right, lessThan(glyph.right));
+    expect(fill.width, 1);
+    expect(fill.isEmpty, isFalse);
+  });
+
+  test('narration on other lines does not remove wrap-edge padding', () {
+    const glyph = Rect.fromLTRB(20, 30, 100, 50);
+    expect(
+      novelDialogueBackgroundRect(
+        glyph,
+        narrationBounds: const [
+          Rect.fromLTRB(0, 10, 20, 30),
+          Rect.fromLTRB(100, 50, 120, 70),
+        ],
+      ),
+      novelDialogueBackgroundRect(glyph),
+    );
   });
 
   for (final width in [240.0, 400.0]) {

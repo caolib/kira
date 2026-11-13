@@ -454,14 +454,38 @@ class _DialogueBackground extends SingleChildRenderObjectWidget {
 }
 
 @visibleForTesting
-Rect novelDialogueBackgroundRect(Rect glyphBounds) {
+Rect novelDialogueBackgroundRect(
+  Rect glyphBounds, {
+  Iterable<Rect> narrationBounds = const [],
+}) {
   final padding = (glyphBounds.height * 0.12).clamp(
     AppSpacing.xs / 2,
     AppSpacing.xs,
   );
-  // Paint-only padding on every visual line, including wrapped/page fragments.
-  // Do not add layout padding: text width and pagination must remain unchanged.
-  return glyphBounds.inflate(padding);
+  var left = glyphBounds.left - padding;
+  var right = glyphBounds.right + padding;
+  // 同行正文与底色之间保留 2dp；空间不足时只内收底色，不移动文字。
+  // 换行和页片段边缘仍向外留白，按视觉位置兼容双向文本。
+  final gap = math.min(AppSpacing.xs / 2, glyphBounds.width / 4);
+  const tolerance = 0.01;
+  for (final narration in narrationBounds) {
+    if ((narration.top - glyphBounds.top).abs() > tolerance ||
+        (narration.bottom - glyphBounds.bottom).abs() > tolerance) {
+      continue;
+    }
+    if (narration.right <= glyphBounds.left + tolerance) {
+      left = math.max(left, narration.right + gap);
+    }
+    if (narration.left >= glyphBounds.right - tolerance) {
+      right = math.min(right, narration.left - gap);
+    }
+  }
+  return Rect.fromLTRB(
+    left,
+    glyphBounds.top - padding,
+    right,
+    glyphBounds.bottom + padding,
+  );
 }
 
 /// Merge visual runs within one selection, never across lines or real gaps.
@@ -531,6 +555,27 @@ class _RenderDialogueBackground extends RenderProxyBox {
 
   Path _createBackgroundPath(RenderParagraph paragraph) {
     final path = Path();
+    final narrationBounds = <Rect>[];
+    void addNarration(int start, int end) {
+      if (start >= end) return;
+      narrationBounds.addAll(
+        paragraph
+            .getBoxesForSelection(
+              TextSelection(baseOffset: start, extentOffset: end),
+              boxHeightStyle: ui.BoxHeightStyle.max,
+            )
+            .map((box) => box.toRect())
+            .where((bounds) => !bounds.isEmpty),
+      );
+    }
+
+    // 一次收集当前片段的非对白选区，并随背景路径缓存，无额外文本测量。
+    var cursor = 0;
+    for (final selection in _selections) {
+      addNarration(cursor, selection.start);
+      cursor = selection.end;
+    }
+    addNarration(cursor, paragraph.text.toPlainText().length);
     for (final selection in _selections) {
       final boxes = paragraph.getBoxesForSelection(
         selection,
@@ -539,7 +584,10 @@ class _RenderDialogueBackground extends RenderProxyBox {
       for (final bounds in novelDialogueBackgroundRuns(boxes)) {
         path.addRRect(
           RRect.fromRectAndRadius(
-            novelDialogueBackgroundRect(bounds),
+            novelDialogueBackgroundRect(
+              bounds,
+              narrationBounds: narrationBounds,
+            ),
             const Radius.circular(AppRadius.xs),
           ),
         );
