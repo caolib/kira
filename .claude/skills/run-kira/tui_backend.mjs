@@ -1,8 +1,45 @@
+import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
+export function readWindowsProcessTable(run = spawnSync) {
+  // 只读 PID、父 PID 和名称，不读取可能包含密钥的命令行。
+  const script = "$ErrorActionPreference = 'Stop'; $items = @(Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name); ConvertTo-Json -InputObject $items -Compress";
+  const result = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    encoding: 'utf8', windowsHide: true, timeout: 10000,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(result.stderr || `Windows 进程查询失败（退出码 ${result.status}）`);
+  const rows = JSON.parse(result.stdout);
+  if (!Array.isArray(rows) || rows.some(row => !row ||
+    !Number.isSafeInteger(row.ProcessId) || row.ProcessId < 0 ||
+    !Number.isSafeInteger(row.ParentProcessId) || row.ParentProcessId < 0 ||
+    typeof row.Name !== 'string')) throw new Error('Windows 进程查询返回了无效数据');
+  return rows.map(row => ({ pid: row.ProcessId, parentPid: row.ParentProcessId, name: row.Name }));
+}
+
+function hasRuntimeDescendant(shellPid, processes) {
+  const children = new Map();
+  for (const process of processes) {
+    if (!children.has(process.parentPid)) children.set(process.parentPid, []);
+    children.get(process.parentPid).push(process);
+  }
+  const visited = new Set([shellPid]);
+  const pending = [shellPid];
+  while (pending.length) {
+    for (const process of children.get(pending.pop()) || []) {
+      if (visited.has(process.pid)) continue;
+      visited.add(process.pid);
+      // shell 包装本身不证明 Flutter 存活；node 用于隔离集成测试的模拟进程。
+      if (/^(dart|dartvm|dartaotruntime|flutter|node)(\.exe)?$/i.test(process.name)) return true;
+      pending.push(process.pid);
+    }
+  }
+  return false;
+}
+
 // 将 TUI 独立运行时映射为 driver 使用的终端操作，所有控制均限定到自建 pane。
-export function createTuiBackend({ invoke, root, project, device, target, authKey, windows, env, newOutput, output }) {
+export function createTuiBackend({ invoke, root, project, device, target, authKey, windows, env, newOutput, output, readProcessTable = readWindowsProcessTable }) {
   const owner = createHash('sha256').update(project).digest('hex');
   const beforeInput = new Map();
   const response = data => ({ status: 0, stdout: JSON.stringify(data), stderr: '' });
@@ -52,10 +89,16 @@ export function createTuiBackend({ invoke, root, project, device, target, authKe
     const info = call(['pane', 'process-info', '--pane', id]).process_info;
     if (!info) throw new Error('herdr pane process-info 未返回进程状态');
     const processes = info.foreground_processes || [];
-    const running = processes.some(p => p.pid !== info.shell_pid && /^(dart|flutter|cmd|powershell|pwsh|node)(\.exe)?$/i.test(p.name));
+    let running = processes.some(p => p.pid !== info.shell_pid && /^(dart|dartvm|dartaotruntime|flutter|node)(\.exe)?$/i.test(p.name));
     // pane 创建与命令入队不等于进程就绪；给命令启动一个有界窗口。
     const starting = Date.now() - Number(tokens.kira_started) < 15000;
     const sameTerminal = tokens.kira_terminal === pane.terminal_id;
+    if (windows && sameTerminal && !exit && !running && !starting) {
+      // Windows 的 foreground_processes 可能只有 shell；只沿此 pane 的
+      // shell 子树查找运行时，不能拿其他终端的 Dart/Flutter 进程作存活证据。
+      if (!Number.isSafeInteger(info.shell_pid) || info.shell_pid <= 0) throw new Error('TUI 未返回有效的 shell PID');
+      running = hasRuntimeDescendant(info.shell_pid, readProcessTable());
+    }
     const live = sameTerminal && !exit && (running || starting);
     return {
       address: id, cwd: root, state: live ? 'live' : 'finished',

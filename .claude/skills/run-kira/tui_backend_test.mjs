@@ -7,6 +7,7 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 import { createDriver } from './driver.mjs';
+import { readWindowsProcessTable } from './tui_backend.mjs';
 
 const root = process.cwd();
 const owner = createHash('sha256').update(root.replaceAll('\\', '/').toLowerCase()).digest('hex');
@@ -19,8 +20,9 @@ function fixture(options = {}) {
   const appCalls = [];
   const hcCalls = [];
   const messages = [];
+  let processReads = 0;
   const state = {
-    pane: null, text: '', running: false,
+    pane: null, text: '', running: false, processes: [],
     spaces: [{ workspace_id: 'w1', label: 'kira', focused: true }],
     ...options,
   };
@@ -37,8 +39,8 @@ function fixture(options = {}) {
     if (group === 'pane') switch (cmd) {
       case 'list': return ok({ panes: state.pane ? [state.pane] : [] });
       case 'get': return state.pane ? ok({ pane: state.pane }) : fail('pane_not_found', 'not found');
-      case 'read': return { status: 0, stdout: state.text, stderr: '' };
-      case 'process-info': return ok({ process_info: { shell_pid: 1, foreground_processes: state.running ? [{ name: 'dart.exe', pid: 2 }] : [] } });
+      case 'read': return { status: 0, stdout: args.at(-1) === '5000' && state.history ? state.history : state.text, stderr: '' };
+      case 'process-info': return ok({ process_info: { shell_pid: 1, foreground_processes: state.running ? [{ name: 'dart.exe', pid: 2 }] : [{ name: 'pwsh.exe', pid: 1 }] } });
       case 'report-metadata':
         for (let i = 0; i < args.length; i++) if (args[i] === '--token') {
           const value = args[++i];
@@ -61,11 +63,16 @@ function fixture(options = {}) {
     root, windows: true,
     env: { KIRA_HERDR_BACKEND: 'tui', ...options.env },
     invokeHerdr,
+    readProcessTable: () => {
+      processReads++;
+      if (options.processError) throw options.processError;
+      return state.processes;
+    },
     invoke: args => { hcCalls.push(args); return options.hcResult || { status: 1, stdout: '', stderr: 'hc not installed' }; },
     invokeApp: args => { appCalls.push(args); return options.appResult || { status: 1, stdout: '', stderr: 'no Herdr window: 10061' }; },
     output: { log: value => messages.push(value), error: value => messages.push(value) },
   });
-  return { state, calls, appCalls, hcCalls, messages, execute: args => driver.execute(args) };
+  return { state, calls, appCalls, hcCalls, messages, get processReads() { return processReads; }, execute: args => driver.execute(args) };
 }
 
 function ownedPane() {
@@ -148,6 +155,100 @@ test('unrelated, recovered and exited shell panes do not receive keys', async ()
     const f = fixture({ pane, text: ready, running: false });
     assert.equal(await f.execute(['reload', '--yes']), 1);
     assert.ok(!f.calls.some(args => args[1] === 'send-text' || args[1] === 'send-keys'));
+  }
+});
+
+test('Windows shell-only foreground info falls back to the owned descendant tree', async () => {
+  const processes = [
+    { pid: 1, parentPid: 0, name: 'pwsh.exe' },
+    { pid: 2, parentPid: 1, name: 'powershell.exe' },
+    { pid: 3, parentPid: 2, name: 'cmd.exe' },
+    { pid: 4, parentPid: 3, name: 'dart.exe' },
+    { pid: 5, parentPid: 4, name: 'dartvm.exe' },
+    { pid: 6, parentPid: 5, name: 'kira.exe' },
+  ];
+  const f = fixture({ pane: ownedPane(), text: ready, processes });
+  assert.equal(await f.execute(['has']), 0, f.messages.join('\n'));
+  assert.ok(f.processReads > 0);
+  assert.equal(await f.execute(['start']), 0);
+  assert.ok(!f.calls.some(args => args[1] === 'create' || args[1] === 'run'));
+  assert.equal(await f.execute(['reload', '--yes']), 0, f.messages.join('\n'));
+  assert.ok(f.messages.includes('✓ 热重载 (r)完成。'));
+
+  // 已就绪标签和旧日志不能让退出后的 shell 继续被视为 Flutter。
+  f.state.processes = processes.slice(0, 3);
+  assert.equal(await f.execute(['has']), 1);
+  const sent = f.calls.filter(args => args[1] === 'send-text').length;
+  assert.equal(await f.execute(['reload', '--yes']), 1);
+  assert.equal(f.calls.filter(args => args[1] === 'send-text').length, sent);
+});
+
+test('first reload recovers readiness from history when startup logs have scrolled away', async () => {
+  const f = fixture({ pane: ownedPane(), text: 'recent output', history: `${ready}\nolder output`, running: true });
+  assert.equal(await f.execute(['reload', '--yes']), 0, f.messages.join('\n'));
+  assert.equal(f.state.pane.tokens.kira_ready, 'true');
+  const historyReads = () => f.calls.filter(args => args[1] === 'read' && args.at(-1) === '5000').length;
+  assert.equal(historyReads(), 1);
+  f.state.history = '';
+  f.state.text = 'more recent output';
+  assert.equal(await f.execute(['reload', '--yes']), 0);
+  assert.equal(historyReads(), 1);
+});
+
+test('unrelated runtimes and shell wrappers do not count as a live Flutter descendant', async () => {
+  const f = fixture({ pane: ownedPane(), text: ready, processes: [
+    { pid: 1, parentPid: 0, name: 'pwsh.exe' },
+    { pid: 2, parentPid: 1, name: 'powershell.exe' },
+    { pid: 3, parentPid: 2, name: 'cmd.exe' },
+    { pid: 4, parentPid: 100, name: 'dart.exe' },
+    { pid: 5, parentPid: 4, name: 'kira.exe' },
+  ] });
+  assert.equal(await f.execute(['has']), 1);
+  assert.equal(await f.execute(['reload', '--yes']), 1);
+  assert.ok(!f.calls.some(args => args[1] === 'send-text'));
+});
+
+test('recovered terminals and explicit exit markers override live descendants', async () => {
+  for (const options of [
+    { pane: { ...ownedPane(), terminal_id: 'recovered' }, text: ready },
+    { pane: ownedPane(), text: `${ready}\nKIRA_test_EXIT_0` },
+  ]) {
+    const f = fixture({ ...options, processes: [{ pid: 2, parentPid: 1, name: 'dartvm.exe' }] });
+    assert.equal(await f.execute(['has']), 1);
+    assert.equal(f.processReads, 0);
+    assert.equal(await f.execute(['reload', '--yes']), 1);
+    assert.ok(!f.calls.some(args => args[1] === 'send-text'));
+  }
+});
+
+test('process query errors remain errors rather than DEAD or triggering a new launch', async () => {
+  const f = fixture({ pane: ownedPane(), processError: new Error('CIM access denied') });
+  for (const command of ['has', 'start', 'reload']) {
+    assert.equal(await f.execute([command, '--yes']), 2);
+    assert.equal(f.messages.at(-1), 'CIM access denied');
+  }
+  assert.ok(!f.messages.includes('DEAD'));
+  assert.ok(!f.calls.some(args => ['create', 'run', 'send-text', 'close'].includes(args[1])));
+});
+
+test('Windows process table reads only process identity and validates results', () => {
+  const table = readWindowsProcessTable((command, args, options) => {
+    assert.equal(command, 'powershell.exe');
+    assert.ok(args.includes('-NoProfile'));
+    assert.ok(options.timeout > 0);
+    assert.ok(!args.at(-1).includes('CommandLine'));
+    return { status: 0, stdout: JSON.stringify([{ ProcessId: 2, ParentProcessId: 1, Name: 'dartvm.exe' }]) };
+  });
+  assert.deepEqual(table, [{ pid: 2, parentPid: 1, name: 'dartvm.exe' }]);
+  assert.deepEqual(readWindowsProcessTable(() => ({ status: 0, stdout: '[]' })), []);
+  for (const result of [
+    { status: 1, stderr: 'CIM access denied' },
+    { status: 0, stdout: 'invalid JSON' },
+    { status: 0, stdout: '{}' },
+    { status: 0, stdout: '[{"ProcessId":2}]' },
+    { error: new Error('spawn timed out') },
+  ]) {
+    assert.throws(() => readWindowsProcessTable(() => result));
   }
 });
 

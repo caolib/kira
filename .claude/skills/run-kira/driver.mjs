@@ -37,6 +37,7 @@ export function createDriver({
   invoke = args => spawnSync('hc', args, { encoding: 'utf8', windowsHide: true }),
   invokeApp = args => spawnSync('herdr-app', args, { encoding: 'utf8', windowsHide: true }),
   invokeHerdr = args => spawnSync('herdr', args, { encoding: 'utf8', windowsHide: true }),
+  readProcessTable,
   root = ROOT,
   env = process.env,
   windows = process.platform === 'win32',
@@ -52,7 +53,7 @@ export function createDriver({
   const redact = value => authKey ? String(value).replaceAll(authKey, '[REDACTED]') : String(value);
 
   let backend = 'app';
-  const tui = createTuiBackend({ invoke: invokeHerdr, root, project, device, target: env.KIRA_TARGET, authKey, windows, env, newOutput, output });
+  const tui = createTuiBackend({ invoke: invokeHerdr, root, project, device, target: env.KIRA_TARGET, authKey, windows, env, newOutput, output, readProcessTable });
 
   function selectBackend(requested) {
     if (!['auto', 'app', 'tui'].includes(requested)) throw new Error('后端必须为 auto、app 或 tui');
@@ -154,7 +155,17 @@ export function createDriver({
   function read(t, lines = 200) {
     const data = hc(['read', t.address, '--lines', String(lines)]);
     if (typeof data.text !== 'string') throw new Error('hc read 未返回终端文本');
-    if (isFlutter(t) && READY.test(data.text)) rememberReady(t);
+    if (isFlutter(t) && t.labels?.['kira.ready'] !== 'true') {
+      let readyText = data.text;
+      if (!READY.test(readyText) && lines < 5000) {
+        // 初次连接时启动提示可能已滚出短日志；从历史确认后持久记录，
+        // 不能把「近期没有启动提示」当成「Flutter 尚未就绪」。
+        const history = hc(['read', t.address, '--lines', '5000']);
+        if (typeof history.text !== 'string') throw new Error('hc read 未返回终端文本');
+        readyText = history.text;
+      }
+      if (READY.test(readyText)) rememberReady(t);
+    }
     return data.text;
   }
 
