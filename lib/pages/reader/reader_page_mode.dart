@@ -293,9 +293,7 @@ extension _ReaderPageMode on _ReaderPageState {
               _pageImageZoomed = false;
               if (!_isDraggingSlider) {
                 _showToolbar = false;
-                SystemChrome.setEnabledSystemUIMode(
-                  SystemUiMode.immersiveSticky,
-                );
+                _systemUi.setToolbarVisible(false);
               }
             });
             _saveReadingHistory();

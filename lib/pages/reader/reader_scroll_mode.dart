@@ -336,7 +336,7 @@ extension _ReaderScrollMode on _ReaderPageState {
             if (n is ScrollUpdateNotification &&
                 _showToolbar &&
                 (n.scrollDelta ?? 0).abs() > 0) {
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+              _systemUi.setToolbarVisible(false);
               _setState(() => _showToolbar = false);
             }
             if (_continuousReading) {

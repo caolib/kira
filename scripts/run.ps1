@@ -1,5 +1,5 @@
-﻿# kira 一键启动脚本（Herdr Core 托管，复用 run-kira driver）
-# Windows 入口；设备参数可由命令行、环境变量或不入库的 run.local.json 配置。
+﻿# kira 一键启动脚本（Herdr TUI / app 托管，复用 run-kira driver）
+# Windows 入口；后端与设备参数可由命令行、环境变量或不入库的 run.local.json 配置。
 
 param(
     [Parameter(Position = 0)]
@@ -9,6 +9,8 @@ param(
     [switch]$Log,
     [switch]$NoWait,
     [switch]$Wait,
+    [ValidateSet('auto', 'tui', 'app')]
+    [string]$Backend,
     [string]$MuMuManager,
     [int]$MuMuIndex,
     [string]$MuMuAdbAddr,
@@ -75,6 +77,18 @@ function Test-Run {
     return ($LASTEXITCODE -eq 0)
 }
 
+# 日志与停止只使用命令行 / 环境变量的后端选择，不读取本机设备配置。
+if ($Target -and -not ($Stop -or $Log) -and (Test-Path -LiteralPath $ConfigPath)) {
+    $LocalConfig = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+}
+if ($Target -or $Stop -or $Log) {
+    $resolvedBackend = [string](Get-RunOption 'Backend' 'KIRA_HERDR_BACKEND' 'auto')
+    if ($resolvedBackend -notin @('auto', 'tui', 'app')) {
+        throw "未知 Herdr 后端 '$resolvedBackend'；Backend / KIRA_HERDR_BACKEND 仅支持 auto、tui、app"
+    }
+    $env:KIRA_HERDR_BACKEND = $resolvedBackend.ToLowerInvariant()
+}
+
 if ($Stop) {
     node $Driver stop --yes
     exit $LASTEXITCODE
@@ -85,7 +99,7 @@ if ($Log) {
 }
 if (-not $Target) {
     Write-Host @"
-用法: .\scripts\run.ps1 <win|mumu|emu> [-Stop] [-Log] [-Wait]
+用法: .\scripts\run.ps1 <win|mumu|emu> [-Stop] [-Log] [-Wait] [-Backend auto|tui|app]
 
   win   Windows 桌面运行
   mumu  MuMu 模拟器（自动查找安装位置；可配置实例与 ADB 地址）
@@ -96,22 +110,24 @@ if (-not $Target) {
   -Log     查看最近 40 行运行输出
   -Wait    等到 Flutter 就绪后返回（默认不等待）
   -NoWait  兼容旧参数，与默认异步行为相同
+  -Backend auto 自动选择（默认）；tui 使用独立 Herdr TUI（herdr）；app 使用 Herdr app（hc + herdr-app）
 
 设备选项: -MuMuManager、-MuMuIndex、-MuMuAdbAddr、-EmulatorName
 配置优先级: 命令行 > KIRA_* 环境变量 > run.local.json > 通用默认值
+后端选项: -Backend > KIRA_HERDR_BACKEND > JSON 字段 Backend > auto
 本机配置: .claude/skills/run-kira/run.local.json（不入库；可用 -ConfigPath 指定）
+帮助、-Stop 与 -Log 不读取本机配置；停止/日志仅用 -Backend > KIRA_HERDR_BACKEND > auto。
 
 示例:
   .\scripts\run.ps1 win
   .\scripts\run.ps1 win -Wait
+  .\scripts\run.ps1 win -Backend tui
+  .\scripts\run.ps1 -Log -Backend app
   .\scripts\run.ps1 mumu
 "@
     exit 0
 }
 
-if (Test-Path -LiteralPath $ConfigPath) {
-    $LocalConfig = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
-}
 $MuMuManager = [string](Get-RunOption 'MuMuManager' 'KIRA_MUMU_MANAGER' '')
 $MuMuIndex = [int](Get-RunOption 'MuMuIndex' 'KIRA_MUMU_INDEX' 0)
 $MuMuAdbAddr = [string](Get-RunOption 'MuMuAdbAddr' 'KIRA_MUMU_ADB_ADDR' '127.0.0.1:16384')

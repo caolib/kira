@@ -5,11 +5,18 @@ description: 启动、停止、热重载 / 热重启 kira。用户要求运行�
 
 # run-kira
 
-使用 **Herdr Core（`hc`）** 托管 `flutter run`。终端名固定为 `kira`，通过项目路径与运行角色标签识别，跨会话复用；`--outlive-parent` 让它在当前编码会话结束后继续运行。
+支持两套**独立后端**，不要求同时安装或运行：
 
-冷启动先用 `herdr-app ls` 按**名称**查找本机 `kira` 工作区，使用其实际 ID；同名时优先当前工作区，其次原工作区而非旧 driver 创建的固定 ID。只设置 `herdr.space=<实际 ID>`，省略 `herdr.tab`，让 Herdr 在已有工作区创建新 tab。仅在本机没有同名工作区时新建；查询失败须报错，不能默默新建重复工作区。已有 Flutter 进程则直接复用，不新建 tab。新 tab 按设备命名为 `run-win`（Windows）、`run-mumu`（MuMu）、`run-emu`（Android emulator），其他设备用 `run-<device>`；按新终端地址定位 tab 后调用 `tab.rename`，不改当前编码 tab。
+| 后端 | 依赖与运行方式 |
+| --- | --- |
+| `tui` | Herdr TUI（`herdr`）的持久会话；直接创建 tab / pane、发送原始字符、读取输出，不调用 `hc` 或 `herdr-app` |
+| `app` | Herdr app（`herdr-app`）+ Herdr Core（`hc`）；创建 tab 需要 app 窗口，已有终端由 core 独立托管 |
 
-所有命令在仓库根目录执行，入口为 `.claude/skills/run-kira/driver.mjs`。依赖 Node.js ≥ 18、`hc`、`herdr-app`、Flutter 与目标平台构建工具；创建运行 tab 时 Herdr 窗口须已打开，已有进程的日志/按键控制不依赖窗口。**旧版 `herdr` 与新版 `hc` 不互换**。具体 CLI 参数以本机 `hc <command> --help` 为准，窗口行为见 `~/.config/herdr-app/AGENTS.md`。
+默认 `auto` 优先识别调用终端：`HERDR_ENV=1` 且有 pane ID 选 TUI，`HC_TERMINAL_ID` 选 app；普通终端先检查 app，再检查 TUI 服务。可用 `-Backend tui|app`（`run.ps1`）、driver `--backend tui|app` 或环境变量 `KIRA_HERDR_BACKEND` 明确选择。显式选择失败时保留真实错误，不切换其他后端。两套后端的应用不互相接管；查日志/停止时使用与启动时相同的后端。不会为探测而打开窗口、启动或重启服务。
+
+两套后端都先按名称复用本机 `kira` 工作区，无同名工作区时才新建；TUI 同名时优先调用方工作区，其次聚焦工作区。新 tab 命名为 `run-win` / `run-mumu` / `run-emu`，其他设备用 `run-<device>`，不修改编码 tab。已有本项目运行进程直接复用，不重复创建。app 按项目路径和角色标签识别终端；TUI 按项目路径哈希、角色及 terminal ID 元数据识别自建 pane，退出标记区分残留 shell 与运行进程，`--no-focus` 保留用户焦点。
+
+所有命令在仓库根目录执行，入口为 `.claude/skills/run-kira/driver.mjs`。公共依赖：Node.js ≥ 18、Flutter 与目标平台工具；额外安装所选后端即可。CLI 以本机帮助为准：TUI 查 `herdr --skill` / `herdr pane --help`，app 查 `hc --help` 与 `~/.config/herdr-app/AGENTS.md`。
 
 ## 操作流程
 
@@ -38,10 +45,10 @@ node .claude/skills/run-kira/driver.mjs stop --yes
 
 - `start` 默认设备为 `windows`，**默认异步返回**：只等后台进程与运行 tab 创建、命名，不等 Flutter 编译/就绪；返回 0 仅表示进程创建或已有进程复用。`--no-wait` 保留为兼容参数，与默认行为相同。需要等待时显式传 `--wait`（最多 5 分钟），已有进程直接复用并等待，不重复创建。
 - 异步启动后用 `log` 确认出现 `Flutter run key commands.` / `A Dart VM Service` 再刷新；也可执行 `start --wait` 等待已有进程就绪。就绪状态保存为终端标签，日志滚屏后仍能控制；恢复为 shell 时此标签不代表 Flutter 存活。
-- driver 通过 `hc wait --output` 等待完成，不用 sleep 或忙循环轮询。等待超时不会终止后台进程。
+- app 通过 `hc wait --output` 等待；TUI 只在显式 `--wait` 或热重载/退出时有界检查进程与新增输出，避免 TUI `wait-output` 命中历史完成行。普通启动不等待 Flutter 就绪；超时不会终止后台进程。
 - `reload` 发 `r`，保留状态；`restart` 发大写 `R`，重置 Dart 状态。driver 等待本次完成最多 60 秒。
 - `quit` 发 `q`，等待退出并保留终端记录，`log` 仍可读取退出日志；下一次 `start` 创建新终端。
-- `stop` 只 kill / rm 本项目带运行标签的终端，也可清理已退出或恢复为 shell 的记录。它不会停止整个 core 或其他工作终端。
+- `stop` 仅清理本项目带身份信息的运行目标：app kill / rm 终端，TUI 关闭自建 pane；已退出时也能清理。不会停止整个 core / TUI 服务或其他工作终端。
 - `KIRA_DEVICE` 指定 `flutter -d` 参数。`COPY_AUTH_KEY` 如有设置，会作为 `--dart-define` 注入 Windows / Android 构建，日志隐藏其值；不要依赖 core 继承调用方临时设置的环境变量。
 
 ## 人工启动与设备准备
@@ -61,6 +68,7 @@ node .claude/skills/run-kira/driver.mjs stop --yes
 
 | 参数 / JSON 字段 | 环境变量 | 无配置时 |
 | --- | --- | --- |
+| `Backend` | `KIRA_HERDR_BACKEND` | `auto`；可选 `tui` / `app`。`-Log` / `-Stop` 仅取命令行、环境变量或 auto，不读取本机 JSON |
 | `MuMuManager` | `KIRA_MUMU_MANAGER` | 从 PATH 或系统 Program Files 查找；支持绝对路径或仓库相对路径 |
 | `MuMuIndex` | `KIRA_MUMU_INDEX` | 实例 0 |
 | `MuMuAdbAddr` | `KIRA_MUMU_ADB_ADDR` | `127.0.0.1:16384`，其他实例/版本需配置实际端口 |
@@ -81,21 +89,23 @@ hc keys t7 q
 hc attach t7
 ```
 
-`hc attach` 后按 **Ctrl+\** 脱离，程序继续运行。单个 Flutter 命令用 `hc keys`，不是会粘贴文本并追加回车的 `hc send`；`hc keys R` 会转为小写，热重启须用 `shift+r`，driver 已自动转换。其他已获准的按键可通过 `driver.mjs send v` / `send h --enter` 发送。
+上面的原始命令仅适用于 app 后端。`hc attach` 后按 **Ctrl+\** 脱离，程序继续运行；热重启用 `shift+r`，driver 自动转换。
+
+TUI 用 driver 返回的实际 pane ID：`herdr pane read <pane-id> --source recent-unwrapped --lines 60`；单字符控制用 `herdr pane send-text <pane-id> r` / `R` / `q`，不追加回车。不要把 app 的 `t7` 与 TUI 的 `w1:p2` 互换。两种后端均可通过 `driver.mjs send v` / `send h --enter` 发送其他已获准按键。
 
 ## 共享边界与隐私
 
-Git 只跟踪此目录的 `SKILL.md`、`driver.mjs`、`driver_test.mjs` 与 `run_script_test.mjs`；本机 JSON、日志、截图等其余文件继续忽略。共享文件不包含个人路径、工作区实际 ID 或真实账号/密钥值。新克隆需自行安装 Node.js ≥ 18、Herdr Core / Herdr app、Flutter 与对应平台工具；本 skill 不自动安装工具或修改全局配置。
+Git 仅跟踪 skill 文档、driver、TUI 后端模块及对应测试，具体白名单见 `.gitignore`；本机 JSON、日志、截图等继续忽略。共享文件不包含个人路径、工作区实际 ID 或真实账号/密钥值。新克隆自行安装公共依赖及所选 Herdr 后端；本 skill 不自动安装工具或修改全局配置。
 
 `COPY_AUTH_KEY` 只从环境变量读取，未设置仍能运行，但相关接口登录入口不可用。driver 会隐藏输出中的值，但 `--dart-define` **不是秘密存储**：值会进入编译产物与 Herdr 的运行参数记录。不要把密码或访问令牌填入它，也不要提交运行时记录。仓库路径标签同样只保存在本机 Herdr 中。
 
 ## 修改 driver / 启动脚本后验证
 
 ```bash
-KIRA_TEST_HC=1 node --test .claude/skills/run-kira/driver_test.mjs .claude/skills/run-kira/run_script_test.mjs
+KIRA_TEST_HC=1 KIRA_TEST_TUI=1 node --test .claude/skills/run-kira/driver_test.mjs .claude/skills/run-kira/tui_backend_test.mjs .claude/skills/run-kira/run_script_test.mjs
 ```
 
-覆盖单测与真实 `hc` 集成；core 集成使用独立 `HC_SESSION` 和临时存储目录，运行模拟 Flutter 的 Node 进程。PowerShell 测试仅在 Windows 运行，模拟设备工具，覆盖跨目录调用、路径空格/单引号、配置优先级与 AVD 选择；需要 PowerShell 7（`pwsh`）。两类测试均不启动真实 app/模拟器、不停止用户的 core。只改此 skill / 脚本时无需 Flutter analyze。
+覆盖单测与真实隔离运行时集成：core 使用独立 `HC_SESSION`，TUI 使用独立命名会话、socket 与临时配置，均运行模拟 Flutter 的 Node 进程。PowerShell 测试仅在 Windows 运行，模拟设备工具，覆盖路径、配置优先级、后端选择与 AVD 选择；需要 PowerShell 7（`pwsh`）。测试不启动真实 Flutter app/模拟器、不停止用户的服务。只改此 skill / 脚本时无需 Flutter analyze。
 
 ## 故障与重建
 
@@ -103,4 +113,5 @@ KIRA_TEST_HC=1 node --test .claude/skills/run-kira/driver_test.mjs .claude/skill
 - core / 电脑重启后，Herdr 可能只恢复一个 shell，**不会重跑 Flutter**；driver 将其视为 `DEAD`。先 `status` 看原因，获准后 `stop --yes` → `start`。
 - 未就绪或提前退出：`log 100` 查看编译错误与异常栈。缺平台工具时按项目 `docs/platform-build.md` 排查。
 - 热重载被拒：按实际错误判断是否需要 `restart`。原生代码、插件或依赖变化通常需要 `stop` → 重新构建 / `start`，`R` 不会重编译原生代码。
-- `hc` 不在 PATH：修复 Herdr Core 安装或 PATH；安装 / 更新须经用户同意。不要改为调用旧 `herdr`，也不要重启用户的整个 core。
+- 后端不可用：TUI 需要可连接的 `herdr` 持久会话，app 需要 `hc` 且创建 tab 时窗口已打开。用 `-Backend tui` / `app` 指定目标；缺少工具时报告实际原因，安装/更新须经同意，不重启用户服务。
+- TUI 创建了 tab 却失败：先查 `status` / `log`。写操作退出码 0 可能没有 JSON 输出，driver 按成功处理；失败不自动重发命令或关闭用户工作。
