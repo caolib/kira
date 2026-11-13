@@ -1,5 +1,9 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kira/api/novel/novel_text.dart';
 import 'package:kira/models/novel.dart';
 import 'package:kira/models/novel_dialogue_style.dart';
 import 'package:kira/models/novel_reader_settings.dart';
@@ -93,17 +97,292 @@ void main() {
     );
   }
 
-  test('dialogue fill adds vertical padding without changing text width', () {
+  testWidgets('decoded characters keep a continuous fill across text runs', (
+    tester,
+  ) async {
+    final content = NovelText.parse(
+      const NovelVolumeDetail(
+        book: NovelBook(pathWord: 'book', name: '书名'),
+        volume: NovelVolume(
+          id: 'v1',
+          name: '第一卷',
+          contents: [
+            NovelContentEntry(name: '正文', contentType: 1, endLines: 1),
+          ],
+        ),
+      ),
+      '「文本&#16034;&#15970;文本」',
+    );
+    final paragraph = NovelDialogueCache().paragraph(
+      NovelReaderParagraph(content.entries.single, 0),
+    );
+    expect(paragraph.text, '「文本㺢㹢文本」');
+    expect(paragraph.ranges, hasLength(1));
+    final presentation = _presentation();
+    await tester.pumpWidget(
+      wrapWithApp(
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 500,
+            child: NovelDialogueText(
+              paragraph: paragraph,
+              baseStyle: _baseStyle,
+              dialogue: presentation,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final renderParagraph = tester.renderObject<RenderParagraph>(
+      find.descendant(
+        of: find.byType(NovelDialogueText),
+        matching: find.byType(RichText),
+      ),
+    );
+    // Test fonts do not reproduce device-specific fallback. Force three runs
+    // with different metrics, as fallback fonts can do, without changing text.
+    renderParagraph.text = const TextSpan(
+      style: _baseStyle,
+      children: [
+        TextSpan(text: '「文本'),
+        TextSpan(text: '㺢㹢', style: TextStyle(fontSize: 24)),
+        TextSpan(text: '文本」'),
+      ],
+    );
+    await tester.pump();
+    final boxes = renderParagraph.getBoxesForSelection(
+      TextSelection(baseOffset: 0, extentOffset: paragraph.text.length),
+      boxHeightStyle: ui.BoxHeightStyle.max,
+    );
+    expect(boxes.length, greaterThanOrEqualTo(3));
+    final bounds = boxes
+        .map((box) => box.toRect())
+        .reduce((a, b) => a.expandToInclude(b));
+    final fill = novelDialogueBackgroundRect(bounds);
+    final background = tester.renderObject(
+      find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_DialogueBackground',
+      ),
+    );
+    expect(
+      background,
+      paints..path(
+        color: presentation.background,
+        includes: [
+          Offset(boxes[0].right, fill.top + 0.2),
+          Offset(boxes[1].right, fill.top + 0.2),
+        ],
+        excludes: [Offset(fill.left + 0.1, fill.top + 0.1)],
+      ),
+    );
+    expect(renderParagraph.text.toPlainText(), paragraph.text);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('dialogue fill adds equal padding on all four sides', () {
     for (final height in [10.0, 20.0, 48.0, 96.0]) {
       final glyph = Rect.fromLTWH(12, 24, 100, height);
       final fill = novelDialogueBackgroundRect(glyph);
-      expect(fill.left, glyph.left);
-      expect(fill.right, glyph.right);
-      expect(glyph.top - fill.top, inInclusiveRange(2.0, 4.0));
-      expect(fill.bottom - glyph.bottom, glyph.top - fill.top);
+      final padding = glyph.top - fill.top;
+      expect(padding, inInclusiveRange(2.0, 4.0));
+      expect(glyph.left - fill.left, closeTo(padding, 0.001));
+      expect(fill.right - glyph.right, closeTo(padding, 0.001));
+      expect(fill.bottom - glyph.bottom, closeTo(padding, 0.001));
       expect(fill.contains(glyph.topLeft), isTrue);
       expect(fill.height, greaterThan(glyph.height));
     }
+  });
+
+  for (final width in [240.0, 400.0]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'wrapped fill pads both ends without reflow at width $width scale $scale',
+        (tester) async {
+          final text = '「${'一二三四五六七八九十' * 3}」';
+          final paragraph = NovelDialogueCache().paragraph(
+            NovelReaderParagraph(_entry([text]), 0),
+          );
+          final presentation = _presentation();
+          Widget view(bool withFill) => wrapWithApp(
+            Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: width,
+                  child: NovelDialogueText(
+                    paragraph: paragraph,
+                    baseStyle: _baseStyle,
+                    textScaler: TextScaler.linear(scale),
+                    dialogue: NovelDialoguePresentation(
+                      foreground: presentation.foreground,
+                      background: withFill ? presentation.background : null,
+                      fontWeight: presentation.fontWeight,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          RenderParagraph renderParagraph() =>
+              tester.renderObject<RenderParagraph>(
+                find.descendant(
+                  of: find.byType(NovelDialogueText),
+                  matching: find.byType(RichText),
+                ),
+              );
+          List<Rect> glyphRuns(RenderParagraph render) =>
+              novelDialogueBackgroundRuns(
+                render.getBoxesForSelection(
+                  TextSelection(baseOffset: 0, extentOffset: text.length),
+                  boxHeightStyle: ui.BoxHeightStyle.max,
+                ),
+              );
+
+          await tester.pumpWidget(view(false));
+          await tester.pumpAndSettle();
+          final sizeBefore = renderParagraph().size;
+          final runsBefore = glyphRuns(renderParagraph());
+          expect(runsBefore.length, greaterThan(1));
+          final positionBefore = renderParagraph().localToGlobal(Offset.zero);
+
+          await tester.pumpWidget(view(true));
+          await tester.pumpAndSettle();
+          final render = renderParagraph();
+          final runs = glyphRuns(render);
+          expect(render.size, sizeBefore);
+          expect(render.localToGlobal(Offset.zero), positionBefore);
+          expect(runs, runsBefore);
+          expect(render.text.toPlainText(), text);
+          final background = tester.renderObject<RenderBox>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget.runtimeType.toString() == '_DialogueBackground',
+            ),
+          );
+          final paddedPoints = [
+            for (final run in runs) ...[
+              Offset(run.left - 1, run.center.dy),
+              Offset(run.right + 1, run.center.dy),
+            ],
+          ];
+          expect(
+            background,
+            paints..path(
+              color: presentation.background,
+              includes: paddedPoints,
+              excludes: [
+                for (final run in runs) ...[
+                  Offset(run.left - 5, run.center.dy),
+                  Offset(run.right + 5, run.center.dy),
+                ],
+              ],
+            ),
+          );
+          for (final point in paddedPoints) {
+            expect(background.paintBounds.contains(point), isTrue);
+          }
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  test('background joins touching runs in visual order, including RTL', () {
+    final runs = novelDialogueBackgroundRuns(const [
+      ui.TextBox.fromLTRBD(60, 10, 100, 30, TextDirection.ltr),
+      ui.TextBox.fromLTRBD(40, 10, 60, 30, TextDirection.rtl),
+      ui.TextBox.fromLTRBD(0, 10, 40, 30, TextDirection.ltr),
+      ui.TextBox.fromLTRBD(100, 10, 100, 30, TextDirection.ltr),
+    ]);
+    expect(runs, [const Rect.fromLTRB(0, 10, 100, 30)]);
+  });
+
+  test('background preserves gaps and separate wrapped lines', () {
+    final runs = novelDialogueBackgroundRuns(const [
+      ui.TextBox.fromLTRBD(0, 0, 40, 20, TextDirection.ltr),
+      ui.TextBox.fromLTRBD(60, 0, 100, 20, TextDirection.rtl),
+      ui.TextBox.fromLTRBD(0, 18, 60, 38, TextDirection.ltr),
+      ui.TextBox.fromLTRBD(60, 18, 90, 38, TextDirection.ltr),
+    ]);
+    expect(runs, [
+      const Rect.fromLTRB(0, 0, 40, 20),
+      const Rect.fromLTRB(60, 0, 100, 20),
+      const Rect.fromLTRB(0, 18, 90, 38),
+    ]);
+    expect(novelDialogueBackgroundRuns(const []), isEmpty);
+  });
+
+  test('background tolerates only subpixel gaps and merges overlaps', () {
+    final runs = novelDialogueBackgroundRuns(const [
+      ui.TextBox.fromLTRBD(0, 0, 40, 20, TextDirection.ltr),
+      ui.TextBox.fromLTRBD(40.005, 0, 60, 20, TextDirection.ltr),
+      ui.TextBox.fromLTRBD(58, 0, 80, 20, TextDirection.rtl),
+      ui.TextBox.fromLTRBD(81, 0, 100, 20, TextDirection.ltr),
+    ]);
+    expect(runs, [
+      const Rect.fromLTRB(0, 0, 80, 20),
+      const Rect.fromLTRB(81, 0, 100, 20),
+    ]);
+  });
+
+  testWidgets('separate dialogues retain their own rounded ends', (
+    tester,
+  ) async {
+    const text = '「前句」旁白「后句」';
+    final paragraph = NovelDialogueCache().paragraph(
+      NovelReaderParagraph(_entry([text]), 0),
+    );
+    final presentation = _presentation();
+    await tester.pumpWidget(
+      wrapWithApp(
+        Align(
+          alignment: Alignment.topLeft,
+          child: NovelDialogueText(
+            paragraph: paragraph,
+            baseStyle: _baseStyle,
+            dialogue: presentation,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final renderParagraph = tester.renderObject<RenderParagraph>(
+      find.descendant(
+        of: find.byType(NovelDialogueText),
+        matching: find.byType(RichText),
+      ),
+    );
+    Rect boundsFor(TextSelection selection) => renderParagraph
+        .getBoxesForSelection(selection, boxHeightStyle: ui.BoxHeightStyle.max)
+        .map((box) => box.toRect())
+        .reduce((a, b) => a.expandToInclude(b));
+    final fills = [
+      for (final selection in paragraph.selections(0, text.length))
+        novelDialogueBackgroundRect(boundsFor(selection)),
+    ];
+    final narration = boundsFor(
+      const TextSelection(baseOffset: 4, extentOffset: 6),
+    );
+    expect(fills, hasLength(2));
+    expect(
+      tester.renderObject(
+        find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_DialogueBackground',
+        ),
+      ),
+      paints..path(
+        color: presentation.background,
+        includes: fills.map((fill) => fill.center),
+        excludes: [
+          narration.center,
+          for (final fill in fills) Offset(fill.left + 0.1, fill.top + 0.1),
+        ],
+      ),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   test('wrapped dialogue fill may meet without removing paragraph spacing', () {

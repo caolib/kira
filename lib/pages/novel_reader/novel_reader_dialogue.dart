@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -458,12 +459,39 @@ Rect novelDialogueBackgroundRect(Rect glyphBounds) {
     AppSpacing.xs / 2,
     AppSpacing.xs,
   );
-  return Rect.fromLTRB(
-    glyphBounds.left,
-    glyphBounds.top - padding,
-    glyphBounds.right,
-    glyphBounds.bottom + padding,
-  );
+  // Paint-only padding on every visual line, including wrapped/page fragments.
+  // Do not add layout padding: text width and pagination must remain unchanged.
+  return glyphBounds.inflate(padding);
+}
+
+/// Merge visual runs within one selection, never across lines or real gaps.
+/// Callers use BoxHeightStyle.max so fallback fonts share each line's bounds.
+@visibleForTesting
+List<Rect> novelDialogueBackgroundRuns(Iterable<ui.TextBox> boxes) {
+  final sorted =
+      [
+        for (final box in boxes)
+          if (!box.toRect().isEmpty) box.toRect(),
+      ]..sort((a, b) {
+        final row = a.top.compareTo(b.top);
+        return row != 0 ? row : a.left.compareTo(b.left);
+      });
+  final runs = <Rect>[];
+  // Only absorb subpixel rounding, not unselected text between bidi runs.
+  const tolerance = 0.01;
+  for (final bounds in sorted) {
+    if (runs.isNotEmpty) {
+      final previous = runs.last;
+      if ((previous.top - bounds.top).abs() <= tolerance &&
+          (previous.bottom - bounds.bottom).abs() <= tolerance &&
+          bounds.left <= previous.right + tolerance) {
+        runs[runs.length - 1] = previous.expandToInclude(bounds);
+        continue;
+      }
+    }
+    runs.add(bounds);
+  }
+  return runs;
 }
 
 class _RenderDialogueBackground extends RenderProxyBox {
@@ -504,9 +532,11 @@ class _RenderDialogueBackground extends RenderProxyBox {
   Path _createBackgroundPath(RenderParagraph paragraph) {
     final path = Path();
     for (final selection in _selections) {
-      for (final box in paragraph.getBoxesForSelection(selection)) {
-        final bounds = box.toRect();
-        if (bounds.isEmpty) continue;
+      final boxes = paragraph.getBoxesForSelection(
+        selection,
+        boxHeightStyle: ui.BoxHeightStyle.max,
+      );
+      for (final bounds in novelDialogueBackgroundRuns(boxes)) {
         path.addRRect(
           RRect.fromRectAndRadius(
             novelDialogueBackgroundRect(bounds),
