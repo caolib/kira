@@ -67,6 +67,8 @@ ref/
 !.claude/skills/run-kira/SKILL.md
 !.claude/skills/run-kira/driver.mjs
 !.claude/skills/run-kira/driver_test.mjs
+!.claude/skills/run-kira/tui_backend.mjs
+!.claude/skills/run-kira/tui_backend_test.mjs
 !.claude/skills/run-kira/run_script_test.mjs
 .pi
 .agents

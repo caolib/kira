@@ -12,7 +12,7 @@ const DRIVER = path.join(ROOT, '.claude/skills/run-kira/driver.mjs');
 const quote = value => `'${String(value).replaceAll("'", "''")}'`;
 const windowsOnly = { skip: process.platform !== 'win32' };
 
-function run(target, { config = {}, args = [], avds = ['test_avd'], env = {} } = {}) {
+function run(target, { config = {}, args = [], avds = ['test_avd'], env = {}, alive = false } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), "kira-run-test's-"));
   const manager = path.join(dir, 'fake manager.ps1');
   const configPath = path.join(dir, 'config.json');
@@ -24,7 +24,8 @@ function run(target, { config = {}, args = [], avds = ['test_avd'], env = {} } =
   const setup = `
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new();
 function global:node {
-  if ($args[1] -eq 'has') { $global:LASTEXITCODE = 1; Write-Output 'DEAD'; return }
+  [Console]::WriteLine('BACKEND:' + $args[1] + '|' + $env:KIRA_HERDR_BACKEND);
+  if ($args[1] -eq 'has') { $global:LASTEXITCODE = ${alive ? 0 : 1}; Write-Output '${alive ? 'ALIVE' : 'DEAD'}'; return }
   [Console]::WriteLine('NODE:' + ($args -join '|'));
   [Console]::WriteLine('DEVICE:' + $env:KIRA_DEVICE);
   [Console]::WriteLine('TARGET:' + $env:KIRA_TARGET);
@@ -50,7 +51,7 @@ function global:adb {
       env: {
         ...process.env,
         PATH: `${bin}${path.delimiter}${process.env.PATH || ''}`,
-        COPY_AUTH_KEY: '',
+        COPY_AUTH_KEY: '', KIRA_HERDR_BACKEND: '',
         KIRA_MUMU_MANAGER: '', KIRA_MUMU_INDEX: '', KIRA_MUMU_ADB_ADDR: '', KIRA_EMULATOR_NAME: '',
         KIRA_TEST_SERIAL: 'emulator-5678', KIRA_TEST_AVD: 'test_avd',
         ...env,
@@ -141,4 +142,79 @@ test('environment overrides local MuMu configuration', windowsOnly, () => {
 
 test('help, log and stop remain available even with malformed device configuration', windowsOnly, () => {
   for (const args of [[], ['-Log'], ['-Stop']]) success(run('', { config: '{invalid json', args }));
+});
+
+function backendCalls(result) {
+  return [...result.stdout.matchAll(/^BACKEND:([^\r\n]+)/gm)].map(match => match[1]);
+}
+
+function assertNoOperations(result) {
+  assert.doesNotMatch(result.stdout, /(?:BACKEND|NODE|FLUTTER|MUMU):/);
+}
+
+for (const [name, options, backend] of [
+  ['default', {}, 'auto'],
+  ['local configuration', { config: { Backend: 'tui' } }, 'tui'],
+  ['environment over local configuration', { config: { Backend: 'tui' }, env: { KIRA_HERDR_BACKEND: 'app' } }, 'app'],
+  ['blank environment falls back to local configuration', { config: { Backend: 'app' }, env: { KIRA_HERDR_BACKEND: ' ' } }, 'app'],
+  ...['auto', 'tui', 'app'].map(backend => [
+    `explicit ${backend} over environment and local configuration`,
+    { config: { Backend: 'invalid-local' }, env: { KIRA_HERDR_BACKEND: 'invalid-env' }, args: ['-Backend', backend] },
+    backend,
+  ]),
+  ['case normalization', { args: ['-Backend', 'TUI'] }, 'tui'],
+]) {
+  test(`backend selection: ${name} applies before has, stop and start`, windowsOnly, () => {
+    const result = run('win', { ...options, alive: true });
+    success(result);
+    assert.deepEqual(backendCalls(result), [`has|${backend}`, `stop|${backend}`, `start|${backend}`]);
+  });
+}
+
+for (const operation of ['Log', 'Stop']) {
+  for (const [name, options, backend] of [
+    ['ignores local backend and malformed device fields', { config: { Backend: 'tui', MuMuIndex: 'invalid' } }, 'auto'],
+    ['uses environment without parsing local JSON', { config: '{invalid json', env: { KIRA_HERDR_BACKEND: 'tui' } }, 'tui'],
+    ['explicit option overrides environment without parsing local JSON', { config: '{invalid json', env: { KIRA_HERDR_BACKEND: 'invalid' }, args: ['-Backend', 'app'] }, 'app'],
+  ]) {
+    test(`-${operation} ${name}`, windowsOnly, () => {
+      // Even when a target is supplied, these operations must not prepare devices or load their configuration.
+      const result = run('emu', { ...options, args: [`-${operation}`, ...(options.args || [])] });
+      success(result);
+      assert.deepEqual(backendCalls(result), [`${operation.toLowerCase()}|${backend}`]);
+      assert.doesNotMatch(result.stdout, /(?:FLUTTER|MUMU):/);
+    });
+  }
+  test(`-${operation} rejects an unknown environment backend before calling the driver`, windowsOnly, () => {
+    const result = run('', { config: '{invalid json', args: [`-${operation}`], env: { KIRA_HERDR_BACKEND: 'invalid' } });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /未知 Herdr 后端/);
+    assertNoOperations(result);
+  });
+}
+
+for (const target of ['mumu', 'emu']) {
+  for (const [source, options, error] of [
+    ['command line', { args: ['-Backend', 'invalid'] }, /Backend/],
+    ['environment', { env: { KIRA_HERDR_BACKEND: 'invalid' } }, /未知 Herdr 后端/],
+    ['local JSON', { config: { Backend: 'invalid' } }, /未知 Herdr 后端/],
+  ]) {
+    test(`${target} rejects unknown ${source} backend before device preparation or stopping the old app`, windowsOnly, () => {
+      const result = run(target, { ...options, alive: true });
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, error);
+      assertNoOperations(result);
+    });
+  }
+}
+
+test('help describes both Herdr backends and config-free control operations', windowsOnly, () => {
+  const result = run('', { config: '{invalid json', env: { KIRA_HERDR_BACKEND: 'invalid' } });
+  success(result);
+  assert.match(result.stdout, /-Backend auto\|tui\|app/);
+  assert.match(result.stdout, /Herdr TUI（herdr）/);
+  assert.match(result.stdout, /Herdr app（hc \+ herdr-app）/);
+  assert.match(result.stdout, /-Backend > KIRA_HERDR_BACKEND > JSON 字段 Backend > auto/);
+  assert.match(result.stdout, /-Stop 与 -Log 不读取本机配置/);
+  assertNoOperations(result);
 });
