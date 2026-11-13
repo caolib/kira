@@ -143,12 +143,12 @@ jobs:
           test -n "$APP_VERSION"
           test -n "$APK"
 
-          # tag 触发：取上一个 beta tag 到本次 tag 之间的提交；
-          # 首个 beta（没有上一个 beta）与手动 dispatch 回退为最近 10 条。
+          # tag 触发：取最近一个已发布标签（正式版或 beta）到本次 tag 之间的提交；
+          # 没有历史标签与手动 dispatch 回退为最近 10 条。
           PREV=""
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             PREV=$(git tag --sort=-v:refname \
-              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-beta' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' \
               | grep -v "^${APP_VERSION}$" \
               | head -1 || true)
           fi
@@ -156,10 +156,15 @@ jobs:
           {
             echo "${APP_VERSION}"
             echo
-            if [ -n "$PREV" ]; then
-              # 本次发布区间内的 feat/fix/style 标题，排除 Merge/CI/chore 等。
+            if [ -f docs/CHANGELOG-beta.md ]; then
+              # 人工维护的预览版日志优先，只保留用户关心的变化。
+              cat docs/CHANGELOG-beta.md
+            elif [ -n "$PREV" ]; then
+              # 本次发布区间内的 feat/fix/style 标题，排除 Merge/CI/chore 等；
+              # run-kira、release 属于开发工具，不写进用户更新说明。
               git log --pretty=format:"%s" "${PREV}..${APP_VERSION}" \
                 | grep -E '(^|[[:space:]])(feat|fix|style)[(:]' \
+                | grep -vE '(run-kira|release)[(:]' \
                 | sed 's/^/- /' \
                 || true
             else
