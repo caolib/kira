@@ -21,6 +21,18 @@ function actionable(text) {
   return text.split('\n').filter(line => !BENIGN.test(line)).join('\n');
 }
 
+// 终端的本次新增输出可能夹带上一次失败尝试留下的报错；只保留最后一次
+// 编译开始之后的内容，避免旧错误掩盖本次热重载的结果。
+function currentAttempt(text) {
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (/Performing hot (?:reload|restart)\.\.\./.test(lines[i])) {
+      return lines.slice(i + 1).join('\n');
+    }
+  }
+  return text;
+}
+
 function outputLines(text) {
   return stripVTControlCharacters(text).replace(/\r/g, '').split('\n').filter(line => line.trim());
 }
@@ -291,17 +303,19 @@ export function createDriver({
         return 0;
       }
     } else {
-      if (!ERRORS.test(actionable(fresh)) && !marker.test(fresh)) {
+      const attempt = currentAttempt(fresh);
+      if (!ERRORS.test(actionable(attempt)) && !marker.test(attempt)) {
         await wait(t, key === 'r' ? 'Reloaded ' : 'Restarted application', 60);
         after = read(t);
         fresh = newOutput(before, after);
       }
       show(after);
-      if (ERRORS.test(actionable(fresh))) {
+      const result = currentAttempt(fresh);
+      if (ERRORS.test(actionable(result))) {
         output.error('⚠ 本次操作出现异常或被拒绝，请按上方实际输出排查。');
         return 2;
       }
-      if (marker.test(fresh) && isFlutter(hc(['get', t.address]))) {
+      if (marker.test(result) && isFlutter(hc(['get', t.address]))) {
         output.log(`✓ ${label}完成。`);
         return 0;
       }

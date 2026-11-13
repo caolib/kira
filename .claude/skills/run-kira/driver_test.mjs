@@ -283,6 +283,18 @@ test('Windows accessibility tree noise does not fail a successful reload', async
   assert.ok(!commands(f).includes('wait'));
 });
 
+test('an earlier failed attempt in the same output window does not mask success', async () => {
+  const f = fixture({
+    onKeys: (_, s) => {
+      s.text += '\nlib/a.dart: Error: stale failure from the previous attempt' +
+        '\nPerforming hot reload...' +
+        '\nReloaded 2 of 100 libraries in 40ms.';
+    },
+  });
+  assert.equal(await f.execute(['reload', '--yes']), 0);
+  assert.ok(!commands(f).includes('wait'));
+});
+
 test('restart sends shift+r because hc keys R lowercases the character', async () => {
   const f = fixture({ onWait: (_, s) => { s.text += '\nRestarted application in 300ms.'; } });
   assert.equal(await f.execute(['restart', '--yes']), 0);
