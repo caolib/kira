@@ -14,6 +14,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const NAME = 'kira';
 const READY = /Flutter run key commands\.|A Dart VM Service/;
 const ERRORS = /Unhandled Exception|\bError:|EXCEPTION|Hot reload was rejected|Reloading failed|Restart failed/i;
+// Windows 桌面端反复出现的辅助功能树告警与热重载无关，不能当作本次操作失败。
+const BENIGN = /accessibility_bridge\.cc\(\d+\)\] Failed to update ui::AXTree|Problem (?:getting|setting) monitor brightness/i;
+
+function actionable(text) {
+  return text.split('\n').filter(line => !BENIGN.test(line)).join('\n');
+}
 
 function outputLines(text) {
   return stripVTControlCharacters(text).replace(/\r/g, '').split('\n').filter(line => line.trim());
@@ -285,13 +291,13 @@ export function createDriver({
         return 0;
       }
     } else {
-      if (!ERRORS.test(fresh) && !marker.test(fresh)) {
+      if (!ERRORS.test(actionable(fresh)) && !marker.test(fresh)) {
         await wait(t, key === 'r' ? 'Reloaded ' : 'Restarted application', 60);
         after = read(t);
         fresh = newOutput(before, after);
       }
       show(after);
-      if (ERRORS.test(fresh)) {
+      if (ERRORS.test(actionable(fresh))) {
         output.error('⚠ 本次操作出现异常或被拒绝，请按上方实际输出排查。');
         return 2;
       }

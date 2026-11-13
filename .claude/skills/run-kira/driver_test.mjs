@@ -270,6 +270,19 @@ test('reload checks new output, ignoring old exceptions', async () => {
   assert.ok(!commands(f).includes('wait'));
 });
 
+test('Windows accessibility tree noise does not fail a successful reload', async () => {
+  const f = fixture({
+    onKeys: (_, s) => {
+      s.text += '\n[ERROR:flutter/shell/platform/common/accessibility_bridge.cc(114)] ' +
+        'Failed to update ui::AXTree, error: 157 will not be in the tree and is not the new root' +
+        '\nProblem getting monitor brightness' +
+        '\nReloaded 100 of 3395 libraries in 2172ms.';
+    },
+  });
+  assert.equal(await f.execute(['reload', '--yes']), 0);
+  assert.ok(!commands(f).includes('wait'));
+});
+
 test('restart sends shift+r because hc keys R lowercases the character', async () => {
   const f = fixture({ onWait: (_, s) => { s.text += '\nRestarted application in 300ms.'; } });
   assert.equal(await f.execute(['restart', '--yes']), 0);
