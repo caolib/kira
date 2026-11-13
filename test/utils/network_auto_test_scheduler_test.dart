@@ -114,7 +114,7 @@ void main() {
     await scheduler.checkNow();
     expect(timers, isEmpty);
     expect(api.calls, 0);
-    expect(settings.apiRoute, 0);
+    expect(settings.apiRoute, NetworkSettings.defaultApiRoute);
   });
 
   test('enabling waits one interval instead of probing immediately', () async {
@@ -186,7 +186,7 @@ void main() {
       };
       await enable(elapsed: const Duration(hours: 2));
       await scheduler.checkNow();
-      expect(settings.apiRoute, 0);
+      expect(settings.apiRoute, NetworkSettings.defaultApiRoute);
       expect(api.calls, 2);
       await scheduler.checkNow();
       expect(api.calls, 2);
@@ -202,7 +202,7 @@ void main() {
       await scheduler.checkNow();
       expect(settings.fixedNodeHost, 'fast.test');
       expect(settings.selectionMode, NetworkSelectionMode.fixedNode);
-      expect(settings.apiRoute, 0);
+      expect(settings.apiRoute, NetworkSettings.defaultApiRoute);
     },
   );
 
@@ -229,7 +229,7 @@ void main() {
     await settings.setAutoTestEnabled(false);
     api.pending!.complete();
     await checking;
-    expect(settings.apiRoute, 0);
+    expect(settings.apiRoute, NetworkSettings.defaultApiRoute);
     expect(timers.last.isActive, isFalse);
   });
 
@@ -312,7 +312,7 @@ void main() {
       final paused = NetworkAutoTestScheduler.pauseForRestore();
       api.pending!.complete();
       await Future.wait([checking, paused]);
-      expect(settings.apiRoute, 0);
+      expect(settings.apiRoute, NetworkSettings.defaultApiRoute);
       clock = clock.add(const Duration(hours: 2));
       await scheduler.checkNow();
       expect(api.calls, 2);

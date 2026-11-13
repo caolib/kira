@@ -41,7 +41,10 @@ class NetworkSettings extends PrefsStore {
 
   // ── Fields ─────────────────────────────────────────────────────────
 
-  int _apiRoute = 0;
+  /// 未保存过线路时默认使用线路 2（索引 1）。
+  static const defaultApiRoute = 1;
+
+  int _apiRoute = defaultApiRoute;
   NetworkSelectionMode _selectionMode = NetworkSelectionMode.route;
   String? _fixedNodeHost;
   bool _autoTestEnabled = false;
@@ -84,7 +87,7 @@ class NetworkSettings extends PrefsStore {
     syncPrefs(prefs);
     _selectionRevision++;
     _autoTestRevision++;
-    _apiRoute = prefs.getInt(_keyApiRoute) ?? 0;
+    _apiRoute = prefs.getInt(_keyApiRoute) ?? defaultApiRoute;
     _selectionMode = _normalizeSelectionMode(prefs.getInt(_keySelectionMode));
     // 若旧版本持久化的是已删除的 automatic(索引 2),自动回落为 route,并修正持久化。
     if (persistMigrations &&
