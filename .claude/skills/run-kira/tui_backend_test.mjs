@@ -101,6 +101,16 @@ test('TUI runs without hc or herdr-app, reuses workspace, names tab and preserve
   assert.equal(f.state.pane, null);
 });
 
+test('TUI detects and reloads owned panes with alphanumeric IDs', async () => {
+  for (const id of ['w3C:p3', 'w3c:pA', 'wA1:pB2']) {
+    const f = fixture({ pane: { ...ownedPane(), pane_id: id }, text: ready, running: true });
+    assert.equal(await f.execute(['has']), 0, `${id}: ${f.messages.join('\n')}`);
+    assert.equal(await f.execute(['reload', '--yes']), 0, f.messages.join('\n'));
+    assert.ok(f.calls.some(args => args[1] === 'send-text' && args[2] === id && args[3] === 'r'));
+    assert.ok(!f.calls.some(args => args[1] === 'create' || args[1] === 'run'));
+  }
+});
+
 test('TUI creates only the first tab when no kira workspace exists', async () => {
   const f = fixture({ spaces: [] });
   assert.equal(await f.execute(['start']), 0);

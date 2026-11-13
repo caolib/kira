@@ -145,7 +145,8 @@ export function createDriver({
   function terminal() {
     const list = hc(['ls', '--all', '--label', `kira.project=${project}`, '--label', 'kira.role=run']);
     if (!Array.isArray(list.terminals)) throw new Error('hc ls 返回的 terminals 不是列表');
-    const addressPattern = backend === 'tui' ? /^w\d+:p\d+$/ : /^t[0-9a-z]+$/;
+    // Herdr 的本地 ID 可包含字母（如 w3C:p3），不能按纯数字过滤。
+    const addressPattern = backend === 'tui' ? /^w[0-9a-z]+:p[0-9a-z]+$/i : /^t[0-9a-z]+$/;
     const owned = list.terminals.filter(t => addressPattern.test(t.address) && normalize(t.cwd) === project);
     const live = owned.filter(t => t.state === 'live');
     if (live.length > 1) throw new Error('找到多个 kira 运行终端，请先检查 hc ls，避免控制错误进程');
