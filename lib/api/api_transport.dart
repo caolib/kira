@@ -8,12 +8,12 @@ import '../utils/app_dio.dart';
 import '../utils/data_cache.dart';
 
 const defaultCopyApiHost = 'api.copy202601.com';
-const defaultCopyAppVersion = '3.0.9';
+const defaultCopyAppVersion = '3.1.1';
 
-/// 默认 COPY versionCode，与 [defaultCopyAppVersion] 配套（3.0.9 ↔ 83）。
+/// 默认 COPY versionCode，需与 [defaultCopyAppVersion] 配套调整。
 /// 服务端对 version 与 versioncode 做交叉校验，升级 app version 时两者都要
 /// 跟着改；高级设置里可手动覆盖。
-const defaultCopyVersionCode = '83';
+const defaultCopyVersionCode = '85';
 
 /// 默认拷贝登录域名（高级设置中可切换）。
 const defaultCopyLoginHost = 'copy4000.com';

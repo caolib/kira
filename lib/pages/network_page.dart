@@ -10,6 +10,7 @@ import '../api/api_transport.dart'
         defaultCopyAppVersion,
         defaultCopyVersionCode,
         copyLoginHostOptions;
+import '../api/copy_settings_remote.dart';
 import '../l10n/app_localizations.dart';
 import '../models/network_settings.dart';
 import '../models/user_manager.dart';

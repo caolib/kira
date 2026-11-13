@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import '../api/api_client.dart';
+import '../api/copy_settings_remote.dart';
 import '../models/user_manager.dart';
 import '../utils/app_logger.dart';
 
-/// 自动更新 COPY 高级设置（API host + app version）。
+/// 自动更新 COPY 高级设置（API host + app version + versionCode）。
 ///
 /// 策略：仅在应用启动时检查一次。若距上次更新已超过 [staleThreshold]，
 /// 则后台自动拉取最新值并写入；失败静默（只记录日志），不打扰用户。
@@ -35,11 +36,7 @@ class CopySettingsAutoUpdater {
 
       await user.setCopyApiHost(apiHost);
       await user.setCopyAppVersion(version);
-      await user.markCopySettingsUpdated();
     } catch (e, stack) {
-      // 失败就失败：记录一次时间戳，避免每次启动都因网络问题反复重试。
-      // ponytail: 这里即使失败也标记更新时间，防止启动时高频重试
-      await user.markCopySettingsUpdated();
       unawaited(
         AppLogger.instance.recordWarning(
           'COPY 设置自动更新失败: $e',
@@ -48,5 +45,22 @@ class CopySettingsAutoUpdater {
         ),
       );
     }
+
+    // versionCode 来自官网静态配置；失败或字段缺失时保留旧值。
+    try {
+      final versionCode = await CopySettingsRemote().fetchVersionCode();
+      if (versionCode != null) await user.setCopyVersionCode(versionCode);
+    } catch (e, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          'COPY versionCode 自动更新失败: $e',
+          stackTrace: stack,
+          source: 'copy_auto_update',
+        ),
+      );
+    }
+
+    // 无论成功与否都记录本次尝试，避免启动时因网络问题反复请求。
+    await user.markCopySettingsUpdated();
   }
 }
