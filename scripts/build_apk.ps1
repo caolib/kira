@@ -36,6 +36,9 @@ try {
     )
     if ($copyAuthKeyDefine) { $buildArgs += $copyAuthKeyDefine }
 
+    # 构建前记录已有 JVM，收尾只清理本次构建新起的守护进程
+    $jdkBaseline = Get-JavaProcessIds
+
     $buildLog = Join-Path ([System.IO.Path]::GetTempPath()) 'kira_build_apk.log'
     & flutter @buildArgs 2>&1 | Tee-Object -FilePath $buildLog
 
@@ -80,5 +83,9 @@ catch {
     exit 1
 }
 finally {
+    if (-not $env:CI) {
+        Write-Host "`n正在结束构建 JVM..." -ForegroundColor DarkGray
+        Stop-GradleJdks -Baseline $jdkBaseline
+    }
     Pop-Location
 }
