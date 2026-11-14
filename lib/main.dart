@@ -545,6 +545,17 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
         surfaceTintColor: Colors.transparent,
       ),
       cardTheme: _cardTheme(colorScheme),
+      searchBarTheme: SearchBarThemeData(
+        constraints: const BoxConstraints(
+          minWidth: 360,
+          maxWidth: 800,
+          minHeight: kMinInteractiveDimension,
+        ),
+        elevation: const WidgetStatePropertyAll(0),
+        side: WidgetStatePropertyAll(
+          BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+        ),
+      ),
       // 组件级圆角阶梯：卡片 lg(16) / 对话框与弹层 xl(20)。弹层外观统一由
       // AppSheet / showAppSheet 承载，这里兜底所有直接用系统组件的调用点。
       dialogTheme: DialogThemeData(
