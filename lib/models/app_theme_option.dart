@@ -33,6 +33,10 @@ class AppThemeVariantOption {
 const customThemeOptionId = 'custom';
 const defaultCustomThemeColor = Color(0xFF166FF3);
 
+/// 首次启动（无已保存偏好）默认使用翡翠绿 + 彩虹方案。
+const defaultThemeOptionId = 'emerald';
+const defaultThemeVariant = DynamicSchemeVariant.rainbow;
+
 const appThemeOptions = <AppThemeOption>[
   AppThemeOption(
     id: 'blue_grey',
@@ -149,15 +153,19 @@ extension AppThemeVariantOptionL10n on AppThemeVariantOption {
 }
 
 AppThemeOption resolveAppThemeOption(String? id) {
-  for (final option in appThemeOptions) {
-    if (option.id == id) return option;
-  }
-  return appThemeOptions.first;
+  return appThemeOptions.firstWhere(
+    (option) => option.id == id,
+    orElse: () => appThemeOptions.firstWhere(
+      (option) => option.id == defaultThemeOptionId,
+    ),
+  );
 }
 
 AppThemeVariantOption resolveAppThemeVariantOption(String? id) {
-  for (final option in appThemeVariantOptions) {
-    if (option.id == id) return option;
-  }
-  return appThemeVariantOptions.first;
+  return appThemeVariantOptions.firstWhere(
+    (option) => option.id == id,
+    orElse: () => appThemeVariantOptions.firstWhere(
+      (option) => option.variant == defaultThemeVariant,
+    ),
+  );
 }

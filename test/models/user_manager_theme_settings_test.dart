@@ -85,7 +85,7 @@ void main() {
   );
   testSharedSetting(
     key: 'theme_color',
-    initial: appThemeOptions.first.id,
+    initial: defaultThemeOptionId,
     changed: 'teal',
     readFacade: () => user.themeColor,
     readStore: () => user.theme.themeColor,
@@ -95,7 +95,7 @@ void main() {
   );
   testSharedSetting(
     key: 'theme_variant',
-    initial: appThemeVariantOptions.first.variant,
+    initial: defaultThemeVariant,
     changed: DynamicSchemeVariant.vibrant,
     readFacade: () => user.themeVariant,
     readStore: () => user.theme.themeVariant,
@@ -191,11 +191,8 @@ void main() {
         'pref_display_mode_refresh_rate': -120,
       });
       await user.init(persistMigrations: false);
-      expect(user.themeColor, appThemeOptions.first.id);
-      expect(
-        user.themeVariantOption.variant,
-        appThemeVariantOptions.first.variant,
-      );
+      expect(user.themeColor, defaultThemeOptionId);
+      expect(user.themeVariantOption.variant, defaultThemeVariant);
       expect(
         user.darkModeCoverBrightness,
         UserManager.minDarkModeCoverBrightness,
@@ -209,8 +206,8 @@ void main() {
 
       await user.theme.setThemeColor('teal');
       await user.setThemeColor('unknown-color');
-      expect(user.theme.themeColor, appThemeOptions.first.id);
-      expect(prefs.getString('theme_color'), appThemeOptions.first.id);
+      expect(user.theme.themeColor, defaultThemeOptionId);
+      expect(prefs.getString('theme_color'), defaultThemeOptionId);
     },
   );
 

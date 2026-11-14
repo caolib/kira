@@ -16,7 +16,15 @@ void main() {
   test('resolveAppThemeOption falls back to default preset', () {
     final option = resolveAppThemeOption('unknown-theme');
 
-    expect(option.id, appThemeOptions.first.id);
+    expect(option.id, defaultThemeOptionId);
+    expect(option.id, 'emerald');
+  });
+
+  test('resolveAppThemeVariantOption falls back to default variant', () {
+    final option = resolveAppThemeVariantOption('unknown-variant');
+
+    expect(option.variant, defaultThemeVariant);
+    expect(option.variant, DynamicSchemeVariant.rainbow);
   });
 
   testWidgets('localizedLabel resolves through l10n', (tester) async {

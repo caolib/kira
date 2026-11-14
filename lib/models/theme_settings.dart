@@ -73,8 +73,8 @@ class ThemeSettings extends PrefsStore {
   // ── Fields ─────────────────────────────────────────────────────────
 
   ThemeMode _themeMode = ThemeMode.system;
-  String _themeColor = appThemeOptions.first.id;
-  DynamicSchemeVariant _themeVariant = appThemeVariantOptions.first.variant;
+  String _themeColor = defaultThemeOptionId;
+  DynamicSchemeVariant _themeVariant = defaultThemeVariant;
   int _customThemeColorValue = defaultCustomThemeColor.toARGB32();
   double _darkModeCoverBrightness = defaultDarkModeCoverBrightness;
   double _defaultFontSize = defaultAppFontSize;
