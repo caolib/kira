@@ -324,10 +324,60 @@ test('spinner redraw cannot reuse a historical completion marker', async () => {
   assert.ok(!f.messages.join('\n').includes('✓'));
 });
 
-test('an unready Flutter process receives no reload key', async () => {
+test('an unready Flutter process receives one help probe but no reload key', async () => {
   const f = fixture({ text: 'Building...' });
   assert.equal(await f.execute(['reload', '--yes']), 1);
+  assert.deepEqual(f.calls.filter(args => args[0] === 'keys'), [['keys', '--json', 't7', 'h']]);
+  assert.ok(!commands(f).includes('label'));
+});
+
+test('fresh help recovers readiness before reload and is persisted for later controls', async () => {
+  const f = fixture({ text: 'Only recent application logs', onKeys: (args, s) => {
+    s.text += args.at(-1) === 'h' ? '\nh List all available interactive commands.' : '\nReloaded 1 library in 20ms.';
+  } });
+  assert.equal(await f.execute(['reload', '--yes']), 0, f.messages.join('\n'));
+  assert.deepEqual(f.calls.filter(args => args[0] === 'keys').map(args => args.at(-1)), ['h', 'r']);
+  f.state.text = 'Startup and help have scrolled away';
+  assert.equal(await f.execute(['reload', '--yes']), 0);
+  assert.deepEqual(f.calls.filter(args => args[0] === 'keys').map(args => args.at(-1)), ['h', 'r', 'r']);
+});
+
+test('explicit send h recovers readiness without a reload, restart or enter key', async () => {
+  const f = fixture({ text: 'Recent logs', onKeys: (_, s) => {
+    s.text += '\nh List all available interactive commands.';
+  } });
+  assert.equal(await f.execute(['send', 'h']), 0, f.messages.join('\n'));
+  assert.deepEqual(f.calls.filter(args => args[0] === 'keys'), [['keys', '--json', 't7', 'h']]);
+  assert.equal(f.state.terminal.labels['kira.ready'], 'true');
+  f.state.text = 'Help scrolled away';
+  assert.equal(await f.execute(['send', 'h']), 0);
+  assert.deepEqual(f.calls.filter(args => args[0] === 'keys').map(args => args.at(-1)), ['h', 'h']);
+});
+
+test('old help text is not a fresh response and read-only commands never probe', async () => {
+  const f = fixture({ text: 'h List all available interactive commands.' });
+  for (const args of [['has'], ['status'], ['log', '60'], ['reload']]) {
+    assert.equal(await f.execute(args), 0);
+  }
   assert.ok(!commands(f).includes('keys'));
+  assert.equal(await f.execute(['send', 'h']), 1);
+  assert.equal(f.calls.filter(args => args[0] === 'keys').length, 1);
+  assert.ok(!commands(f).includes('label'));
+});
+
+test('help delivery errors are retained and an exited or changed target cannot become ready', async () => {
+  const failed = fixture({ text: 'Recent logs', onKeys: () => { throw new Error('help delivery failed'); } });
+  assert.equal(await failed.execute(['send', 'h']), 2);
+  assert.equal(failed.messages.at(-1), 'help delivery failed');
+  for (const change of [s => { s.terminal.state = 'finished'; }, s => { s.terminal.address = 't8'; }]) {
+    const f = fixture({ text: 'Recent logs', onKeys: (_, s) => {
+      s.text += '\nh List all available interactive commands.';
+      change(s);
+    } });
+    assert.equal(await f.execute(['reload', '--yes']), 1);
+    assert.ok(!commands(f).includes('label'));
+    assert.equal(f.calls.filter(args => args[0] === 'keys').length, 1);
+  }
 });
 
 test('key delivery errors and reload rejection propagate actual failures', async () => {

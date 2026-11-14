@@ -44,7 +44,8 @@ node .claude/skills/run-kira/driver.mjs stop --yes
 ```
 
 - `start` 默认设备为 `windows`，**默认异步返回**：只等后台进程与运行 tab 创建、命名，不等 Flutter 编译/就绪；返回 0 仅表示进程创建或已有进程复用。`--no-wait` 保留为兼容参数，与默认行为相同。需要等待时显式传 `--wait`（最多 5 分钟），已有进程直接复用并等待，不重复创建。
-- 异步启动后用 `log` 确认出现 `Flutter run key commands.` / `A Dart VM Service` 再刷新；也可执行 `start --wait` 等待已有进程就绪。就绪状态保存为终端标签，日志滚屏后仍能控制；恢复为 shell 时此标签不代表 Flutter 存活。
+- 异步启动后用 `log` 确认出现 `Flutter run key commands.` / `A Dart VM Service` 再刷新；也可执行 `start --wait` 等待已有进程就绪。就绪状态保存为终端标签；TUI 标签绑定当前 terminal ID 与 run ID，恢复为 shell 或更换运行实例后失效。
+- 启动提示滚出历史且缺少有效就绪标签时，`reload` / `restart` 先核对当前运行身份与运行时，再发一次无副作用的 `h`（不加回车），最多 5 秒检查**本次新增的帮助响应**。响应确认后记录就绪并执行获准操作；无响应则不发 `r` / `R`。`ALIVE` 只表示进程存活，不等于 Flutter 就绪。
 - app 通过 `hc wait --output` 等待；TUI 只在显式 `--wait` 或热重载/退出时有界检查进程与新增输出，避免 TUI `wait-output` 命中历史完成行。普通启动不等待 Flutter 就绪；超时不会终止后台进程。
 - `reload` 发 `r`，保留状态；`restart` 发大写 `R`，重置 Dart 状态。driver 等待本次完成最多 60 秒。
 - `quit` 发 `q`，等待退出并保留终端记录，`log` 仍可读取退出日志；下一次 `start` 创建新终端。
@@ -91,7 +92,7 @@ hc attach t7
 
 上面的原始命令仅适用于 app 后端。`hc attach` 后按 **Ctrl+\** 脱离，程序继续运行；热重启用 `shift+r`，driver 自动转换。
 
-TUI 用 driver 返回的实际 pane ID：`herdr pane read <pane-id> --source recent-unwrapped --lines 60`；单字符控制用 `herdr pane send-text <pane-id> r` / `R` / `q`，不追加回车。不要把 app 的 `t7` 与 TUI 的 `w1:p2` 互换。两种后端均可通过 `driver.mjs send v` / `send h --enter` 发送其他已获准按键。
+TUI 用 driver 返回的实际 pane ID：`herdr pane read <pane-id> --source recent-unwrapped --lines 60`；单字符控制用 `herdr pane send-text <pane-id> r` / `R` / `q`，不追加回车。不要把 app 的 `t7` 与 TUI 的 `w1:p2` 互换。两种后端均可通过 `driver.mjs send v` / `send h` 发送其他已获准按键；Flutter 帮助键不追加回车。
 
 ## 共享边界与隐私
 

@@ -50,6 +50,7 @@ function fixture(options = {}) {
         return ok({});
       case 'run': state.running = true; state.text = options.noReady ? 'Building...' : ready; return { status: 0, stdout: '', stderr: '' };
       case 'send-text':
+        if (args[3] === 'h') options.onHelp?.(state);
         if (args[3] === 'r') state.text += '\nReloaded 1 library in 20ms.';
         if (args[3] === 'R') state.text += '\nRestarted application in 30ms.';
         if (args[3] === 'q') { state.running = false; state.text += `\nKIRA_${state.pane.tokens.kira_run}_EXIT_0`; }
@@ -203,6 +204,52 @@ test('first reload recovers readiness from history when startup logs have scroll
   f.state.text = 'more recent output';
   assert.equal(await f.execute(['reload', '--yes']), 0);
   assert.equal(historyReads(), 1);
+});
+
+test('bounded TUI history recovers via one fresh help response scoped to terminal and run', async () => {
+  const f = fixture({ pane: ownedPane(), text: '[ERROR] AXTree logs only', running: true,
+    onHelp: s => { s.text += '\nh List all available interactive commands.'; },
+  });
+  assert.equal(await f.execute(['send', 'h']), 0, f.messages.join('\n'));
+  assert.deepEqual(f.calls.filter(args => args[1] === 'send-text'), [['pane', 'send-text', 'w1:p2', 'h']]);
+  assert.equal(f.state.pane.tokens.kira_ready, 'true');
+  assert.equal(f.state.pane.tokens.kira_ready_terminal, 'term-test');
+  assert.equal(f.state.pane.tokens.kira_ready_run, 'test');
+  f.state.text = 'Help scrolled out again';
+  assert.equal(await f.execute(['reload', '--yes']), 0);
+  assert.deepEqual(f.calls.filter(args => args[1] === 'send-text').map(args => args[3]), ['h', 'r']);
+});
+
+test('TUI startup grace is not permission to probe a shell without a runtime', async () => {
+  const pane = ownedPane();
+  pane.tokens.kira_started = String(Date.now());
+  const f = fixture({ pane, text: 'Starting...', running: false });
+  assert.equal(await f.execute(['has']), 0);
+  assert.equal(await f.execute(['reload', '--yes']), 1);
+  assert.ok(!f.calls.some(args => args[1] === 'send-text' || args[1] === 'report-metadata'));
+});
+
+test('TUI rejects help evidence when the terminal or run changes during the probe', async () => {
+  for (const change of [s => { s.pane.terminal_id = 'recovered'; }, s => { s.pane.tokens.kira_run = 'new-run'; }]) {
+    const f = fixture({ pane: ownedPane(), text: 'Recent logs', running: true, onHelp: s => {
+      s.text += '\nh List all available interactive commands.';
+      change(s);
+    } });
+    assert.equal(await f.execute(['reload', '--yes']), 1);
+    assert.ok(!f.calls.some(args => args[1] === 'report-metadata'));
+    assert.deepEqual(f.calls.filter(args => args[1] === 'send-text').map(args => args[3]), ['h']);
+  }
+});
+
+test('TUI ready metadata for another run must be recovered using fresh help', async () => {
+  const pane = ownedPane();
+  Object.assign(pane.tokens, { kira_ready: 'true', kira_ready_terminal: 'term-test', kira_ready_run: 'old-run' });
+  const f = fixture({ pane, text: 'Recent logs', running: true, onHelp: s => {
+    s.text += '\nh List all available interactive commands.';
+  } });
+  assert.equal(await f.execute(['reload', '--yes']), 0, f.messages.join('\n'));
+  assert.deepEqual(f.calls.filter(args => args[1] === 'send-text').map(args => args[3]), ['h', 'r']);
+  assert.equal(pane.tokens.kira_ready_run, 'test');
 });
 
 test('unrelated runtimes and shell wrappers do not count as a live Flutter descendant', async () => {

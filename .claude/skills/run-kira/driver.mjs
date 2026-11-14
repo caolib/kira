@@ -8,11 +8,13 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripVTControlCharacters } from 'node:util';
+import { setTimeout as delay } from 'node:timers/promises';
 import { createTuiBackend } from './tui_backend.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const NAME = 'kira';
 const READY = /Flutter run key commands\.|A Dart VM Service/;
+const HELP_READY = /^\s*h\s+List all available interactive commands\./m;
 const ERRORS = /Unhandled Exception|\bError:|EXCEPTION|Hot reload was rejected|Reloading failed|Restart failed/i;
 // Windows 桌面端反复出现的辅助功能树告警与热重载无关，不能当作本次操作失败。
 const BENIGN = /accessibility_bridge\.cc\(\d+\)\] Failed to update ui::AXTree|Problem (?:getting|setting) monitor brightness/i;
@@ -166,26 +168,69 @@ export function createDriver({
 
   function rememberReady(t) {
     if (t.labels?.['kira.ready'] !== 'true') {
-      hc(['label', t.address, 'kira.ready=true']);
+      hc(['label', t.address, 'kira.ready=true', ...(backend === 'tui' ? [
+        '--terminal', t.terminal_id, '--run', t.run_id,
+      ] : [])]);
       t.labels = { ...t.labels, 'kira.ready': 'true' };
     }
   }
 
-  function read(t, lines = 200) {
+  function readText(t, lines = 200) {
     const data = hc(['read', t.address, '--lines', String(lines)]);
     if (typeof data.text !== 'string') throw new Error('hc read 未返回终端文本');
+    return data.text;
+  }
+
+  function read(t, lines = 200) {
+    const text = readText(t, lines);
     if (isFlutter(t) && t.labels?.['kira.ready'] !== 'true') {
-      let readyText = data.text;
+      let readyText = text;
       if (!READY.test(readyText) && lines < 5000) {
-        // 初次连接时启动提示可能已滚出短日志；从历史确认后持久记录，
-        // 不能把「近期没有启动提示」当成「Flutter 尚未就绪」。
-        const history = hc(['read', t.address, '--lines', '5000']);
-        if (typeof history.text !== 'string') throw new Error('hc read 未返回终端文本');
-        readyText = history.text;
+        // 初次连接时启动提示可能已滚出短日志；从历史确认后持久记录。
+        // TUI 快照有界，历史仍缺失时只能用本次帮助响应恢复，不能以存活代替就绪。
+        readyText = readText(t, 5000);
       }
       if (READY.test(readyText)) rememberReady(t);
     }
-    return data.text;
+    return text;
+  }
+
+  function sameRun(expected, current) {
+    return isFlutter(current) && current.address === expected.address &&
+      normalize(current.cwd) === project && current.terminal_id === expected.terminal_id &&
+      current.run_id === expected.run_id;
+  }
+
+  async function ensureReady(t, text, probe = false) {
+    if (!probe && ready(t, text)) return true;
+    let current = hc(['get', t.address]);
+    // TUI 的 15 秒启动宽限不证明运行时存在，不能给尚未启动的 shell 发帮助键。
+    if (!sameRun(t, current) || current.runtime_active === false) return false;
+    const before = readText(current, 5000);
+    if (!probe && ready(current, before)) {
+      rememberReady(current);
+      t.labels = current.labels;
+      return true;
+    }
+    // 只发送一次无副作用的 h，不追加回车、不重试；旧历史中的帮助不能证明本次响应。
+    hc(['keys', t.address, 'h', ...(backend === 'tui' ? [
+      '--terminal', t.terminal_id, '--run', t.run_id,
+    ] : [])]);
+    const deadline = Date.now() + 5000;
+    do {
+      current = hc(['get', t.address]);
+      if (!sameRun(t, current) || current.runtime_active === false) return false;
+      const fresh = newOutput(before, readText(current, 5000));
+      if (HELP_READY.test(fresh)) {
+        rememberReady(current);
+        t.labels = current.labels;
+        output.log('✓ 本次 Flutter 帮助响应已确认就绪。');
+        return true;
+      }
+      if (Date.now() >= deadline) break;
+      await delay(250);
+    } while (Date.now() < deadline);
+    return false;
   }
 
   function show(text, lines = 20) {
@@ -287,12 +332,16 @@ export function createDriver({
       output.log(`将执行${label}，未传 --yes，已跳过。`);
       return 0;
     }
-    const before = read(t);
-    if (key !== 'q' && !ready(t, before)) {
-      output.error('Flutter 尚未就绪，未发送按键；先查看 log。');
+    let before = read(t);
+    if (key !== 'q' && !await ensureReady(t, before)) {
+      output.error('Flutter 尚未就绪，未发送热重载/热重启按键；帮助探测未确认响应，请先查看 log，勿直接重发。');
       return 1;
     }
-    hc(['keys', t.address, key === 'R' ? 'shift+r' : key]);
+    // 帮助探测输出不属于本次热重载，重置新增输出的基线。
+    if (key !== 'q') before = readText(t);
+    hc(['keys', t.address, key === 'R' ? 'shift+r' : key, ...(backend === 'tui' ? [
+      '--terminal', t.terminal_id, '--run', t.run_id,
+    ] : [])]);
     let after = read(t);
     let fresh = newOutput(before, after);
     if (key === 'q') {
@@ -350,10 +399,15 @@ export function createDriver({
     return 0;
   }
 
-  function send(keys, opts) {
+  async function send(keys, opts) {
     if (!keys.length) throw new Error('send 需要至少一个按键参数');
     const t = terminal();
     if (!isFlutter(t)) throw new Error('没有可控制的 flutter run');
+    if (keys.length === 1 && keys[0] === 'h' && !opts.enter) {
+      if (await ensureReady(t, readText(t), true)) return 0;
+      output.error('Flutter 帮助探测未确认就绪；未重试，请查看 status / log。');
+      return 1;
+    }
     const namedKeys = keys.map(key => /^[A-Z]$/.test(key) ? `shift+${key.toLowerCase()}` : key);
     hc(['keys', t.address, ...namedKeys, ...(opts.enter ? ['enter'] : [])]);
     output.log(`已发送按键: ${keys.join(' ')}`);
@@ -380,7 +434,7 @@ export function createDriver({
           case 'restart': return await interactive('R', '热重启 (R)', /Restarted application/, opts);
           case 'quit': return await interactive('q', '退出应用 (q)', null, opts);
           case 'stop': return await stop(opts);
-          case 'send': return send(rest, opts);
+          case 'send': return await send(rest, opts);
           default: throw new Error('用法见 .claude/skills/run-kira/SKILL.md');
         }
       } catch (error) {

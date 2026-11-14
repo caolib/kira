@@ -102,8 +102,12 @@ export function createTuiBackend({ invoke, root, project, device, target, authKe
     const live = sameTerminal && !exit && (running || starting);
     return {
       address: id, cwd: root, state: live ? 'live' : 'finished',
+      terminal_id: pane.terminal_id, run_id: tokens.kira_run,
+      runtime_active: sameTerminal && !exit && running,
       argv: live ? ['flutter', 'run', '-d', tokens.kira_device] : [],
-      labels: { 'kira.ready': tokens.kira_ready || 'false' },
+      labels: { 'kira.ready': sameTerminal && tokens.kira_ready === 'true' &&
+        (!tokens.kira_ready_terminal || tokens.kira_ready_terminal === pane.terminal_id) &&
+        (!tokens.kira_ready_run || tokens.kira_ready_run === tokens.kira_run) ? 'true' : 'false' },
       exit_code: exit ? Number(exit[1]) : null,
       reason: !sameTerminal ? 'terminal_recovered' : exit ? 'exited' : live ? null : 'process_exited',
     };
@@ -172,12 +176,29 @@ export function createTuiBackend({ invoke, root, project, device, target, authKe
         case 'get': return response(get(id));
         case 'read': owned(id); return response({ text: read(id, rest[rest.indexOf('--lines') + 1]), complete: true });
         case 'run': return response(launch());
-        case 'label': owned(id); metadata(id, { kira_ready: 'true' }); return response({});
+        case 'label': {
+          const t = get(id);
+          if (t.state !== 'live' || rest[rest.indexOf('--terminal') + 1] !== t.terminal_id ||
+              rest[rest.indexOf('--run') + 1] !== t.run_id) {
+            throw new Error('Flutter 运行身份已改变，未保存就绪状态');
+          }
+          metadata(id, { kira_ready: 'true', kira_ready_terminal: t.terminal_id, kira_ready_run: t.run_id });
+          return response({});
+        }
         case 'keys': {
           const t = get(id);
           if (t.state !== 'live') throw new Error('Flutter 已退出，未发送按键');
+          const keys = rest.slice(1);
+          const identityIndex = keys.indexOf('--terminal');
+          if (identityIndex >= 0) {
+            if (keys[identityIndex + 1] !== t.terminal_id || keys[keys.indexOf('--run') + 1] !== t.run_id) {
+              throw new Error('Flutter 运行身份已改变，未发送按键');
+            }
+            keys.splice(identityIndex);
+          }
+          if (keys.includes('h') && !t.runtime_active) throw new Error('Flutter 运行时尚未启动，未发送帮助键');
           beforeInput.set(id, read(id));
-          for (const key of rest.slice(1)) {
+          for (const key of keys) {
             if (key === 'shift+r') call(['pane', 'send-text', id, 'R']);
             else if (key.length === 1) call(['pane', 'send-text', id, key]);
             else call(['pane', 'send-keys', id, key]);
