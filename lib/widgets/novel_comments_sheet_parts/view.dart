@@ -52,12 +52,21 @@ extension _NovelCommentsViewPart on _NovelCommentsSheetState {
                 sliver: Builder(
                   builder: (context) {
                     // 屏蔽过滤在构建时套用，配置变化经 _rebuild 自动刷新。
-                    final visible = _visibleComments;
+                    final entries = groupNovelComments(
+                      _visibleComments,
+                      replyCountOf: (comment) =>
+                          _replyCount(comment, _replyStateOf(comment.id)),
+                      mergeEnabled: widget.replyId == null,
+                    );
                     return SliverList.separated(
-                      itemCount: visible.length,
+                      itemCount: entries.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) =>
-                          _buildCommentCard(context, visible[index]),
+                      itemBuilder: (context, index) {
+                        final entry = entries[index];
+                        return entry.isMerged
+                            ? _buildMergedCommentCard(context, entry)
+                            : _buildCommentCard(context, entry.primaryComment);
+                      },
                     );
                   },
                 ),
@@ -280,10 +289,11 @@ extension _NovelCommentsViewPart on _NovelCommentsSheetState {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
-                SelectableText(
-                  comment.comment,
-                  onTap: () => _showPostDialog(replyTo: comment),
+                ExpandableCommentText(
+                  key: ValueKey('novel-comment-text-${comment.id}'),
+                  text: comment.comment,
                   style: buildCommentBodyStyle(tt, compact: false),
+                  backgroundColor: cs.surfaceContainerHigh,
                 ),
               ],
             ),
@@ -573,7 +583,12 @@ extension _NovelCommentsViewPart on _NovelCommentsSheetState {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(reply.comment, style: bodyStyle),
+                ExpandableCommentText(
+                  key: ValueKey('novel-comment-text-${reply.id}'),
+                  text: reply.comment,
+                  style: bodyStyle,
+                  backgroundColor: cs.surfaceContainerHigh,
+                ),
               ],
             ),
           ),

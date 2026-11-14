@@ -382,6 +382,7 @@ extension _ComicActions on _ComicCommentsSheetState {
     String? errorText;
 
     final isReply = replyTo != null;
+    final replyRoot = replyTo == null ? null : _rootCommentOf(replyTo);
     final title = isReply
         ? l10n.comicCommentReplyTitle(replyTo.userName)
         : l10n.chapterCommentsPostTitle;
@@ -420,37 +421,33 @@ extension _ComicActions on _ComicCommentsSheetState {
           context,
           isReply ? l10n.comicCommentReplyPosted : l10n.chapterCommentsPosted,
         );
-        if (isReply) {
-          final index = _comments.indexWhere((c) => c.id == replyTo.id);
-          if (index >= 0) {
-            _comments[index] = ComicComment(
-              id: replyTo.id,
-              createAt: replyTo.createAt,
-              userId: replyTo.userId,
-              userName: replyTo.userName,
-              userAvatar: replyTo.userAvatar,
-              comment: replyTo.comment,
-              replyCount: replyTo.replyCount + 1,
-              parentId: replyTo.parentId,
-              parentUserId: replyTo.parentUserId,
-              parentUserName: replyTo.parentUserName,
-            );
-          }
-          final currentState = _replyStateOf(replyTo.id);
-          _setState(() {
-            _replyStates[replyTo.id] = currentState.copyWith(
-              expanded: true,
-              total: currentState.total > 0 ? currentState.total + 1 : 0,
-            );
-          });
-          unawaited(
-            _loadReplies(
-              _comments.firstWhere(
-                (c) => c.id == replyTo.id,
-                orElse: () => replyTo,
-              ),
-            ),
+        if (isReply && replyRoot != null) {
+          final index = _comments.indexWhere((c) => c.id == replyRoot.id);
+          final root = index >= 0 ? _comments[index] : replyRoot;
+          final replyCount = _knownReplyCount(root) + 1;
+          final updated = ComicComment(
+            id: root.id,
+            createAt: root.createAt,
+            userId: root.userId,
+            userName: root.userName,
+            userAvatar: root.userAvatar,
+            comment: root.comment,
+            replyCount: replyCount,
+            parentId: root.parentId,
+            parentUserId: root.parentUserId,
+            parentUserName: root.parentUserName,
           );
+          final currentState = _replyStateOf(root.id);
+          _setState(() {
+            if (index >= 0) _comments[index] = updated;
+            _replyStates[root.id] = currentState.copyWith(
+              expanded: true,
+              total: replyCount,
+              error: null,
+            );
+            _rebuildGroupedEntries();
+          });
+          unawaited(_loadReplies(updated));
         } else {
           unawaited(_loadComments());
         }

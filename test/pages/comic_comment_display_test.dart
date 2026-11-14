@@ -8,6 +8,7 @@ void main() {
     required String userId,
     required String userName,
     required String content,
+    int replyCount = 0,
   }) {
     return ComicComment(
       id: id,
@@ -16,9 +17,30 @@ void main() {
       userName: userName,
       userAvatar: 'https://example.com/$userId.png',
       comment: content,
-      replyCount: 0,
+      replyCount: replyCount,
     );
   }
+
+  test('有回复的评论独立保留，同用户同文也不能去掉回复线程', () {
+    final entries = groupComicComments([
+      comment(id: 1, userId: 'u1', userName: 'A', content: '好看', replyCount: 2),
+      comment(id: 2, userId: 'u2', userName: 'B', content: '好看'),
+      comment(id: 3, userId: 'u3', userName: 'C', content: '好看'),
+      comment(id: 4, userId: 'u1', userName: 'A', content: '好看', replyCount: 1),
+      comment(id: 5, userId: 'u1', userName: 'A', content: '好看'),
+    ]);
+    expect(entries.map((entry) => entry.count), [3, 1, 1]);
+    expect(entries.skip(1).map((entry) => entry.primaryComment.id), [1, 4]);
+  });
+
+  test('会话已知的回复数使无回复旧模型退出合并', () {
+    final entries = groupComicComments([
+      comment(id: 1, userId: 'u1', userName: 'A', content: '好看'),
+      comment(id: 2, userId: 'u2', userName: 'B', content: '好看'),
+    ], replyCountOf: (comment) => comment.id == 2 ? 1 : 0);
+    expect(entries, hasLength(2));
+    expect(entries.every((entry) => !entry.isMerged), isTrue);
+  });
 
   test('merged comments move to top and are sorted by count descending', () {
     final entries = groupComicComments([

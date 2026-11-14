@@ -19,6 +19,7 @@ import 'package:kira/routing/app_router.dart';
 import 'package:kira/widgets/account_avatar.dart';
 import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/comment_skeleton.dart';
+import 'package:kira/widgets/expandable_comment_text.dart';
 import 'package:kira/widgets/novel_comments_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -250,6 +251,283 @@ void main() {
   });
   tearDown(teardownSecureCredentialStoreForTest);
 
+  testWidgets('无回复同文合并，有回复的同文评论独立且可展开', (tester) async {
+    final h = _Harness();
+    h.api.load = (replyId, _) async => replyId == null
+        ? _page([
+            const NovelComment(
+              id: 'a',
+              userId: 'a',
+              userName: '甲',
+              comment: '很好看',
+            ),
+            const NovelComment(
+              id: 'b',
+              userId: 'b',
+              userName: '乙',
+              comment: '很好看！',
+            ),
+            const NovelComment(
+              id: 'c',
+              userId: 'a',
+              userName: '甲',
+              comment: '很好看',
+              count: 1,
+            ),
+          ])
+        : _page([const NovelComment(id: 'reply', comment: '这条回复必须保留')]);
+    await h.pump(tester, reducedMotion: true);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('novel-merged-comment-a')),
+      findsOneWidget,
+    );
+    expect(find.text('2'), findsOneWidget);
+    expect(find.byKey(const ValueKey('novel-comment-c')), findsOneWidget);
+    await tester.tap(find.text('展开 1 条回复'));
+    await tester.pumpAndSettle();
+    expect(h.api.requests.last.$2, 'c');
+    expect(find.text('这条回复必须保留'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final failFirstLoad in [false, true]) {
+    testWidgets('合并成员回复后立即独立${failFirstLoad ? '，加载失败不重新合并' : '，旧响应不重新合并'}', (
+      tester,
+    ) async {
+      final h = _Harness();
+      h.user.switchAccount('copy-a');
+      final loading = Completer<NovelPage<NovelComment>>();
+      const roots = [
+        NovelComment(id: 'a', userId: 'a', userName: '甲', comment: '很好看'),
+        NovelComment(id: 'b', userId: 'b', userName: '乙', comment: '很好看'),
+        NovelComment(id: 'c', userId: 'c', userName: '丙', comment: '很好看'),
+      ];
+      h.api.load = (replyId, _) =>
+          replyId == null ? Future.value(_page(roots)) : loading.future;
+      await h.pump(tester, reducedMotion: true);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('novel-merged-comment-a')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('novel-merged-member-b')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('novel-merged-member-b')), findsNothing);
+      expect(find.text('回复 乙'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '第一条新回复');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('novel-comment-submit')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(h.api.posts, [(_bookUuid, '第一条新回复', 'b')]);
+      expect(find.byKey(const ValueKey('novel-comment-b')), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('收起回复'), findsOneWidget);
+      if (failFirstLoad) {
+        loading.completeError(const NovelApiException('offline'));
+      } else {
+        loading.complete(_page(const [], total: 0));
+      }
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('novel-comment-b')), findsOneWidget);
+      expect(find.text('收起回复'), findsOneWidget);
+      h.api.load = (replyId, _) async => replyId == null
+          ? _page(roots)
+          : _page([const NovelComment(id: 'r', comment: '第一条新回复')]);
+      if (failFirstLoad) {
+        await tester.tap(find.text('重试'));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.text('收起回复'));
+      await tester.pumpAndSettle();
+      expect(find.text('展开 1 条回复'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('合并卡片长按不屏蔽整组，成员长按可以屏蔽对应用户', (tester) async {
+    final h = _Harness();
+    h.user.blockNoRemind = true;
+    h.api.load = (_, _) async => _page([
+      const NovelComment(id: 'a', userId: 'a', userName: '甲', comment: '很好看'),
+      const NovelComment(id: 'b', userId: 'b', userName: '乙', comment: '很好看'),
+    ]);
+    await h.pump(tester, reducedMotion: true);
+    await tester.pumpAndSettle();
+    await tester.longPress(
+      find.byKey(const ValueKey('novel-merged-comment-a')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('+1'), findsOneWidget);
+    expect(find.text('复制'), findsOneWidget);
+    expect(find.text('屏蔽用户'), findsNothing);
+    await tester.tap(find.byTooltip('关闭').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('novel-merged-comment-a')));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.byKey(const ValueKey('novel-merged-member-b')));
+    await tester.pumpAndSettle();
+    expect(find.text('屏蔽用户'), findsOneWidget);
+    await tester.tap(find.text('屏蔽用户'));
+    await tester.pumpAndSettle();
+    expect(h.user.blockedCalls, [('b', '乙')]);
+    expect(find.byKey(const ValueKey('novel-merged-comment-a')), findsNothing);
+    expect(find.byKey(const ValueKey('novel-comment-a')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  for (final dark in [false, true]) {
+    testWidgets('${dark ? '深色横屏' : '浅色窄屏'}大字合并卡片与长成员名不溢出，保留显示设置', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = dark
+          ? const Size(800, 375)
+          : const Size(375, 800);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final h = _Harness();
+      h.api.load = (_, _) async => _page([
+        const NovelComment(
+          id: 'a',
+          userId: 'a',
+          userName: '很长很长很长很长的小说读者',
+          comment: '很好看',
+          createAt: '2099-01-01',
+        ),
+        const NovelComment(
+          id: 'b',
+          userId: 'b',
+          userName: '乙',
+          comment: '很好看',
+          createAt: '2099-01-01',
+        ),
+      ]);
+      await h.pump(tester, reducedMotion: true, textScale: 2, dark: dark);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await h.settings.setShowAvatar(false);
+      await h.settings.setShowUserName(false);
+      await h.settings.setShowTime(false);
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountAvatar), findsNothing);
+      expect(find.text('很长很长很长很长的小说读者'), findsNothing);
+      expect(find.text('2'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('novel-merged-comment-a')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('novel-merged-member-a')))
+            .height,
+        greaterThanOrEqualTo(48),
+      );
+      expect(find.byType(AccountAvatar), findsNothing);
+      expect(find.text('刚刚'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('回复独立入口不合并同用户同文回复', (tester) async {
+    final h = _Harness();
+    h.api.load = (_, _) async => _page([
+      const NovelComment(id: 'a', userId: 'a', comment: '一样的回复'),
+      const NovelComment(id: 'b', userId: 'a', comment: '一样的回复'),
+    ]);
+    await h.pump(tester, replyId: 'root');
+    await tester.pumpAndSettle();
+    expect(find.text('一样的回复'), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('novel-comment-a')), findsOneWidget);
+    expect(find.byKey(const ValueKey('novel-comment-b')), findsOneWidget);
+  });
+
+  testWidgets('小说普通与楼中楼长正文复用三行折叠，展开不误触回复', (tester) async {
+    const longBody = '第一行\n第二行\n第三行\n第四行\n第五行';
+    const longReply = '回复第一行\n回复第二行\n回复第三行\n回复第四行';
+    final h = _Harness();
+    h.user.switchAccount('copy-a');
+    h.api.load = (replyId, _) async => replyId == null
+        ? _page([
+            const NovelComment(
+              id: _parentId,
+              userName: '楼主',
+              comment: longBody,
+              count: 1,
+            ),
+          ])
+        : _page([
+            const NovelComment(
+              id: 'long-reply',
+              userName: '层主',
+              comment: longReply,
+            ),
+          ]);
+    await h.pump(tester, reducedMotion: true);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text(longBody)).maxLines, 3);
+    await tester.tap(find.text('展开全文'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text(longBody)).maxLines, isNull);
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.text('收起'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('展开 1 条回复'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text(longReply)).maxLines, 3);
+    final replyText = find.byKey(
+      const ValueKey('novel-comment-text-long-reply'),
+    );
+    final replyExpand = find.descendant(
+      of: replyText,
+      matching: find.text('展开全文'),
+    );
+    await tester.ensureVisible(replyExpand);
+    await tester.tap(replyExpand);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text(longReply)).maxLines, isNull);
+    expect(find.byType(TextField), findsNothing);
+    await tester.ensureVisible(find.text('层主'));
+    await tester.tap(find.text('层主'));
+    await tester.pumpAndSettle();
+    expect(find.text('回复 层主'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('小说合并长正文三行折叠，展开不误开成员，头像区可查看成员', (tester) async {
+    const longBody = '第一行\n第二行\n第三行\n第四行\n第五行';
+    final h = _Harness();
+    h.api.load = (_, _) async => _page([
+      const NovelComment(
+        id: 'a',
+        userId: 'a',
+        userName: '甲',
+        comment: longBody,
+      ),
+      const NovelComment(
+        id: 'b',
+        userId: 'b',
+        userName: '乙',
+        comment: longBody,
+      ),
+    ]);
+    await h.pump(tester, reducedMotion: true);
+    await tester.pumpAndSettle();
+    expect(find.byType(ExpandableCommentText), findsOneWidget);
+    expect(tester.widget<Text>(find.text(longBody)).maxLines, 3);
+    await tester.tap(find.text('展开全文'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('novel-merged-member-a')), findsNothing);
+    expect(tester.widget<Text>(find.text(longBody)).maxLines, isNull);
+    await tester.tap(find.text('收起'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('novel-merged-member-a')), findsOneWidget);
+    expect(find.byKey(const ValueKey('novel-merged-member-b')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('沿用漫画的元信息、正文层次和间距，头像复用账号组件', (tester) async {
     final h = _Harness();
     await h.pump(tester);
@@ -268,9 +546,7 @@ void main() {
       tester.getRect(body).top,
       greaterThan(tester.getRect(avatar).bottom),
     );
-    final style = tester
-        .widget<SelectableText>(find.byType(SelectableText))
-        .style!;
+    final style = tester.widget<Text>(body).style!;
     expect(style.fontSize, 16);
     expect(style.height, 1.55);
     expect(style.fontWeight, FontWeight.w500);
@@ -1122,7 +1398,7 @@ void main() {
     final l10n = AppLocalizations.of(
       tester.element(find.byType(NovelCommentsSheet)),
     )!;
-    // 长按用户名打开菜单；正文是 SelectableText，长按仍走文本选择。
+    // 长按用户名或正文沿用漫画操作菜单，复制仍取完整评论。
     await tester.longPress(find.text('小说读者'));
     await tester.pumpAndSettle();
     expect(find.text(l10n.chapterCommentsActionTitle), findsOneWidget);

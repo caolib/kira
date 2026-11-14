@@ -61,7 +61,10 @@ extension _ComicData on _ComicCommentsSheetState {
     final hasBlockwords = blockwords.isNotEmpty || _user.commentBlockGroupSpam;
     final blocked = _user.commentBlockedUsers;
     if (blocked.isEmpty && !hasBlockwords) {
-      _groupedEntries = groupComicComments(_comments);
+      _groupedEntries = groupComicComments(
+        _comments,
+        replyCountOf: _knownReplyCount,
+      );
       _blockedCount = 0;
       return;
     }
@@ -74,7 +77,26 @@ extension _ComicData on _ComicCommentsSheetState {
         )
         .toList();
     _blockedCount = _comments.length - filtered.length;
-    _groupedEntries = groupComicComments(filtered);
+    _groupedEntries = groupComicComments(
+      filtered,
+      replyCountOf: _knownReplyCount,
+    );
+  }
+
+  /// 楼中楼仍以被点击的回复 ID 发表，但列表状态属于其所在根评论。
+  ComicComment? _rootCommentOf(ComicComment comment) {
+    for (final root in _comments) {
+      if (root.id == comment.id ||
+          _replyStateOf(
+            root.id,
+          ).replies.any((reply) => reply.id == comment.id)) {
+        return root;
+      }
+    }
+    for (final root in _comments) {
+      if (root.id == comment.parentId) return root;
+    }
+    return null;
   }
 
   Future<void> _toggleReplies(ComicComment comment) async {
@@ -167,9 +189,13 @@ extension _ComicData on _ComicCommentsSheetState {
           loading: false,
           loadingMore: false,
           replies: mergedReplies,
-          total: data.total,
+          // 本会话已确认的回复不能被短暂旧响应抹掉，尤其主列表已刷新时。
+          total: data.total > _knownReplyCount(comment)
+              ? data.total
+              : _knownReplyCount(comment),
           error: null,
         );
+        _rebuildGroupedEntries();
       });
     } catch (e) {
       if (!mounted) return;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' show max;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,21 +21,27 @@ import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_status_colors.dart';
 import '../utils/adaptive_motion.dart';
 import '../utils/app_logger.dart';
 import '../utils/comment_text.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import 'account_avatar.dart';
+import 'app_sheet.dart';
 import 'comment_skeleton.dart';
 import 'error_retry_view.dart';
+import 'expandable_comment_text.dart';
 import 'load_more_footer.dart';
+import 'merged_comment_content.dart';
+import 'novel_comment_display.dart';
 import 'novel_paged_controller.dart';
 import 'novel_widgets.dart';
 import 'text_controller_scope.dart';
 
 part 'novel_comments_sheet_parts/comment_actions.dart';
 part 'novel_comments_sheet_parts/view.dart';
+part 'novel_comments_sheet_parts/merged_comments.dart';
 
 /// One inline-expandable reply section's state, mirroring the comic sheet.
 @immutable
@@ -465,8 +472,7 @@ class _NovelCommentsSheetState extends ConsumerState<NovelCommentsSheet> {
       _replyStates[commentId] ?? const _NovelReplyState();
 
   int _replyCount(NovelComment comment, _NovelReplyState state) {
-    final total = state.total ?? comment.count;
-    return total < state.replies.length ? state.replies.length : total;
+    return max(comment.count, max(state.total ?? 0, state.replies.length));
   }
 
   Future<void> _toggleReplies(NovelComment comment) async {
@@ -543,7 +549,8 @@ class _NovelCommentsSheetState extends ConsumerState<NovelCommentsSheet> {
           loading: false,
           loadingMore: false,
           replies: visibleReplies,
-          total: page.total,
+          // 保留本会话已知回复数，避免提交后的短暂旧响应使评论重新合并。
+          total: max(page.total, _replyCount(comment, latest)),
         );
       });
     } catch (e, stack) {

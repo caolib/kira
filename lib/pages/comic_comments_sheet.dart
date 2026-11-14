@@ -19,7 +19,9 @@ import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/comment_skeleton.dart';
+import '../widgets/expandable_comment_text.dart';
 import '../widgets/load_more_footer.dart';
+import '../widgets/merged_comment_content.dart';
 import '../widgets/text_controller_scope.dart';
 import 'chapter_comments/comment_paging.dart';
 import 'chapter_comments/comment_scroll_behavior.dart';
@@ -98,6 +100,14 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
 
   _ComicReplyState _replyStateOf(int commentId) =>
       _replyStates[commentId] ?? const _ComicReplyState();
+
+  int _knownReplyCount(ComicComment comment) {
+    final state = _replyStateOf(comment.id);
+    var count = comment.replyCount;
+    if (state.total > count) count = state.total;
+    if (state.replies.length > count) count = state.replies.length;
+    return count;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -423,7 +433,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
   ) {
     final comment = entry.primaryComment;
     final replyState = _replyStateOf(comment.id);
-    final canExpandReplies = comment.replyCount > 0;
+    final canExpandReplies = !entry.isMerged && _knownReplyCount(comment) > 0;
     final user = UserManager();
     final showAvatar = user.commentShowAvatar;
     final showCommentTime = user.commentShowTime;
@@ -439,6 +449,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
     );
 
     return GestureDetector(
+      key: ValueKey('comic-comment-${comment.id}'),
       onTap: entry.isMerged
           ? () => _showMergedCommentUsersDialog(entry)
           : () => _showPostCommentDialog(replyTo: comment),
@@ -550,7 +561,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
             Text(
               replyState.expanded
                   ? l10n.comicCommentCollapseReplies
-                  : l10n.comicCommentExpandReplies(comment.replyCount),
+                  : l10n.comicCommentExpandReplies(_knownReplyCount(comment)),
               style: actionStyle,
             ),
           ],
@@ -573,7 +584,7 @@ class _ComicCommentsSheetState extends State<ComicCommentsSheet>
     required TextStyle? bodyStyle,
     required Color backgroundColor,
   }) {
-    return _ExpandableCommentText(
+    return ExpandableCommentText(
       key: ValueKey('comic-comment-text-${comment.id}'),
       text: comment.comment,
       style: bodyStyle,

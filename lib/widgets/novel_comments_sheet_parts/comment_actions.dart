@@ -53,9 +53,12 @@ extension _NovelCommentsActionsPart on _NovelCommentsSheetState {
 
   // ── 评论长按操作菜单：复制 / +1 / 屏蔽用户（与漫画评论区一致） ──────────
 
-  Future<void> _showCommentActionMenu(NovelComment comment) async {
+  Future<void> _showCommentActionMenu(
+    NovelComment comment, {
+    NovelCommentDisplayEntry? entry,
+  }) async {
     final l10n = AppLocalizations.of(context)!;
-    final content = comment.comment.trim();
+    final content = (entry?.content ?? comment.comment).trim();
     if (content.isEmpty) return;
 
     final action = await showModalBottomSheet<String>(
@@ -118,16 +121,17 @@ extension _NovelCommentsActionsPart on _NovelCommentsSheetState {
                   subtitle: Text(l10n.chapterCommentsPlusOneSubtitle),
                   onTap: () => Navigator.of(sheetContext).pop('plus_one'),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.block_outlined),
-                  title: Text(l10n.chapterCommentsBlockUser),
-                  subtitle: Text(
-                    l10n.chapterCommentsHideUserComments(comment.userName),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                if (entry?.isMerged != true)
+                  ListTile(
+                    leading: const Icon(Icons.block_outlined),
+                    title: Text(l10n.chapterCommentsBlockUser),
+                    subtitle: Text(
+                      l10n.chapterCommentsHideUserComments(comment.userName),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => Navigator.of(sheetContext).pop('block'),
                   ),
-                  onTap: () => Navigator.of(sheetContext).pop('block'),
-                ),
               ],
             ),
           ),
