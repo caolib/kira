@@ -218,7 +218,8 @@ Future<void> deleteAll();
 
 | 项 | 路径/键 | 管理 |
 | ---- | ---------- | ---- |
-| 阅读器图片 | `CacheManager(Config('readerImageCache', ...))`（`lib/pages/reader/reader_image_pipeline.dart` 的 `_readerImageCacheManager`） | 缓存管理页可清 |
+| 漫画阅读器图片 | `CacheManager(Config('readerImageCache', ...))`（`lib/pages/reader/reader_image_pipeline.dart` 的 `_readerImageCacheManager`） | 缓存管理页可清 |
+| 小说在线插图 | `NovelIllustrationCache`，独立 `CacheManager` key `novelIllustrationCache`（`lib/utils/novel_illustration_cache.dart`） | 有效期 7 天、最多 300 条；缓存管理页单独清理 |
 | 封面/头像图片 | `DefaultCacheManager`（默认 key `libCachedNetworkImageData`） | 缓存管理页可清 |
 | 漫画下载 | 默认 `getApplicationDocumentsDirectory()/comic_downloads/`，清单 `manifest.json`；可通过 `download_save_directory` 自定义为公共目录（Android，见下） | `DownloadManager` |
 | 漫画下载队列 | prefs 键 `download_queue_state_v1`：队列任务、暂停状态与批次失败快照，启动时恢复并自动续传（`main.dart` 初始化 `DownloadManager`） | `DownloadManager` |
@@ -232,6 +233,8 @@ Future<void> deleteAll();
   - 已知缺口:Android 10(API 29)下 `Permission.storage` 仅在 `WRITE_EXTERNAL_STORAGE` 已声明**且** `Environment.isExternalStorageLegacy()` 为真时才请求;当前未声明 `requestLegacyExternalStorage`,该分支 manifest names 为空,同样静默失败(API 24-28 不受影响)。
 
 `_ReaderImageFileService`（`lib/pages/reader/reader_image_cache.dart`）按响应 `Cache-Control: max-age` 解析有效期，默认 7 天，`no-cache` 立即过期。
+
+`NovelIllustrationCache.instance` 延迟创建独立 manager，按 URL 复用磁盘文件；同一 manager 的多个服务实例共享在途请求，完成/失败后释放字节。网络 miss 使用调用方的小说无凭据内容客户端，不复用漫画 fileService；缓存命中与写入前验证图片编码尺寸，坏项删除后重取，写入失败不阻断在线显示。清理递增 generation 并串行执行磁盘操作，旧在途请求不能回写已清缓存。在线插图缓存不纳入设置备份，清理不删除 `novel_text_cache_v1` 或 `novel_downloads`。
 
 ## 7. 备份/恢复（设置迁移）
 

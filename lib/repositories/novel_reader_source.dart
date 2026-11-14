@@ -3,6 +3,7 @@ import 'dart:async';
 import '../models/novel.dart';
 import '../utils/app_logger.dart';
 import '../utils/novel_download_store.dart';
+import '../utils/novel_illustration_cache.dart';
 import 'novel_repository.dart';
 
 /// 阅读器和目录弹层共用同一个来源，保持正文、目录与插图的加载策略一致。
@@ -28,9 +29,10 @@ abstract interface class NovelReaderSource {
 }
 
 class RepositoryNovelReaderSource implements NovelReaderSource {
-  const RepositoryNovelReaderSource(this.repository);
+  const RepositoryNovelReaderSource(this.repository, {this.illustrationCache});
 
   final NovelRepository repository;
+  final NovelIllustrationCache? illustrationCache;
 
   @override
   bool get localOnly => false;
@@ -60,7 +62,10 @@ class RepositoryNovelReaderSource implements NovelReaderSource {
     String pathWord,
     String volumeId,
     String url,
-  ) => repository.api.getContentBytes(url);
+  ) => (illustrationCache ?? NovelIllustrationCache.instance).loadBytes(
+    url,
+    load: () => repository.api.getContentBytes(url),
+  );
 }
 
 /// 按卷优先读取永久下载，缺失或损坏时使用在线来源；只读缓存预取不联网。

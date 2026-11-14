@@ -10,7 +10,6 @@ import 'package:kira/pages/novel_reader/novel_reader_contents_sheet.dart';
 import 'package:kira/pages/novel_reader/novel_reader_illustrations.dart';
 import 'package:kira/providers/novel_providers.dart';
 import 'package:kira/repositories/novel_repository.dart';
-import 'package:kira/theme/reader_chrome.dart';
 import 'package:kira/utils/novel_bookmark_store.dart';
 import 'package:kira/widgets/error_retry_view.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
@@ -119,7 +118,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('illustration loading and retry keep the reader indicator color', (
+  testWidgets('illustration loading and retry keep the theme primary color', (
     tester,
   ) async {
     var pending = Completer<List<int>>();
@@ -140,7 +139,9 @@ void main() {
             find.byType(ExpressiveLoadingIndicator),
           )
           .color,
-      ReaderChrome.onSurface,
+      Theme.of(
+        tester.element(find.byType(ExpressiveLoadingIndicator)),
+      ).colorScheme.primary,
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('novel-illustration-0'))).height,
@@ -156,12 +157,26 @@ void main() {
     tester.widget<ErrorRetryView>(find.byType(ErrorRetryView)).onRetry();
     await tester.pump();
     _expectPatternedLoading();
+    expect(
+      tester
+          .widget<ExpressiveLoadingIndicator>(
+            find.byType(ExpressiveLoadingIndicator),
+          )
+          .color,
+      Theme.of(
+        tester.element(find.byType(ExpressiveLoadingIndicator)),
+      ).colorScheme.primary,
+    );
     pending.complete(
       base64Decode(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=',
       ),
     );
-    await tester.pump();
+    for (var frame = 0; frame < 8; frame++) {
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      if (find.byType(Image).evaluate().isNotEmpty) break;
+    }
     final image = tester.widget<Image>(find.byType(Image));
     await tester.runAsync(
       () => precacheImage(image.image, tester.element(find.byType(Image))),

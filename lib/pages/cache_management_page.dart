@@ -20,6 +20,7 @@ import '../theme/app_status_colors.dart';
 import '../utils/app_logger.dart';
 import '../utils/app_storage.dart';
 import '../utils/font_manager.dart';
+import '../utils/novel_illustration_cache.dart';
 import '../utils/reading_history.dart';
 import '../utils/settings_reload.dart';
 import '../utils/toast.dart';

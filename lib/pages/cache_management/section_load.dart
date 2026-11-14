@@ -16,6 +16,14 @@ extension _CacheSectionLoad on _CacheManagementPageState {
       ),
       await _buildFileCacheSection(
         tempDir: tempDir,
+        id: 'image:novel',
+        cacheKey: NovelIllustrationCache.cacheKey,
+        label: l10n.cacheNovelIllustrationLabel,
+        description: l10n.cacheNovelIllustrationDesc,
+        icon: Icons.collections_outlined,
+      ),
+      await _buildFileCacheSection(
+        tempDir: tempDir,
         id: 'image:default',
         cacheKey: DefaultCacheManager.key,
         label: l10n.cacheDefaultImageLabel,
@@ -128,7 +136,9 @@ extension _CacheSectionLoad on _CacheManagementPageState {
   }
 
   Future<void> _clearImageCacheSection(_FileCacheSection section) async {
-    if (section.cacheKey == DefaultCacheManager.key) {
+    if (section.cacheKey == NovelIllustrationCache.cacheKey) {
+      await NovelIllustrationCache.instance.clear();
+    } else if (section.cacheKey == DefaultCacheManager.key) {
       await DefaultCacheManager().emptyCache();
     } else {
       await CacheManager(Config(section.cacheKey)).emptyCache();

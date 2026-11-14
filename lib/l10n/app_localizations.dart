@@ -3199,6 +3199,18 @@ abstract class AppLocalizations {
   /// **'漫画章节图片缓存。再次打开读过的章节时，图片会优先从这里读取。'**
   String get cacheReaderImageDesc;
 
+  /// No description provided for @cacheNovelIllustrationLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'小说插图'**
+  String get cacheNovelIllustrationLabel;
+
+  /// No description provided for @cacheNovelIllustrationDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'看过的小说插图缓存 7 天，重开时优先读取。清理不影响已下载的卷。'**
+  String get cacheNovelIllustrationDesc;
+
   /// No description provided for @cacheDefaultImageLabel.
   ///
   /// In zh, this message translates to:

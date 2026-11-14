@@ -1729,6 +1729,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cacheReaderImageDesc => '漫画章节图片缓存。再次打开读过的章节时，图片会优先从这里读取。';
 
   @override
+  String get cacheNovelIllustrationLabel => '小说插图';
+
+  @override
+  String get cacheNovelIllustrationDesc => '看过的小说插图缓存 7 天，重开时优先读取。清理不影响已下载的卷。';
+
+  @override
   String get cacheDefaultImageLabel => '封面与头像';
 
   @override
@@ -5781,6 +5787,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get cacheReaderImageDesc => '漫畫章節圖片快取。再次開啟讀過的章節時，圖片會優先從這裡讀取。';
+
+  @override
+  String get cacheNovelIllustrationLabel => '小說插圖';
+
+  @override
+  String get cacheNovelIllustrationDesc => '看過的小說插圖快取 7 天，重開時優先讀取。清理不影響已下載的卷。';
 
   @override
   String get cacheDefaultImageLabel => '封面與頭像';

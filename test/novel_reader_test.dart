@@ -29,6 +29,7 @@ import 'package:kira/theme/novel_reader_theme.dart';
 import 'package:kira/theme/reader_chrome.dart';
 import 'package:kira/utils/novel_bookmark_store.dart';
 import 'package:kira/utils/novel_download_store.dart';
+import 'package:kira/utils/novel_illustration_cache.dart';
 import 'package:kira/utils/novel_reading_store.dart';
 import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/error_retry_view.dart';
@@ -39,6 +40,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'test_helpers.dart';
 import 'utils/novel_download_store_test.dart' show saveFixture;
+
+class _UncachedIllustrations extends NovelIllustrationCache {
+  @override
+  Future<List<int>> loadBytes(
+    String url, {
+    required Future<List<int>> Function() load,
+  }) => load();
+}
 
 class _Api implements NovelApi {
   @override
@@ -285,7 +294,12 @@ Future<void> _mount(
           initialParagraphIndex: initialParagraph,
           initialParagraphAlignment: initialAlignment,
           highlightOnEntry: highlightOnEntry,
-          source: source,
+          source:
+              source ??
+              RepositoryNovelReaderSource(
+                repository,
+                illustrationCache: _UncachedIllustrations(),
+              ),
           preferDownloads: preferDownloads,
         ),
       ),
@@ -2415,7 +2429,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(const ValueKey('novel-illustrations-close')));
+    await tester.tap(find.byKey(const ValueKey('novel-illustrations-back')));
     await _settle(tester);
     expect(find.byType(NovelReaderIllustrations), findsNothing);
     expect(find.byType(NovelReaderPage), findsOneWidget);

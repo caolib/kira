@@ -890,6 +890,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         illustrations: illustrations,
         loadBytes: (url) =>
             _source.loadImageBytes(_pathWord, detail.volume.id, url),
+        onClosed: _syncSystemUi,
       ),
     );
   }
@@ -915,7 +916,9 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         },
       ),
     );
-    if (!_active(session) || selection == null) return;
+    if (!_active(session)) return;
+    _syncSystemUi();
+    if (selection == null) return;
     if (selection is NovelReaderCatalogExit) {
       await _exitToDetail();
       return;

@@ -429,21 +429,24 @@ void main() {
     // 旧组合标签「图片缓存 / xxx」不再出现。
     expect(find.textContaining('图片缓存 /'), findsNothing);
     expect(find.text('漫画阅读器'), findsOneWidget);
+    expect(find.text('小说插图'), findsOneWidget);
     expect(find.text('封面与头像'), findsOneWidget);
 
     expect(find.text('轻小说缓存'), findsOneWidget);
     expect(find.text('轻小说正文缓存'), findsOneWidget);
     expect(find.textContaining('1 个文件'), findsOneWidget);
 
-    // 纵向顺序：图片缓存分组只含两个图片卡片，正文缓存紧跟其后独立成节。
+    // 图片缓存分组包含漫画、小说插图与封面，正文缓存独立成节。
     double dy(Finder finder) => tester.getTopLeft(finder).dy;
     final imageHeader = dy(find.text('图片缓存'));
     final readerCard = dy(find.text('漫画阅读器'));
+    final illustrationCard = dy(find.text('小说插图'));
     final coverCard = dy(find.text('封面与头像'));
     final novelHeader = dy(find.text('轻小说缓存'));
     final novelCard = dy(find.text('轻小说正文缓存'));
     expect(readerCard, greaterThan(imageHeader));
-    expect(coverCard, greaterThan(readerCard));
+    expect(illustrationCard, greaterThan(readerCard));
+    expect(coverCard, greaterThan(illustrationCard));
     expect(novelHeader, greaterThan(coverCard));
     expect(novelCard, greaterThan(novelHeader));
   });
