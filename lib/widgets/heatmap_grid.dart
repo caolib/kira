@@ -14,8 +14,14 @@ import '../theme/app_spacing.dart';
 ///
 /// 纯 widget 手写，零新依赖。
 class HeatmapGrid extends StatefulWidget {
-  /// 按 yyyy-MM-dd 索引的每日阅读章节数。
+  /// 按 yyyy-MM-dd 索引的每日阅读量。
   final Map<String, int> dailyCounts;
+
+  /// 阅读量格式化，默认使用漫画页数。
+  final String Function(int)? countLabel;
+
+  /// 四级深浅颜色的三个上界，默认对应漫画页数。
+  final List<int> thresholds;
 
   /// 显示的周数。默认 53（约一年）。
   final int weeks;
@@ -38,13 +44,15 @@ class HeatmapGrid extends StatefulWidget {
   const HeatmapGrid({
     super.key,
     required this.dailyCounts,
+    this.countLabel,
+    this.thresholds = const [50, 150, 300],
     this.weeks = 53,
     this.end,
     this.cellRadius = 2,
     this.cellSize = 12,
     this.cellGap = 3,
     this.emptyColor,
-  });
+  }) : assert(thresholds.length == 3);
 
   @override
   State<HeatmapGrid> createState() => _HeatmapGridState();
@@ -84,8 +92,14 @@ class _HeatmapGridState extends State<HeatmapGrid> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context)!;
+    assert(widget.thresholds[0] > 0);
+    assert(widget.thresholds[0] < widget.thresholds[1]);
+    assert(widget.thresholds[1] < widget.thresholds[2]);
     final weeks = widget.weeks;
-    final cellSize = widget.cellSize;
+    final labelSize = MediaQuery.textScalerOf(
+      context,
+    ).scale(tt.labelSmall?.fontSize ?? 11);
+    final cellSize = widget.cellSize.clamp(labelSize, double.infinity);
     final cellGap = widget.cellGap;
     final cellRadius = widget.cellRadius;
 
@@ -113,7 +127,7 @@ class _HeatmapGridState extends State<HeatmapGrid> {
     final cellEmpty = widget.emptyColor ?? cs.surfaceContainerHighest;
 
     // 固定格子尺寸，清晰可读；窄屏横向滚动（与 GitHub 移动端一致）。
-    const labelWidth = 20.0;
+    final labelWidth = (labelSize + AppSpacing.xs).clamp(20.0, double.infinity);
     final gridWidth = (cellSize + cellGap) * weeks - cellGap;
     return SingleChildScrollView(
       controller: _scrollController,
@@ -125,9 +139,9 @@ class _HeatmapGridState extends State<HeatmapGrid> {
           children: [
             // 月份标签行
             SizedBox(
-              height: 16,
+              height: (labelSize * 1.5).clamp(16.0, double.infinity),
               child: Padding(
-                padding: const EdgeInsets.only(left: labelWidth),
+                padding: EdgeInsets.only(left: labelWidth),
                 child: Stack(
                   children: [
                     for (final m in monthLabels)
@@ -211,7 +225,8 @@ class _HeatmapGridState extends State<HeatmapGrid> {
   ) {
     final date = startSunday.add(Duration(days: week * 7 + row));
     // 未来日期不渲染格子
-    final isFuture = date.isAfter(DateTime.now());
+    final end = widget.end ?? DateTime.now();
+    final isFuture = date.isAfter(DateTime(end.year, end.month, end.day));
     if (isFuture) {
       return Positioned(
         left: week * (cellSize + cellGap),
@@ -234,9 +249,8 @@ class _HeatmapGridState extends State<HeatmapGrid> {
     final color = count == 0 ? cellEmpty : _levelColor(cs.primary, count);
     // 单击触发 Tooltip（贴在格子上方的小气泡），而非悬浮/长按——
     // 手机无鼠标，悬浮不可用；长按体验差。tap 模式单击即弹。
-    final message = count == 0
-        ? '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}'
-        : l10n.statsPagesOnDate(count);
+    final label = (widget.countLabel ?? l10n.statsPagesOnDate)(count);
+    final message = '$key · $label';
     return Positioned(
       left: week * (cellSize + cellGap),
       top: row * (cellSize + cellGap),
@@ -257,23 +271,17 @@ class _HeatmapGridState extends State<HeatmapGrid> {
     );
   }
 
-  /// 按"当天阅读页数"固定阈值选 4 级透明度（GitHub 风格）。
-  ///
-  /// 含义固定、用户间可比，不受章节页数差异影响：
-  /// - 1-50 页（浅色）
-  /// - 51-150 页
-  /// - 151-300 页
-  /// - 301+ 页（最深）
+  /// 按当天阅读量与当前领域阈值选 4 级透明度（GitHub 风格）。
   Color _levelColor(Color base, int count) {
     double alpha;
     if (count <= 0) {
       // 由调用方处理空格底色，此处不预期为 0
       alpha = 0.0;
-    } else if (count <= 50) {
+    } else if (count <= widget.thresholds[0]) {
       alpha = 0.35;
-    } else if (count <= 150) {
+    } else if (count <= widget.thresholds[1]) {
       alpha = 0.55;
-    } else if (count <= 300) {
+    } else if (count <= widget.thresholds[2]) {
       alpha = 0.75;
     } else {
       alpha = 1.0;

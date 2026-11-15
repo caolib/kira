@@ -15,6 +15,7 @@ import 'novel_reader_dialogue.dart';
 import 'novel_reader_document.dart';
 import 'novel_reader_font.dart';
 import 'novel_reader_paginator.dart' show novelPageMetricsFor;
+import 'novel_visible_text_range.dart';
 
 /// Owns layout restoration, so neither initial layout nor a font/viewport change
 /// can emit a spurious paragraph zero to the persistence layer.
@@ -28,6 +29,8 @@ class NovelReaderViewport extends StatefulWidget {
     required this.jumpRevision,
     required this.onPosition,
     required this.onTap,
+    this.onVisibleText,
+    this.canSampleVisibleText,
     this.onParagraphLongPress,
     this.highlight,
     this.highlightOpacity,
@@ -51,6 +54,10 @@ class NovelReaderViewport extends StatefulWidget {
   final int jumpRevision;
   final ValueChanged<NovelReaderLocation> onPosition;
   final VoidCallback onTap;
+  final ValueChanged<List<NovelVisibleTextRange>>? onVisibleText;
+
+  /// 动态闸门先于几何查询执行，覆盖生命周期变化到下一次 rebuild 的间隙。
+  final bool Function()? canSampleVisibleText;
 
   /// 长按段落弹出上下文菜单（与翻页模式同一手势）；回携带落点全局坐标
   /// 供菜单定位。点按仍然只切换工具栏（由外层 surface 统一处理）。
@@ -151,6 +158,57 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
 
   bool _restoring = true;
   int _restoration = 0;
+  final _textProbes = <int, Set<RenderNovelTextRangeProbe>>{};
+  Timer? _visibleTextTimer;
+
+  bool get _canSampleText =>
+      mounted &&
+      !_restoring &&
+      widget.onVisibleText != null &&
+      (widget.canSampleVisibleText?.call() ?? true);
+
+  void _attachTextProbe(RenderNovelTextRangeProbe probe) =>
+      (_textProbes[probe.itemIndex] ??= {}).add(probe);
+
+  void _detachTextProbe(RenderNovelTextRangeProbe probe) {
+    final probes = _textProbes[probe.itemIndex];
+    probes?.remove(probe);
+    if (probes?.isEmpty ?? false) _textProbes.remove(probe.itemIndex);
+  }
+
+  /// 按需节流而非周期计时：静止无 timer，滚动最多约每 150ms 采一次。
+  void _scheduleVisibleText() {
+    if (!_canSampleText || _visibleTextTimer != null) return;
+    _visibleTextTimer = Timer(const Duration(milliseconds: 150), () {
+      _visibleTextTimer = null;
+      sampleVisibleText();
+    });
+  }
+
+  /// 停滚、恢复、宿主 flush 时补采；只查 ItemPositions 标记可见的正文。
+  void sampleVisibleText() {
+    _visibleTextTimer?.cancel();
+    _visibleTextTimer = null;
+    if (!_canSampleText) return;
+    final viewport = context.findRenderObject();
+    if (viewport is! RenderBox || !viewport.hasSize) return;
+    final ranges = <NovelVisibleTextRange>[];
+    for (final item in _positions.itemPositions.value) {
+      if (item.itemTrailingEdge <= 0 || item.itemLeadingEdge >= 1) continue;
+      for (final probe in _textProbes[item.index] ?? const {}) {
+        final range = probe.visibleRange(viewport);
+        if (range != null) ranges.add(range);
+      }
+    }
+    if (ranges.isNotEmpty) widget.onVisibleText!(ranges);
+  }
+
+  void _sampleTextAfterLayout() {
+    if (widget.onVisibleText == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) sampleVisibleText();
+    });
+  }
 
   /// True from a user drag start (or fling) until the gesture-driven scroll
   /// ends. Only these notifications hide the toolbar, so programmatic anchor
@@ -299,6 +357,12 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   @override
   void didUpdateWidget(NovelReaderViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.onVisibleText == null) {
+      _visibleTextTimer?.cancel();
+      _visibleTextTimer = null;
+    } else if (oldWidget.onVisibleText == null) {
+      _sampleTextAfterLayout();
+    }
     final dialogueLayoutChanged = _updateDialogue();
     final textLayoutChanged = _updateTextStyles();
     if (oldWidget.contentRevision != widget.contentRevision) {
@@ -332,6 +396,8 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   void _scheduleRestore(NovelReaderAnchor anchor) {
     _desired = anchor;
     _restoring = true;
+    _visibleTextTimer?.cancel();
+    _visibleTextTimer = null;
     // 换卷/跳转后重新要求一次真实的向下滑动，卷末判定才恢复生效。
     _rearmSeam();
     final generation = ++_restoration;
@@ -377,6 +443,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
       if (!_isCurrent(generation)) return;
       setState(() => _restoring = false);
       _onPositions();
+      sampleVisibleText();
     } catch (error, stack) {
       unawaited(
         AppLogger.instance.recordWarning(
@@ -417,6 +484,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
 
   void _onPositions() {
     if (!mounted || _restoring) return;
+    _scheduleVisibleText();
     _checkVolumeSeam();
     final location = _readPosition();
     if (location == null) return;
@@ -504,6 +572,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
   @override
   void dispose() {
     ++_restoration;
+    _visibleTextTimer?.cancel();
     _positions.itemPositions.removeListener(_onPositions);
     super.dispose();
   }
@@ -550,6 +619,7 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
       widget.onScroll?.call();
     } else if (notification is ScrollEndNotification) {
       _userScrolling = false;
+      _sampleTextAfterLayout();
     }
     return false;
   }
@@ -638,6 +708,15 @@ class NovelReaderViewportState extends State<NovelReaderViewport> {
             baseStyle: style,
             dialogue: _dialogue,
           );
+    if (widget.onVisibleText != null && paragraph.text.isNotEmpty) {
+      body = NovelTextRangeProbe(
+        paragraph: paragraph,
+        itemIndex: index,
+        onAttach: _attachTextProbe,
+        onDetach: _detachTextProbe,
+        child: body,
+      );
+    }
     // 高亮样式由演示切换器实时决定；DecoratedBox 不参与布局，高亮
     // 出现/消失时正文一个像素都不动，锚点与进度不受闪光影响。
     // 高亮卡片画在段落矩形之外的留白里（不参与布局），出现/消失正文

@@ -106,12 +106,31 @@ Future<T> load() async {
 | 模块 | 前缀/键 | 文件 |
 | ---- | ---------- | ---- |
 | 漫画阅读历史 | `reading_history_$pathWord` / `..._group_$g` | `lib/utils/reading_history.dart` |
-| 阅读统计 | `reading_stats_v1` / `reader_reading_stats_enabled` | `lib/utils/reading_stats.dart` |
+| 阅读统计（漫画 / 轻小说） | `reading_stats_v1` | `lib/utils/reading_stats.dart` |
 | AI 章节总结 | `zhipu_chapter_summary_$chapterUuid` | `lib/utils/chapter_summary_cache.dart` |
 | 远程公告已读与检查记录 | `remote_notice_seen_keys_v2` / `remote_notice_sync_state_v1` | `lib/utils/remote_notice_service.dart` |
 | 分享链接已处理标记 | `shared_link_last_handled` | `lib/utils/kira_links.dart` |
 
 新增此类"按实体 ID 索引的历史/记录"时，沿用对应前缀，并确保 `cache_management_page._categoryOf` 能识别分类。
+
+### 阅读统计
+
+- `lib/utils/reading_stats.dart` 的 `ReadingStats` 在单个 JSON 字符串键 `reading_stats_v1` 中保留漫画的 `comicMeta` / `daily` / `since`，另加独立的 `novelMeta` / `novelDaily` / `novelSince`；旧漫画数据与旧备份可直接读取，缺少小说字段时按空处理。
+- `ReadingStats.initializeNovelsFromHistory` 在统计启用、小说统计全零时，只读取全部 `novel_reading_history_*` 断点初始化；补入书籍、累计已读卷与各书当前章节，不推算其他章节、字数、标签或每日活跃度。仅知卷而不知章节时，`chapters[volumeId]` 保留空 Map，冷启动仍保留卷数。完成标记 `novelHistoryInitialized` 是 `reading_stats_v1` 内的布尔字段（不是独立偏好键）；有非零数据时避免重复合并，但不阻止带旧标记的全零数据重新初始化。初始化与可见正文记录串行衔接，备份刷新等待初始化完成。清除小说或全部统计重置标记，下次加载可从保留的本地历史重新初始化；清除漫画不改小说标记。空历史时不重复写盘，后来恢复 / 新增本地历史后仍可在全零状态初始化。
+- 小说按书籍 `pathWord` 保存书名、标签、累计字数、卷 / 原始章节身份，以及最近阅读日的原始段落字符区间。区间键为 JSON 元组 `[volumeId, entryIndex, paragraphIndex]`，值为 UTF-16 半开区间列表；只存偏移，不存正文或排版页码。当天重叠区间只扫描新增非空白字符，跨重启仍去重，隔天重读重新累计；书 / 卷 / 章始终累计去重，活跃度保存每日字数。
+- 小说记录按需合并，最多每 5 秒自动落盘；漫画保留 800ms 防抖。返回、后台、备份通过 `ReadingStats.flush` 刷新。写失败保留待写状态供重试；`ReadingStats.clear(novel: true/false)` 只清对应类型，省略参数才清全部，清除 / 恢复期间阻止迟到记录复活旧数据。
+- `reading_stats_v1` 以 `string` 类型归入备份「阅读统计」，不属于普通设置；统计开关与展示配置由 `lib/models/reader_settings.dart` 的 `ReaderSettings` 管理，归入「设置」。以下键均以 `reader_reading_stats_` 为前缀，实际 prefs 类型与 `BackupSchema` 保持一致：
+
+| 键后缀 | prefs 类型 | 用途 |
+| ---- | ---- | ---- |
+| `enabled` | `bool` | 两类共用收集开关，默认关闭 |
+| `show_comics` / `show_novels` | `bool` | 两类默认显示，至少保留一类；隐藏不停止收集 |
+| `show_overview` / `show_tags` / `show_activity_chart` | `bool` | 漫画组件显隐 |
+| `novel_show_overview` / `novel_show_tags` / `novel_show_activity_chart` | `bool` | 小说组件显隐 |
+| `chart_style` / `novel_chart_style` | `int` | 各类独立的热力图 / 条形图样式 |
+| `section_order` / `novel_section_order` | `StringList` | 各类独立的组件排序 |
+
+恢复统计后调用 `ReadingStats.reloadFromPrefs` 丢弃旧内存副本；恢复设置后重载 `ReaderSettings`。只选择其中一个备份分类时不得顺带替换另一个分类。
 
 ## 3. 用户偏好（持久化）
 

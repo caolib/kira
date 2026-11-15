@@ -2,95 +2,66 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/reader_settings.dart';
 import 'app_logger.dart';
+import 'app_storage.dart';
+import 'novel_reading_ranges.dart';
+import 'novel_reading_store.dart';
 
-/// 阅读统计的本地存储与聚合。
+/// 本地阅读统计，与保存断点的阅读历史分离。
+/// 小说统计全零时可从本地历史补书/卷/当前章节，不猜算历史字数。
 ///
-/// 与阅读历史（ReadingHistory）不同：这里不存"读到哪一页"，而是聚合计数——读过
-/// 多少本漫画、多少话、多少页、常看类型、每日阅读活跃度（热力图）。
+/// 漫画沿用原口径：图片真实网络加载成功 +1，缓存/下载不计入。
+/// 小说按实际展示的正文记录，在线、缓存与下载共用：书/卷/章累计去重，
+/// 字数与每日活跃度按当天展示的字符区间去重，隔天重读重新计数。
+/// 不统计预加载、插图或空章节，也不使用随排版改变的小说页数。
 ///
-/// ## 计数口径
-/// 页数 = 实际发出的图片网络请求数。每次图片**网络加载成功** +1（由 reader
-/// 的 `_ReaderImageFileService` 在 `ImageLoadStats().record` 同一点埋点），
-/// 命中磁盘/内存缓存、本地已下载章节不触发请求，不计入——与
-/// [lib/utils/image_load_stats.dart] 同一口径。
-///
-/// ## 开关
-/// 默认关闭。开关位 [ReaderSettings.readingStatsEnabled]（bool，prefs 键
-/// `reader_reading_stats_enabled`）。关闭时 [recordImageLoad] 立即返回，
-/// 不写任何统计键——未开启的用户零成本。
-///
-/// ## 数据来源
-/// 首次开启后数据为空，之后纯靠 [recordImageLoad] 增量累积（阅读章节时
-/// 由 reader 埋点）。不从本地缓存导入历史数据。
-///
-/// ## 存储
-/// 单键 `reading_stats_v1`（JSON），结构见 [_StatsData]。约 120KB/100 部，
-/// 配合 daily 730 天裁剪 + chapterImages 按 uuid 聚合，增长可控。
+/// 两类共用默认关闭的 [ReaderSettings.readingStatsEnabled]，但数据互相隔离。
+/// 单键 `reading_stats_v1` 保留旧漫画字段，新增 novelMeta/novelDaily/novelSince，
+/// 因此继续使用既有阅读统计备份分类、恢复锁与清除边界。
 class ReadingStats {
   static const _dataKey = 'reading_stats_v1';
-
-  /// daily 计数保留天数。超过的旧条目在每次写入时裁剪。
   static const _dailyRetentionDays = 730;
-
-  /// 埋点写入防抖窗口。连续翻章时合并多次计数为一次落盘。
   static const _debounceDelay = Duration(milliseconds: 800);
 
-  /// 内存缓存，避免每次埋点都解码整条 JSON。lazily 加载。
   static _StatsData? _cache;
-
   static bool _dirty = false;
   static Timer? _debounceTimer;
   static Future<void>? _flushing;
   static bool _restoring = false;
+  static Future<void>? _clearing;
+  static Future<void>? _initializingNovels;
 
-  /// 写入代际。`clear()`/`reloadFromPrefs()` 递增;在途 `_flush()` 写盘前校验,
-  /// 防止清除后旧数据被回写"复活"。
+  /// 清除/恢复会作废等待加载或写盘的旧记录。
   static int _generation = 0;
 
-  // ── 开关 ──────────────────────────────────────────────────────────
-
-  /// 统计是否已开启的判定函数。默认读取 [ReaderSettings] 的同步内存值；
-  /// 测试可经 [setEnabledGate] 注入桩。
   static bool Function() _enabledGate = () =>
       ReaderSettings().readingStatsEnabled;
 
-  /// 仅供测试覆写开关判定。
   @visibleForTesting
   static void setEnabledGate(bool Function() gate) => _enabledGate = gate;
 
-  /// 统计是否已开启。reader 埋点前快速判断；统计页也用它决定显示哪个态。
   static bool get isEnabled => _enabledGate();
 
-  // ── 埋点 ──────────────────────────────────────────────────────────
-
-  /// 记一次图片网络加载成功（reader 的图片请求完成时调用）。
-  ///
-  /// - 未开启时立即返回，零写入。
-  /// - 每张图片**真实请求**成功 → 该章计数 +1、当日 [daily] 计数 +1。
-  ///   命中缓存/本地章节不会走到请求层，天然不计入，无需调用方去重。
-  /// - 同一章节反复加载（重读/重试）按请求次数累加。
-  /// - [comicName] / [tags] 懒填充：传入非空且当前为空时才写入，避免覆盖
-  ///   已有更完整的数据。
-  /// - 防抖落盘：连续加载合并为一次写。
+  /// 漫画每次图片网络加载成功 +1；漫画/章节去重，页数按请求累加。
   static Future<void> recordImageLoad({
     required String pathWord,
     required String chapterUuid,
     String? comicName,
     List<String>? tags,
   }) async {
-    if (_restoring || !isEnabled) return;
+    if (_restoring || _clearing != null || !isEnabled) return;
     if (pathWord.isEmpty || chapterUuid.isEmpty) return;
-
     final generation = _generation;
     final data = await _loadCache();
-    if (_restoring || generation != _generation) return;
-    final today = _todayKey();
-
-    // comicMeta 增量更新
+    if (_restoring ||
+        _clearing != null ||
+        !isEnabled ||
+        generation != _generation) {
+      return;
+    }
+    final today = _dayKey(DateTime.now());
     final comic = data.comicMeta.putIfAbsent(
       pathWord,
       () => _ComicStatData(name: '', tags: const [], chapterImages: {}),
@@ -101,73 +72,256 @@ class ReadingStats {
     if (tags != null && tags.isNotEmpty && comic.tags.isEmpty) {
       comic.tags = List<String>.unmodifiable(tags);
     }
-    // 该章实际加载图片数（每次网络请求 +1）
     comic.chapterImages[chapterUuid] =
         (comic.chapterImages[chapterUuid] ?? 0) + 1;
-
-    // daily 当日加载图片数（与 ImageLoadStats 同口径：仅真实请求）
     data.daily[today] = (data.daily[today] ?? 0) + 1;
-
-    // since 首次记录日
     data.since ??= today;
-
-    // 裁剪过旧的 daily 条目
-    _pruneDaily(data);
-
-    _dirty = true;
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(_debounceDelay, () => unawaited(_flush()));
+    _pruneDaily(data.daily);
+    _scheduleFlush();
   }
 
-  // ── 加载 / 清除 ───────────────────────────────────────────────────
-
-  /// 读取当前统计快照（冲刷待写后返回）。
-  static Future<ReadingStatsSnapshot> load() async {
-    await _flush();
+  /// 记录实际展示的段落字符区间，不复制正文，不额外排版。
+  /// 同日重叠区间只扫描新覆盖的字符；跨日/重启/排版变化口径一致。
+  static Future<void> recordNovelReading({
+    required String pathWord,
+    required String volumeId,
+    required int entryIndex,
+    required int paragraphIndex,
+    required String text,
+    required int start,
+    required int end,
+    String? novelName,
+    List<String>? tags,
+    DateTime? readAt,
+  }) async {
+    if (_restoring || _clearing != null || !isEnabled) return;
+    if (pathWord.isEmpty ||
+        volumeId.isEmpty ||
+        entryIndex < 0 ||
+        paragraphIndex < 0 ||
+        text.isEmpty ||
+        end <= start) {
+      return;
+    }
+    final generation = _generation;
+    final today = _dayKey(readAt ?? DateTime.now());
+    final initialization = _initializingNovels;
+    if (initialization != null) await initialization;
     final data = await _loadCache();
-    return data.toSnapshot();
+    if (_restoring ||
+        _clearing != null ||
+        !isEnabled ||
+        generation != _generation) {
+      return;
+    }
+    final novel =
+        data.novelMeta[pathWord] ??
+        _NovelStatData(name: '', tags: const [], chapters: {});
+    if (novel.rangeDay != today) {
+      novel.ranges.clear();
+      novel.rangeDay = today;
+    }
+    // JSON 元组避免卷 ID 含分隔符时与章节/段落索引发生键碰撞。
+    final key = jsonEncode([volumeId, entryIndex, paragraphIndex]);
+    final ranges = novel.ranges.putIfAbsent(key, NovelReadingRanges.new);
+    final added = ranges.add(text, start, end);
+    if (added == 0) return;
+    data.novelMeta[pathWord] = novel;
+    if (novelName != null && novelName.isNotEmpty && novel.name.isEmpty) {
+      novel.name = novelName;
+    }
+    if (tags != null && tags.isNotEmpty && novel.tags.isEmpty) {
+      novel.tags = List<String>.unmodifiable(tags);
+    }
+    final chapters = novel.chapters.putIfAbsent(volumeId, () => {});
+    chapters[entryIndex.toString()] = today;
+    novel.totalWords += added;
+    data.novelDaily[today] = (data.novelDaily[today] ?? 0) + added;
+    data.novelSince ??= today;
+    _pruneDaily(data.novelDaily);
+    _scheduleFlush(novel: true);
   }
 
-  /// 丢弃内存缓存,使下次 [load] 重新从 prefs 读取。
-  ///
-  /// 导入备份 / 清除数据后调用:否则进程内会一直用旧快照,覆盖刚导入的值。
+  /// 开启后仅在小说统计全零时从全部本地断点初始化；清除后可再次初始化。
+  /// 只补书/已知卷/当前章节，不推算历史字数、其他章节或每日活跃度。
+  static Future<void> initializeNovelsFromHistory() {
+    if (_restoring || _clearing != null || !isEnabled) return Future.value();
+    final pending = _initializingNovels;
+    if (pending != null) return pending;
+    final generation = _generation;
+    late final Future<void> operation;
+    operation = _initializeNovelsFromHistory(generation).whenComplete(() {
+      if (identical(_initializingNovels, operation)) _initializingNovels = null;
+    });
+    _initializingNovels = operation;
+    return operation;
+  }
+
+  static Future<void> _initializeNovelsFromHistory(int generation) async {
+    bool active() =>
+        !_restoring &&
+        _clearing == null &&
+        isEnabled &&
+        generation == _generation;
+    final data = await _loadCache();
+    if (!active()) return;
+    // 初始化标记只避免重复合并非零数据，不能阻止全零统计重新初始化。
+    if (data.novelHistoryInitialized && data.hasNovelStats) {
+      await _flush();
+      return;
+    }
+    var changed = !data.novelHistoryInitialized;
+    if (!data.hasNovelStats) {
+      final records = await NovelReadingStore(
+        prefs: AppStorage.sharedPreferences(),
+      ).readRecent(limit: null);
+      if (!active()) return;
+      // 记录调用会等待本次初始化；仍防御性检查，绝不覆盖已有小说统计。
+      if (!data.hasNovelStats) {
+        for (final record in records) {
+          final volumes = {
+            ...record.readVolumeIds.where((id) => id.trim().isNotEmpty),
+            record.volumeId,
+          };
+          final chapters = <String, Map<String, String>>{
+            for (final volume in volumes) volume: {},
+          };
+          // contents 的原始索引含插图，也可能跳读，不能用索引 + 1 猜章节数。
+          chapters[record.volumeId]![record.entryIndex.toString()] = _dayKey(
+            record.updatedAt.toLocal(),
+          );
+          data.novelMeta[record.pathWord] = _NovelStatData(
+            name: record.name,
+            tags: const [],
+            chapters: chapters,
+          );
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      data.novelHistoryInitialized = true;
+      _scheduleFlush(novel: true);
+    }
+    await _flush();
+  }
+
+  static void _scheduleFlush({bool novel = false}) {
+    _dirty = true;
+    // 小说滚动高频采样只合并写盘：最多每 5 秒一次，不因持续滚动无限推迟。
+    // 返回/后台/备份仍由显式 flush 立即保存。
+    if (novel && (_debounceTimer?.isActive ?? false)) return;
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(
+      novel ? const Duration(seconds: 5) : _debounceDelay,
+      () {
+        unawaited(
+          _flush().catchError((Object error, StackTrace stack) {
+            unawaited(
+              AppLogger.instance.recordWarning(
+                error,
+                stackTrace: stack,
+                source: 'reading_stats.flush',
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  /// 冲刷待写后返回不可变快照。
+  static Future<ReadingStatsSnapshot> load() async {
+    await flush();
+    return (await _loadCache()).toSnapshot();
+  }
+
+  /// 导入/清除后丢弃缓存，避免旧快照覆盖刚恢复的记录。
   static void reloadFromPrefs() {
     _debounceTimer?.cancel();
     _debounceTimer = null;
     _generation++;
     _cache = null;
     _dirty = false;
+    _initializingNovels = null;
   }
 
-  static Future<void> flush() => _flush();
+  static Future<void> flush() async {
+    final initialization = _initializingNovels;
+    if (initialization != null) await initialization;
+    await _flush();
+  }
 
   static Future<void> pauseForRestore() async {
     _restoring = true;
-    await _flush();
-    // Invalidate recordImageLoad calls that were waiting on _loadCache.
+    await flush();
     _generation++;
   }
 
   static void resumeAfterRestore() => _restoring = false;
 
-  /// 清除全部统计数据(不改变开关状态)。
-  static Future<void> clear() async {
-    reloadFromPrefs();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_dataKey);
+  /// novel 为 true/false 时仅清除小说/漫画；省略时清全部。
+  /// 不改变开关、阅读断点、另一类型统计或下载。
+  static Future<void> clear({bool? novel}) async {
+    while (_clearing != null) {
+      await _clearing;
+    }
+    final operation = _clear(novel);
+    _clearing = operation;
+    try {
+      await operation;
+    } finally {
+      _clearing = null;
+    }
   }
 
-  // ── 内部：缓存读写 ────────────────────────────────────────────────
+  static Future<void> _clear(bool? novel) async {
+    await flush();
+    final data = await _loadCache();
+    reloadFromPrefs();
+    final prefs = await AppStorage.sharedPreferences();
+    try {
+      final next = _StatsData(
+        comicMeta: novel == true ? data.comicMeta : {},
+        daily: novel == true ? data.daily : {},
+        since: novel == true ? data.since : null,
+        novelMeta: novel == false ? data.novelMeta : {},
+        novelDaily: novel == false ? data.novelDaily : {},
+        novelSince: novel == false ? data.novelSince : null,
+        // 清除小说时重置初始化标记，下一次加载统计可重新导入本地断点。
+        novelHistoryInitialized: novel == false && data.novelHistoryInitialized,
+      );
+      if (!await prefs.setString(_dataKey, jsonEncode(next.toJson()))) {
+        throw StateError('reading_stats removal failed');
+      }
+      _cache = next;
+    } catch (error, stack) {
+      // prefs 可能先改插件缓存再返回写入失败；重载后才能重试清除。
+      try {
+        await prefs.reload();
+      } catch (reloadError, reloadStack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            reloadError,
+            stackTrace: reloadStack,
+            source: 'reading_stats.clear_reload',
+          ),
+        );
+      }
+      _cache = data;
+      Error.throwWithStackTrace(error, stack);
+    }
+  }
 
   static Future<_StatsData> _loadCache() async {
     if (_cache != null) return _cache!;
     final generation = _generation;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppStorage.sharedPreferences();
     if (generation != _generation) return _StatsData.empty();
+    // 同时到达的漫画/小说埋点必须共享同一对象，不能互相覆盖首次加载。
+    if (_cache != null) return _cache!;
     final raw = prefs.getString(_dataKey);
-    if (raw == null || raw.isEmpty) {
-      return _cache = _StatsData.empty();
-    }
+    if (raw == null || raw.isEmpty) return _cache = _StatsData.empty();
     try {
       final json = jsonDecode(raw);
       if (json is! Map<String, dynamic>) {
@@ -175,7 +329,6 @@ class ReadingStats {
       }
       _cache = _StatsData.fromJson(json);
     } catch (e, stack) {
-      // 整段数据损坏（极少见）：记日志后按空数据继续，不因坏数据崩溃或死循环。
       unawaited(
         AppLogger.instance.recordWarning(
           e,
@@ -211,29 +364,29 @@ class ReadingStats {
   }
 
   static Future<void> _writeCache(_StatsData data, int gen) async {
-    final prefs = await SharedPreferences.getInstance();
-    // clear()/reloadFromPrefs() 可能在等待期间执行:代际变化说明数据已被清除,
-    // 丢弃本次写,避免"复活"已删除的统计。
+    final prefs = await AppStorage.sharedPreferences();
     if (gen != _generation) return;
     _dirty = false;
-    if (!await prefs.setString(_dataKey, jsonEncode(data.toJson()))) {
-      _dirty = true;
-      throw StateError('reading_stats persistence failed');
+    try {
+      if (!await prefs.setString(_dataKey, jsonEncode(data.toJson()))) {
+        throw StateError('reading_stats persistence failed');
+      }
+    } catch (_) {
+      // 平台返回 false 或抛错都保留待写状态，下一次 flush 可以重试。
+      // 错误原样交给调用方；防抖调用在 _scheduleFlush 中记录日志。
+      if (gen == _generation) _dirty = true;
+      rethrow;
     }
   }
 
-  static void _pruneDaily(_StatsData data) {
-    if (data.daily.length < 200) return; // 量小不裁剪，省一次日期解析
+  static void _pruneDaily(Map<String, int> daily) {
+    if (daily.length < 200) return;
     final cutoff = DateTime.now().subtract(
       const Duration(days: _dailyRetentionDays),
     );
     final cutoffKey = _dayKey(cutoff);
-    data.daily.removeWhere((k, _) => k.compareTo(cutoffKey) < 0);
+    daily.removeWhere((k, _) => k.compareTo(cutoffKey) < 0);
   }
-
-  // ── 日期键 ────────────────────────────────────────────────────────
-
-  static String _todayKey() => _dayKey(DateTime.now());
 
   static String _dayKey(DateTime t) =>
       '${t.year.toString().padLeft(4, '0')}'
@@ -241,39 +394,53 @@ class ReadingStats {
       '-${t.day.toString().padLeft(2, '0')}';
 }
 
-// ── 聚合助手（纯函数，可单测） ──────────────────────────────────────
-
-/// 读过的漫画数 = comicMeta 键数。
 int comicsReadCount(ReadingStatsSnapshot s) => s.comicMeta.length;
 
-/// 读过的章节数 = 各漫画 chapterImages 键数之和。
 int chaptersReadCount(ReadingStatsSnapshot s) =>
     s.comicMeta.values.fold<int>(0, (sum, c) => sum + c.chapterImages.length);
 
-/// 阅读页数 = 各漫画 chapterImages 值之和（实际加载的图片数）。
-int pagesReadCount(ReadingStatsSnapshot s) =>
-    s.comicMeta.values.fold<int>(0, (sum, c) {
-      var sub = 0;
-      for (final images in c.chapterImages.values) {
-        sub += images;
-      }
-      return sum + sub;
-    });
+int pagesReadCount(ReadingStatsSnapshot s) => s.comicMeta.values.fold<int>(
+  0,
+  (sum, c) => sum + c.chapterImages.values.fold<int>(0, (a, b) => a + b),
+);
 
-/// 最爱标签：聚合各漫画 tags，按「已读章节数」加权降序取前 [limit] 条。
-///
-/// 权重 = 该漫画 `chapterImages` 的键数（已读章节数，非页数）。
-/// 同一漫画内同名标签只计一次；只翻过 1 话的短读不会和读了 100 话的长篇
-/// 并列，更贴近「常看」语义。
-List<TagCount> topTags(ReadingStatsSnapshot s, {int limit = 10}) {
+int novelsReadCount(ReadingStatsSnapshot s) => s.novelMeta.length;
+
+int novelWordsReadCount(ReadingStatsSnapshot s) =>
+    s.novelMeta.values.fold<int>(0, (sum, n) => sum + n.totalWords);
+
+int novelVolumesReadCount(ReadingStatsSnapshot s) =>
+    s.novelMeta.values.fold<int>(0, (sum, n) => sum + n.chapters.length);
+
+int novelChaptersReadCount(ReadingStatsSnapshot s) =>
+    s.novelMeta.values.fold<int>(
+      0,
+      (sum, n) => sum + n.chapters.values.fold<int>(0, (a, b) => a + b.length),
+    );
+
+/// 常看类型按累计已读章节数加权，每本书内的同名标签只计一次。
+List<TagCount> topTags(ReadingStatsSnapshot s, {int limit = 10}) => _topTags(
+  s.comicMeta.values.map((c) => (c.tags, c.chapterImages.length)),
+  limit,
+);
+
+List<TagCount> topNovelTags(ReadingStatsSnapshot s, {int limit = 10}) =>
+    _topTags(
+      s.novelMeta.values.map(
+        (n) => (
+          n.tags,
+          n.chapters.values.fold<int>(0, (sum, c) => sum + c.length),
+        ),
+      ),
+      limit,
+    );
+
+List<TagCount> _topTags(Iterable<(List<String>, int)> books, int limit) {
   final counts = <String, int>{};
-  for (final comic in s.comicMeta.values) {
-    final weight = comic.chapterImages.length;
+  for (final (tags, weight) in books) {
     if (weight <= 0) continue;
-    // 同一漫画内同名的标签只计一次
-    final seen = <String>{};
-    for (final tag in comic.tags) {
-      if (tag.isEmpty || !seen.add(tag)) continue;
+    for (final tag in tags.toSet()) {
+      if (tag.isEmpty) continue;
       counts[tag] = (counts[tag] ?? 0) + weight;
     }
   }
@@ -286,25 +453,32 @@ List<TagCount> topTags(ReadingStatsSnapshot s, {int limit = 10}) {
   return list.take(limit).toList();
 }
 
-// ── 模型 ──────────────────────────────────────────────────────────
-
-/// 统计页展示用的不可变快照。
 class ReadingStatsSnapshot {
   final Map<String, ComicStat> comicMeta;
   final Map<String, int> daily;
   final DateTime? since;
+  final Map<String, NovelStat> novelMeta;
+  final Map<String, int> novelDaily;
+  final DateTime? novelSince;
+  final bool novelHistoryInitialized;
 
   const ReadingStatsSnapshot({
     required this.comicMeta,
     required this.daily,
     this.since,
+    this.novelMeta = const {},
+    this.novelDaily = const {},
+    this.novelSince,
+    this.novelHistoryInitialized = false,
   });
 
-  /// 是否完全没有任何统计数据（既无漫画也无活动）。
-  bool get isEmpty => comicMeta.isEmpty && daily.isEmpty;
+  bool get isEmpty =>
+      comicMeta.isEmpty &&
+      daily.isEmpty &&
+      novelMeta.isEmpty &&
+      novelDaily.isEmpty;
 }
 
-/// 单本漫画的统计条目。
 class ComicStat {
   final String name;
   final List<String> tags;
@@ -317,7 +491,23 @@ class ComicStat {
   });
 }
 
-/// 标签计数（用于最爱标签排序展示）。
+class NovelStat {
+  final String name;
+  final List<String> tags;
+  final int totalWords;
+
+  /// 卷 ID → 原始章节索引 → 最后阅读日期。
+  /// 历史初始化只能确认已读卷而不知章节时，对应卷保留空 Map。
+  final Map<String, Map<String, String>> chapters;
+
+  const NovelStat({
+    required this.name,
+    required this.tags,
+    required this.chapters,
+    this.totalWords = 0,
+  });
+}
+
 class TagCount {
   final String name;
   final int count;
@@ -325,59 +515,77 @@ class TagCount {
   const TagCount({required this.name, required this.count});
 }
 
-// ── 内部可变数据（存储/序列化用） ──────────────────────────────────
-
 class _StatsData {
   final Map<String, _ComicStatData> comicMeta;
   final Map<String, int> daily;
   String? since;
+  final Map<String, _NovelStatData> novelMeta;
+  final Map<String, int> novelDaily;
+  String? novelSince;
+  bool novelHistoryInitialized;
 
-  _StatsData({required this.comicMeta, required this.daily, this.since});
+  /// 小说、卷、章节或字数非零时不合并历史；仅有零值日期不算阅读量。
+  bool get hasNovelStats =>
+      novelMeta.isNotEmpty || novelDaily.values.any((count) => count != 0);
 
-  factory _StatsData.empty() => _StatsData(comicMeta: {}, daily: {});
+  _StatsData({
+    required this.comicMeta,
+    required this.daily,
+    this.since,
+    required this.novelMeta,
+    required this.novelDaily,
+    this.novelSince,
+    this.novelHistoryInitialized = false,
+  });
+
+  factory _StatsData.empty() =>
+      _StatsData(comicMeta: {}, daily: {}, novelMeta: {}, novelDaily: {});
 
   factory _StatsData.fromJson(Map<String, dynamic> json) {
-    final metaRaw = json['comicMeta'];
     final comicMeta = <String, _ComicStatData>{};
+    final metaRaw = json['comicMeta'];
     if (metaRaw is Map) {
       for (final entry in metaRaw.entries) {
-        final pw = entry.key.toString();
         final m = entry.value;
         if (m is! Map) continue;
-        try {
-          comicMeta[pw] = _ComicStatData(
-            name: m['name']?.toString() ?? '',
-            tags: _readTags(m['tags']),
-            chapterImages: _readIntMap(m['chapterImages']),
-          );
-        } catch (e, stack) {
-          // 单本漫画条目损坏：跳过该条，不拖垮整份统计。
-          unawaited(
-            AppLogger.instance.recordWarning(
-              e,
-              stackTrace: stack,
-              source: 'reading_stats.parse_comic',
-            ),
-          );
-        }
+        comicMeta[entry.key.toString()] = _ComicStatData(
+          name: m['name']?.toString() ?? '',
+          tags: _readTags(m['tags']),
+          chapterImages: _readIntMap(m['chapterImages']),
+        );
       }
     }
-    final daily = <String, int>{};
-    final dailyRaw = json['daily'];
-    if (dailyRaw is Map) {
-      for (final entry in dailyRaw.entries) {
-        final v = entry.value;
-        if (v is int) {
-          daily[entry.key.toString()] = v;
-        } else if (v is num) {
-          daily[entry.key.toString()] = v.toInt();
+    final novelMeta = <String, _NovelStatData>{};
+    final novelRaw = json['novelMeta'];
+    if (novelRaw is Map) {
+      for (final entry in novelRaw.entries) {
+        final m = entry.value;
+        if (entry.key is! String || entry.key.toString().isEmpty || m is! Map) {
+          continue;
         }
+        final chapters = _readNovelChapters(m['chapters']);
+        if (chapters.isEmpty) continue;
+        novelMeta[entry.key.toString()] = _NovelStatData(
+          name: m['name']?.toString() ?? '',
+          tags: _readTags(m['tags']),
+          chapters: chapters,
+          totalWords: switch (m['totalWords']) {
+            final int count when count > 0 => count,
+            _ => 0,
+          },
+          rangeDay: m['rangeDay'] is String ? m['rangeDay'].toString() : null,
+          ranges: _readRanges(m['ranges']),
+        );
       }
     }
     return _StatsData(
       comicMeta: comicMeta,
-      daily: daily,
+      daily: _readIntMap(json['daily']),
       since: json['since']?.toString(),
+      novelMeta: novelMeta,
+      novelDaily: _readIntMap(json['novelDaily']),
+      novelSince: json['novelSince']?.toString(),
+      novelHistoryInitialized: json['novelHistoryInitialized'] == true,
     );
   }
 
@@ -392,27 +600,63 @@ class _StatsData {
     },
     'daily': daily,
     if (since != null) 'since': since,
+    'novelMeta': {
+      for (final e in novelMeta.entries)
+        e.key: {
+          'name': e.value.name,
+          'tags': e.value.tags,
+          'chapters': e.value.chapters,
+          'totalWords': e.value.totalWords,
+          if (e.value.rangeDay != null) 'rangeDay': e.value.rangeDay,
+          'ranges': {
+            for (final r in e.value.ranges.entries) r.key: r.value.toJson(),
+          },
+        },
+    },
+    'novelDaily': novelDaily,
+    if (novelSince != null) 'novelSince': novelSince,
+    if (novelHistoryInitialized) 'novelHistoryInitialized': true,
   };
 
-  ReadingStatsSnapshot toSnapshot() {
-    final meta = comicMeta.map(
-      (k, v) => MapEntry(
-        k,
-        ComicStat(
-          name: v.name,
-          tags: List<String>.unmodifiable(v.tags),
-          chapterImages: Map<String, int>.unmodifiable(v.chapterImages),
+  ReadingStatsSnapshot toSnapshot() => ReadingStatsSnapshot(
+    comicMeta: Map.unmodifiable(
+      comicMeta.map(
+        (k, v) => MapEntry(
+          k,
+          ComicStat(
+            name: v.name,
+            tags: List.unmodifiable(v.tags),
+            chapterImages: Map.unmodifiable(v.chapterImages),
+          ),
         ),
       ),
-    );
-    final d = Map<String, int>.unmodifiable(daily);
-    final s = since == null ? null : DateTime.tryParse(since!);
-    return ReadingStatsSnapshot(
-      comicMeta: Map<String, ComicStat>.unmodifiable(meta),
-      daily: d,
-      since: s,
-    );
-  }
+    ),
+    daily: Map.unmodifiable(daily),
+    since: since == null ? null : DateTime.tryParse(since!),
+    novelMeta: Map.unmodifiable(
+      novelMeta.map(
+        (k, v) => MapEntry(
+          k,
+          NovelStat(
+            name: v.name,
+            tags: List.unmodifiable(v.tags),
+            totalWords: v.totalWords,
+            chapters: Map.unmodifiable(
+              v.chapters.map(
+                (volume, chapters) => MapEntry(
+                  volume,
+                  Map<String, String>.unmodifiable(chapters),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    novelDaily: Map.unmodifiable(novelDaily),
+    novelSince: novelSince == null ? null : DateTime.tryParse(novelSince!),
+    novelHistoryInitialized: novelHistoryInitialized,
+  );
 }
 
 class _ComicStatData {
@@ -427,6 +671,56 @@ class _ComicStatData {
   });
 }
 
+class _NovelStatData {
+  String name;
+  List<String> tags;
+  final Map<String, Map<String, String>> chapters;
+  int totalWords;
+  String? rangeDay;
+  final Map<String, NovelReadingRanges> ranges;
+
+  _NovelStatData({
+    required this.name,
+    required this.tags,
+    required this.chapters,
+    this.totalWords = 0,
+    this.rangeDay,
+    Map<String, NovelReadingRanges>? ranges,
+  }) : ranges = ranges ?? {};
+}
+
+Map<String, NovelReadingRanges> _readRanges(Object? value) {
+  if (value is! Map) return {};
+  return {
+    for (final entry in value.entries)
+      if (entry.key is String)
+        entry.key.toString(): NovelReadingRanges.fromJson(entry.value),
+  };
+}
+
+Map<String, Map<String, String>> _readNovelChapters(Object? value) {
+  final result = <String, Map<String, String>>{};
+  if (value is! Map) return result;
+  for (final volume in value.entries) {
+    final raw = volume.value;
+    if (volume.key is! String || volume.key.toString().isEmpty || raw is! Map) {
+      continue;
+    }
+    final chapters = <String, String>{};
+    for (final chapter in raw.entries) {
+      final index = int.tryParse(chapter.key.toString());
+      final date = chapter.value;
+      if (index == null || index < 0 || date is! String) continue;
+      if (DateTime.tryParse(date) == null) continue;
+      chapters[index.toString()] = date;
+    }
+    if (chapters.isNotEmpty || raw.isEmpty) {
+      result[volume.key.toString()] = chapters;
+    }
+  }
+  return result;
+}
+
 Map<String, int> _readIntMap(Object? value) {
   if (value is Map) {
     final result = <String, int>{};
@@ -434,7 +728,7 @@ Map<String, int> _readIntMap(Object? value) {
       final v = entry.value;
       if (v is int) {
         result[entry.key.toString()] = v;
-      } else if (v is num) {
+      } else if (v is num && v.isFinite) {
         result[entry.key.toString()] = v.toInt();
       }
     }
@@ -443,7 +737,6 @@ Map<String, int> _readIntMap(Object? value) {
   return {};
 }
 
-/// 读取 tags 列表。非 List 或元素非字符串时静默剔除，不因坏数据抛错。
 List<String> _readTags(Object? value) {
   if (value is List) {
     return value.whereType<String>().where((t) => t.isNotEmpty).toList();

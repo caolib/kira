@@ -166,6 +166,13 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
       }
     }
 
+    void onVisibleText(List<NovelVisibleTextRange> ranges) {
+      if (_request == request && identical(_document, document)) {
+        _recordVisibleText(ranges);
+      }
+    }
+
+    final collectStats = _canCollectReadingStats;
     if (_paged) {
       return NovelReaderPageView(
         key: _pageViewKey,
@@ -178,6 +185,8 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
         emptyChapterText: l10n.novelReaderEmptyChapter,
         contentPadding: _systemPadding ?? EdgeInsets.zero,
         onPosition: onPosition,
+        onVisibleText: collectStats ? onVisibleText : null,
+        canSampleVisibleText: () => _canCollectReadingStats,
         toolbarVisible: _toolbarVisible,
         onTap: () => _setToolbarVisible(!_toolbarVisible),
         onParagraphLongPress: (paragraph, position) =>
@@ -211,6 +220,8 @@ extension _NovelReaderViewPart on _NovelReaderPageState {
       highlight: _highlight,
       highlightOpacity: _highlightFade,
       onPosition: onPosition,
+      onVisibleText: collectStats ? onVisibleText : null,
+      canSampleVisibleText: () => _canCollectReadingStats,
       onTap: () => _setToolbarVisible(!_toolbarVisible),
       onParagraphLongPress: (paragraph, position) =>
           unawaited(_showParagraphMenu(paragraph, position)),

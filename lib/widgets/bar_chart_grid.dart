@@ -16,6 +16,9 @@ class BarChartGrid extends StatefulWidget {
   /// 按 yyyy-MM-dd 索引的每日阅读页数（与 [HeatmapGrid] 同源）。
   final Map<String, int> dailyCounts;
 
+  /// 阅读量格式化，默认使用漫画页数。
+  final String Function(int)? countLabel;
+
   /// 窗口天数。默认 14（两周）。
   final int windowDays;
 
@@ -28,6 +31,7 @@ class BarChartGrid extends StatefulWidget {
   const BarChartGrid({
     super.key,
     required this.dailyCounts,
+    this.countLabel,
     this.windowDays = 14,
     this.stepDays = 7,
     this.end,
@@ -88,9 +92,14 @@ class _BarChartGridState extends State<BarChartGrid> {
     }
 
     const chartHeight = 120.0;
-    const axisHeight = 20.0;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final tickSize = textScaler.scale(tt.labelSmall?.fontSize ?? 11);
+    final axisHeight = (tickSize * 1.5).clamp(20.0, double.infinity);
     const barGap = 4.0;
-    const yAxisWidth = 28.0;
+    final yAxisWidth = (maxCount.toString().length * tickSize * 0.7 + 4).clamp(
+      28.0,
+      double.infinity,
+    );
 
     // Y 轴刻度：顶部=max，中部=max/2，底部=0。maxCount=0 时不画数字。
     final hasScale = maxCount > 0;
@@ -130,18 +139,21 @@ class _BarChartGridState extends State<BarChartGrid> {
         LayoutBuilder(
           builder: (context, constraints) {
             // 柱列可用宽度 = 总宽 - Y 轴列宽
-            final barsWidth = (constraints.maxWidth - yAxisWidth).clamp(
-              0.0,
-              constraints.maxWidth,
-            );
+            final barsWidth =
+                (constraints.maxWidth - yAxisWidth - AppSpacing.xs).clamp(
+                  0.0,
+                  constraints.maxWidth,
+                );
             final totalGap = barGap * (bars.length - 1);
             final barWidth = (barsWidth - totalGap) / bars.length;
             final safeBarWidth = barWidth.isFinite && barWidth > 0
                 ? barWidth
                 : 8.0;
-            final yLabelStyle = tt.labelSmall?.copyWith(
-              color: cs.onSurfaceVariant,
+            final labelStep = (tickSize / (safeBarWidth + barGap)).ceil().clamp(
+              1,
+              bars.length,
             );
+            final yLabelStyle = tt.labelSmall?.copyWith(color: cs.onSurface);
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -198,7 +210,9 @@ class _BarChartGridState extends State<BarChartGrid> {
                                     trackColor: cs.surfaceContainerHighest,
                                     mutedColor: cs.surfaceContainerLow,
                                     barWidth: safeBarWidth,
-                                    l10n: l10n,
+                                    countLabel:
+                                        widget.countLabel ??
+                                        l10n.statsPagesOnDate,
                                   ),
                                 ),
                               ),
@@ -214,30 +228,36 @@ class _BarChartGridState extends State<BarChartGrid> {
                   height: axisHeight,
                   child: Row(
                     children: [
-                      const SizedBox(width: yAxisWidth),
+                      SizedBox(width: yAxisWidth),
                       const SizedBox(width: AppSpacing.xs),
                       Expanded(
-                        child: Row(
+                        child: Stack(
                           children: [
-                            for (var i = 0; i < bars.length; i++)
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    right: i == bars.length - 1 ? 0 : barGap,
-                                  ),
+                            for (var i = 0; i < bars.length; i += labelStep)
+                              if (!bars[i].isFuture)
+                                Positioned(
+                                  left:
+                                      (barsWidth / bars.length * (i + 0.5) -
+                                              tickSize / 2)
+                                          .clamp(
+                                            0.0,
+                                            (barsWidth - tickSize).clamp(
+                                              0.0,
+                                              double.infinity,
+                                            ),
+                                          ),
+                                  width: tickSize,
                                   child: Text(
-                                    bars[i].isFuture
-                                        ? ''
-                                        : _weekdayLabel(bars[i].date, l10n),
+                                    _weekdayLabel(bars[i].date, l10n),
                                     textAlign: TextAlign.center,
                                     style: tt.labelSmall?.copyWith(
-                                      color: bars[i].isToday
-                                          ? cs.primary
-                                          : cs.onSurfaceVariant,
+                                      color: cs.onSurfaceVariant,
+                                      fontWeight: bars[i].isToday
+                                          ? FontWeight.bold
+                                          : null,
                                     ),
                                   ),
                                 ),
-                              ),
                           ],
                         ),
                       ),
@@ -335,7 +355,7 @@ class _Bar extends StatelessWidget {
   final Color trackColor;
   final Color mutedColor;
   final double barWidth;
-  final AppLocalizations l10n;
+  final String Function(int) countLabel;
 
   const _Bar({
     required this.bar,
@@ -345,7 +365,7 @@ class _Bar extends StatelessWidget {
     required this.trackColor,
     required this.mutedColor,
     required this.barWidth,
-    required this.l10n,
+    required this.countLabel,
   });
 
   @override
@@ -354,9 +374,7 @@ class _Bar extends StatelessWidget {
     final filledHeight = (chartHeight * ratio).clamp(2.0, chartHeight);
     final message = bar.isFuture
         ? _fmt(bar.date)
-        : bar.count == 0
-        ? _fmt(bar.date)
-        : l10n.statsPagesOnDate(bar.count);
+        : '${_fmt(bar.date)} · ${countLabel(bar.count)}';
     final color = bar.isFuture
         ? mutedColor
         : bar.isToday

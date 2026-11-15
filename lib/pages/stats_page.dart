@@ -4,6 +4,8 @@ import '../l10n/app_localizations.dart';
 import '../models/reader_settings.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../utils/app_logger.dart';
 import '../utils/reading_stats.dart';
 import '../utils/screen_layout.dart';
 import '../utils/toast.dart';
@@ -11,6 +13,7 @@ import '../widgets/app_sheet.dart';
 import '../widgets/bar_chart_grid.dart';
 import '../widgets/error_retry_view.dart';
 import '../widgets/heatmap_grid.dart';
+import '../widgets/section_header.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/shimmer_skeleton.dart';
 
@@ -19,9 +22,9 @@ import '../widgets/shimmer_skeleton.dart';
 /// 两态：
 /// - 未开启（`reader.readingStatsEnabled == false`）：显示开启引导——说明
 ///   记录什么、可随时关闭/清除、数据仅本地，加一个开启按钮。点击开启后转为
-///   已开启态，数据从空开始，之后随阅读增量累积。
-/// - 已开启：`CustomScrollView` 展示概览三数字、常看类型 top10、阅读活跃度
-///   热力图。所有数据只读 1 个 prefs 键（`reading_stats_v1`），零网络。
+///   已开启态，小说统计全零时可从本地断点初始化，之后随实际阅读增量累积。
+/// - 已开启：同一滚动页展示漫画与小说分区；各自配置概览、常看类型及
+///   阅读活跃度。所有数据只读本地统计快照，零网络。
 class StatsPage extends StatefulWidget {
   const StatsPage({super.key});
 
@@ -51,6 +54,7 @@ class _StatsPageState extends State<StatsPage> {
       _error = null;
     });
     try {
+      await ReadingStats.initializeNovelsFromHistory();
       final snap = await ReadingStats.load();
       if (!mounted) return;
       setState(() {
@@ -66,7 +70,7 @@ class _StatsPageState extends State<StatsPage> {
     }
   }
 
-  /// 开启统计：设开关为 true。数据从空开始，之后随阅读增量累积。
+  /// 开启统计，小说统计全零时导入本地断点，之后随实际阅读增量累积。
   Future<void> _enableStats() async {
     setState(() => _initializing = true);
     try {
@@ -84,13 +88,14 @@ class _StatsPageState extends State<StatsPage> {
     }
   }
 
-  Future<void> _clearData() async {
+  Future<void> _clearData({required bool isNovel}) async {
     final l10n = AppLocalizations.of(context)!;
+    final type = isNovel ? l10n.novelTitle : l10n.comicTabLabel;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.statsClearConfirmTitle),
-        content: Text(l10n.statsClearConfirmContent),
+        title: Text(l10n.statsClearTypeConfirmTitle(type)),
+        content: Text(l10n.statsClearTypeConfirmContent(type)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -104,30 +109,32 @@ class _StatsPageState extends State<StatsPage> {
       ),
     );
     if (confirmed != true) return;
-    await ReadingStats.clear();
-    if (_reader.readingStatsEnabled) {
-      // 开启态：清除后显示空态，之后随阅读增量累积。
-      await _load();
-    } else {
+    try {
+      await ReadingStats.clear(novel: isNovel);
       if (!mounted) return;
-      setState(() {});
+      await _load();
+    } catch (error, stack) {
+      await AppLogger.instance.recordWarning(
+        error,
+        stackTrace: stack,
+        source: 'stats_page.clear',
+      );
+      if (!mounted) return;
+      showToast(context, error.toString(), isError: true);
     }
   }
 
-  /// 从底部弹出设置抽屉：统计功能开关 / 清除数据。
-  ///
-  /// 沿用项目常见底部抽屉模式（如 general_page 的设置项）：SafeArea +
-  /// Column + SwitchListTile/ListTile，无第三方依赖。
+  /// 沿用阅读设置的 AppSheet / 分段切换；主统计页仍同时展示两类数据。
   void _showSettingsSheet() {
     final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    var isNovel = false;
     showAppSheet<void>(
       context,
-      maxHeightFactor: 0.9,
-      // 抽屉弹出后值可能变化（关闭统计），用 StatefulBuilder 重建。
+      maxHeightFactor: 0.7,
       child: StatefulBuilder(
         builder: (ctx, setSheetState) => SingleChildScrollView(
+          key: PageStorageKey('stats-${isNovel ? 'novel' : 'comic'}-settings'),
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -145,132 +152,232 @@ class _StatsPageState extends State<StatsPage> {
                     if (!value) {
                       await _reader.setReadingStatsEnabled(false);
                       if (!ctx.mounted) return;
-                      setSheetState(() {}); // 抽屉内开关状态更新
+                      setSheetState(() {});
                       if (!mounted) return;
                       setState(() {
                         _snapshot = null;
                         _loading = false;
                         _error = null;
                       });
-                      Navigator.pop(ctx); // 关闭后回到未开启态，抽屉收起
+                      Navigator.pop(ctx);
                     }
-                    // 开启在未开启态的 body 内处理，此抽屉仅在已开启态可见
+                    // 开启在未开启态的 body 内处理，此抽屉仅在已开启态可见。
                   },
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              SettingsSection(
-                key: const ValueKey('stats-section-settings-card'),
-                child: Column(
-                  children: [
-                    // 显示组件：概览 / 常看类型 / 阅读活跃度，至少保留一个。
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.xs,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            l10n.statsShowSections,
-                            style: tt.labelMedium?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            l10n.statsDragToReorder,
-                            style: tt.labelSmall?.copyWith(color: cs.outline),
-                          ),
-                        ],
-                      ),
+              const SizedBox(height: AppSpacing.md),
+              SegmentedButton<bool>(
+                key: const ValueKey('stats-settings-tabs'),
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    label: Text(
+                      l10n.comicTabLabel,
+                      key: const ValueKey('stats-settings-comic-tab'),
                     ),
-                    // 可拖拽排序 + 显示开关。拖拽把手在行首，长按拖动。
-                    _SectionReorderList(
-                      ctx: ctx,
-                      setSheetState: setSheetState,
-                      onToggle: _toggleSection,
-                      onReorder: (newOrder) async {
-                        await _reader.setReadingStatsSectionOrder(newOrder);
-                        if (!ctx.mounted) return;
-                        setSheetState(() {});
-                        if (!mounted) return;
-                        setState(() {}); // 页面卡片列表按新顺序重建
-                      },
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text(
+                      l10n.novelTitle,
+                      key: const ValueKey('stats-settings-novel-tab'),
                     ),
-                  ],
-                ),
+                  ),
+                ],
+                selected: {isNovel},
+                onSelectionChanged: (selection) =>
+                    setSheetState(() => isNovel = selection.single),
               ),
               const SizedBox(height: AppSpacing.sm),
-              SettingsSection(
-                key: const ValueKey('stats-chart-settings-card'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 图表样式：热力图 / 条形图
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: Text(
-                        l10n.statsChartStyle,
-                        style: tt.labelMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    RadioGroup<int>(
-                      groupValue: _reader.readingStatsChartStyle,
-                      onChanged: (value) async {
-                        if (value == null) return;
-                        await _reader.setReadingStatsChartStyle(value);
-                        if (!ctx.mounted) return;
-                        setSheetState(() {});
-                        if (!mounted) return;
-                        setState(() {}); // 图表区重建
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          RadioListTile<int>(
-                            value: 0,
-                            title: Text(l10n.statsChartStyleHeatmap),
-                            subtitle: Text(
-                              l10n.statsChartStyleHeatmapDesc,
-                              style: tt.bodySmall,
-                            ),
-                            dense: true,
-                          ),
-                          RadioListTile<int>(
-                            value: 1,
-                            title: Text(l10n.statsChartStyleBar),
-                            subtitle: Text(
-                              l10n.statsChartStyleBarDesc,
-                              style: tt.bodySmall,
-                            ),
-                            dense: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SettingsSection(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.delete_sweep_outlined),
-                  title: Text(l10n.statsClearButton),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _clearData();
-                  },
-                ),
-              ),
+              ..._buildDomainSettings(ctx, setSheetState, isNovel: isNovel),
             ],
           ),
         ),
       ),
     );
   }
+
+  List<Widget> _buildDomainSettings(
+    BuildContext ctx,
+    StateSetter setSheetState, {
+    required bool isNovel,
+  }) {
+    final l10n = AppLocalizations.of(ctx)!;
+    final cs = Theme.of(ctx).colorScheme;
+    final tt = Theme.of(ctx).textTheme;
+    final domain = isNovel ? 'novel' : 'comic';
+    return [
+      SwitchListTile(
+        key: ValueKey('stats-$domain-visible'),
+        contentPadding: EdgeInsets.zero,
+        title: Text(isNovel ? l10n.novelTitle : l10n.comicTabLabel),
+        subtitle: Text(l10n.statsVisibilityHint, style: tt.bodySmall),
+        value: isNovel
+            ? _reader.readingStatsShowNovels
+            : _reader.readingStatsShowComics,
+        onChanged: (value) async {
+          final otherVisible = isNovel
+              ? _reader.readingStatsShowComics
+              : _reader.readingStatsShowNovels;
+          if (!value && !otherVisible) {
+            showToast(ctx, l10n.statsKeepAtLeastOneType, isError: true);
+            return;
+          }
+          await _saveStatsSetting(
+            ctx,
+            setSheetState,
+            () => isNovel
+                ? _reader.setReadingStatsShowNovels(value)
+                : _reader.setReadingStatsShowComics(value),
+          );
+        },
+      ),
+      SettingsSection(
+        key: ValueKey(
+          isNovel
+              ? 'stats-novel-section-settings-card'
+              : 'stats-section-settings-card',
+        ),
+        child: Column(
+          children: [
+            // 显示组件：概览 / 常看类型 / 阅读活跃度，至少保留一个。
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    l10n.statsShowSections,
+                    style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  Text(
+                    l10n.statsDragToReorder,
+                    style: tt.labelSmall?.copyWith(color: cs.outline),
+                  ),
+                ],
+              ),
+            ),
+            // 可拖拽排序 + 显示开关。拖拽把手在行首，长按拖动。
+            _SectionReorderList(
+              ctx: ctx,
+              setSheetState: setSheetState,
+              order: _sectionOrder(isNovel),
+              visibility: _sectionVisibility(isNovel),
+              onToggle:
+                  (sheetCtx, update, {required sectionId, required next}) =>
+                      _toggleSection(
+                        sheetCtx,
+                        update,
+                        isNovel: isNovel,
+                        sectionId: sectionId,
+                        next: next,
+                      ),
+              onReorder: (newOrder) => _saveStatsSetting(
+                ctx,
+                setSheetState,
+                () => isNovel
+                    ? _reader.setNovelReadingStatsSectionOrder(newOrder)
+                    : _reader.setReadingStatsSectionOrder(newOrder),
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sm),
+      SettingsSection(
+        key: ValueKey(
+          isNovel
+              ? 'stats-novel-chart-settings-card'
+              : 'stats-chart-settings-card',
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 图表样式：热力图 / 条形图
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Text(
+                l10n.statsChartStyle,
+                style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+            RadioGroup<int>(
+              groupValue: isNovel
+                  ? _reader.novelReadingStatsChartStyle
+                  : _reader.readingStatsChartStyle,
+              onChanged: (value) async {
+                if (value == null) return;
+                await _saveStatsSetting(
+                  ctx,
+                  setSheetState,
+                  () => isNovel
+                      ? _reader.setNovelReadingStatsChartStyle(value)
+                      : _reader.setReadingStatsChartStyle(value),
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<int>(
+                    value: 0,
+                    title: Text(l10n.statsChartStyleHeatmap),
+                    subtitle: Text(
+                      l10n.statsChartStyleHeatmapDesc,
+                      style: tt.bodySmall,
+                    ),
+                    dense: true,
+                  ),
+                  RadioListTile<int>(
+                    value: 1,
+                    title: Text(l10n.statsChartStyleBar),
+                    subtitle: Text(
+                      isNovel
+                          ? l10n.statsNovelChartStyleBarDesc
+                          : l10n.statsChartStyleBarDesc,
+                      style: tt.bodySmall,
+                    ),
+                    dense: true,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sm),
+      SettingsSection(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.delete_sweep_outlined),
+          key: ValueKey('stats-$domain-clear'),
+          title: Text(l10n.statsClearButton),
+          onTap: () {
+            Navigator.pop(ctx);
+            _clearData(isNovel: isNovel);
+          },
+        ),
+      ),
+    ];
+  }
+
+  List<String> _sectionOrder(bool isNovel) => isNovel
+      ? _reader.novelReadingStatsSectionOrder
+      : _reader.readingStatsSectionOrder;
+
+  Map<String, bool> _sectionVisibility(bool isNovel) => {
+    'overview': isNovel
+        ? _reader.novelReadingStatsShowOverview
+        : _reader.readingStatsShowOverview,
+    'tags': isNovel
+        ? _reader.novelReadingStatsShowTags
+        : _reader.readingStatsShowTags,
+    'activity': isNovel
+        ? _reader.novelReadingStatsShowActivityChart
+        : _reader.readingStatsShowActivityChart,
+  };
 
   /// 切换某个统计组件的显示开关。
   ///
@@ -281,14 +388,11 @@ class _StatsPageState extends State<StatsPage> {
   Future<void> _toggleSection(
     BuildContext sheetCtx,
     void Function(void Function()) setSheetState, {
+    required bool isNovel,
     required String sectionId,
     required bool next,
   }) async {
-    final show = <String, bool>{
-      'overview': _reader.readingStatsShowOverview,
-      'tags': _reader.readingStatsShowTags,
-      'activity': _reader.readingStatsShowActivityChart,
-    };
+    final show = _sectionVisibility(isNovel);
     final current = show[sectionId]!;
     final othersVisible = show.entries
         .where((e) => e.key != sectionId)
@@ -296,11 +400,17 @@ class _StatsPageState extends State<StatsPage> {
     Future<void> apply() {
       switch (sectionId) {
         case 'overview':
-          return _reader.setReadingStatsShowOverview(next);
+          return isNovel
+              ? _reader.setNovelReadingStatsShowOverview(next)
+              : _reader.setReadingStatsShowOverview(next);
         case 'tags':
-          return _reader.setReadingStatsShowTags(next);
+          return isNovel
+              ? _reader.setNovelReadingStatsShowTags(next)
+              : _reader.setReadingStatsShowTags(next);
         case 'activity':
-          return _reader.setReadingStatsShowActivityChart(next);
+          return isNovel
+              ? _reader.setNovelReadingStatsShowActivityChart(next)
+              : _reader.setReadingStatsShowActivityChart(next);
       }
       return Future.value();
     }
@@ -314,11 +424,29 @@ class _StatsPageState extends State<StatsPage> {
       }
       return;
     }
-    await apply();
-    if (!sheetCtx.mounted) return;
-    setSheetState(() {});
-    if (!mounted) return;
-    setState(() {}); // 页面卡片列表重建
+    await _saveStatsSetting(sheetCtx, setSheetState, apply);
+  }
+
+  Future<void> _saveStatsSetting(
+    BuildContext sheetCtx,
+    StateSetter setSheetState,
+    Future<void> Function() save,
+  ) async {
+    try {
+      await save();
+    } catch (error, stack) {
+      await AppLogger.instance.recordWarning(
+        error,
+        stackTrace: stack,
+        source: 'stats_page.settings',
+      );
+      if (sheetCtx.mounted) {
+        showToast(sheetCtx, error.toString(), isError: true);
+      }
+      return;
+    }
+    if (sheetCtx.mounted) setSheetState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -328,7 +456,6 @@ class _StatsPageState extends State<StatsPage> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.statsTitle)),
       body: enabled ? _buildEnabledBody() : _buildDisabledBody(),
-      // 已开启态才显示设置入口；未开启态的开启按钮已在 body 内。
       floatingActionButton: enabled
           ? FloatingActionButton(
               onPressed: _showSettingsSheet,
@@ -419,37 +546,118 @@ class _StatsPageState extends State<StatsPage> {
   // ── 已开启态 ──────────────────────────────────────────────────────
 
   Widget _buildEnabledBody() {
-    if (_loading && _snapshot == null) {
-      return _buildLoadingBody();
-    }
+    if (_loading && _snapshot == null) return _buildLoadingBody();
     if (_error != null && _snapshot == null) {
       return ErrorRetryView(message: _error, onRetry: _load);
     }
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final hp = ScreenLayout.horizontalPadding(screenWidth);
+    final sections = [
+      if (_reader.readingStatsShowComics) _buildDomain(isNovel: false),
+      if (_reader.readingStatsShowNovels) _buildDomain(isNovel: true),
+    ];
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final useColumns =
+        sections.length == 2 &&
+        screenWidth - hp * 2 >= 840 * textScale.clamp(1.0, 2.0);
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: CustomScrollView(
+        key: const PageStorageKey('reading-stats'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (_loading)
+            const SliverToBoxAdapter(
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
+          SliverPadding(
+            // 预留悬浮设置按钮与系统安全区，页底提示不被遮挡。
+            padding: EdgeInsets.fromLTRB(
+              hp,
+              AppSpacing.lg,
+              hp,
+              AppSpacing.xxl + 56 + MediaQuery.paddingOf(context).bottom,
+            ),
+            sliver: SliverList.list(
+              children: [
+                if (useColumns)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: sections[0]),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(child: sections[1]),
+                    ],
+                  )
+                else
+                  for (final (index, section) in sections.indexed) ...[
+                    if (index > 0) const SizedBox(height: AppSpacing.xl),
+                    section,
+                  ],
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  AppLocalizations.of(context)!.statsAccuracyHint,
+                  key: const ValueKey('stats-accuracy-hint'),
+                  textAlign: TextAlign.center,
+                  style: AppTypography.meta(Theme.of(context).textTheme)
+                      ?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDomain({required bool isNovel}) {
+    final l10n = AppLocalizations.of(context)!;
     final snap = _snapshot;
     // 无数据时不显示空态，直接按 0 渲染（热力图、tag 列表自然为空）。
-    final comicsCount = snap == null ? 0 : comicsReadCount(snap);
-    final chaptersCount = snap == null ? 0 : chaptersReadCount(snap);
-    final pagesCount = snap == null ? 0 : pagesReadCount(snap);
-    final tags = snap == null ? const <TagCount>[] : topTags(snap);
-    final daily = snap?.daily ?? const <String, int>{};
-    // 按持久化顺序 + 显示开关收集可见卡片（带 id，便于宽屏配对）。
+    final booksCount = snap == null
+        ? 0
+        : isNovel
+        ? novelsReadCount(snap)
+        : comicsReadCount(snap);
+    final middleCount = snap == null
+        ? 0
+        : isNovel
+        ? novelVolumesReadCount(snap)
+        : chaptersReadCount(snap);
+    final lastCount = snap == null
+        ? 0
+        : isNovel
+        ? novelChaptersReadCount(snap)
+        : pagesReadCount(snap);
+    final tags = snap == null
+        ? const <TagCount>[]
+        : isNovel
+        ? topNovelTags(snap)
+        : topTags(snap);
+    final daily =
+        (isNovel ? snap?.novelDaily : snap?.daily) ?? const <String, int>{};
+    final since = isNovel ? snap?.novelSince : snap?.since;
+    final overview = _OverviewCard(
+      books: booksCount,
+      middleCount: middleCount,
+      lastCount: lastCount,
+      words: isNovel && snap != null ? novelWordsReadCount(snap) : 0,
+      isNovel: isNovel,
+    );
     final entries = <(String, Widget)>[];
-    for (final id in _reader.readingStatsSectionOrder) {
-      final visible = switch (id) {
-        'overview' => _reader.readingStatsShowOverview,
-        'tags' => _reader.readingStatsShowTags,
-        'activity' => _reader.readingStatsShowActivityChart,
-        _ => false,
-      };
+    for (final id in _sectionOrder(isNovel)) {
+      final visible = _sectionVisibility(isNovel)[id] ?? false;
       if (!visible) continue;
       final card = switch (id) {
-        'overview' => _OverviewCard(
-          comics: comicsCount,
-          chapters: chaptersCount,
-          pages: pagesCount,
-        ),
+        'overview' => overview,
         'tags' => _TagsCard(tags: tags),
-        'activity' => _ActivityChartCard(daily: daily, since: snap?.since),
+        'activity' => _ActivityChartCard(
+          daily: daily,
+          since: since,
+          isNovel: isNovel,
+        ),
         _ => null,
       };
       if (card == null) continue;
@@ -457,66 +665,26 @@ class _StatsPageState extends State<StatsPage> {
     }
     // 至少保留一个由设置抽屉层强制；此处防御性兜底。
     if (entries.isEmpty) {
-      entries.add((
-        'overview',
-        _OverviewCard(
-          comics: comicsCount,
-          chapters: chaptersCount,
-          pages: pagesCount,
+      entries.add(('overview', overview));
+    }
+
+    final domain = isNovel ? 'novel' : 'comic';
+    return Column(
+      key: ValueKey('stats-$domain'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: isNovel ? l10n.novelTitle : l10n.comicTabLabel,
+          icon: isNovel ? Icons.menu_book_outlined : Icons.book_outlined,
         ),
-      ));
-    }
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final hp = ScreenLayout.horizontalPadding(screenWidth);
-    // 宽屏：常看类型与活跃度两卡并排双列（两者都可见时），
-    // 在两者中先出现的位置合并为一行，概览卡仍占满整行。
-    if (ScreenLayout.contentWidth(screenWidth) >= ScreenLayout.wideBreakpoint) {
-      final tagsIndex = entries.indexWhere((e) => e.$1 == 'tags');
-      final activityIndex = entries.indexWhere((e) => e.$1 == 'activity');
-      if (tagsIndex >= 0 && activityIndex >= 0) {
-        final later = tagsIndex > activityIndex ? tagsIndex : activityIndex;
-        final earlier = tagsIndex > activityIndex ? activityIndex : tagsIndex;
-        final laterCard = entries.removeAt(later).$2;
-        final earlierCard = entries.removeAt(earlier).$2;
-        entries.insert(earlier, (
-          'pair',
-          // 注意不能用 IntrinsicHeight + stretch：活跃度卡里的热力图/
-          // 条形图内部有 LayoutBuilder，不支持固有尺寸计算，会直接
-          // 布局失败（整页空白）。两卡顶部对齐、各自按内容高度渲染。
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: earlierCard),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(child: laterCard),
-            ],
-          ),
-        ));
-      }
-    }
-
-    final cards = <Widget>[];
-    for (final (i, entry) in entries.indexed) {
-      if (i > 0) cards.add(const SizedBox(height: AppSpacing.md));
-      cards.add(entry.$2);
-    }
-    cards.add(const SizedBox(height: AppSpacing.xxl));
-    // 刷新时顶部进度条
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: CustomScrollView(
-        slivers: [
-          if (_loading)
-            const SliverToBoxAdapter(
-              child: LinearProgressIndicator(minHeight: 2),
-            ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(hp, AppSpacing.lg, hp, AppSpacing.lg),
-            sliver: SliverList(delegate: SliverChildListDelegate(cards)),
+        for (final entry in entries) ...[
+          const SizedBox(height: AppSpacing.md),
+          KeyedSubtree(
+            key: ValueKey('stats-$domain-${entry.$1}'),
+            child: entry.$2,
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -576,51 +744,83 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _OverviewCard extends StatelessWidget {
-  final int comics;
-  final int chapters;
-  final int pages;
+  final int books;
+  final int middleCount;
+  final int lastCount;
+  final int words;
+  final bool isNovel;
   const _OverviewCard({
-    required this.comics,
-    required this.chapters,
-    required this.pages,
+    required this.books,
+    required this.middleCount,
+    required this.lastCount,
+    required this.words,
+    required this.isNovel,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final cells = [
+      _StatCell(
+        icon: Icons.book_outlined,
+        value: _format(books),
+        label: isNovel ? l10n.statsNovelsRead : l10n.statsComicsRead,
+      ),
+      _StatCell(
+        icon: isNovel ? Icons.library_books_outlined : Icons.list_alt_rounded,
+        value: _format(middleCount),
+        label: isNovel ? l10n.statsNovelVolumesRead : l10n.statsChaptersRead,
+      ),
+      _StatCell(
+        icon: isNovel ? Icons.list_alt_rounded : Icons.image_outlined,
+        value: _format(lastCount),
+        label: isNovel ? l10n.statsChaptersRead : l10n.statsPagesRead,
+      ),
+      if (isNovel)
+        _StatCell(
+          icon: Icons.text_fields_rounded,
+          value: _format(words),
+          label: l10n.statsNovelWordsRead,
+        ),
+    ];
     return Card(
       color: cs.surfaceBright,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Expanded(
-                child: _StatCell(
-                  icon: Icons.book_outlined,
-                  value: _format(comics),
-                  label: l10n.statsComicsRead,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+            if (constraints.maxWidth >=
+                cells.length * 80 * scale.clamp(1.0, 1.5)) {
+              return IntrinsicHeight(
+                child: Row(
+                  children: [
+                    for (final (index, cell) in cells.indexed) ...[
+                      if (index > 0)
+                        const VerticalDivider(
+                          width: 1,
+                          indent: 8,
+                          endIndent: 8,
+                        ),
+                      Expanded(child: cell),
+                    ],
+                  ],
                 ),
-              ),
-              const VerticalDivider(width: 1, indent: 8, endIndent: 8),
-              Expanded(
-                child: _StatCell(
-                  icon: Icons.list_alt_rounded,
-                  value: _format(chapters),
-                  label: l10n.statsChaptersRead,
-                ),
-              ),
-              const VerticalDivider(width: 1, indent: 8, endIndent: 8),
-              Expanded(
-                child: _StatCell(
-                  icon: Icons.image_outlined,
-                  value: _format(pages),
-                  label: l10n.statsPagesRead,
-                ),
-              ),
-            ],
-          ),
+              );
+            }
+            return Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.lg,
+              children: [
+                for (final cell in cells)
+                  SizedBox(
+                    width: (constraints.maxWidth - AppSpacing.sm) / 2,
+                    child: cell,
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -661,7 +861,7 @@ class _StatCell extends StatelessWidget {
           child: Text(
             value,
             style: tt.headlineMedium?.copyWith(
-              color: cs.primary,
+              color: cs.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -698,7 +898,7 @@ class _TagsCard extends StatelessWidget {
               children: [
                 Icon(Icons.style_outlined, size: 20, color: cs.primary),
                 const SizedBox(width: AppSpacing.sm),
-                Text(l10n.statsTopTags, style: tt.titleMedium),
+                Expanded(child: Text(l10n.statsTopTags, style: tt.titleMedium)),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -759,13 +959,10 @@ class _TagBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        SizedBox(
-          width: 32,
-          child: Text(
-            '$count',
-            style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-            textAlign: TextAlign.end,
-          ),
+        Text(
+          '$count',
+          style: tt.labelSmall?.copyWith(color: cs.onSurface),
+          textAlign: TextAlign.end,
         ),
       ],
     );
@@ -779,15 +976,26 @@ class _TagBar extends StatelessWidget {
 class _ActivityChartCard extends StatelessWidget {
   final Map<String, int> daily;
   final DateTime? since;
-  const _ActivityChartCard({required this.daily, this.since});
+  final bool isNovel;
+  const _ActivityChartCard({
+    required this.daily,
+    required this.isNovel,
+    this.since,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final style = ReaderSettings().readingStatsChartStyle;
+    final reader = ReaderSettings();
+    final style = isNovel
+        ? reader.novelReadingStatsChartStyle
+        : reader.readingStatsChartStyle;
     final useBar = style == 1;
+    final countLabel = isNovel
+        ? l10n.statsNovelWordsOnDate
+        : l10n.statsPagesOnDate;
     return Card(
       color: cs.surfaceBright,
       child: Padding(
@@ -805,13 +1013,21 @@ class _ActivityChartCard extends StatelessWidget {
                   color: cs.primary,
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(l10n.statsActivityHeatmap, style: tt.titleMedium),
+                Expanded(
+                  child: Text(l10n.statsActivityHeatmap, style: tt.titleMedium),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
             useBar
-                ? BarChartGrid(dailyCounts: daily)
-                : HeatmapGrid(dailyCounts: daily),
+                ? BarChartGrid(dailyCounts: daily, countLabel: countLabel)
+                : HeatmapGrid(
+                    dailyCounts: daily,
+                    countLabel: countLabel,
+                    thresholds: isNovel
+                        ? const [1000, 5000, 10000]
+                        : const [50, 150, 300],
+                  ),
             const SizedBox(height: AppSpacing.sm),
             if (!useBar)
               const Align(
@@ -849,35 +1065,37 @@ class _SectionReorderList extends StatelessWidget {
   })
   onToggle;
   final Future<void> Function(List<String> newOrder) onReorder;
+  final List<String> order;
+  final Map<String, bool> visibility;
 
   const _SectionReorderList({
     required this.ctx,
     required this.setSheetState,
     required this.onToggle,
     required this.onReorder,
+    required this.order,
+    required this.visibility,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final reader = ReaderSettings();
-    final order = reader.readingStatsSectionOrder;
     final meta = <String, ({IconData icon, String label, bool value})>{
       'overview': (
         icon: Icons.book_outlined,
         label: l10n.statsSectionOverview,
-        value: reader.readingStatsShowOverview,
+        value: visibility['overview']!,
       ),
       'tags': (
         icon: Icons.style_outlined,
         label: l10n.statsSectionTags,
-        value: reader.readingStatsShowTags,
+        value: visibility['tags']!,
       ),
       'activity': (
         icon: Icons.calendar_month_outlined,
         label: l10n.statsSectionActivity,
-        value: reader.readingStatsShowActivityChart,
+        value: visibility['activity']!,
       ),
     };
 

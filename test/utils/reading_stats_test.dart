@@ -12,9 +12,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
-    // 先建立 mock 后端，再清统计——clear() 内部会调用 getInstance()。
     SharedPreferences.setMockInitialValues({});
-    await ReadingStats.clear();
+    ReadingStats.reloadFromPrefs();
     // 注入"已开启"桩，绝大多数测试需要统计在开启态运行。
     ReadingStats.setEnabledGate(() => true);
   });
@@ -22,7 +21,7 @@ void main() {
   tearDown(() async {
     // 还原默认开关判定，避免污染其它测试套件。
     SharedPreferences.setMockInitialValues({});
-    await ReadingStats.clear();
+    ReadingStats.reloadFromPrefs();
     ReadingStats.setEnabledGate(() => false);
   });
 
@@ -219,7 +218,11 @@ void main() {
 
       await ReadingStats.clear();
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('reading_stats_v1'), isNull);
+      expect(
+        jsonDecode(prefs.getString('reading_stats_v1')!),
+        isNot(contains('novelHistoryInitialized')),
+      );
+      expect((await ReadingStats.load()).novelHistoryInitialized, isFalse);
       expect((await ReadingStats.load()).isEmpty, isTrue);
     });
   });

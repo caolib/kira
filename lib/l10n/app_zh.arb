@@ -777,13 +777,36 @@
   "statsEnableTitle": "阅读统计",
   "statsEnableButton": "开启",
   "statsDisableButton": "统计功能",
-  "statsRecordComics": "读过的漫画数量",
-  "statsRecordChapters": "读过的章节数量",
-  "statsRecordPages": "阅读页数",
+  "statsRecordComics": "读过的漫画与轻小说数量",
+  "statsRecordChapters": "读过的章节与小说卷数",
+  "statsRecordPages": "漫画阅读页数与小说阅读字数",
   "statsRecordTags": "常看类型",
   "statsRecordHeatmap": "每日阅读活跃度热力图",
   "statsPrivacyNote": "数据仅保存在本地，不上传服务器，可随时关闭或清除。",
   "statsComicsRead": "漫画",
+  "statsNovelsRead": "小说",
+  "statsNovelVolumesRead": "卷数",
+  "statsNovelWordsRead": "字数",
+  "statsNovelChartStyleBarDesc": "按天展示两周阅读字数",
+  "statsVisibilityHint": "仅隐藏此类统计，不停止记录",
+  "statsKeepAtLeastOneType": "至少显示一类统计",
+  "statsClearTypeConfirmTitle": "清除{type}阅读统计？",
+  "@statsClearTypeConfirmTitle": {
+    "placeholders": {"type": {"type": "String"}}
+  },
+  "statsClearTypeConfirmContent": "将删除全部{type}阅读统计，不影响另一类统计，此操作不可恢复。",
+  "@statsClearTypeConfirmContent": {
+    "placeholders": {"type": {"type": "String"}}
+  },
+  "statsAccuracyHint": "统计数据供参考，并非精确数据",
+  "statsNovelWordsOnDate": "{count} 字",
+  "@statsNovelWordsOnDate": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "statsChaptersRead": "章节",
   "statsPagesRead": "页数",
   "statsTopTags": "常看类型",

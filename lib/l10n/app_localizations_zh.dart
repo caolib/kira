@@ -1267,13 +1267,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statsDisableButton => '统计功能';
 
   @override
-  String get statsRecordComics => '读过的漫画数量';
+  String get statsRecordComics => '读过的漫画与轻小说数量';
 
   @override
-  String get statsRecordChapters => '读过的章节数量';
+  String get statsRecordChapters => '读过的章节与小说卷数';
 
   @override
-  String get statsRecordPages => '阅读页数';
+  String get statsRecordPages => '漫画阅读页数与小说阅读字数';
 
   @override
   String get statsRecordTags => '常看类型';
@@ -1286,6 +1286,42 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get statsComicsRead => '漫画';
+
+  @override
+  String get statsNovelsRead => '小说';
+
+  @override
+  String get statsNovelVolumesRead => '卷数';
+
+  @override
+  String get statsNovelWordsRead => '字数';
+
+  @override
+  String get statsNovelChartStyleBarDesc => '按天展示两周阅读字数';
+
+  @override
+  String get statsVisibilityHint => '仅隐藏此类统计，不停止记录';
+
+  @override
+  String get statsKeepAtLeastOneType => '至少显示一类统计';
+
+  @override
+  String statsClearTypeConfirmTitle(String type) {
+    return '清除$type阅读统计？';
+  }
+
+  @override
+  String statsClearTypeConfirmContent(String type) {
+    return '将删除全部$type阅读统计，不影响另一类统计，此操作不可恢复。';
+  }
+
+  @override
+  String get statsAccuracyHint => '统计数据供参考，并非精确数据';
+
+  @override
+  String statsNovelWordsOnDate(int count) {
+    return '$count 字';
+  }
 
   @override
   String get statsChaptersRead => '章节';
@@ -5327,13 +5363,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get statsDisableButton => '統計功能';
 
   @override
-  String get statsRecordComics => '讀過的漫畫數量';
+  String get statsRecordComics => '讀過的漫畫與輕小說數量';
 
   @override
-  String get statsRecordChapters => '讀過的章節數量';
+  String get statsRecordChapters => '讀過的章節與小說卷數';
 
   @override
-  String get statsRecordPages => '閱讀頁數';
+  String get statsRecordPages => '漫畫閱讀頁數與小說閱讀字數';
 
   @override
   String get statsRecordTags => '常看類型';
@@ -5346,6 +5382,42 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get statsComicsRead => '漫畫';
+
+  @override
+  String get statsNovelsRead => '小說';
+
+  @override
+  String get statsNovelVolumesRead => '卷數';
+
+  @override
+  String get statsNovelWordsRead => '字數';
+
+  @override
+  String get statsNovelChartStyleBarDesc => '按天展示兩週閱讀字數';
+
+  @override
+  String get statsVisibilityHint => '僅隱藏此類統計，不停止記錄';
+
+  @override
+  String get statsKeepAtLeastOneType => '至少顯示一類統計';
+
+  @override
+  String statsClearTypeConfirmTitle(String type) {
+    return '清除$type閱讀統計？';
+  }
+
+  @override
+  String statsClearTypeConfirmContent(String type) {
+    return '將刪除全部$type閱讀統計，不影響另一類統計，此操作不可復原。';
+  }
+
+  @override
+  String get statsAccuracyHint => '統計數據供參考，並非精確數據';
+
+  @override
+  String statsNovelWordsOnDate(int count) {
+    return '$count 字';
+  }
 
   @override
   String get statsChaptersRead => '章節';

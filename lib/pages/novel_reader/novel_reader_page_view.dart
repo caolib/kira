@@ -12,6 +12,7 @@ import 'novel_reader_dialogue.dart';
 import 'novel_reader_document.dart';
 import 'novel_reader_font.dart';
 import 'novel_reader_paginator.dart';
+import 'novel_visible_text_range.dart';
 
 /// 整页翻页视图：把整卷正文按可用区域切分成页，横向左到右翻页。
 ///
@@ -30,6 +31,8 @@ class NovelReaderPageView extends StatefulWidget {
     required this.emptyChapterText,
     required this.contentPadding,
     required this.onPosition,
+    this.onVisibleText,
+    this.canSampleVisibleText,
     required this.toolbarVisible,
     required this.onTap,
     this.onParagraphLongPress,
@@ -51,6 +54,8 @@ class NovelReaderPageView extends StatefulWidget {
   final String emptyChapterText;
   final EdgeInsets contentPadding;
   final ValueChanged<NovelReaderLocation> onPosition;
+  final ValueChanged<List<NovelVisibleTextRange>>? onVisibleText;
+  final bool Function()? canSampleVisibleText;
 
   /// 工具栏显示时，正文点击只切换工具栏，不触发分区翻页。
   final bool toolbarVisible;
@@ -84,7 +89,53 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   late final AnimationController _turnController;
   NovelReaderPaginator? _paginator;
   int _currentPage = 0;
+  int _paintedPage = -1;
   bool _restoring = true;
+
+  /// 只上报已绘制的当前页，不读取后台生成页或翻页动画的预建目标。
+  void sampleVisibleText() {
+    final callback = widget.onVisibleText;
+    final paginator = _paginator;
+    if (!mounted ||
+        callback == null ||
+        _restoring ||
+        _paintedPage != _currentPage ||
+        paginator == null ||
+        !(widget.canSampleVisibleText?.call() ?? true)) {
+      return;
+    }
+    final ranges = <NovelVisibleTextRange>[];
+    for (final slice in paginator.pages[_currentPage].slices) {
+      final paragraph = widget.document.paragraphAt(slice.itemIndex);
+      final length = paragraph.text.length;
+      if (length == 0 || paragraph.entry.isImage) continue;
+      final start = slice.startOffset.clamp(0, length);
+      final end = slice.endOffset.clamp(start, length);
+      if (end > start) {
+        ranges.add(
+          NovelVisibleTextRange(
+            paragraph: paragraph,
+            itemIndex: slice.itemIndex,
+            start: start,
+            end: end,
+          ),
+        );
+      }
+    }
+    if (ranges.isNotEmpty) callback(ranges);
+  }
+
+  void _sampleTextAfterPaint() {
+    if (widget.onVisibleText == null) return;
+    final generation = _generation;
+    final page = _currentPage;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isCurrent(generation) || _restoring || page != _currentPage) return;
+      _paintedPage = page;
+      sampleVisibleText();
+    });
+  }
+
   bool _paginationPending = false;
   NovelReaderAnchor? _pendingAnchor;
   int _generation = 0;
@@ -185,6 +236,9 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   @override
   void didUpdateWidget(NovelReaderPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.onVisibleText == null && widget.onVisibleText != null) {
+      _sampleTextAfterPaint();
+    }
     final dialogueLayoutChanged = _updateDialogue();
     final textLayoutChanged = _updateTextStyles();
     if (!identical(oldWidget.document, widget.document)) {
@@ -240,6 +294,7 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
   // ── 分页构建 ──
 
   void _scheduleRepaginate(NovelReaderAnchor anchor) {
+    _restoring = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _restart(anchor);
     });
@@ -300,7 +355,9 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_isCurrent(generation)) return;
       setState(() => _restoring = false);
+      _paintedPage = _currentPage;
       _emitPosition();
+      sampleVisibleText();
       _scheduleBackgroundBuild(generation);
     });
   }
@@ -511,6 +568,7 @@ class NovelReaderPageViewState extends State<NovelReaderPageView>
     if (location == null) return;
     _lastLocation = location;
     widget.onPosition(location);
+    _sampleTextAfterPaint();
   }
 
   void _handleTap(Offset globalPosition) {

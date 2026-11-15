@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/app_logger.dart';
 import 'prefs_store.dart';
 import 'reader_status_prefs.dart';
 
@@ -57,6 +60,18 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
       'reader_reading_stats_show_activity_chart';
   static const _keyReadingStatsSectionOrder =
       'reader_reading_stats_section_order';
+  static const _keyReadingStatsShowComics = 'reader_reading_stats_show_comics';
+  static const _keyReadingStatsShowNovels = 'reader_reading_stats_show_novels';
+  static const _keyNovelReadingStatsChartStyle =
+      'reader_reading_stats_novel_chart_style';
+  static const _keyNovelReadingStatsShowOverview =
+      'reader_reading_stats_novel_show_overview';
+  static const _keyNovelReadingStatsShowTags =
+      'reader_reading_stats_novel_show_tags';
+  static const _keyNovelReadingStatsShowActivityChart =
+      'reader_reading_stats_novel_show_activity_chart';
+  static const _keyNovelReadingStatsSectionOrder =
+      'reader_reading_stats_novel_section_order';
 
   /// 统计页三个组件的默认显示顺序（与开关独立）。
   static const List<String> defaultReadingStatsSectionOrder = [
@@ -126,6 +141,20 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     defaultReadingStatsSectionOrder,
   );
 
+  // 两类显示开关只控制展示，不改变共用的记录闸门。
+  bool _readingStatsShowComics = true;
+  bool _readingStatsShowNovels = true;
+  int _novelReadingStatsChartStyle = 0;
+  bool _novelReadingStatsShowOverview = true;
+  bool _novelReadingStatsShowTags = true;
+  bool _novelReadingStatsShowActivityChart = true;
+  List<String> _novelReadingStatsSectionOrder = List.of(
+    defaultReadingStatsSectionOrder,
+  );
+
+  // 串行检查显示约束与落盘，避免并发关闭时两边都读到旧值。
+  Future<void> _readingStatsWrites = Future.value();
+
   // ── Getters ────────────────────────────────────────────────────────
 
   int get mode => _mode;
@@ -192,6 +221,18 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   /// 统计组件显示顺序（未知 id 剔除、去重，缺失的按默认顺序补到末尾）。
   List<String> get readingStatsSectionOrder =>
       List.unmodifiable(_readingStatsSectionOrder);
+
+  bool get readingStatsShowComics => _readingStatsShowComics;
+  bool get readingStatsShowNovels => _readingStatsShowNovels;
+
+  /// 小说独立图表样式：0=热力图（默认），1=条形图，不继承漫画偏好。
+  int get novelReadingStatsChartStyle => _novelReadingStatsChartStyle;
+  bool get novelReadingStatsShowOverview => _novelReadingStatsShowOverview;
+  bool get novelReadingStatsShowTags => _novelReadingStatsShowTags;
+  bool get novelReadingStatsShowActivityChart =>
+      _novelReadingStatsShowActivityChart;
+  List<String> get novelReadingStatsSectionOrder =>
+      List.unmodifiable(_novelReadingStatsSectionOrder);
 
   /// 状态显示段位顺序（未知 id 会被剔除，缺失的段位按默认顺序补到末尾）。
   @override
@@ -262,6 +303,23 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
         prefs.getStringList(_keyReadingStatsSectionOrder) ?? const [];
     _readingStatsSectionOrder = _sanitizeReadingStatsSectionOrder(
       savedSectionOrder,
+    );
+    _readingStatsShowComics = prefs.getBool(_keyReadingStatsShowComics) ?? true;
+    _readingStatsShowNovels = prefs.getBool(_keyReadingStatsShowNovels) ?? true;
+    // 旧备份或异常值不能让整页消失；加载只兜底内存，不改写持久化。
+    if (!_readingStatsShowComics && !_readingStatsShowNovels) {
+      _readingStatsShowComics = true;
+    }
+    _novelReadingStatsChartStyle =
+        prefs.getInt(_keyNovelReadingStatsChartStyle) ?? 0;
+    _novelReadingStatsShowOverview =
+        prefs.getBool(_keyNovelReadingStatsShowOverview) ?? true;
+    _novelReadingStatsShowTags =
+        prefs.getBool(_keyNovelReadingStatsShowTags) ?? true;
+    _novelReadingStatsShowActivityChart =
+        prefs.getBool(_keyNovelReadingStatsShowActivityChart) ?? true;
+    _novelReadingStatsSectionOrder = _sanitizeReadingStatsSectionOrder(
+      prefs.getStringList(_keyNovelReadingStatsSectionOrder) ?? const [],
     );
   }
 
@@ -497,6 +555,122 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     if (_listEquals(_readingStatsSectionOrder, sanitized)) return;
     _readingStatsSectionOrder = sanitized;
     await setStringList(_keyReadingStatsSectionOrder, sanitized);
+  }
+
+  /// 不允许关闭最后一类；拒绝时保持原值，由 UI 提示。
+  Future<void> setReadingStatsShowComics(bool value) =>
+      _writeReadingStatsPreference(
+        _keyReadingStatsShowComics,
+        value,
+        shouldWrite: () =>
+            _readingStatsShowComics != value &&
+            (value || _readingStatsShowNovels),
+        onSaved: () => _readingStatsShowComics = value,
+      );
+
+  Future<void> setReadingStatsShowNovels(bool value) =>
+      _writeReadingStatsPreference(
+        _keyReadingStatsShowNovels,
+        value,
+        shouldWrite: () =>
+            _readingStatsShowNovels != value &&
+            (value || _readingStatsShowComics),
+        onSaved: () => _readingStatsShowNovels = value,
+      );
+
+  Future<void> setNovelReadingStatsChartStyle(int value) =>
+      _writeReadingStatsPreference(
+        _keyNovelReadingStatsChartStyle,
+        value,
+        shouldWrite: () => _novelReadingStatsChartStyle != value,
+        onSaved: () => _novelReadingStatsChartStyle = value,
+      );
+
+  Future<void> setNovelReadingStatsShowOverview(bool value) =>
+      _writeReadingStatsPreference(
+        _keyNovelReadingStatsShowOverview,
+        value,
+        shouldWrite: () => _novelReadingStatsShowOverview != value,
+        onSaved: () => _novelReadingStatsShowOverview = value,
+      );
+
+  Future<void> setNovelReadingStatsShowTags(bool value) =>
+      _writeReadingStatsPreference(
+        _keyNovelReadingStatsShowTags,
+        value,
+        shouldWrite: () => _novelReadingStatsShowTags != value,
+        onSaved: () => _novelReadingStatsShowTags = value,
+      );
+
+  Future<void> setNovelReadingStatsShowActivityChart(bool value) =>
+      _writeReadingStatsPreference(
+        _keyNovelReadingStatsShowActivityChart,
+        value,
+        shouldWrite: () => _novelReadingStatsShowActivityChart != value,
+        onSaved: () => _novelReadingStatsShowActivityChart = value,
+      );
+
+  Future<void> setNovelReadingStatsSectionOrder(List<String> value) {
+    final sanitized = _sanitizeReadingStatsSectionOrder(value);
+    return _writeReadingStatsPreference(
+      _keyNovelReadingStatsSectionOrder,
+      sanitized,
+      shouldWrite: () =>
+          !_listEquals(_novelReadingStatsSectionOrder, sanitized),
+      onSaved: () => _novelReadingStatsSectionOrder = sanitized,
+    );
+  }
+
+  Future<void> _writeReadingStatsPreference(
+    String key,
+    Object value, {
+    required bool Function() shouldWrite,
+    required void Function() onSaved,
+  }) async {
+    final previous = _readingStatsWrites;
+    final completed = Completer<void>();
+    _readingStatsWrites = completed.future;
+    try {
+      await previous;
+      if (!shouldWrite()) return;
+      final storage = await prefs;
+      try {
+        // PrefsStore 的通用 helper 不检查 bool 结果，此处直接检查落盘成功。
+        final saved = await switch (value) {
+          bool() => storage.setBool(key, value),
+          int() => storage.setInt(key, value),
+          List<String>() => storage.setStringList(key, value),
+          _ => throw ArgumentError.value(value, 'value'),
+        };
+        if (!saved) throw StateError('Failed to save $key');
+      } catch (error, stack) {
+        unawaited(
+          AppLogger.instance.recordWarning(
+            error,
+            stackTrace: stack,
+            source: 'reader.settings',
+          ),
+        );
+        // SharedPreferences 写失败也可能先改本地缓存，重载后再向调用者报错。
+        try {
+          await storage.reload();
+        } catch (reloadError, reloadStack) {
+          unawaited(
+            AppLogger.instance.recordWarning(
+              reloadError,
+              stackTrace: reloadStack,
+              source: 'reader.settings.reload',
+            ),
+          );
+        }
+        rethrow;
+      }
+      onSaved();
+      notifyListeners();
+    } finally {
+      // 前一笔失败不阻塞后续修改，异常仍由原调用者接收。
+      completed.complete();
+    }
   }
 }
 

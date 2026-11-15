@@ -2374,19 +2374,19 @@ abstract class AppLocalizations {
   /// No description provided for @statsRecordComics.
   ///
   /// In zh, this message translates to:
-  /// **'读过的漫画数量'**
+  /// **'读过的漫画与轻小说数量'**
   String get statsRecordComics;
 
   /// No description provided for @statsRecordChapters.
   ///
   /// In zh, this message translates to:
-  /// **'读过的章节数量'**
+  /// **'读过的章节与小说卷数'**
   String get statsRecordChapters;
 
   /// No description provided for @statsRecordPages.
   ///
   /// In zh, this message translates to:
-  /// **'阅读页数'**
+  /// **'漫画阅读页数与小说阅读字数'**
   String get statsRecordPages;
 
   /// No description provided for @statsRecordTags.
@@ -2412,6 +2412,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'漫画'**
   String get statsComicsRead;
+
+  /// No description provided for @statsNovelsRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'小说'**
+  String get statsNovelsRead;
+
+  /// No description provided for @statsNovelVolumesRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'卷数'**
+  String get statsNovelVolumesRead;
+
+  /// No description provided for @statsNovelWordsRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'字数'**
+  String get statsNovelWordsRead;
+
+  /// No description provided for @statsNovelChartStyleBarDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'按天展示两周阅读字数'**
+  String get statsNovelChartStyleBarDesc;
+
+  /// No description provided for @statsVisibilityHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅隐藏此类统计，不停止记录'**
+  String get statsVisibilityHint;
+
+  /// No description provided for @statsKeepAtLeastOneType.
+  ///
+  /// In zh, this message translates to:
+  /// **'至少显示一类统计'**
+  String get statsKeepAtLeastOneType;
+
+  /// No description provided for @statsClearTypeConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除{type}阅读统计？'**
+  String statsClearTypeConfirmTitle(String type);
+
+  /// No description provided for @statsClearTypeConfirmContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'将删除全部{type}阅读统计，不影响另一类统计，此操作不可恢复。'**
+  String statsClearTypeConfirmContent(String type);
+
+  /// No description provided for @statsAccuracyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计数据供参考，并非精确数据'**
+  String get statsAccuracyHint;
+
+  /// No description provided for @statsNovelWordsOnDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 字'**
+  String statsNovelWordsOnDate(int count);
 
   /// No description provided for @statsChaptersRead.
   ///

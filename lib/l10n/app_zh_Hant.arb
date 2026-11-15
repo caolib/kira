@@ -750,13 +750,36 @@
   "statsEnableTitle": "閱讀統計",
   "statsEnableButton": "開啟",
   "statsDisableButton": "統計功能",
-  "statsRecordComics": "讀過的漫畫數量",
-  "statsRecordChapters": "讀過的章節數量",
-  "statsRecordPages": "閱讀頁數",
+  "statsRecordComics": "讀過的漫畫與輕小說數量",
+  "statsRecordChapters": "讀過的章節與小說卷數",
+  "statsRecordPages": "漫畫閱讀頁數與小說閱讀字數",
   "statsRecordTags": "常看類型",
   "statsRecordHeatmap": "每日閱讀活躍度熱力圖",
   "statsPrivacyNote": "資料僅儲存在本地，不上傳伺服器，可隨時關閉或清除。",
   "statsComicsRead": "漫畫",
+  "statsNovelsRead": "小說",
+  "statsNovelVolumesRead": "卷數",
+  "statsNovelWordsRead": "字數",
+  "statsNovelChartStyleBarDesc": "按天展示兩週閱讀字數",
+  "statsVisibilityHint": "僅隱藏此類統計，不停止記錄",
+  "statsKeepAtLeastOneType": "至少顯示一類統計",
+  "statsClearTypeConfirmTitle": "清除{type}閱讀統計？",
+  "@statsClearTypeConfirmTitle": {
+    "placeholders": {"type": {"type": "String"}}
+  },
+  "statsClearTypeConfirmContent": "將刪除全部{type}閱讀統計，不影響另一類統計，此操作不可復原。",
+  "@statsClearTypeConfirmContent": {
+    "placeholders": {"type": {"type": "String"}}
+  },
+  "statsAccuracyHint": "統計數據供參考，並非精確數據",
+  "statsNovelWordsOnDate": "{count} 字",
+  "@statsNovelWordsOnDate": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "statsChaptersRead": "章節",
   "statsPagesRead": "頁數",
   "statsTopTags": "常看類型",
