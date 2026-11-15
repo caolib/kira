@@ -725,7 +725,7 @@ void main() {
           r'C:\old',
           r'D:\new',
         ),
-        r'D:\new' + sep + r'x\1.jpg',
+        '${r'D:\new'}${sep}x${sep}1.jpg',
       );
     });
 
