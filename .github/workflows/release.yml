@@ -47,6 +47,19 @@ jobs:
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
 
+      # 手动续发只借用工作流提交中的两个构建脚本，应用代码仍来自不可变版本标签。
+      - name: Checkout workflow build tools for manual recovery
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .release-build-tools
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/build_apk.ps1
+            scripts/common.ps1
+          sparse-checkout-cone-mode: false
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -99,6 +112,33 @@ jobs:
 
       - name: Set up Flutter and locked dependencies
         uses: ./.github/actions/setup-flutter
+
+      - name: Apply manual recovery build tools
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -- .release-build-tools/scripts/build_apk.ps1 scripts/build_apk.ps1
+          cp -- .release-build-tools/scripts/common.ps1 scripts/common.ps1
+
+      - name: Record Android build sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          tools_sha="$source_sha"
+          tools_origin='Release tag snapshot (no overlay)'
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+            tools_sha="$(git -C .release-build-tools rev-parse HEAD)"
+            tools_origin='Manual recovery: workflow commit; only scripts/build_apk.ps1 and scripts/common.ps1 overlaid'
+          fi
+          {
+            printf '### Android build sources\n\n'
+            printf -- '- Application tag: `%s`\n' "$RELEASE_TAG"
+            printf -- '- Application source SHA: `%s`\n' "$source_sha"
+            printf -- '- Build tools SHA: `%s`\n' "$tools_sha"
+            printf -- '- Build tools source: %s\n' "$tools_origin"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build APK
         shell: pwsh

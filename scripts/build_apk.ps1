@@ -8,6 +8,11 @@ param(
 
 Write-Host "`n=== Kira APK 构建脚本 ===" -ForegroundColor Green
 
+# JVM 清理仅用于本地 Windows；Linux/macOS 与 CI 不枚举或结束宿主进程。
+$isWindowsHost = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+$cleanupBuildJdks = $isWindowsHost -and -not $env:CI
+$jdkBaseline = @()
+
 try {
     # 切到仓库根目录
     Push-Location (Join-Path $PSScriptRoot '..')
@@ -37,7 +42,7 @@ try {
     if ($copyAuthKeyDefine) { $buildArgs += $copyAuthKeyDefine }
 
     # 构建前记录已有 JVM，收尾只清理本次构建新起的守护进程
-    $jdkBaseline = Get-JavaProcessIds
+    if ($cleanupBuildJdks) { $jdkBaseline = @(Get-JavaProcessIds) }
 
     $buildLog = Join-Path ([System.IO.Path]::GetTempPath()) 'kira_build_apk.log'
     & flutter @buildArgs 2>&1 | Tee-Object -FilePath $buildLog
@@ -70,7 +75,7 @@ try {
     Write-Host "已重命名: $newName" -ForegroundColor Green
 
     # 打开所在文件夹（并选中文件）；CI 环境下跳过
-    if (-not $env:CI) {
+    if ($isWindowsHost -and -not $env:CI) {
         $fullPath = (Resolve-Path $destApk).Path
         Write-Host "`n构建产物: $fullPath" -ForegroundColor Green
         Start-Process explorer.exe -ArgumentList "/select,`"$fullPath`""
@@ -83,7 +88,7 @@ catch {
     exit 1
 }
 finally {
-    if (-not $env:CI) {
+    if ($cleanupBuildJdks) {
         Write-Host "`n正在结束构建 JVM..." -ForegroundColor DarkGray
         Stop-GradleJdks -Baseline $jdkBaseline
     }

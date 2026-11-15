@@ -8,6 +8,7 @@
 }
 
 function Get-JavaProcessIds {
+    if ($env:CI -or [Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { return }
     @(Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty ProcessId)
 }
@@ -18,6 +19,7 @@ function Stop-GradleJdks {
     # 基线之前已存在的 IDE、其他项目或常驻 JVM 一律不动。
     param([string[]]$Baseline = @())
 
+    if ($env:CI -or [Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { return }
     Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
         Where-Object { $Baseline -notcontains $_.ProcessId } |
         Where-Object {

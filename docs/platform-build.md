@@ -12,6 +12,8 @@ Do not add media/video dependencies for Windows debugging: the player stack is g
 
 ## Android
 
+`scripts/build_apk.ps1` 与 `scripts/common.ps1` 的 JVM 枚举/清理仅用于非 CI 的 Windows 宿主；Ubuntu Actions 不可调用 Windows 专用 `Get-CimInstance`。正式版标签不可变：`.github/workflows/release.yml` 手动续发时仍检出目标标签的应用代码、版本和日志，仅从 `github.workflow_sha` 覆盖这两个构建脚本，并在任务摘要记录两份源码 SHA；标签推送构建不覆盖脚本。
+
 `scripts/*.ps1` are UTF-8 **without BOM** and contain Chinese text. Windows PowerShell 5.1 (`powershell.exe`) parses them with the system ANSI codepage (GBK on zh-CN), producing mojibake and parser errors like `TerminatorExpectedAtEndOfString`. Run them with **PowerShell 7** (`pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build_apk.ps1`), which defaults to UTF-8. Adding a UTF-8 BOM to the scripts would fix 5.1 too.
 
 After `flutter clean`, `flutter run -d <android>` fails with `package identifier or launch activity not found`. **Run `flutter build apk --debug` once first**, then `flutter run` works again.
