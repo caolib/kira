@@ -409,12 +409,12 @@ def validate_bundle(bundle, version):
             require(isinstance(framework_executable, str) and re.fullmatch(r"[A-Za-z0-9_.-]+", framework_executable),
                     f"Invalid framework executable: {name}")
             binary = f"{root}/{framework_executable}"
-            require(bundle.mode(binary) & 0o111, f"Framework executable permission was lost: {binary}")
+            # MH_DYLIB files are mapped by dyld, not exec'd. Flutter's AOT App
+            # may be 0644; inventory comparison below still preserves its mode.
             device_macho(bundle.read(binary), binary, 6, minimum)
             checked_binaries.add(binary)
             binary_count += 1
         elif name.startswith("Frameworks/") and name.endswith(".dylib"):
-            require(bundle.mode(name) & 0o111, f"Dylib executable permission was lost: {name}")
             device_macho(bundle.read(name), name, 6, minimum)
             checked_binaries.add(name)
             binary_count += 1
@@ -425,7 +425,6 @@ def validate_bundle(bundle, version):
             continue
         data = bundle.read(name)
         if data[:4] in MACHO_MAGICS or data[:4] in FAT_MAGICS:
-            require(bundle.mode(name) & 0o111, f"Embedded Mach-O permission was lost: {name}")
             device_macho(data, name, 6, minimum)
             binary_count += 1
     assets = "Frameworks/App.framework/flutter_assets/"

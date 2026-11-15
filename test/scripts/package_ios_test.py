@@ -126,13 +126,38 @@ class PackageIosTest(unittest.TestCase):
                 self.write(entries)
                 self.expect_invalid(message)
 
-    def test_executable_modes_and_apple_signed_main_are_rejected(self):
-        for name in ("Runner", "Frameworks/Flutter.framework/Flutter"):
+    def test_dylibs_do_not_require_posix_execute_bits(self):
+        self.entries["Frameworks/libExample.dylib"] = stat.S_IFREG | 0o644, support.macho(filetype=6)
+        self.entries["Frameworks/Nested.framework/Binary"] = stat.S_IFREG | 0o644, support.macho(filetype=6)
+        for framework in ("Flutter", "App", "ExamplePlugin"):
+            name = f"Frameworks/{framework}.framework/{framework}"
+            self.entries[name] = stat.S_IFREG | 0o644, self.entries[name][1]
+        self.write()
+        self.assertEqual(package.validate_release(self.directory)["macho_binaries"], 6)
+        # Permissions are preserved, not silently repaired during packaging.
+        with zipfile.ZipFile(self.ipa) as archive:
+            inventory = package.ZipBundle(archive).inventory()
+        package.inspect_ipa(self.ipa, self.version, inventory)
+        name = "Frameworks/App.framework/App"
+        self.entries[name] = stat.S_IFREG | 0o755, self.entries[name][1]
+        self.write()
+        with self.assertRaisesRegex(ValueError, "permissions differ"):
+            package.inspect_ipa(self.ipa, self.version, inventory)
+
+    def test_non_executable_dylibs_still_require_device_macho(self):
+        for name in ("Frameworks/App.framework/App", "Frameworks/libExample.dylib",
+                     "Frameworks/Nested.framework/Binary"):
             with self.subTest(name=name):
                 entries = copy.deepcopy(self.entries)
-                entries[name] = stat.S_IFREG | 0o644, entries[name][1]
+                entries[name] = stat.S_IFREG | 0o644, support.macho(platform=7, filetype=6)
                 self.write(entries)
-                self.expect_invalid("permission was lost")
+                self.expect_invalid("LC_BUILD_VERSION device iOS")
+
+    def test_main_execute_mode_and_apple_identity_are_required_to_match_unsigned_app(self):
+        entries = copy.deepcopy(self.entries)
+        entries["Runner"] = stat.S_IFREG | 0o644, entries["Runner"][1]
+        self.write(entries)
+        self.expect_invalid("Runner executable permission was lost")
         entries = copy.deepcopy(self.entries)
         entries["Runner"] = stat.S_IFREG | 0o755, support.signed_macho(adhoc=False, cms=True)
         self.write(entries)
