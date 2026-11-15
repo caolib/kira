@@ -16,6 +16,7 @@ import '../models/user_manager.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
+import '../utils/app_platform.dart';
 import '../utils/display_mode_preference.dart';
 import '../utils/font_manager.dart';
 import '../utils/screen_layout.dart';
@@ -572,10 +573,12 @@ class _AppearancePageState extends State<AppearancePage>
       ],
     );
 
+    final useDynamicColor =
+        AppPlatform.supportsDynamicColor && _user.theme.useDynamicColor;
     final themeStyleSection = SettingsSection(
       icon: Icons.palette_outlined,
       title: l10n.appearanceThemeStyle,
-      child: _user.theme.useDynamicColor
+      child: useDynamicColor
           ? const SizedBox.shrink()
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -623,13 +626,14 @@ class _AppearancePageState extends State<AppearancePage>
 
     final colorOptionsSection = SettingTileGroup(
       children: [
-        SwitchListTile(
-          secondary: Icon(Icons.colorize_rounded, color: cs.onSurfaceVariant),
-          title: Text(l10n.appearanceDynamicColor),
-          value: _user.theme.useDynamicColor,
-          onChanged: (value) =>
-              unawaited(_user.theme.setUseDynamicColor(value)),
-        ),
+        if (AppPlatform.supportsDynamicColor)
+          SwitchListTile(
+            secondary: Icon(Icons.colorize_rounded, color: cs.onSurfaceVariant),
+            title: Text(l10n.appearanceDynamicColor),
+            value: _user.theme.useDynamicColor,
+            onChanged: (value) =>
+                unawaited(_user.theme.setUseDynamicColor(value)),
+          ),
         SwitchListTile(
           secondary: Icon(Icons.contrast_rounded, color: cs.onSurfaceVariant),
           title: Text(l10n.appearanceAmoledDark),
@@ -676,7 +680,7 @@ class _AppearancePageState extends State<AppearancePage>
                   children: spaced([
                     themeModeSection,
                     colorOptionsSection,
-                    if (!_user.theme.useDynamicColor) themeStyleSection,
+                    if (!useDynamicColor) themeStyleSection,
                     appFontCard,
                     ?desktopFontCard,
                     motionSection,
@@ -705,7 +709,7 @@ class _AppearancePageState extends State<AppearancePage>
         children: spaced([
           themeModeSection,
           colorOptionsSection,
-          if (!_user.theme.useDynamicColor) themeStyleSection,
+          if (!useDynamicColor) themeStyleSection,
           appFontCard,
           ?desktopFontCard,
           motionSection,

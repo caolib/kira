@@ -211,6 +211,46 @@ void main() {
     );
   });
 
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets(
+      'update and notice badges remain available on $platform',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        await UserManager().init();
+        final oldUpdateBadge = AppUpdateService.hasUnseenUpdate.value;
+        final oldNoticeCount = RemoteNoticeService.unreadActiveCount.value;
+        addTearDown(() {
+          AppUpdateService.hasUnseenUpdate.value = oldUpdateBadge;
+          RemoteNoticeService.unreadActiveCount.value = oldNoticeCount;
+        });
+        AppUpdateService.hasUnseenUpdate.value = true;
+        RemoteNoticeService.unreadActiveCount.value = 1;
+        await tester.pumpWidget(
+          wrapWithApp(const ProfilePage(), wrapInScaffold: false),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.widgetWithText(ListTile, '关于'),
+            matching: find.byType(Positioned),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.widgetWithText(ListTile, '通知中心'),
+            matching: find.byType(Positioned),
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(wrapWithApp(const SizedBox.shrink()));
+      },
+      variant: TargetPlatformVariant({platform}),
+    );
+  }
+
   testWidgets('about page shows error log entry', (tester) async {
     SharedPreferences.setMockInitialValues({'app_logging_enabled': true});
     PackageInfo.setMockInitialValues(

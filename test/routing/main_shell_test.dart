@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/routing/main_shell.dart';
+import 'package:kira/utils/app_update.dart';
+import 'package:kira/utils/remote_notice_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_helpers.dart';
@@ -181,6 +183,44 @@ void main() {
   });
 
   tearDown(teardownSecureCredentialStoreForTest);
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets(
+      'navigation update badge and notices remain available on $platform',
+      (tester) async {
+        final oldUpdateBadge = AppUpdateService.hasUnseenUpdate.value;
+        final oldNoticeCount = RemoteNoticeService.unreadActiveCount.value;
+        addTearDown(() {
+          AppUpdateService.hasUnseenUpdate.value = oldUpdateBadge;
+          RemoteNoticeService.unreadActiveCount.value = oldNoticeCount;
+        });
+        AppUpdateService.hasUnseenUpdate.value = true;
+        RemoteNoticeService.unreadActiveCount.value = 0;
+        final router = _buildRouter();
+        await tester.pumpWidget(
+          wrapWithApp(Router.withConfig(config: router), wrapInScaffold: false),
+        );
+        await tester.pumpAndSettle();
+        await _pumpThroughWarmUp(tester);
+
+        Finder badge() => find.descendant(
+          of: find.byType(NavigationRail),
+          matching: find.byType(Positioned),
+        );
+        expect(badge(), findsOneWidget);
+        AppUpdateService.hasUnseenUpdate.value = false;
+        await tester.pump();
+        expect(badge(), findsNothing);
+        RemoteNoticeService.unreadActiveCount.value = 1;
+        await tester.pump();
+        expect(badge(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(wrapWithApp(const SizedBox.shrink()));
+        router.dispose();
+      },
+      variant: TargetPlatformVariant({platform}),
+    );
+  }
 
   testWidgets('胶囊导航在窄宽和大字号下不横向溢出', (tester) async {
     tester.view.physicalSize = const Size(400, 900);

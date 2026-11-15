@@ -16,6 +16,7 @@ import '../models/novel_volume_snapshot.dart';
 import '../models/user_manager.dart';
 import '../repositories/novel_repository.dart';
 import 'app_logger.dart';
+import 'app_platform.dart';
 import 'download_manager.dart';
 import 'json_helpers.dart';
 import 'network_error.dart';
@@ -570,6 +571,10 @@ class NovelDownloadManager extends ChangeNotifier {
     String? path, {
     void Function(NovelDownloadMigrationProgress progress)? onProgress,
   }) async {
+    if (!AppPlatform.supportsCustomDownloadDirectory &&
+        path?.trim().nullIfEmpty() != null) {
+      throw UnsupportedError('iOS downloads use the application directory');
+    }
     await init();
     _checkAvailable();
     if (_runs.isNotEmpty ||

@@ -22,6 +22,7 @@ import '../utils/kira_links.dart';
 import '../utils/network_error.dart';
 import '../utils/novel_download_manager.dart';
 import '../utils/reading_history.dart';
+import '../utils/share_origin.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
 import '../widgets/app_hero.dart';
@@ -556,10 +557,12 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
                 : AppLocalizations.of(context)!.bookmarkAdd,
             onPressed: _toggleBookmarkGroup,
           ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: AppLocalizations.of(context)!.comicDetailShare,
-            onPressed: _shareComic,
+          Builder(
+            builder: (buttonContext) => IconButton(
+              icon: const Icon(Icons.share),
+              tooltip: AppLocalizations.of(context)!.comicDetailShare,
+              onPressed: () => _shareComic(buttonContext),
+            ),
           ),
         ],
       ),

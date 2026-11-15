@@ -11,6 +11,8 @@ import '../l10n/app_localizations.dart';
 import '../models/user_manager.dart';
 import 'app_dio.dart';
 import 'app_logger.dart';
+import 'app_platform.dart';
+import 'json_helpers.dart';
 import 'time_format.dart';
 import 'toast.dart';
 
@@ -41,13 +43,11 @@ String? deviceAndroidAbi() {
   return null;
 }
 
-/// 预览版(Beta)渠道只发布 Android arm64-v8a 包,当前设备是否吃得下。
-///
-/// 非 Android 设备一律返回 false —— 桌面端虽在测试架构内,但 CI 的 beta
-/// 预发布不含桌面安装包,切到 beta 会落在「无可用安装包」上。这样「红色
-/// 提示」与「警告色 Beta 徽标」同时覆盖「平台不对」和「架构不对」两种。
+/// Beta 分别提供 iOS IPA 与 Android arm64-v8a APK。
+/// 其余平台没有对应的 beta 安装包，保留渠道警示。
 bool isBetaChannelSupported() =>
-    Platform.isAndroid && deviceAndroidAbi() == 'arm64-v8a';
+    AppPlatform.isIOS ||
+    (Platform.isAndroid && deviceAndroidAbi() == 'arm64-v8a');
 
 class ReleaseAsset {
   final String name;
@@ -164,6 +164,8 @@ class AppUpdateService {
       'https://api.github.com/repos/caolib/kira/releases/latest';
   static const _ciReleaseUrl =
       'https://api.github.com/repos/caolib/kira/releases/tags/CI';
+  static const _iosBetaReleaseUrl =
+      'https://api.github.com/repos/caolib/kira/releases/tags/ios-build';
   static final Dio _dio = AppDio.create(
     source: 'app_update',
     options: BaseOptions(
@@ -214,19 +216,29 @@ class AppUpdateService {
     final isBeta = user.isBetaUpdateChannel;
     final packageInfo = await PackageInfo.fromPlatform();
     final currentVersion = packageInfo.version;
-    final url = isBeta ? _ciReleaseUrl : _latestReleaseUrl;
-    final response = await _dio.get(url);
-    final data = Map<String, dynamic>.from(response.data as Map);
-
-    final tagName = data['tag_name']?.toString() ?? '';
-    final releaseName = data['name']?.toString().trim() ?? '';
-    final releaseNotes = data['body']?.toString().trim() ?? '';
-    final releasePageUrl = data['html_url']?.toString() ?? '';
-
-    final assets = _parseAssets(data['assets'] as List? ?? const []);
-    if (assets.isEmpty) return null;
-
     final currentPlatform = _currentPlatform();
+    final betaUrl = currentPlatform == AssetPlatform.ios
+        ? _iosBetaReleaseUrl
+        : _ciReleaseUrl;
+    final url = isBeta ? betaUrl : _latestReleaseUrl;
+    final response = await _dio.get(url);
+    final data = jsonMap({'value': response.data}, 'value');
+    if (data == null) {
+      throw const FormatException('Invalid GitHub release response');
+    }
+
+    final tagName = jsonString(data, 'tag_name');
+    final releaseName = jsonString(data, 'name').trim();
+    final releaseNotes = jsonString(data, 'body').trim();
+    final releasePageUrl = jsonString(data, 'html_url');
+
+    final releaseAssets = _parseAssets(jsonList(data, 'assets'));
+    if (releaseAssets.isEmpty) return null;
+    final assets = currentPlatform == AssetPlatform.ios
+        ? releaseAssets
+              .where((asset) => asset.platform == AssetPlatform.ios)
+              .toList()
+        : releaseAssets;
 
     if (isBeta) {
       return buildBetaUpdateInfo(
@@ -324,7 +336,7 @@ class AppUpdateService {
     );
   }
 
-  /// Beta channel points to the CI tag. New CI runs append assets.
+  /// Beta uses CI on Android and ios-build on iOS; runs append assets.
   /// Assets are sorted by version descending, falling back to time.
   /// Update checks compare installed build numbers; merely discovering a build
   /// must not hide it on subsequent checks before the user installs it.
@@ -422,7 +434,9 @@ class AppUpdateService {
 
   /// Parses internal version like `1.1.3+205` into [major, minor, patch, build].
   static List<int> _parseVersionFromName(String name) {
-    final match = RegExp(r'(\d+)\.(\d+)\.(\d+)\+(\d+)').firstMatch(name);
+    final match = RegExp(
+      r'(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?\+(\d+)',
+    ).firstMatch(name);
     if (match == null) return const [];
     return [
       int.tryParse(match.group(1)!) ?? 0,
@@ -459,10 +473,10 @@ class AppUpdateService {
     final user = UserManager();
     final assets = <ReleaseAsset>[];
     for (final item in rawAssets) {
-      if (item is! Map) continue;
-      final asset = Map<String, dynamic>.from(item);
-      final name = asset['name']?.toString() ?? '';
-      final url = asset['browser_download_url']?.toString() ?? '';
+      final asset = jsonMap({'value': item}, 'value');
+      if (asset == null) continue;
+      final name = jsonString(asset, 'name');
+      final url = jsonString(asset, 'browser_download_url');
       if (name.isEmpty || url.isEmpty) continue;
       final createdAtStr = asset['created_at']?.toString() ?? '';
       final createdAt =
@@ -473,7 +487,7 @@ class AppUpdateService {
           name: name,
           downloadUrl: url,
           mirrorUrl: '${user.updateMirrorPrefix}$url',
-          size: (asset['size'] as num?)?.toInt() ?? 0,
+          size: jsonInt(asset, 'size'),
           platform: _detectPlatform(name),
           versionParts: _parseVersionFromName(name),
           createdAt: createdAt,
@@ -567,6 +581,7 @@ class AppUpdateService {
 
   static AssetPlatform _detectPlatform(String name) {
     final lower = name.toLowerCase();
+    if (lower.endsWith('.ipa')) return AssetPlatform.ios;
     if (lower.endsWith('.apk')) return AssetPlatform.android;
     if (lower.endsWith('.aab')) return AssetPlatform.android;
     if (lower.endsWith('.exe') || lower.endsWith('.msi')) {
@@ -581,7 +596,6 @@ class AppUpdateService {
     if (lower.contains('macos') || lower.contains('darwin')) {
       return AssetPlatform.macos;
     }
-    if (lower.endsWith('.ipa')) return AssetPlatform.ios;
     if (lower.endsWith('.deb') ||
         lower.endsWith('.rpm') ||
         lower.endsWith('.appimage')) {
@@ -594,7 +608,7 @@ class AppUpdateService {
 
   static AssetPlatform _currentPlatform() {
     if (Platform.isAndroid) return AssetPlatform.android;
-    if (Platform.isIOS) return AssetPlatform.ios;
+    if (AppPlatform.isIOS) return AssetPlatform.ios;
     if (Platform.isWindows) return AssetPlatform.windows;
     if (Platform.isMacOS) return AssetPlatform.macos;
     if (Platform.isLinux) return AssetPlatform.linux;

@@ -23,6 +23,7 @@ import 'routing/app_router.dart';
 import 'theme/app_radius.dart';
 import 'theme/app_typography.dart';
 import 'utils/app_logger.dart';
+import 'utils/app_platform.dart';
 import 'utils/app_storage.dart';
 import 'utils/display_mode_preference.dart';
 import 'utils/download_foreground_controller.dart';
@@ -70,44 +71,8 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      final backups = SettingsBackupService();
-      try {
-        await backups.recoverPendingRestore();
-      } catch (_) {
-        final recovered = Completer<void>();
-        runApp(
-          BackupRecoveryApp(
-            onRetry: () async {
-              await backups.recoverPendingRestore();
-              if (!recovered.isCompleted) recovered.complete();
-            },
-          ),
-        );
-        await recovered.future;
-      }
-
-      try {
-        await _bootstrap();
-      } catch (error, stack) {
-        // 最后一道兜底：runApp 之前任何未预期异常都不允许留下白屏。
-        debugPrint('[startup] fatal: $error');
-        unawaited(
-          AppLogger.instance.recordError(
-            error,
-            stackTrace: stack,
-            source: 'startup.fatal',
-          ),
-        );
-        runApp(
-          StartupFailureApp(
-            error: error,
-            onRetry: () async {
-              await _bootstrap();
-              runApp(const ProviderScope(child: KiraApp()));
-            },
-          ),
-        );
-      }
+      _installProcessErrorHandlers();
+      await startKira();
     },
     (error, stack) {
       // release 下 AppLogger 默认关闭，debugPrint 是 logcat 里唯一可见的线索
@@ -121,6 +86,50 @@ void main() {
       );
     },
   );
+}
+
+/// Starts the production initialization and mounts the app in the caller's zone.
+/// The executable entry installs process error handlers; integration tests keep
+/// their binding's handlers while exercising this same initialization path.
+Future<void> startKira() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final backups = SettingsBackupService();
+  try {
+    await backups.recoverPendingRestore();
+  } catch (error, stack) {
+    unawaited(
+      AppLogger.instance.recordError(
+        error,
+        stackTrace: stack,
+        source: 'startup.backup_recovery',
+      ),
+    );
+    final recovered = Completer<void>();
+    runApp(
+      BackupRecoveryApp(
+        onRetry: () async {
+          await backups.recoverPendingRestore();
+          if (!recovered.isCompleted) recovered.complete();
+        },
+      ),
+    );
+    await recovered.future;
+  }
+
+  try {
+    await _bootstrap();
+  } catch (error, stack) {
+    // 最后一道兜底：runApp 之前任何未预期异常都不允许留下白屏。
+    debugPrint('[startup] fatal: $error');
+    unawaited(
+      AppLogger.instance.recordError(
+        error,
+        stackTrace: stack,
+        source: 'startup.fatal',
+      ),
+    );
+    runApp(StartupFailureApp(error: error, onRetry: _bootstrap));
+  }
 }
 
 /// 可恢复的启动步骤：单步失败只记录，不中断启动。
@@ -143,9 +152,7 @@ Future<void> _startupStep(String name, Future<void> Function() action) async {
   }
 }
 
-Future<void> _bootstrap() async {
-  await AppLogger.instance.init();
-
+void _installProcessErrorHandlers() {
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     unawaited(AppLogger.instance.recordFlutterError(details));
@@ -161,7 +168,10 @@ Future<void> _bootstrap() async {
     );
     return true;
   };
+}
 
+Future<void> _bootstrap() async {
+  await AppLogger.instance.init();
   await _startupStep('user_manager', () => UserManager().init());
   await _startupStep('network_proxy', NetworkProxy.init);
   // 恢复漫画与轻小说持久化下载队列并自动续传。
@@ -273,6 +283,7 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
   CorePalettes? _dynamicPalettes;
 
   Future<void> _loadDynamicPalettes() async {
+    if (!AppPlatform.supportsDynamicColor) return;
     try {
       final result = await _dynamicColorChannel.invokeMethod<List<dynamic>?>(
         'getCorePalette',
@@ -406,6 +417,7 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(networkAutoTestSchedulerProvider).poke();
+      ref.read(backupSchedulerProvider).poke();
       unawaited(_checkSharedLinkClipboard());
     }
   }
@@ -469,15 +481,15 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
       dynamicSchemeVariant: _user.themeVariant,
     );
 
-    // Android 12+ Monet 动态取色：跟随系统壁纸配色。
-    // Android 12+ Monet 动态取色：跟随系统壁纸配色（仅 Android 且开关打开）。
-    if (_user.theme.useDynamicColor && dynamicPalette != null) {
+    final useDynamicColor =
+        AppPlatform.supportsDynamicColor && _user.theme.useDynamicColor;
+    if (useDynamicColor && dynamicPalette != null) {
       colorScheme = _dynamicColorScheme(dynamicPalette, brightness);
     }
 
     // 修复“彩虹”等变体会固定生成独立色相（例如粉色）且不随主题色变化的背景问题
     if (_user.themeVariant == DynamicSchemeVariant.rainbow &&
-        !_user.theme.useDynamicColor) {
+        !useDynamicColor) {
       final standardScheme = ColorScheme.fromSeed(
         seedColor: seedColor,
         brightness: brightness,

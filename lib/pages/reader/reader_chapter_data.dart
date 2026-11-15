@@ -20,15 +20,23 @@ extension _ReaderChapterData on _ReaderPageState {
   }
 
   Future<void> _setVolumeIntercept(bool enabled) async {
-    if (!_volumeChannelAvailable) return;
+    if (!AppPlatform.supportsReaderVolumeKeys || !_volumeChannelAvailable) {
+      return;
+    }
     try {
       await _ReaderPageState._volumeChannel.invokeMethod(
         enabled ? 'enable' : 'disable',
       );
     } on MissingPluginException {
       _volumeChannelAvailable = false;
-    } on PlatformException catch (e) {
-      debugPrint('Volume channel unavailable: $e');
+    } on PlatformException catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'reader.volume_keys',
+        ),
+      );
       _volumeChannelAvailable = false;
     }
   }

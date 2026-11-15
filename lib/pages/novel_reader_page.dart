@@ -25,6 +25,7 @@ import '../theme/novel_reader_theme.dart';
 import '../theme/reader_chrome.dart';
 import '../utils/adaptive_motion.dart';
 import '../utils/app_logger.dart';
+import '../utils/app_platform.dart';
 import '../utils/novel_bookmark_store.dart';
 import '../utils/novel_reading_store.dart';
 import '../utils/reader_system_ui.dart';
@@ -296,14 +297,22 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   }
 
   Future<void> _setVolumeIntercept(bool enabled) async {
-    if (!_volumeChannelAvailable) return;
+    if (!AppPlatform.supportsReaderVolumeKeys || !_volumeChannelAvailable) {
+      return;
+    }
     try {
       await _volumeChannel.invokeMethod(enabled ? 'enable' : 'disable');
     } on MissingPluginException {
       // 桌面/测试环境没有音量键实现：静默降级，不再尝试。
       _volumeChannelAvailable = false;
-    } on PlatformException catch (error) {
-      debugPrint('Volume channel unavailable: $error');
+    } on PlatformException catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'novel_reader.volume_keys',
+        ),
+      );
       _volumeChannelAvailable = false;
     }
   }

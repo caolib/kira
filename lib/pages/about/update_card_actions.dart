@@ -34,17 +34,28 @@ extension _UpdateCardActions on _UpdateCardState {
   bool get _isInstalling => InAppInstaller.instance.state.value.isBusy;
 
   Future<void> _openUrl(String url) async {
-    final launched = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!mounted) return;
-    if (!launched) {
-      showToast(
-        context,
-        AppLocalizations.of(context)!.updateOpenDownloadFailed,
-        isError: true,
+    try {
+      final launched = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
       );
+      if (!mounted) return;
+      if (!launched) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.updateOpenDownloadFailed,
+          isError: true,
+        );
+      }
+    } catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'about.open_download',
+        ),
+      );
+      if (mounted) showToast(context, error.toString(), isError: true);
     }
   }
 
@@ -60,7 +71,8 @@ extension _UpdateCardActions on _UpdateCardState {
   /// In-app download+install is wired for Android APKs only; every other
   /// platform falls back to the asset tile's browser download links.
   bool _canInstallInApp(ReleaseAsset asset) =>
-      Platform.isAndroid && asset.platform == AssetPlatform.android;
+      AppPlatform.supportsAutomaticPackageInstall &&
+      asset.platform == AssetPlatform.android;
 
   /// 当前设备 ABI 对应的 Android 安装包；读不到 ABI 或没有匹配时为
   /// null，调用方回退为全量展开展示。

@@ -3,7 +3,7 @@
 ## 维护范围
 
 - 两个活跃产品域：**漫画（拷贝 + 热辣）**与**轻小说**。动漫已彻底移除，不保留其兼容代码。
-- Android 是主维护目标，Windows 是开发/调试宿主；macOS/Linux 不手工维护，但仍有发布构建。不要添加 `pubspec.yaml` 的 `platforms:` 键，或仅为调试宿主引入平台原生依赖。
+- Android 与 iOS 是维护目标，Windows 是开发/调试宿主；macOS/Linux 桌面端不手工维护，但仍有发布构建。iOS 构建与真机验收边界见 `docs/platform-build.md`。不要添加 `pubspec.yaml` 的 `platforms:` 键，或仅为调试宿主引入平台原生依赖。
 - `android/`、`ios/`、`linux/`、`macos/`、`web/`、`windows/` 只放平台集成；静态资源放 `assets/` 并登记到 `pubspec.yaml`。
 - `ref/` 已被 gitignore 排除，仅作接口资料参考；不从中导入代码，不把它作为当前行为的证据。
 - 横向滑切 tab 与 GNav 胶囊导航是产品功能，重构时保留。返回首页/搜索页时键盘不应重新弹出：见 `dismiss_keyboard_observer.dart` 与 `test/routing/main_shell_focus_test.dart`。
@@ -98,7 +98,7 @@ git diff --exit-code -- pubspec.lock
 | 修改轻小说功能、阅读/鉴权/下载交互 | `docs/novel.md` |
 | 新建/抽取复用组件 | `docs/widgets.md` |
 | 修改存储、备份或恢复 | `docs/persistence-and-cache.md` |
-| Windows/Android 构建报错、改 `windows/CMakeLists.txt`、添加媒体依赖 | `docs/platform-build.md` |
+| Windows/Android/iOS 构建报错、修改 iOS 工程或构建流程、改 `windows/CMakeLists.txt`、添加媒体依赖 | `docs/platform-build.md` |
 
 - 文档引用代码用「文件路径 + 符号名」，不写行号；行号随重构漂移，过期后反而误导。
 - Windows 的 C4819/STL1011/C1083/C1041 按平台文档排查；保留 `/utf-8`，否则中文系统构建会失败。
@@ -109,4 +109,4 @@ git diff --exit-code -- pubspec.lock
 - 仅在用户要求时提交/推送；提交用 emoji + Conventional Commit + 简洁中文，如 `✨ feat: 添加检查更新功能`、`🐛 fix: 登录过期后提醒用户登录`。
 - `scripts/git-hooks/pre-commit` 自动运行 `scripts/update_version_code.ps1`，将 versionCode 设为「HEAD 提交数 + 1」并暂存 `pubspec.yaml`，属于预期改动，不回退。新克隆需 `git config core.hooksPath scripts/git-hooks` 启用。
 - 普通开发不更新 `docs/CHANGELOG.md`。发版、续发、发布日志修正走项目 `/release` skill；自然语言请求先读 `.claude/skills/release/SKILL.md`，执行**信息确认 → 完整日志审查 → 发布批准**，批准后才提交、打标签和推送。
-- CI：`build-ci.yml` 为 `v*-beta*` tag/手动 Android 构建；`build-test.yml` 仅手动构建测试 APK artifact（不创建 Release）；`release.yml` 为非 beta 的 `v*` tag/手动正式版构建（arm/arm64/x64 APK 与 Windows 安装包）；`release-all.yaml` 手动构建 Android arm64、Windows ZIP+Setup、macOS、Linux（不含 iOS/web）。
+- CI：`build-ci.yml` 为 `v*-beta*` tag/手动 Android 构建；`build-test.yml` 仅手动构建测试 APK artifact（不创建 Release）；`build-ios.yml` 手动构建未签名 IPA 到固定 `ios-build`（验证与跳过测试边界见 `docs/platform-build.md`）；`release.yml` 为非 beta 的 `v*` tag/手动正式版构建（arm/arm64/x64 APK 与 Windows 安装包）；`release-all.yaml` 手动构建 Android arm64、Windows ZIP+Setup、macOS、Linux（不含 iOS/web）。

@@ -22,6 +22,7 @@ import 'package:kira/widgets/app_sheet.dart';
 import 'package:kira/widgets/error_retry_view.dart';
 import 'package:kira/widgets/pinch_zoomable.dart';
 import 'package:kira/widgets/select_tile.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -172,8 +173,30 @@ Future<void> _settle(WidgetTester tester) async {
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump(const Duration(milliseconds: 20));
   }
-  // Memory-image decoding runs outside FakeAsync; finish the native codecs
-  // before requiring every loading animation (including cached rows) to settle.
+  // ImageDescriptor decoding happens before Image widgets exist. Under parallel
+  // tests, advancing the fake clock alone can leave its loading ticker running.
+  final loading = find.byWidgetPredicate(
+    (widget) =>
+        widget is ExpressiveLoadingIndicator ||
+        widget is LinearProgressIndicator,
+  );
+  for (
+    var attempt = 0;
+    attempt < 200 && loading.evaluate().isNotEmpty;
+    attempt++
+  ) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  expect(
+    loading,
+    findsNothing,
+    reason:
+        'Native decoding and directory requests must finish before settling',
+  );
+  // Then finish MemoryImage decoding before settling the remaining animations.
   for (final element in find.byType(Image).evaluate()) {
     final image = element.widget as Image;
     await tester.runAsync(() => precacheImage(image.image, element));

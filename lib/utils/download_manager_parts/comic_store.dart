@@ -172,22 +172,35 @@ extension DownloadManagerComicStorePart on DownloadManager {
     final file = _comicMetadataFile(pathWord);
     if (!file.existsSync()) return null;
     try {
-      final decoded = jsonDecode(file.readAsStringSync());
-      if (decoded is! Map) return null;
-      final info = LocalComicInfo.fromJson(Map<String, dynamic>.from(decoded));
-      final coverPath = info.coverPath;
-      if (coverPath != null &&
-          coverPath.isNotEmpty &&
-          !File(coverPath).existsSync()) {
-        return LocalComicInfo(
-          comic: info.comic,
-          coverPath: null,
-          updatedAt: info.updatedAt,
-        );
-      }
-      return info;
-    } catch (e) {
-      debugPrint('Read local comic info failed: $e');
+      final decoded = jsonMap({
+        'value': jsonDecode(file.readAsStringSync()),
+      }, 'value');
+      if (decoded == null) return null;
+      final info = LocalComicInfo.fromJson(decoded);
+      final storedCover = info.coverPath;
+      if (storedCover == null || storedCover.isEmpty) return info;
+      final resolved = DownloadedFilePath.resolve(
+        storedCover,
+        rootPath: _rootDirectory!.path,
+        directoryPath: _comicDirectory(pathWord).path,
+        relocateIOSContainer: AppPlatform.isIOS,
+      );
+      final cover = resolved != null && File(resolved).existsSync()
+          ? resolved
+          : null;
+      return LocalComicInfo(
+        comic: info.comic.copyWith(cover: cover ?? ''),
+        coverPath: cover,
+        updatedAt: info.updatedAt,
+      );
+    } catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'downloads.read_comic',
+        ),
+      );
       return null;
     }
   }

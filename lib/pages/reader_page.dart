@@ -23,6 +23,7 @@ import '../theme/app_spacing.dart';
 import '../theme/reader_chrome.dart';
 import '../utils/adaptive_motion.dart';
 import '../utils/app_logger.dart';
+import '../utils/app_platform.dart';
 import '../utils/bookmark_store.dart';
 import '../utils/chapter_summary_cache.dart';
 import '../utils/download_manager.dart';

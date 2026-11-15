@@ -199,6 +199,99 @@ void main() {
       });
     }
 
+    for (final channel in ['stable', 'beta']) {
+      for (final useMirror in [false, true]) {
+        testWidgets(
+          'iOS $channel IPA download opens the ${useMirror ? 'mirror' : 'direct'} URL without installing',
+          (tester) async {
+            await UserManager().setUpdateChannel(channel);
+            await UserManager().setUseUpdateMirror(useMirror);
+            await UserManager().setUpdateMirrorPrefix(
+              'https://mirror.example.com/',
+            );
+            final installCalls = <MethodCall>[];
+            const installChannel = MethodChannel(
+              'io.github.caolib.kira/install_apk',
+            );
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+                .setMockMethodCallHandler(installChannel, (call) async {
+                  installCalls.add(call);
+                  return true;
+                });
+            addTearDown(() {
+              TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+                  .setMockMethodCallHandler(installChannel, null);
+            });
+            final previousInstallState = InAppInstaller.instance.state.value;
+            await pumpAbout(tester, width: 375);
+            await tester.tap(find.text('检查更新'));
+            await waitForRequest(tester, 0);
+            expect(
+              requests.single.$1.uri.path,
+              channel == 'beta'
+                  ? '/repos/caolib/kira/releases/tags/ios-build'
+                  : '/repos/caolib/kira/releases/latest',
+            );
+            respond(
+              0,
+              release: {
+                'tag_name': channel == 'beta' ? 'ios-build' : 'v1.1.0',
+                'name': 'Release',
+                'html_url': 'https://example.com/releases',
+                'assets': [
+                  for (final suffix in [
+                    'ios-unsigned.ipa',
+                    'ios-unsigned.ipa.sha256',
+                    'arm64-v8a.apk',
+                  ])
+                    {
+                      'name': 'kira-1.1.0+2-$suffix',
+                      'browser_download_url':
+                          'https://example.com/kira-1.1.0+2-$suffix',
+                      'size': 1024,
+                    },
+                ],
+              },
+            );
+            await tester.pumpAndSettle();
+            expect(find.text('kira-1.1.0+2-ios-unsigned.ipa'), findsOneWidget);
+            expect(find.textContaining('.apk'), findsNothing);
+            expect(find.textContaining('.sha256'), findsNothing);
+            expect(find.text('更新'), findsNothing);
+            expect(find.text('手动下载'), findsOneWidget);
+            await tester.ensureVisible(find.text('手动下载'));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('手动下载'));
+            await tester.pumpAndSettle();
+
+            expect(calls, hasLength(1));
+            expect(calls.single.method, 'launch');
+            expect(
+              calls.single.arguments,
+              containsPair(
+                'url',
+                '${useMirror ? 'https://mirror.example.com/' : ''}https://example.com/kira-1.1.0+2-ios-unsigned.ipa',
+              ),
+            );
+            expect(calls.single.arguments, containsPair('useSafariVC', false));
+            expect(installCalls, isEmpty);
+            expect(
+              InAppInstaller.instance.state.value,
+              same(previousInstallState),
+            );
+            expect(
+              AppUpdateService.state.value.status,
+              AppUpdateStatus.available,
+            );
+            expect(AppUpdateService.hasUnseenUpdate.value, isFalse);
+            expect(tester.takeException(), isNull);
+            await tester.pumpWidget(wrapWithApp(const SizedBox.shrink()));
+          },
+          variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+        );
+      }
+    }
+
     for (final throwsError in [false, true]) {
       testWidgets('官网打开${throwsError ? '异常显示原始原因' : '返回失败时提示重试'}', (
         tester,
@@ -419,6 +512,123 @@ void main() {
     expect(UserManager().updateCheckFrequency, UpdateCheckFrequency.never);
     expect(AppUpdateService.hasUnseenUpdate.value, isFalse);
   });
+
+  for (final width in [375.0, 1200.0]) {
+    for (final channel in ['stable', 'beta']) {
+      testWidgets(
+        'iOS $channel keeps update controls and the IPA card at width $width',
+        (tester) async {
+          await UserManager().setUpdateChannel(channel);
+          await pumpAbout(tester, width: width);
+          await tester.pumpAndSettle();
+          expect(find.text('检查更新'), findsOneWidget);
+          expect(find.text('自动检查更新'), findsOneWidget);
+          expect(find.byType(SelectTile<UpdateCheckFrequency>), findsOneWidget);
+          expect(find.byTooltip('设置镜像源'), findsOneWidget);
+          expect(
+            tester
+                .widget<SelectTile<String>>(find.byType(SelectTile<String>))
+                .value,
+            channel,
+          );
+          expect(requests, isEmpty);
+          await tester.ensureVisible(find.text('检查更新'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('检查更新'));
+          await waitForRequest(tester, 0);
+          final release = _release(beta: channel == 'beta');
+          if (channel == 'beta') release['tag_name'] = 'ios-build';
+          respond(0, release: release);
+          await tester.pumpAndSettle();
+          expect(
+            AppUpdateService.state.value.status,
+            AppUpdateStatus.available,
+          );
+          expect(
+            AppUpdateService.state.value.info!.assets.single.platform,
+            AssetPlatform.ios,
+          );
+          expect(find.text('kira-1.1.0+2-ios.ipa'), findsOneWidget);
+          expect(find.textContaining('.apk'), findsNothing);
+          expect(find.textContaining('.exe'), findsNothing);
+          expect(find.text('更新'), findsNothing);
+          expect(find.text('手动下载'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(wrapWithApp(const SizedBox.shrink()));
+        },
+        variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+      );
+    }
+  }
+
+  for (final oldRequestFails in [false, true]) {
+    testWidgets(
+      'iOS channel switch uses ios-build and ignores stale ${oldRequestFails ? 'failure' : 'success'}',
+      (tester) async {
+        await pumpAbout(tester, width: 375);
+        await tester.tap(find.text('检查更新'));
+        await waitForRequest(tester, 0);
+        expect(requests.single.$1.uri.path, endsWith('/releases/latest'));
+        await tester.tap(find.text('稳定版'));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('beta'));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('是否切换?'), findsOneWidget);
+        expect(find.text('仅限 Android arm64 设备。'), findsNothing);
+        expect(find.textContaining('当前设备：'), findsNothing);
+        await tester.tap(find.text('取消'));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(UserManager().updateChannel, 'stable');
+        expect(requests, hasLength(1));
+
+        await tester.tap(find.text('稳定版'));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('beta'));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('确认'));
+        await waitForRequest(tester, 1);
+        expect(requests.last.$1.uri.path, endsWith('/releases/tags/ios-build'));
+        respond(1, release: {..._release(beta: true), 'tag_name': 'ios-build'});
+        await tester.pumpAndSettle();
+        expect(AppUpdateService.state.value.info!.isBetaChannel, isTrue);
+        expect(find.text('ios-build'), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline_rounded), findsNothing);
+        expect(find.text('更新'), findsNothing);
+        if (oldRequestFails) {
+          final (options, handler) = requests.first;
+          handler.reject(
+            DioException(requestOptions: options, error: 'offline'),
+          );
+        } else {
+          respond(0);
+        }
+        await tester.pumpAndSettle();
+        expect(AppUpdateService.state.value.info!.isBetaChannel, isTrue);
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString('update_channel'), 'beta');
+        expect(prefs.getInt('auto_check_update_last_success_beta'), isNotNull);
+        expect(prefs.getInt('auto_check_update_last_success_stable'), isNull);
+
+        await tester.ensureVisible(find.byType(SelectTile<String>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('beta'));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('稳定版'));
+        await waitForRequest(tester, 2);
+        expect(requests.last.$1.uri.path, endsWith('/releases/latest'));
+        respond(2);
+        await tester.pumpAndSettle();
+        expect(AppUpdateService.state.value.info!.isBetaChannel, isFalse);
+        expect(
+          AppUpdateService.state.value.info!.assets.single.platform,
+          AssetPlatform.ios,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(wrapWithApp(const SizedBox.shrink()));
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+    );
+  }
 
   testWidgets('stable skip persists only the selected version', (tester) async {
     await pumpAbout(tester);

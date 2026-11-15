@@ -225,12 +225,20 @@ extension _ComicDetailActions on _ComicDetailPageState {
 
   /// 通过系统分享面板分享漫画的 https 落地页链接（见 [KiraLinks.comicShareUrl]），
   /// 接收方点击后由系统或落地页拉起 kira 并打开本漫画详情页。
-  Future<void> _shareComic() async {
+  Future<void> _shareComic(BuildContext buttonContext) async {
     final l10n = AppLocalizations.of(context)!;
     final name = _comic?.name ?? widget.pathWord;
     // 分享面板关闭时 app 恢复前台会触发剪贴板检测；先把自己分享的链接
     // 记为已处理，避免分享者收到自己刚分享的提示。
-    unawaited(SharedLinkRecord.markHandled(widget.pathWord));
+    unawaited(
+      SharedLinkRecord.markHandled(widget.pathWord).catchError(
+        (Object error, StackTrace stack) => AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'comic_detail.share_record',
+        ),
+      ),
+    );
     try {
       await SharePlus.instance.share(
         ShareParams(
@@ -239,6 +247,7 @@ extension _ComicDetailActions on _ComicDetailPageState {
             KiraLinks.comicShareUrl(widget.pathWord),
           ),
           subject: name,
+          sharePositionOrigin: shareOrigin(buttonContext),
         ),
       );
     } catch (e, stack) {
@@ -249,6 +258,9 @@ extension _ComicDetailActions on _ComicDetailPageState {
           source: 'comic_detail.share',
         ),
       );
+      if (mounted) {
+        showToast(context, NetworkError.message(e, l10n: l10n), isError: true);
+      }
     }
   }
 }

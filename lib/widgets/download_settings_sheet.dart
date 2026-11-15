@@ -7,6 +7,7 @@ import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_status_colors.dart';
+import '../utils/app_platform.dart';
 import '../utils/download_directory.dart';
 import '../utils/download_manager.dart';
 import '../utils/novel_download_manager.dart';
@@ -144,7 +145,9 @@ class _DownloadSettingsSheetState extends State<DownloadSettingsSheet> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    trailing: downloads.customSaveDirectory == null
+                    trailing: !AppPlatform.supportsCustomDownloadDirectory
+                        ? null
+                        : downloads.customSaveDirectory == null
                         ? const Icon(Icons.chevron_right)
                         : PopupMenuButton<String>(
                             onSelected: (value) {
@@ -159,7 +162,9 @@ class _DownloadSettingsSheetState extends State<DownloadSettingsSheet> {
                               ),
                             ],
                           ),
-                    onTap: _changeSaveLocation,
+                    onTap: AppPlatform.supportsCustomDownloadDirectory
+                        ? _changeSaveLocation
+                        : null,
                   ),
                   const Divider(height: AppSpacing.xl),
                   SwitchListTile(
@@ -222,7 +227,9 @@ class _DownloadSettingsSheetState extends State<DownloadSettingsSheet> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    trailing: novels.customSaveDirectory == null
+                    trailing: !AppPlatform.supportsCustomDownloadDirectory
+                        ? null
+                        : novels.customSaveDirectory == null
                         ? const Icon(Icons.chevron_right)
                         : PopupMenuButton<String>(
                             onSelected: (value) {
@@ -239,7 +246,9 @@ class _DownloadSettingsSheetState extends State<DownloadSettingsSheet> {
                               ),
                             ],
                           ),
-                    onTap: () => _changeNovelSaveLocation(novels),
+                    onTap: AppPlatform.supportsCustomDownloadDirectory
+                        ? () => _changeNovelSaveLocation(novels)
+                        : null,
                   ),
                 ],
               ),

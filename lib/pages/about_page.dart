@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +16,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_status_colors.dart';
 import '../utils/app_logger.dart';
+import '../utils/app_platform.dart';
 import '../utils/app_update.dart';
 import '../utils/device_environment.dart';
 import '../utils/kira_links.dart';
@@ -52,7 +52,7 @@ class _AboutPageState extends State<AboutPage> {
     AppUpdateService.hasUnseenUpdate.addListener(
       AppUpdateService.markUpdateBadgeSeen,
     );
-    // Entry dots (profile "About" + bottom-nav) clear on open; update card keeps state.
+    // Clear entry dots on open without clearing the update card.
     AppUpdateService.markUpdateBadgeSeen();
   }
 
@@ -195,7 +195,7 @@ class _AboutPageState extends State<AboutPage> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    // 宽屏：更新设置与法律/致谢两卡双列并排；窄屏纵向堆叠。
+                    // 宽屏双列并排，窄屏纵向堆叠。
                     if (ScreenLayout.contentWidth(
                           MediaQuery.sizeOf(context).width,
                         ) >=

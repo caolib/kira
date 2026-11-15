@@ -248,6 +248,8 @@ Future<void> deleteAll();
 - 偏好键 `download_save_directory`（`download_` 前缀族），存绝对路径；缺省/置空 = 应用内部默认目录。
 - 启动解析：自定义目录存在、可创建且可写探测通过才使用，否则回退默认（如换机恢复备份后路径失效）。
 - 切换目录时逐漫画迁移（同卷 rename / 跨卷 copy+delete），并重写 `chapter.json` 的 `contents` 与 `comic.json` 的 `cover_path`/`comic.cover` 绝对路径前缀；manifest 只含相对标识无需改写。
+- iOS 固定使用应用私有 Documents 目录，两类下载设置只读；启动忽略旧自定义目录偏好但保留键值，管理器拒绝非空外部目录。不实现外部目录长期授权；备份、日志与字体仍可通过系统文件选择器导入导出。
+- iOS 容器位置改变时，`lib/utils/downloaded_file_path.dart` 的 `DownloadedFilePath.resolve` 在读取漫画页、封面与重试复用页时做受限重定位：旧容器的完整 `Documents/comic_downloads/<作品>/<章节>` 后缀必须对应当前归属目录，目标文件须存在；不按文件名搜索，不接受 URI 或目录穿越。原元数据不批量重写，真正缺失的成功页仍按损坏处理，部分失败页保持可补全。小说沿用根目录加相对路径。
 - Android 侧授权:API 30+ 走 `MANAGE_EXTERNAL_STORAGE`("所有文件访问"系统开关页,**不是**应用内运行时弹窗);API ≤29 期望退化到 `WRITE_EXTERNAL_STORAGE` 的运行时授权。两者都**必须**声明在 `android/app/src/main/AndroidManifest.xml` 的 `<uses-permission>` —— `permission_handler` 的 `determinePermissionStatus`/`requestPermissions` 会先查 manifest,缺声明时直接判定 `denied` 并 `continue`,不会调用 `launchSpecialPermission`,表现为点"保存位置"立刻提示"未授予存储权限"、无任何系统页或弹窗。选目录用 `file_picker`(`lib/utils/download_directory.dart`)。
   - 已知缺口:Android 10(API 29)下 `Permission.storage` 仅在 `WRITE_EXTERNAL_STORAGE` 已声明**且** `Environment.isExternalStorageLegacy()` 为真时才请求;当前未声明 `requestLegacyExternalStorage`,该分支 manifest names 为空,同样静默失败(API 24-28 不受影响)。
 
@@ -296,7 +298,7 @@ Future<void> deleteAll();
 - 阅读历史和阅读设置每次读取当前 prefs，无一次性数据快照，恢复备份后无需注册额外单例重载。
 - `cache_novel_*`：按主机/账号指纹区分的元数据缓存，明确 TTL。
 - 应用支持目录 `novel_text_cache_v1`：整卷正文和对应目录的文件快照；缓存管理可单独清理，保留阅读历史。
-- 应用文档目录 `novel_downloads`（可改到自定义目录，键 `download_novel_save_directory`）：**永久下载**，与上面的可清理正文缓存是两套存储。带版本清单 `manifest_v1.json`，每卷保存同一版本的原始 TXT + 目录快照、书籍/卷元数据与插图 URL 映射。**启动只做轻量探测**：读两级清单 JSON，对每个被索引文件做「存在且长度相符」检查（不读正文、不算摘要、不解析文本），据此区分「已完成 / 部分完成 / 待修复」；缺失或长度不符立即标为「待修复」。摘要与正文合法性在真正读取该卷时（`readVolumeSnapshot`/`readImageBytes`）惰性校验，不符则降级。这样启动耗时不随离线库体积增长。删除只作用于被索引、被探测过的文件。
+- 应用文档目录 `novel_downloads`（非 iOS 可改到自定义目录，键 `download_novel_save_directory`）：**永久下载**，与上面的可清理正文缓存是两套存储。带版本清单 `manifest_v1.json`，每卷保存同一版本的原始 TXT + 目录快照、书籍/卷元数据与插图 URL 映射。**启动只做轻量探测**：读两级清单 JSON，对每个被索引文件做「存在且长度相符」检查（不读正文、不算摘要、不解析文本），据此区分「已完成 / 部分完成 / 待修复」；缺失或长度不符立即标为「待修复」。摘要与正文合法性在真正读取该卷时（`readVolumeSnapshot`/`readImageBytes`）惰性校验，不符则降级。这样启动耗时不随离线库体积增长。删除只作用于被索引、被探测过的文件。
 - `download_novel_queue_state_v1`：小说未完成下载队列（版本、暂停标记、任务列表）。完整成功后只删除任务记录，本地文件保留；启动时依据探测结果清理遗留完成记录，缺失/损坏转待修复，失败/暂停/部分完成任务保留。只持久化稳定来源标识（`CopyAccountSession.id`，游客为 `guest`）与主机，**不保存 token**；账号或线路变化后未完成任务暂停。`download_novel_concurrency` 控制并发（1–4）。管理器初始化与续传在首帧之后后台进行，不阻塞 `runApp`。
 - 清理边界：清正文缓存不动已下载内容；清下载不动阅读进度/历史/书签。退出账号不删除本机已下载内容。
 - `secure_mirror_copy_account_v1`：`SecureCredentialStore` 在私有 prefs 中保存的独立拷贝会话及迁移/退出标记，兼容读取旧裸键 `copy_account_v1`。不导出到普通设置或账号分类备份；退出附加账号不得清除其他凭据键。通过认证但尚无资料的账号使用随机 `local:` 标识；`account_id` 固定后不随资料补全或 Token 更新变化。主账号的同一标识以 `user_account_id` 保存，归入敏感账号备份分类；它不是 Token 或 Token 指纹。

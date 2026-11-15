@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/app_theme_option.dart';
+import 'package:kira/models/network_settings.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -135,8 +136,8 @@ void main() {
   );
   testSharedSetting(
     key: 'api_route',
-    initial: 0,
-    changed: 1,
+    initial: NetworkSettings.defaultApiRoute,
+    changed: 0,
     readFacade: () => user.apiRoute,
     readStore: () => user.network.apiRoute,
     writeFacade: user.setApiRoute,

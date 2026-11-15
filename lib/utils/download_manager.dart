@@ -11,6 +11,9 @@ import '../models/chapter.dart';
 import '../models/chapter_comment.dart';
 import '../models/comic.dart';
 import 'app_logger.dart';
+import 'app_platform.dart';
+import 'downloaded_file_path.dart';
+import 'json_helpers.dart';
 
 part 'download_manager_parts/models.dart';
 part 'download_manager_parts/task_control.dart';
@@ -680,14 +683,20 @@ class DownloadManager extends ChangeNotifier {
     }
     try {
       final raw = await file.readAsString();
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return List<String?>.filled(total, null);
-      final contents = (decoded['contents'] as List?)?.toList() ?? const [];
+      final decoded = jsonMap({'value': jsonDecode(raw)}, 'value');
+      if (decoded == null) return List<String?>.filled(total, null);
+      final contents = jsonList(decoded, 'contents');
       final result = List<String?>.filled(total, null);
       for (var i = 0; i < total && i < contents.length; i++) {
-        final p = contents[i]?.toString() ?? '';
-        if (p.isNotEmpty && await File(p).exists()) {
-          result[i] = p;
+        final stored = contents[i]?.toString() ?? '';
+        final resolved = DownloadedFilePath.resolve(
+          stored,
+          rootPath: _rootDirectory!.path,
+          directoryPath: _chapterDirectory(pathWord, chapterUuid).path,
+          relocateIOSContainer: AppPlatform.isIOS,
+        );
+        if (resolved != null && await File(resolved).exists()) {
+          result[i] = resolved;
         }
       }
       return result;

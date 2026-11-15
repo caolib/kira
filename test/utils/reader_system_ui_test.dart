@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/utils/reader_system_ui.dart';
@@ -85,13 +86,22 @@ void main() {
     expect(calls, hasLength(count));
   });
 
-  test('非 Android 平台缺少刘海通道时仍恢复系统栏', () async {
-    messenger.setMockMethodCallHandler(cutoutChannel, null);
+  test('iOS 不调用 Android 刘海通道但仍恢复系统栏', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final ui = ReaderSystemUi();
     ui.enter();
     ui.setToolbarVisible(false);
     ui.restore();
     await Future<void>.delayed(Duration.zero);
     expect(calls.last.method, 'SystemChrome.setEnabledSystemUIOverlays');
+    expect(
+      calls.map((call) => call.method),
+      isNot(contains('enableImmersive')),
+    );
+    expect(
+      calls.map((call) => call.method),
+      isNot(contains('disableImmersive')),
+    );
   });
 }

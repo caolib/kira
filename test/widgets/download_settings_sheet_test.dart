@@ -33,6 +33,35 @@ void main() {
   });
   tearDown(teardownSecureCredentialStoreForTest);
 
+  testWidgets(
+    'iOS download locations are read-only, without external folder menus',
+    (tester) async {
+      final downloads = DownloadManager.forTesting(
+        rootDirectory: Directory.systemTemp,
+      );
+      await tester.pumpWidget(
+        wrapWithApp(
+          DownloadSettingsSheet(
+            downloads: downloads,
+            novelDownloads: _Novels(),
+          ),
+        ),
+      );
+      final locations = find.ancestor(
+        of: find.byIcon(Icons.folder_open_outlined),
+        matching: find.byType(ListTile),
+      );
+      expect(locations, findsNWidgets(2));
+      for (final tile in tester.widgetList<ListTile>(locations)) {
+        expect(tile.onTap, isNull);
+        expect(tile.trailing, isNull);
+      }
+      expect(find.byType(PopupMenuButton<String>), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+  );
+
   for (final size in [
     const Size(375, 812),
     const Size(320, 640),

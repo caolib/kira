@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:gal/gal.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/user_manager.dart';
@@ -17,6 +16,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/reader_chrome.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/network_error.dart';
+import '../../utils/reader_image_saver.dart';
 import '../../utils/toast.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/settings_section.dart';
@@ -62,6 +62,7 @@ class _ReaderImageViewerState extends State<ReaderImageViewer> {
   Offset? _lastDoubleTapLocalPosition;
   int _quarterTurns = 0;
   bool _hasManualRotation = false;
+  bool _savingImage = false;
 
   @override
   void initState() {
@@ -221,10 +222,11 @@ class _ReaderImageViewerState extends State<ReaderImageViewer> {
   }
 
   Future<void> _saveImage() async {
+    if (_savingImage) return;
+    setState(() => _savingImage = true);
     final l10n = AppLocalizations.of(context)!;
     try {
-      final hasAccess = await Gal.hasAccess();
-      if (!hasAccess && !await Gal.requestAccess()) {
+      if (!await ReaderImageSaver.requestAccess()) {
         if (mounted) {
           showToast(
             context,
@@ -249,30 +251,13 @@ class _ReaderImageViewerState extends State<ReaderImageViewer> {
           bytes = await _downloadImageBytes();
         }
       }
-      final ext = _detectImageExtension(bytes);
-      if (ext == '.webp') {
-        // gal 原生端用 Apache Imaging 猜测格式，对部分 webp 字节识别不稳定，
-        // 先写临时文件走 putImage 路径让系统解码器处理。
-        final dir = await getTemporaryDirectory();
-        final tempFile = File(
-          '${dir.path}/kira_save_${DateTime.now().millisecondsSinceEpoch}.webp',
-        );
-        try {
-          await tempFile.writeAsBytes(bytes, flush: true);
-          await Gal.putImage(tempFile.path, album: 'kira');
-        } finally {
-          if (tempFile.existsSync()) {
-            unawaited(tempFile.delete().catchError((_) => tempFile));
-          }
-        }
-      } else {
-        await Gal.putImageBytes(bytes, album: 'kira');
-      }
+      if (!mounted) return;
+      await ReaderImageSaver.save(bytes);
       if (mounted) showToast(context, l10n.readerImageSaved);
     } catch (error, stackTrace) {
       unawaited(
         AppLogger.instance.recordWarning(
-          '保存图片失败: $error',
+          error,
           stackTrace: stackTrace,
           source: 'reader_image_viewer',
         ),
@@ -280,42 +265,18 @@ class _ReaderImageViewerState extends State<ReaderImageViewer> {
       if (mounted) {
         showToast(
           context,
-          l10n.readerSaveImageFailedDetail(NetworkError.message(error)),
+          l10n.readerSaveImageFailedDetail(
+            NetworkError.message(
+              error is GalException ? error.platformException : error,
+              l10n: l10n,
+            ),
+          ),
           isError: true,
         );
       }
+    } finally {
+      if (mounted) setState(() => _savingImage = false);
     }
-  }
-
-  /// 按魔数识别常见图片格式，识别不出时默认 jpg（copymanga 实际多为 jpg/webp）。
-  String _detectImageExtension(Uint8List bytes) {
-    if (bytes.length >= 12 &&
-        bytes[0] == 0x52 && // R
-        bytes[1] == 0x49 && // I
-        bytes[2] == 0x46 && // F
-        bytes[3] == 0x46 && // F
-        bytes[8] == 0x57 && // W
-        bytes[9] == 0x45 && // E
-        bytes[10] == 0x42 && // B
-        bytes[11] == 0x50) {
-      // P
-      return '.webp';
-    }
-    if (bytes.length >= 8 &&
-        bytes[0] == 0x89 &&
-        bytes[1] == 0x50 &&
-        bytes[2] == 0x4E &&
-        bytes[3] == 0x47) {
-      return '.png';
-    }
-    if (bytes.length >= 6 &&
-        bytes[0] == 0x47 && // G
-        bytes[1] == 0x49 && // I
-        bytes[2] == 0x46) {
-      // F
-      return '.gif';
-    }
-    return '.jpg';
   }
 
   Future<Uint8List> _downloadImageBytes() async {
@@ -439,7 +400,7 @@ class _ReaderImageViewerState extends State<ReaderImageViewer> {
   Widget _buildIconButton({
     required IconData icon,
     required String tooltip,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return IconButton(
       icon: Icon(icon, color: ReaderChrome.onSurface, size: 20),
@@ -484,7 +445,7 @@ class _ReaderImageViewerState extends State<ReaderImageViewer> {
             _buildIconButton(
               icon: Icons.save_alt,
               tooltip: l10n.readerSaveImage,
-              onPressed: _saveImage,
+              onPressed: _savingImage ? null : _saveImage,
             ),
             if (widget.imageBytes == null) ...[
               const SizedBox(width: AppSpacing.sm),

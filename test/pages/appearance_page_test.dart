@@ -174,6 +174,50 @@ void main() {
     directory.deleteSync(recursive: true);
   });
 
+  for (final size in [const Size(420, 900), const Size(1024, 850)]) {
+    testWidgets(
+      'iOS keeps manual themes visible with a restored dynamic-color preference at $size',
+      (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final user = UserManager();
+        await user.theme.setUseDynamicColor(true);
+        await tester.pumpWidget(
+          wrapWithApp(const AppearancePage(), wrapInScaffold: false),
+        );
+        await tester.pumpAndSettle();
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(AppearancePage)),
+        )!;
+        await tester.scrollUntilVisible(
+          find.text(l10n.appearanceThemeStyle),
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.runAsync(() => FontManager().listDownloadedFonts());
+        expect(find.text(l10n.appearanceDynamicColor), findsNothing);
+        final vibrant = find.widgetWithText(
+          ChoiceChip,
+          l10n.themeVariantVibrant,
+        );
+        await tester.ensureVisible(vibrant);
+        await tester.tap(vibrant);
+        await tester.pumpAndSettle();
+        expect(user.themeVariant, DynamicSchemeVariant.vibrant);
+        expect(
+          user.theme.useDynamicColor,
+          isTrue,
+          reason: 'Unsupported preferences are retained, not overwritten',
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+    );
+  }
+
   testWidgets('全局文字缩放以百分比显示，保留原范围与步长', (tester) async {
     final semantics = tester.ensureSemantics();
     try {

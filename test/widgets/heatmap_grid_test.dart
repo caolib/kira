@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/widgets/heatmap_grid.dart';
+
+import '../test_helpers.dart';
 
 Color _cellColor(WidgetTester tester, String tooltipMessage) {
   final tooltip = find.byWidgetPredicate(
@@ -23,6 +24,9 @@ Color _cellColor(WidgetTester tester, String tooltipMessage) {
 }
 
 void main() {
+  setUp(setupSecureCredentialStoreForTest);
+  tearDown(teardownSecureCredentialStoreForTest);
+
   testWidgets('uses fixed page-count thresholds for cell colors', (
     tester,
   ) async {
@@ -39,31 +43,44 @@ void main() {
     };
 
     await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+      wrapWithApp(
+        HeatmapGrid(
+          dailyCounts: dailyCounts,
+          weeks: 2,
+          end: DateTime(2020, 1, 12),
+          emptyColor: empty,
+        ),
         theme: ThemeData(
           colorScheme: const ColorScheme.light(primary: primary),
-        ),
-        home: Scaffold(
-          body: HeatmapGrid(
-            dailyCounts: dailyCounts,
-            weeks: 2,
-            end: DateTime(2020, 1, 12),
-            emptyColor: empty,
-          ),
         ),
       ),
     );
 
-    expect(_cellColor(tester, '2020-01-05'), empty);
-    expect(_cellColor(tester, '1 页'), primary.withValues(alpha: 0.35));
-    expect(_cellColor(tester, '50 页'), primary.withValues(alpha: 0.35));
-    expect(_cellColor(tester, '51 页'), primary.withValues(alpha: 0.55));
-    expect(_cellColor(tester, '150 页'), primary.withValues(alpha: 0.55));
-    expect(_cellColor(tester, '151 页'), primary.withValues(alpha: 0.75));
-    expect(_cellColor(tester, '300 页'), primary.withValues(alpha: 0.75));
-    expect(_cellColor(tester, '301 页'), primary);
+    expect(_cellColor(tester, '2020-01-05 · 0 页'), empty);
+    expect(
+      _cellColor(tester, '2020-01-06 · 1 页'),
+      primary.withValues(alpha: 0.35),
+    );
+    expect(
+      _cellColor(tester, '2020-01-07 · 50 页'),
+      primary.withValues(alpha: 0.35),
+    );
+    expect(
+      _cellColor(tester, '2020-01-08 · 51 页'),
+      primary.withValues(alpha: 0.55),
+    );
+    expect(
+      _cellColor(tester, '2020-01-09 · 150 页'),
+      primary.withValues(alpha: 0.55),
+    );
+    expect(
+      _cellColor(tester, '2020-01-10 · 151 页'),
+      primary.withValues(alpha: 0.75),
+    );
+    expect(
+      _cellColor(tester, '2020-01-11 · 300 页'),
+      primary.withValues(alpha: 0.75),
+    );
+    expect(_cellColor(tester, '2020-01-12 · 301 页'), primary);
   });
 }

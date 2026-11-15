@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/api/api_client.dart';
 import 'package:kira/api/manga/manga_api.dart';
-import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/models/chapter.dart';
 import 'package:kira/models/user_manager.dart';
 import 'package:kira/pages/reader_page.dart';
@@ -89,23 +88,21 @@ Future<void> _pumpReader(
   await user.setReaderContinuousReading(false);
 
   await tester.pumpWidget(
-    MaterialApp(
-      locale: const Locale('zh'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+    wrapWithApp(
+      const ReaderPage(
+        pathWord: 'reader-settings-test',
+        comicName: '测试漫画',
+        group: 'default',
+        chapterUuid: 'last',
+        chapterName: 'last',
+      ),
+      wrapInScaffold: false,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),
           disableAnimations: reduceMotion,
         ),
         child: child!,
-      ),
-      home: const ReaderPage(
-        pathWord: 'reader-settings-test',
-        comicName: '测试漫画',
-        group: 'default',
-        chapterUuid: 'last',
-        chapterName: 'last',
       ),
     ),
   );
@@ -253,6 +250,35 @@ void main() {
     ApiClient.setTestInstance(originalApi);
     teardownSecureCredentialStoreForTest();
   });
+
+  testWidgets(
+    'iOS reader settings keep touch paging and do not send Android channel calls',
+    (tester) async {
+      const channel = MethodChannel('io.github.caolib.kira/volume');
+      final calls = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      await _pumpReader(tester);
+      await _openSettings(tester);
+      await tester.tap(find.text('翻页'));
+      await tester.pumpAndSettle();
+      expect(UserManager().readerMode, 1);
+      expect(find.text('音量键翻页'), findsNothing);
+      expect(find.text('无动画翻页'), findsOneWidget);
+      expect(wakeRequests.last, isTrue);
+      await tester.pumpWidget(wrapWithApp(const SizedBox.shrink()));
+      await tester.pump();
+      expect(calls, isEmpty);
+      expect(wakeRequests.last, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+  );
 
   testWidgets('工具栏设置入口打开真实阅读设置面板', (tester) async {
     await _pumpReader(tester);

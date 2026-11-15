@@ -35,10 +35,25 @@ Future<void> _mount(
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    MaterialApp(
+    wrapWithApp(
+      Builder(
+        builder: (context) => TextButton(
+          onPressed: () => showAppSheet<void>(
+            context,
+            maxHeightFactor: 0.7,
+            barrierColor: Colors.transparent,
+            fadeOutWhen: dragPreview,
+            child: NovelReaderSettingsSheet(
+              settings: settings,
+              systemBrightness: systemBrightness,
+              dragPreview: dragPreview,
+              onChanged: onChanged,
+            ),
+          ),
+          child: const Text('打开阅读设置'),
+        ),
+      ),
       locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),
@@ -46,25 +61,6 @@ Future<void> _mount(
           disableAnimations: reduceMotion,
         ),
         child: child!,
-      ),
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showAppSheet<void>(
-              context,
-              maxHeightFactor: 0.7,
-              barrierColor: Colors.transparent,
-              fadeOutWhen: dragPreview,
-              child: NovelReaderSettingsSheet(
-                settings: settings,
-                systemBrightness: systemBrightness,
-                dragPreview: dragPreview,
-                onChanged: onChanged,
-              ),
-            ),
-            child: const Text('打开阅读设置'),
-          ),
-        ),
       ),
     ),
   );
@@ -162,6 +158,29 @@ void main() {
   });
 
   tearDown(teardownSecureCredentialStoreForTest);
+
+  testWidgets(
+    'iOS hides volume interception but keeps touch-page settings and stored preference',
+    (tester) async {
+      var latest = const NovelReaderSettings(mode: NovelReaderMode.paged);
+      await _mount(
+        tester,
+        settings: latest,
+        onChanged: (value) => latest = value,
+      );
+      await _toggleFold(tester, 'novel-page-turn-settings');
+      expect(find.byKey(const ValueKey('novel-volume-key')), findsNothing);
+      await _tapVisible(tester, 'novel-instant-page-turn');
+      expect(latest.instantPageTurn, isTrue);
+      expect(latest.volumeKey, isTrue);
+      expect(
+        find.byKey(const ValueKey('novel-realistic-page-turn')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+  );
 
   for (final (locale, label) in [
     (const Locale('zh'), '自定义主题'),

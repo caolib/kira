@@ -58,6 +58,10 @@ extension DownloadManagerDeleteMigratePart on DownloadManager {
     String? path, {
     void Function(DownloadMigrationProgress progress)? onProgress,
   }) async {
+    if (!AppPlatform.supportsCustomDownloadDirectory &&
+        DownloadManager.normalizeDirectoryPath(path) != null) {
+      throw UnsupportedError('iOS downloads use the application directory');
+    }
     await init();
     if (isBusy) {
       throw StateError('Download queue is busy');

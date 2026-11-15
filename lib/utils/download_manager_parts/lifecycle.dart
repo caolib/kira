@@ -43,9 +43,11 @@ extension DownloadManagerLifecyclePart on DownloadManager {
     await _queueStateWriteTail;
     await _manifestWriteTail;
 
-    _customSaveDirectory = DownloadManager.normalizeDirectoryPath(
-      prefs.getString(DownloadManager._keySaveDirectory),
-    );
+    _customSaveDirectory = AppPlatform.supportsCustomDownloadDirectory
+        ? DownloadManager.normalizeDirectoryPath(
+            prefs.getString(DownloadManager._keySaveDirectory),
+          )
+        : null;
     _rootDirectory = _rootDirectoryProvider == null
         ? await DownloadManager.resolveRootDirectory(
             customPath: _customSaveDirectory,

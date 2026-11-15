@@ -394,17 +394,18 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                   key: const ValueKey('reader-page-turn-card'),
                   child: Column(
                     children: [
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l10n.readerVolumeKeyPageTurn),
-                        subtitle: Text(l10n.readerVolumeKeyPageTurnDesc),
-                        value: _user.readerVolumeKey,
-                        onChanged: (v) {
-                          _user.setReaderVolumeKey(v);
-                          setState(() {});
-                          widget.onChanged();
-                        },
-                      ),
+                      if (AppPlatform.supportsReaderVolumeKeys)
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l10n.readerVolumeKeyPageTurn),
+                          subtitle: Text(l10n.readerVolumeKeyPageTurnDesc),
+                          value: _user.readerVolumeKey,
+                          onChanged: (v) {
+                            _user.setReaderVolumeKey(v);
+                            setState(() {});
+                            widget.onChanged();
+                          },
+                        ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(l10n.readerInstantPageTurn),

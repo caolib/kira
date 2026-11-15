@@ -274,19 +274,8 @@ Future<void> _mount(
         if (downloads != null)
           novelDownloadStoreProvider.overrideWithValue(downloads),
       ],
-      child: MaterialApp(
-        theme: theme,
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            padding: padding,
-            textScaler: TextScaler.linear(textScale),
-          ),
-          child: child!,
-        ),
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: NovelReaderPage(
+      child: wrapWithApp(
+        NovelReaderPage(
           pathWord: book,
           volumeId: volume,
           resume: resume,
@@ -294,13 +283,25 @@ Future<void> _mount(
           initialParagraphIndex: initialParagraph,
           initialParagraphAlignment: initialAlignment,
           highlightOnEntry: highlightOnEntry,
+          // 下载入口必须由页面组装下载优先来源，显式在线来源会绕过它。
           source:
               source ??
-              RepositoryNovelReaderSource(
-                repository,
-                illustrationCache: _UncachedIllustrations(),
-              ),
+              (downloads == null
+                  ? RepositoryNovelReaderSource(
+                      repository,
+                      illustrationCache: _UncachedIllustrations(),
+                    )
+                  : null),
           preferDownloads: preferDownloads,
+        ),
+        wrapInScaffold: false,
+        theme: theme,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            padding: padding,
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: child!,
         ),
       ),
     ),

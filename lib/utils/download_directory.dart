@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'app_platform.dart';
 import 'download_manager.dart';
 
 /// 自定义下载目录流程的失败原因。
@@ -29,6 +30,9 @@ class DownloadDirectoryException implements Exception {
 /// 返回用户所选目录路径（已规范化）；用户取消返回 null；失败抛出
 /// [DownloadDirectoryException]。
 Future<String?> pickDownloadDirectory({String? dialogTitle}) async {
+  if (!AppPlatform.supportsCustomDownloadDirectory) {
+    throw UnsupportedError('iOS downloads use the application directory');
+  }
   if (!await ensureDownloadStoragePermission()) {
     throw const DownloadDirectoryException(
       DownloadDirectoryError.permissionDenied,

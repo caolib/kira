@@ -3,7 +3,8 @@
 ## 环境
 
 - Flutter：版本见 [`.flutter-version`](../.flutter-version)，自带 Dart SDK
-- Java 17
+- Java 17（Android）
+- iOS：macOS、Xcode 与 CocoaPods；最低系统和构建配置见 [平台构建](platform-build.md#ios)。Windows 无法进行 iOS 原生构建。
 
 ## 获取代码
 
@@ -22,7 +23,7 @@ flutter pub get --enforce-lockfile
 
 ## 调试运行
 
-移动端首次调试或执行 `flutter clean` 后，先构建一次：
+Android 首次调试或执行 `flutter clean` 后，先构建一次：
 
 ```sh
 flutter build apk --debug
@@ -33,6 +34,12 @@ flutter build apk --debug
 ```sh
 flutter run -d <设备ID>
 ```
+
+## iOS 构建
+
+在 GitHub Actions 手动运行 `build-ios.yml`。默认执行全量 Flutter 测试及 iOS 模拟器烟测；仅主动勾选 `skip_tests` 才跳过 Flutter 测试，静态分析和原生构建校验始终执行。
+
+未签名 IPA 与 SHA-256 上传到固定 `ios-build` 预发布，安装前须自行重签。工具链、CocoaPods 原生锁、功能边界与真机验收见 [平台构建](platform-build.md#ios)。这条工作流独立于正式发布，不生成 `release.json`。
 
 ## 发布
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'app_logger.dart';
+import 'app_platform.dart';
 
 /// 阅读会话的系统栏与刘海区状态。退出开始时释放，dispose 只做兜底，
 /// 避免返回页已经显示后才改变窗口尺寸，也避免退场回调重新隐藏系统栏。
@@ -40,6 +41,7 @@ class ReaderSystemUi {
   }
 
   Future<void> _setCutoutMode(String method) async {
+    if (!AppPlatform.supportsReaderCutout) return;
     try {
       await _channel.invokeMethod<void>(method);
     } on MissingPluginException {

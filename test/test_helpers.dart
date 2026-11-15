@@ -23,14 +23,22 @@ void teardownSecureCredentialStoreForTest() {
 /// throws `Null check operator used on a null value` the moment it builds —
 /// which is what every widget test here used to hit.
 ///
-/// The locale is pinned to `zh` (the template ARB) so tests can assert on the
-/// Chinese strings directly.
+/// Defaults to `zh` (the template ARB) so tests can assert on Chinese strings.
+/// Pass [locale] explicitly when checking the Traditional Chinese mirror.
 ///
 /// Pass `wrapInScaffold: false` when [child] already provides its own
 /// [Scaffold], as full pages do.
-Widget wrapWithApp(Widget child, {bool wrapInScaffold = true}) {
+Widget wrapWithApp(
+  Widget child, {
+  bool wrapInScaffold = true,
+  ThemeData? theme,
+  TransitionBuilder? builder,
+  Locale locale = const Locale('zh'),
+}) {
   return MaterialApp(
-    locale: const Locale('zh'),
+    theme: theme,
+    builder: builder,
+    locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: wrapInScaffold ? Scaffold(body: child) : child,

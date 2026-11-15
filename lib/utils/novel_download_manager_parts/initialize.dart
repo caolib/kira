@@ -6,10 +6,12 @@ extension NovelDownloadManagerInitializePart on NovelDownloadManager {
     _prefs = await _preferences();
     _concurrency = (_prefs!.getInt(NovelDownloadManager.concurrencyKey) ?? 2)
         .clamp(1, 32);
-    _customSaveDirectory = _prefs!
-        .getString(NovelDownloadManager.saveDirectoryKey)
-        ?.trim()
-        .nullIfEmpty();
+    _customSaveDirectory = AppPlatform.supportsCustomDownloadDirectory
+        ? _prefs!
+              .getString(NovelDownloadManager.saveDirectoryKey)
+              ?.trim()
+              .nullIfEmpty()
+        : null;
     if (_customSaveDirectory case final custom?) {
       try {
         final canonical = await _validateRoot(custom);

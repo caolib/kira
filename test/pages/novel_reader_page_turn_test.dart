@@ -69,6 +69,19 @@ class _Harness {
     );
     await tester.pump();
     await tester.pump();
+    // 首次分页可能让出到 16ms 定时器，零时长 pump 不会推进恢复。
+    for (
+      var frame = 0;
+      key.currentState?.currentLocation == null && frame < 100;
+      frame++
+    ) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(
+      key.currentState?.currentLocation,
+      isNotNull,
+      reason: '分页必须完成目标页恢复后才能检查翻页行为',
+    );
   }
 }
 

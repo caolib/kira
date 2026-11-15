@@ -178,8 +178,7 @@ extension _AboutPageUpdateSettings on _AboutPageState {
 
   Widget _buildUpdateChannelSelect(ColorScheme cs, AppLocalizations l10n) {
     final isBeta = _user.isBetaUpdateChannel;
-    // 设备吃不下 beta(非 Android 或非 arm64)时,徽标改为警告色 + 警告图标,
-    // 与提示文案里的红色警示对应。
+    // 没有对应 beta 包的平台使用警告色；iOS 有独立的 IPA 发布。
     final unsupported = isBeta && !isBetaChannelSupported();
     final Color fg;
     final Color border;
@@ -217,7 +216,7 @@ extension _AboutPageUpdateSettings on _AboutPageState {
     if (value == _user.updateChannel) return;
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    // 切到预览版:先确认(说明 beta 的风险与仅 arm64 APK),取消则保持原渠道。
+    // 切到预览版先确认风险；无对应包时补充平台限制。取消保持原渠道。
     if (value == 'beta') {
       final confirmed = await showDialog<bool>(
         context: context,

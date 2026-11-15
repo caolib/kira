@@ -319,10 +319,10 @@ Future<void> clearWebViewLoginState() async {
   if (kIsWeb) return;
   try {
     await CookieManager.instance().deleteAllCookies();
-  } catch (_, st) {
+  } catch (error, st) {
     unawaited(
       AppLogger.instance.recordWarning(
-        'Unable to clear COPY WebView cookies',
+        error,
         stackTrace: st,
         source: 'webview_login.clear_cookies',
       ),
@@ -341,10 +341,10 @@ Future<void> clearWebViewLoginState() async {
         dataRecords: records,
       );
     }
-  } catch (_, st) {
+  } catch (error, st) {
     unawaited(
       AppLogger.instance.recordWarning(
-        'Unable to clear COPY WebView storage',
+        error,
         stackTrace: st,
         source: 'webview_login.clear_storage',
       ),

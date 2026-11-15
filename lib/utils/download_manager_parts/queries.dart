@@ -257,8 +257,8 @@ extension DownloadManagerQueriesPart on DownloadManager {
 
     try {
       final raw = await metadataFile.readAsString();
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) {
+      final decoded = jsonMap({'value': jsonDecode(raw)}, 'value');
+      if (decoded == null) {
         await _removeDownloadedChapter(
           pathWord,
           chapterUuid,
@@ -267,9 +267,20 @@ extension DownloadManagerQueriesPart on DownloadManager {
         return null;
       }
 
-      final detail = ChapterDetail.fromDownloadedJson(
-        Map<String, dynamic>.from(decoded),
-      );
+      final paths = jsonList(decoded, 'contents').map((value) {
+        final stored = value?.toString() ?? '';
+        return DownloadedFilePath.resolve(
+              stored,
+              rootPath: _rootDirectory!.path,
+              directoryPath: _chapterDirectory(pathWord, chapterUuid).path,
+              relocateIOSContainer: AppPlatform.isIOS,
+            ) ??
+            '';
+      }).toList();
+      final detail = ChapterDetail.fromDownloadedJson({
+        ...decoded,
+        'contents': paths,
+      });
       // 部分下载章节：失败页的 contents 为空串、文件不存在，属正常；
       // 但 manifest 标记为已下载的页若文件丢失则视为损坏，清理。
       final failed =
@@ -288,8 +299,14 @@ extension DownloadManagerQueriesPart on DownloadManager {
         }
       }
       return detail;
-    } catch (e) {
-      debugPrint('Read downloaded chapter failed: $e');
+    } catch (error, stack) {
+      unawaited(
+        AppLogger.instance.recordWarning(
+          error,
+          stackTrace: stack,
+          source: 'downloads.read_chapter',
+        ),
+      );
       await _removeDownloadedChapter(pathWord, chapterUuid, deleteFiles: true);
       return null;
     }
