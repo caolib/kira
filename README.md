@@ -7,14 +7,15 @@
   <img src="https://skills.syvixor.com/api/icons?perline=15&i=flutter,dart,materialdesign,android,windows,apple"/>
 </p>
 
-
 <p align="center">
   <img alt="GitHub License" src="https://img.shields.io/github/license/caolib/kira">
   <img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/caolib/kira">
   <img src="https://img.shields.io/github/stars/caolib/kira" alt="Stars"/>
   <img src="https://img.shields.io/github/downloads/caolib/kira/latest/total">
-  <a href="https://qm.qq.com/q/rezw7xWuK4"><img src="https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E7%BE%A4-white?logo=QQ" alt="QQ Group"/></a>
+  <a href="https://qm.qq.com/q/rezw7xWuK4"><img src="https://img.shields.io/badge/1群-white?logo=QQ" alt="QQ Group"/></a>
+  <a href="https://qm.qq.com/q/AHEQsmL4cw"><img src="https://img.shields.io/badge/2群-white?logo=QQ" alt="QQ Group"/></a>
 </p>
+
 
 ## 简介
 
