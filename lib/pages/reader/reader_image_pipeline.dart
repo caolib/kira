@@ -107,7 +107,14 @@ extension _ReaderImagePipeline on _ReaderPageState {
   }
 
   /// 解析并缓存图片原始尺寸，完成后释放 ImageInfo / listener。
-  void _resolveAndCacheImageSize(ImageProvider provider, String source) {
+  ///
+  /// [onResolved] 仅在本次真正解析出尺寸后回调；尺寸已在缓存中时直接返回，
+  /// 不回调。
+  void _resolveAndCacheImageSize(
+    ImageProvider provider,
+    String source, {
+    VoidCallback? onResolved,
+  }) {
     if (_imageNaturalSizes.containsKey(source)) return;
     late final ImageStreamListener listener;
     final stream = provider.resolve(ImageConfiguration.empty);
@@ -120,9 +127,11 @@ extension _ReaderImagePipeline on _ReaderPageState {
         );
         info.dispose();
         _recordImageNaturalSize(source, size);
+        onResolved?.call();
       },
       onError: (_, _) {
         stream.removeListener(listener);
+        onResolved?.call();
       },
     );
     stream.addListener(listener);

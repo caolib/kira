@@ -139,7 +139,7 @@ extension _ReaderChain on _ReaderPageState {
       _detail?.contents.isNotEmpty == true ? _detail!.contents.length : 1,
     );
     if (_isPageMode) {
-      final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
+      final initialIndex = _pageControllerIndexFor(_chainIndex, page - 1);
       final oldController = _pageController;
       _pageController = PageController(initialPage: initialIndex);
       _bumpScrollWidgetVersion();
@@ -338,7 +338,7 @@ extension _ReaderChain on _ReaderPageState {
           1,
           _detail?.contents.isNotEmpty == true ? _detail!.contents.length : 1,
         );
-        final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
+        final initialIndex = _pageControllerIndexFor(_chainIndex, page - 1);
         final oldController = _pageController;
         _pageController = PageController(initialPage: initialIndex);
         _bumpScrollWidgetVersion();
