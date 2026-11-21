@@ -2165,6 +2165,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get readerInstantPageTurn => '无动画翻页';
 
   @override
+  String get readerDoublePage => '双页阅读';
+
+  @override
+  String get readerDoublePageDesc => '每屏并排显示两页，一次翻过一组（仅横向翻页生效）';
+
+  @override
+  String get readerDoublePageCoverAlone => '首图单独成页';
+
+  @override
+  String get readerDoublePageCoverAloneDesc => '每话第一页（封面/跨页彩图）单独显示，其后两页一组';
+
+  @override
   String get readerLongPressZoom => '长按缩放';
 
   @override
@@ -6259,6 +6271,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get readerInstantPageTurn => '無動畫翻頁';
+
+  @override
+  String get readerDoublePage => '雙頁閱讀';
+
+  @override
+  String get readerDoublePageDesc => '每屏並排顯示兩頁，一次翻過一組（僅橫向翻頁生效）';
+
+  @override
+  String get readerDoublePageCoverAlone => '首圖單獨成頁';
+
+  @override
+  String get readerDoublePageCoverAloneDesc => '每話第一頁（封面/跨頁彩圖）單獨顯示，其後兩頁一組';
 
   @override
   String get readerLongPressZoom => '長按縮放';

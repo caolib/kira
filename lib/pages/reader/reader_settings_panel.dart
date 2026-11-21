@@ -416,6 +416,30 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                           widget.onChanged();
                         },
                       ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l10n.readerDoublePage),
+                        subtitle: Text(l10n.readerDoublePageDesc),
+                        value: _user.readerDoublePage,
+                        onChanged: (v) {
+                          _user.setReaderDoublePage(v);
+                          setState(() {});
+                          widget.onChanged();
+                        },
+                      ),
+                      // 「首图单页」只对双页阅读有意义，关闭双页时一并隐藏。
+                      if (_user.readerDoublePage)
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l10n.readerDoublePageCoverAlone),
+                          subtitle: Text(l10n.readerDoublePageCoverAloneDesc),
+                          value: _user.readerDoublePageCoverAlone,
+                          onChanged: (v) {
+                            _user.setReaderDoublePageCoverAlone(v);
+                            setState(() {});
+                            widget.onChanged();
+                          },
+                        ),
                     ],
                   ),
                 ),

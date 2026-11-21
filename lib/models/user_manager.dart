@@ -238,6 +238,8 @@ class UserManager extends ChangeNotifier {
   double get readerImageGap => reader.imageGap;
   bool get readerVolumeKey => reader.volumeKey;
   bool get readerInstantPageTurn => reader.instantPageTurn;
+  bool get readerDoublePage => reader.doublePage;
+  bool get readerDoublePageCoverAlone => reader.doublePageCoverAlone;
   bool get readerPageRTL => reader.pageRTL;
   bool get readerPageVertical => reader.pageVertical;
   double get readerDimming => reader.dimming;

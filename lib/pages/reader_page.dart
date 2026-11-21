@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind, VelocityTracker;
@@ -26,6 +27,7 @@ import '../utils/app_logger.dart';
 import '../utils/app_platform.dart';
 import '../utils/bookmark_store.dart';
 import '../utils/chapter_summary_cache.dart';
+import '../utils/double_page_layout.dart';
 import '../utils/download_manager.dart';
 import '../utils/fling_brake_tap_guard.dart';
 import '../utils/image_load_stats.dart';
@@ -55,6 +57,7 @@ part 'reader/reader_chain.dart';
 part 'reader/reader_chapter_data.dart';
 part 'reader/reader_chapter_widgets.dart';
 part 'reader/reader_comments_data.dart';
+part 'reader/reader_double_page.dart';
 part 'reader/reader_image_cache.dart';
 part 'reader/reader_image_pipeline.dart';
 part 'reader/reader_page_mode.dart';
@@ -238,6 +241,14 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   int _chainIndex = 0;
   bool _loadingNextChainChapter = false;
   bool _loadingPrevChainChapter = false;
+
+  // 双页阅读：跨页分组缓存。链结构或「首图单页」设置变化时按签名重建，
+  // 见 reader_double_page.dart 的 _doublePageLayout。
+  DoublePageLayout? _doublePageLayoutCache;
+  int? _doublePageLayoutSignature;
+
+  /// 正在异步解析真实尺寸的跨页图片（避免重复 resolve 与重复重建）。
+  final Set<String> _spreadSizePending = {};
 
   /// 滚动列表是否正在滚动（拖动或惯性），由 ScrollStart/EndNotification 维护。
   /// 滚动途中重建列表会打断手势，链首裁剪因此推迟到静止时执行。
@@ -457,7 +468,7 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
     _rebuildChainStructure();
     if (_isPageMode) {
       final oldController = _pageController;
-      final initialIndex = _chainChapterStart(_chainIndex) + (page - 1);
+      final initialIndex = _pageControllerIndexFor(_chainIndex, page - 1);
       _pageController = PageController(initialPage: initialIndex);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         oldController.dispose();
@@ -612,9 +623,11 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
                 onPageChanged: (page) {
                   setState(() => _currentPage = page);
                   if (_isPageMode) {
-                    final globalIndex = _continuousReading
-                        ? _chainChapterStart(_chainIndex) + (page - 1)
-                        : page;
+                    // 双页模式下控制器按跨页编号，页码先换算成跨页序号。
+                    final globalIndex = _pageControllerIndexFor(
+                      _chainIndex,
+                      page - 1,
+                    );
                     _pageController.jumpToPage(globalIndex);
                   } else {
                     _jumpToScrollPage(

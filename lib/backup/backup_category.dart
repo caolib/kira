@@ -64,6 +64,8 @@ abstract final class BackupSchema {
     'reader_auto_scroll_enabled',
     'reader_auto_scroll_resume',
     'reader_continuous_reading',
+    'reader_double_page',
+    'reader_double_page_cover_alone',
     'reader_instant_page_turn',
     'reader_keep_screen_on',
     'reader_long_press_zoom_enabled',

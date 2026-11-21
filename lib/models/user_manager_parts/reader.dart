@@ -15,6 +15,12 @@ extension UserManagerReaderPart on UserManager {
   Future<void> setReaderInstantPageTurn(bool enabled) =>
       reader.setInstantPageTurn(enabled);
 
+  Future<void> setReaderDoublePage(bool enabled) =>
+      reader.setDoublePage(enabled);
+
+  Future<void> setReaderDoublePageCoverAlone(bool enabled) =>
+      reader.setDoublePageCoverAlone(enabled);
+
   Future<void> setReaderPageRTL(bool rtl) => reader.setPageRTL(rtl);
 
   Future<void> setReaderPageVertical(bool vertical) =>
