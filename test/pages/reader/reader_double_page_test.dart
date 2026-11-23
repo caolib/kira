@@ -240,6 +240,29 @@ void main() {
     expect(layout.spreadIndexOf(0, 4), 3);
   });
 
+  testWidgets('刷新章节后仍停在原跨页', (tester) async {
+    await _openDoublePageReader(
+      tester,
+      chapters: {'only': _chapter('only', pages: 20)},
+      initialPage: 11,
+    );
+    expect(_controller(tester).page, 5);
+
+    // 轻点屏幕中间唤出工具栏（单击要等双击超时后才回调）。
+    await tester.tapAt(const Offset(400, 300));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    // 刷新沿用 previousPage，双页下必须换算回同一个跨页。
+    expect(_controller(tester).page, 5);
+    expect(tester.widget<Slider>(find.byType(Slider)).value, 10);
+  });
+
   testWidgets('跨页内两根手指可以捏合缩放并锁定翻页', (tester) async {
     await _openDoublePageReader(
       tester,
