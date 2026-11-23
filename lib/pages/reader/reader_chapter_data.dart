@@ -13,10 +13,24 @@ extension _ReaderChapterData on _ReaderPageState {
   }
 
   /// 设置变化时重建，并重新套用依赖设置的副作用（音量键拦截）。
+  ///
+  /// 双页模式下跨页分组由「首图单页」设置与章节页数决定：分组真的变了
+  /// （例如从外部切换首图单页），必须重定位控制器，否则 PageView 会沿用
+  /// 旧的滚动位置，画面停在错误的跨页、页码也对不上。
   void _onUserSettingsChanged() {
     if (!mounted) return;
-    _setState(() {});
     _updateVolumeIntercept();
+    if (_isDoublePageMode && _detail != null) {
+      final previousSignature = _doublePageLayoutSignature;
+      _doublePageLayoutCache = null;
+      _doublePageLayoutSignature = null;
+      _doublePageLayout();
+      if (_doublePageLayoutSignature != previousSignature) {
+        _reanchorDoublePageController();
+        return;
+      }
+    }
+    _setState(() {});
   }
 
   Future<void> _setVolumeIntercept(bool enabled) async {
@@ -87,6 +101,10 @@ extension _ReaderChapterData on _ReaderPageState {
         _imageRetryCounts.clear();
         _imageRetryTokens.clear();
         _imageNaturalSizes.clear();
+        _spreadSizePending.clear();
+        _spreadSizeFailures.clear();
+        _doublePageLayoutCache = null;
+        _doublePageLayoutSignature = null;
         // 重置连续阅读链：首项即当前章节。
         _chain
           ..clear()
@@ -98,6 +116,13 @@ extension _ReaderChapterData on _ReaderPageState {
         _scrollInProgress = false;
         _chainPrunePending = false;
         _rebuildChainStructure();
+        // 双页模式下页码统一取「跨页首页」：initialPage/续读给的是原始页码，
+        // 若直接沿用，页码、书签与历史会和实际停留的跨页不一致。
+        if (_isDoublePageMode) {
+          final layout = _doublePageLayout();
+          final spread = layout.spreadIndexOf(0, _currentPage - 1);
+          _currentPage = layout.spreadStart(spread).imageIndex + 1;
+        }
         // 整章切换：重建图片归属注册表（供阅读统计埋点反查）
         _registerChapterStatsUrls(detail, clearFirst: true);
         _scrollModeInitialIndex = _scrollItemIndexFor(
@@ -109,7 +134,12 @@ extension _ReaderChapterData on _ReaderPageState {
       });
       if (_isPageMode) {
         final oldController = _pageController;
-        final initialIndex = _chainChapterStart(_chainIndex) + (startPage - 1);
+        // 历史/书签续读与刷新定位：双页模式下必须换算成跨页序号，
+        // 否则会落到「原始页码当跨页序号」的位置，显示错误的相邻页。
+        final initialIndex = _pageControllerIndexFor(
+          _chainIndex,
+          startPage - 1,
+        );
         _pageController = PageController(initialPage: initialIndex);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           oldController.dispose();

@@ -10,14 +10,20 @@ extension _ReaderDoublePage on _ReaderPageState {
     return _isPageMode && _user.readerDoublePage && !_isVerticalPageMode;
   }
 
-  /// 章节链的跨页分组，按链结构 + 「首图单页」设置缓存。
+  /// 章节链的跨页分组，按链结构 + 「首图单页」设置 + 已知的横向大图缓存。
   ///
-  /// 链会在连续阅读中追加/裁剪章节，键取各章页数之和即可命中变化。
+  /// 链会在连续阅读中追加/裁剪章节，键取各章页数之和即可命中变化；
+  /// 图片真实尺寸是异步解析的，解析出新的大图会让分组变化，因此也要进签名。
   DoublePageLayout _doublePageLayout() {
     final pageCounts = [for (final chapter in _chain) chapter.contents.length];
+    final widePages = _wideSpreadAnchors();
+    final wideKeys = [
+      for (final anchor in widePages) anchor.$1 * 100000 + anchor.$2,
+    ]..sort();
     final signature = Object.hash(
       Object.hashAll(pageCounts),
       _user.readerDoublePageCoverAlone,
+      Object.hashAll(wideKeys),
     );
     final cached = _doublePageLayoutCache;
     if (cached != null && _doublePageLayoutSignature == signature) {
@@ -26,10 +32,57 @@ extension _ReaderDoublePage on _ReaderPageState {
     final layout = DoublePageLayout.fromPageCounts(
       pageCounts,
       coverAlone: _user.readerDoublePageCoverAlone,
+      widePages: widePages,
     );
     _doublePageLayoutCache = layout;
     _doublePageLayoutSignature = signature;
     return layout;
+  }
+
+  /// 已知尺寸里「本身已经是横向跨页」的页面。尺寸未解析时不算，
+  /// 解析完成后由 [_scheduleSpreadSizeRebuild] 重新分组。
+  Set<(int, int)> _wideSpreadAnchors() {
+    final result = <(int, int)>{};
+    for (var ci = 0; ci < _chain.length; ci++) {
+      final contents = _chain[ci].contents;
+      for (var li = 0; li < contents.length; li++) {
+        final size = _imageNaturalSizes[contents[li]];
+        if (size == null || size.height <= 0) {
+          continue;
+        }
+        if (size.width / size.height >= DoublePageLayout.wideAspectThreshold) {
+          result.add((ci, li));
+        }
+      }
+    }
+    return result;
+  }
+
+  /// 分组因新解析的尺寸而变化时，把控制器重新定位到当前页所在的跨页。
+  ///
+  /// 跨页编号是「链内全局」的：前面插入一个大图跨页，后面所有跨页序号都会
+  /// 后移。不重定位的话，用户会突然看到别的页面。
+  void _reanchorDoublePageController() {
+    if (!_isPageMode || !_isDoublePageMode) return;
+    if (_chain.isEmpty || _chainIndex >= _chain.length) return;
+    final chapterPages = _chain[_chainIndex].contents.length;
+    if (chapterPages <= 0) return;
+    final page = _currentPage.clamp(1, chapterPages);
+    final layout = _doublePageLayout();
+    final target = layout.spreadIndexOf(_chainIndex, page - 1);
+    final anchor = layout.spreadStart(target);
+    final oldController = _pageController;
+    _pageController = PageController(initialPage: target);
+    _setState(() {
+      // 页码统一取跨页首页，与翻页、书签、历史口径一致。
+      _currentPage = anchor.imageIndex + 1;
+      _pageImageZoomed = false;
+      // 递增版本号：PageView 换新 key，新控制器的 initialPage 才会生效。
+      _bumpScrollWidgetVersion();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      oldController.dispose();
+    });
   }
 
   /// 当前页所在的跨页序号。
@@ -89,9 +142,13 @@ extension _ReaderDoublePage on _ReaderPageState {
         return;
       }
       unawaited(
-        _appendNextChapterToChain().then((_) {
-          if (!mounted) return;
-          final newChapterIndex = _chain.length - 1;
+        _appendNextChapterToChain().then((appended) {
+          // 追加失败时保持原位：不能把链尾当成新章节跳过去。
+          if (!mounted || !appended) return;
+          final newChapterIndex = _chain.indexWhere(
+            (chapter) => chapter.uuid == nextUuid,
+          );
+          if (newChapterIndex < 0) return;
           final nextLayout = _doublePageLayout();
           final target = nextLayout.spreadIndexOf(newChapterIndex, 0);
           _syncActiveChapterFromGlobal(newChapterIndex);
@@ -317,7 +374,9 @@ extension _ReaderDoublePage on _ReaderPageState {
     final ordered = _user.readerScrollDirection == 1
         ? pages.reversed.toList()
         : pages;
-    return LayoutBuilder(
+    // 两页并排时整组共用一个缩放手势容器：两根手指分别落在左右页时，
+    // 每页各自独立的识别器只会各拿到一根指针，无法识别跨页捏合。
+    final content = LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
         final maxHeight = constraints.hasBoundedHeight
@@ -349,6 +408,7 @@ extension _ReaderDoublePage on _ReaderPageState {
                       ordered[i].imageIndex,
                       retryKey: _spreadImageRetryKey(ordered[i]),
                       zoomActive: zoomActive,
+                      enablePinchZoom: false,
                     ),
                   ),
               ],
@@ -356,6 +416,13 @@ extension _ReaderDoublePage on _ReaderPageState {
           ),
         );
       },
+    );
+    return PinchZoomable(
+      active: zoomActive,
+      // 跨页内任一页放大都会锁定翻页：整组共用一个缩放状态，不会出现
+      // 「右页缩回 1x 就把仍放大的左页一并解锁」。
+      onZoomChanged: _handlePageZoomChanged,
+      child: content,
     );
   }
 
@@ -377,7 +444,14 @@ extension _ReaderDoublePage on _ReaderPageState {
   }
 
   /// 主动解析跨页内图片的原始尺寸，供上面按真实比例拼合。
+  ///
+  /// 解析失败不再触发重建：失败会记入 [_spreadSizeFailures]，后续构建直接
+  /// 沿用兜底比例，直到用户手动重试（[_retryImage]）把它清掉。否则持续
+  /// 404 / 断网时「失败 → 清 pending → 重建 → 再请求」会形成无界重试，
+  /// 绕过用户设置的重试次数。
   void _requestSpreadImageSize(DoublePageAnchor anchor, String source) {
+    if (source.isEmpty) return;
+    if (_spreadSizeFailures.contains(source)) return;
     if (!_spreadSizePending.add(source)) return;
     final chapter = _chain[anchor.chapterIndex];
     final ImageProvider<Object> imageProvider = chapter.isDownloaded
@@ -391,11 +465,37 @@ extension _ReaderDoublePage on _ReaderPageState {
       source,
       onResolved: () {
         _spreadSizePending.remove(source);
-        if (!mounted) return;
-        // 仅触发一次重建，让跨页按真实宽高比重排；不影响页码与滚动位置。
-        _setState(() {});
+        _scheduleSpreadSizeRebuild();
+      },
+      onFailed: () {
+        _spreadSizePending.remove(source);
+        _spreadSizeFailures.add(source);
       },
     );
+  }
+
+  /// 尺寸解析完成后重建一次，让跨页按真实宽高比重排。
+  ///
+  /// 命中 Flutter 图片缓存时解析回调可能同步执行——直接父层 setState 会撞上
+  /// 「布局阶段 markNeedsBuild」。统一排到帧末尾，并把同一帧内的多次通知合并
+  /// 成一次重建。分组真的变了（出现了横向大图跨页）时再顺带重定位控制器。
+  void _scheduleSpreadSizeRebuild() {
+    if (_spreadSizeRebuildScheduled) return;
+    _spreadSizeRebuildScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _spreadSizeRebuildScheduled = false;
+      if (!mounted) return;
+      if (!_isDoublePageMode || _chain.isEmpty) return;
+      final previousSignature = _doublePageLayoutSignature;
+      _doublePageLayoutCache = null;
+      _doublePageLayoutSignature = null;
+      _doublePageLayout();
+      if (_doublePageLayoutSignature != previousSignature) {
+        _reanchorDoublePageController();
+        return;
+      }
+      _setState(() {});
+    });
   }
 
   /// 跨页内图片的重试状态键：沿用单页模式的全局图片索引口径。

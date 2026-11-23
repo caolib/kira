@@ -239,11 +239,14 @@ extension _ReaderChain on _ReaderPageState {
 
   /// 连续阅读：在链尾追加下一话。仅滚动/翻页构建逻辑需要在末尾追加更多内容时调用。
   /// 加载完成后触发 setState，由 PageView/ScrollablePositionedList 增量渲染新页。
-  Future<void> _appendNextChapterToChain() async {
-    if (_loadingNextChainChapter) return;
+  ///
+  /// 返回是否真的追加成功。调用方据此决定要不要跳到「新章首页」——
+  /// 加载失败时链尾仍是当前话，无条件跳转会把用户弹回本章第一页。
+  Future<bool> _appendNextChapterToChain() async {
+    if (_loadingNextChainChapter) return false;
     final lastChapter = _chain.last;
     final nextUuid = lastChapter.next;
-    if (nextUuid == null) return;
+    if (nextUuid == null) return false;
     _loadingNextChainChapter = true;
     try {
       final next =
@@ -255,7 +258,7 @@ extension _ReaderChain on _ReaderPageState {
       if (next.contents.isEmpty) {
         throw StateError('Chapter has no readable pages');
       }
-      if (!mounted) return;
+      if (!mounted) return false;
       _setState(() {
         _chain.add(next);
         // 不在这里解除加载锁：见 _scheduleChainLoadingReset。
@@ -268,6 +271,7 @@ extension _ReaderChain on _ReaderPageState {
       // 追加后立即预加载该话评论，使分隔区评论按钮能显示数量
       if (_user.commentPreload) unawaited(_preloadComments(chapter: next));
       _scheduleChainLoadingReset(isPrev: false);
+      return true;
     } catch (e, stack) {
       _loadingNextChainChapter = false;
       // 追加失败保持链不变，用户可手动重试（继续翻页会再次触发）。
@@ -287,6 +291,7 @@ extension _ReaderChain on _ReaderPageState {
           isError: true,
         );
       }
+      return false;
     }
   }
 

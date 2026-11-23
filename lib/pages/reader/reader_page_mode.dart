@@ -106,9 +106,13 @@ extension _ReaderPageMode on _ReaderPageState {
       // 链尾且还有下一话 -> 追加后跳到新章首页
       final nextUuid = _chain.last.next;
       if (nextUuid != null && !_loadingNextChainChapter) {
-        _appendNextChapterToChain().then((_) {
-          if (!mounted) return;
-          final newChapterIdx = _chain.length - 1;
+        _appendNextChapterToChain().then((appended) {
+          // 追加失败时保持原位，不能把当前链尾当成新章节跳过去。
+          if (!mounted || !appended) return;
+          final newChapterIdx = _chain.indexWhere(
+            (chapter) => chapter.uuid == nextUuid,
+          );
+          if (newChapterIdx < 0) return;
           final newStart = _chainChapterStart(newChapterIdx);
           _syncActiveChapterFromGlobal(newChapterIdx);
           _currentPage = 1;

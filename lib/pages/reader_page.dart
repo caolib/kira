@@ -250,6 +250,13 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   /// 正在异步解析真实尺寸的跨页图片（避免重复 resolve 与重复重建）。
   final Set<String> _spreadSizePending = {};
 
+  /// 解析失败过的跨页图片：沿用兜底宽高比，直到用户手动重试。
+  /// 失败若不清除就重建，会变成「重建 → 重新请求 → 再失败」的无界循环。
+  final Set<String> _spreadSizeFailures = {};
+
+  /// 跨页尺寸解析完成后已排入一次帧末重建（合并同帧内的多次通知）。
+  bool _spreadSizeRebuildScheduled = false;
+
   /// 滚动列表是否正在滚动（拖动或惯性），由 ScrollStart/EndNotification 维护。
   /// 滚动途中重建列表会打断手势，链首裁剪因此推迟到静止时执行。
   bool _scrollInProgress = false;
@@ -453,7 +460,7 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   /// 供阅读记录写入「继续阅读」副标题展示；widget.comicName 为空时回退。
   String? _cachedComicName;
   void _onSettingsChanged() {
-    final page = _currentPage;
+    var page = _currentPage;
     _updateVolumeIntercept();
     if (_isPageMode && _autoScrollEnabled) {
       _setAutoScroll(false);
@@ -466,10 +473,24 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
       _chainIndex = 0;
     }
     _rebuildChainStructure();
+    // 双页分组依赖「首图单页」设置：开关后跨页内容整体变化，
+    // 页码必须同步换算成新跨页的首页锚点，否则书签/历史会记错位置。
+    if (_isDoublePageMode && _detail != null && _detail!.contents.isNotEmpty) {
+      final layout = _doublePageLayout();
+      final spread = layout.spreadIndexOf(
+        _chainIndex,
+        (page - 1).clamp(0, _detail!.contents.length - 1),
+      );
+      page = layout.spreadStart(spread).imageIndex + 1;
+      _currentPage = page;
+    }
     if (_isPageMode) {
       final oldController = _pageController;
       final initialIndex = _pageControllerIndexFor(_chainIndex, page - 1);
       _pageController = PageController(initialPage: initialIndex);
+      // PageView 的 key 带版本号：不递增就会复用旧的 ScrollPosition，
+      // 新控制器的 initialPage 不会生效（切「首图单页」后画面与页码错位）。
+      _bumpScrollWidgetVersion();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         oldController.dispose();
       });
@@ -621,20 +642,31 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
                 slideOffset: _hiddenToolbarSlideOffset,
                 colorScheme: cs,
                 onPageChanged: (page) {
-                  setState(() => _currentPage = page);
                   if (_isPageMode) {
-                    // 双页模式下控制器按跨页编号，页码先换算成跨页序号。
-                    final globalIndex = _pageControllerIndexFor(
-                      _chainIndex,
-                      page - 1,
+                    if (_isDoublePageMode) {
+                      // 滑块给的是原始页码。先换算成所属跨页、把页码记成该
+                      // 跨页首页：不然选了同一跨页的第二页时页码会记成 3，
+                      // 而正常翻页记的是 2，书签与历史随之错位。
+                      final layout = _doublePageLayout();
+                      final spread = layout.spreadIndexOf(
+                        _chainIndex,
+                        (page - 1).clamp(0, _detail!.contents.length - 1),
+                      );
+                      final anchor = layout.spreadStart(spread);
+                      _setState(() => _currentPage = anchor.imageIndex + 1);
+                      _pageController.jumpToPage(spread);
+                      _saveReadingHistory();
+                      return;
+                    }
+                    setState(() => _currentPage = page);
+                    // 翻页模式下控制器索引统一由 _pageControllerIndexFor 换算。
+                    _pageController.jumpToPage(
+                      _pageControllerIndexFor(_chainIndex, page - 1),
                     );
-                    _pageController.jumpToPage(globalIndex);
-                  } else {
-                    _jumpToScrollPage(
-                      page,
-                      totalPages: _detail!.contents.length,
-                    );
+                    return;
                   }
+                  setState(() => _currentPage = page);
+                  _jumpToScrollPage(page, totalPages: _detail!.contents.length);
                 },
                 onDragStart: () => _isDraggingSlider = true,
                 onDragEnd: () {
