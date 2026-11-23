@@ -3,6 +3,11 @@ part of '../reader_page.dart';
 extension _ReaderPageMode on _ReaderPageState {
   void _prevPage() {
     if (_detail == null) return;
+    // 双页模式按整屏跨页翻动：一次退一组两页。
+    if (_isDoublePageMode) {
+      _prevSpread();
+      return;
+    }
     if (_currentPage > 1 || _chainIndex > 0) {
       // 连续阅读：已到当前章首页但前面还有拼接的章节 -> 回到上一章末页
       if (_currentPage == 1 && _chainIndex > 0 && _continuousReading) {
@@ -74,6 +79,11 @@ extension _ReaderPageMode on _ReaderPageState {
 
   void _nextPage() {
     if (_detail == null) return;
+    // 双页模式按整屏跨页翻动：一次前进一组两页。
+    if (_isDoublePageMode) {
+      _nextSpread();
+      return;
+    }
     final imageCount = _detail!.contents.length;
     if (_currentPage < imageCount) {
       _goToPage(_currentPage + 1);
@@ -96,9 +106,13 @@ extension _ReaderPageMode on _ReaderPageState {
       // 链尾且还有下一话 -> 追加后跳到新章首页
       final nextUuid = _chain.last.next;
       if (nextUuid != null && !_loadingNextChainChapter) {
-        _appendNextChapterToChain().then((_) {
-          if (!mounted) return;
-          final newChapterIdx = _chain.length - 1;
+        _appendNextChapterToChain().then((appended) {
+          // 追加失败时保持原位，不能把当前链尾当成新章节跳过去。
+          if (!mounted || !appended) return;
+          final newChapterIdx = _chain.indexWhere(
+            (chapter) => chapter.uuid == nextUuid,
+          );
+          if (newChapterIdx < 0) return;
           final newStart = _chainChapterStart(newChapterIdx);
           _syncActiveChapterFromGlobal(newChapterIdx);
           _currentPage = 1;
@@ -139,6 +153,11 @@ extension _ReaderPageMode on _ReaderPageState {
 
   /// 翻到指定页码（1-based，当前章内页码）。开启「无动画翻页」时瞬时切换，否则带过渡动画。
   void _goToPage(int page) {
+    // 双页模式：页码先换算成跨页序号（落在该页所在那一组）。
+    if (_isDoublePageMode) {
+      _goToSpread(_doublePageLayout().spreadIndexOf(_chainIndex, page - 1));
+      return;
+    }
     if (!_pageController.hasClients) return;
     final globalIndex = _continuousReading
         ? _chainChapterStart(_chainIndex) + (page - 1)
@@ -225,6 +244,8 @@ extension _ReaderPageMode on _ReaderPageState {
   }
 
   Widget _buildPageMode() {
+    // 双页阅读是另一套「按跨页分页」的构建逻辑，与单页路径互不影响。
+    if (_isDoublePageMode) return _buildDoublePageSpreadMode();
     final instantTurn = _user.readerInstantPageTurn;
     // 当前页被捏合放大时锁定翻页手势：单指拖动交给图片平移，收拢回
     // 1x 后由 _handlePageZoomChanged 触发重建恢复。

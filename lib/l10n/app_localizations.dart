@@ -3978,6 +3978,30 @@ abstract class AppLocalizations {
   /// **'无动画翻页'**
   String get readerInstantPageTurn;
 
+  /// No description provided for @readerDoublePage.
+  ///
+  /// In zh, this message translates to:
+  /// **'双页阅读'**
+  String get readerDoublePage;
+
+  /// No description provided for @readerDoublePageDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'每屏并排显示两页，一次翻过一组（仅横向翻页生效）'**
+  String get readerDoublePageDesc;
+
+  /// No description provided for @readerDoublePageCoverAlone.
+  ///
+  /// In zh, this message translates to:
+  /// **'首图单独成页'**
+  String get readerDoublePageCoverAlone;
+
+  /// No description provided for @readerDoublePageCoverAloneDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'每话第一页（封面/跨页彩图）单独显示，其后两页一组'**
+  String get readerDoublePageCoverAloneDesc;
+
   /// No description provided for @readerLongPressZoom.
   ///
   /// In zh, this message translates to:

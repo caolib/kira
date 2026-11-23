@@ -23,6 +23,8 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   static const _keyVolumeKey = 'reader_volume_key';
   static const _keyKeepScreenOn = 'reader_keep_screen_on';
   static const _keyInstantPageTurn = 'reader_instant_page_turn';
+  static const _keyDoublePage = 'reader_double_page';
+  static const _keyDoublePageCoverAlone = 'reader_double_page_cover_alone';
   static const _keyLongPressZoomEnabled = 'reader_long_press_zoom_enabled';
   static const _keyLongPressZoomPanSensitivity =
       'reader_long_press_zoom_pan_sensitivity';
@@ -97,6 +99,8 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   bool _volumeKey = true;
   bool _keepScreenOn = true;
   bool _instantPageTurn = false;
+  bool _doublePage = false;
+  bool _doublePageCoverAlone = true;
   bool _longPressZoomEnabled = true;
   double _longPressZoomPanSensitivity = 2.0;
   bool _pageRTL = false;
@@ -163,6 +167,8 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   bool get volumeKey => _volumeKey;
   bool get keepScreenOn => _keepScreenOn;
   bool get instantPageTurn => _instantPageTurn;
+  bool get doublePage => _doublePage;
+  bool get doublePageCoverAlone => _doublePageCoverAlone;
   bool get longPressZoomEnabled => _longPressZoomEnabled;
   double get longPressZoomPanSensitivity => _longPressZoomPanSensitivity;
   bool get pageRTL => _pageRTL;
@@ -252,6 +258,8 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     _volumeKey = prefs.getBool(_keyVolumeKey) ?? true;
     _keepScreenOn = prefs.getBool(_keyKeepScreenOn) ?? true;
     _instantPageTurn = prefs.getBool(_keyInstantPageTurn) ?? false;
+    _doublePage = prefs.getBool(_keyDoublePage) ?? false;
+    _doublePageCoverAlone = prefs.getBool(_keyDoublePageCoverAlone) ?? true;
     _longPressZoomEnabled = prefs.getBool(_keyLongPressZoomEnabled) ?? true;
     _longPressZoomPanSensitivity =
         (prefs.getDouble(_keyLongPressZoomPanSensitivity) ?? 2.0).clamp(
@@ -354,6 +362,18 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   Future<void> setInstantPageTurn(bool value) async {
     _instantPageTurn = value;
     await setBool(_keyInstantPageTurn, value);
+  }
+
+  Future<void> setDoublePage(bool value) async {
+    if (_doublePage == value) return;
+    _doublePage = value;
+    await setBool(_keyDoublePage, value);
+  }
+
+  Future<void> setDoublePageCoverAlone(bool value) async {
+    if (_doublePageCoverAlone == value) return;
+    _doublePageCoverAlone = value;
+    await setBool(_keyDoublePageCoverAlone, value);
   }
 
   Future<void> setLongPressZoomEnabled(bool value) async {

@@ -73,6 +73,12 @@ extension _ReaderImagePipeline on _ReaderPageState {
   // 避免不同章节的同名索引互相覆盖重试状态。
 
   void _retryImage(ChapterDetail chapter, int localIndex, int retryKey) {
+    // 手动重试是解除「尺寸解析失败」的唯一入口：重新允许请求真实尺寸。
+    if (localIndex >= 0 && localIndex < chapter.contents.length) {
+      final source = chapter.contents[localIndex];
+      _spreadSizeFailures.remove(source);
+      _spreadSizePending.remove(source);
+    }
     _setState(() {
       _imageRetryCounts.remove(retryKey);
       _imageRetryTokens.remove(retryKey);
@@ -107,7 +113,17 @@ extension _ReaderImagePipeline on _ReaderPageState {
   }
 
   /// 解析并缓存图片原始尺寸，完成后释放 ImageInfo / listener。
-  void _resolveAndCacheImageSize(ImageProvider provider, String source) {
+  ///
+  /// [onResolved] 仅在本次真正解析出尺寸后回调；尺寸已在缓存中时直接返回，
+  /// 不回调。[onFailed] 在解析失败（404 / 断网 / 本地文件缺失）时回调，
+  /// 由调用方决定是否重试——不能把失败当成「已解析」再触发一次重建，
+  /// 否则失败会形成「重建 → 重新请求 → 再失败」的无界循环。
+  void _resolveAndCacheImageSize(
+    ImageProvider provider,
+    String source, {
+    VoidCallback? onResolved,
+    VoidCallback? onFailed,
+  }) {
     if (_imageNaturalSizes.containsKey(source)) return;
     late final ImageStreamListener listener;
     final stream = provider.resolve(ImageConfiguration.empty);
@@ -120,9 +136,11 @@ extension _ReaderImagePipeline on _ReaderPageState {
         );
         info.dispose();
         _recordImageNaturalSize(source, size);
+        onResolved?.call();
       },
       onError: (_, _) {
         stream.removeListener(listener);
+        onFailed?.call();
       },
     );
     stream.addListener(listener);
@@ -260,10 +278,11 @@ extension _ReaderImagePipeline on _ReaderPageState {
     int localIndex, {
     int? retryKey,
     bool zoomActive = true,
+    bool enablePinchZoom = true,
   }) {
     final key = retryKey ?? localIndex;
     Widget image = _buildImage(chapter, localIndex, retryKey: key);
-    if (_isPageMode) {
+    if (_isPageMode && enablePinchZoom) {
       // 翻页模式：捏合缩放当前页单图；滚动模式由 _buildScrollMode 的
       // 整视图缩放负责。双击进查看器的手势在更外层，不受缩放影响。
       image = PinchZoomable(
