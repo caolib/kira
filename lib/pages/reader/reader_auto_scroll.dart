@@ -1,7 +1,7 @@
 part of '../reader_page.dart';
 
 extension _ReaderAutoScroll on _ReaderPageState {
-  /// 主开关：仅由顶部按钮调用。关闭时取消恢复计时器。
+  /// 开始或结束本次自动滚动。结束时作废滚动回调并取消恢复计时器。
   void _setAutoScroll(bool enabled) {
     if (enabled == _autoScrollEnabled) return;
     _autoScrollEnabled = enabled;

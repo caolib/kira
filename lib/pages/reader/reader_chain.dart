@@ -82,7 +82,8 @@ extension _ReaderChain on _ReaderPageState {
   }
 
   /// 滚动列表此刻能否安全重建：没有拖动、惯性，也没有在拖进度条。
-  bool get _canRebuildScrollList => !_scrollInProgress && !_isDraggingSlider;
+  bool get _canRebuildScrollList =>
+      _scrollingPosition == null && !_isDraggingSlider;
 
   /// 按「前1后1」窗口裁剪连续阅读链，限制长会话内存与列表规模。
   /// 返回是否实际裁剪。调用方负责随后 setState。

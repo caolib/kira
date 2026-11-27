@@ -239,9 +239,8 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   bool _loadingNextChainChapter = false;
   bool _loadingPrevChainChapter = false;
 
-  /// 滚动列表是否正在滚动（拖动或惯性），由 ScrollStart/EndNotification 维护。
-  /// 滚动途中重建列表会打断手势，链首裁剪因此推迟到静止时执行。
-  bool _scrollInProgress = false;
+  /// 仅在正文滚动期间持有，用于原位停止自动滚动，并推迟链首裁剪。
+  ScrollPosition? _scrollingPosition;
 
   /// 有待补做的链首裁剪（滚动途中被推迟）。
   bool _chainPrunePending = false;
@@ -496,7 +495,10 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.7,
       ),
-      builder: (_) => _ReaderSettingsPanel(onChanged: _onSettingsChanged),
+      builder: (_) => _ReaderSettingsPanel(
+        onChanged: _onSettingsChanged,
+        onAutoScrollVisibilityChanged: _onUserSettingsChanged,
+      ),
     ).whenComplete(() {
       if (!mounted) return;
       _resumeAutoScrollAfterOverlay();

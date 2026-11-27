@@ -12,10 +12,16 @@ extension _ReaderChapterData on _ReaderPageState {
     _setVolumeIntercept(should);
   }
 
-  /// 设置变化时重建，并重新套用依赖设置的副作用（音量键拦截）。
   void _onUserSettingsChanged() {
     if (!mounted) return;
-    _setState(() {});
+    if (!_user.readerAutoScrollEnabled && _autoScrollEnabled) {
+      _setAutoScroll(false);
+      // 已经开始的位移动画不会因取消下一段回调而停止。
+      final position = _scrollingPosition;
+      position?.jumpTo(position.pixels);
+    } else {
+      _setState(() {});
+    }
     _updateVolumeIntercept();
   }
 
@@ -95,7 +101,6 @@ extension _ReaderChapterData on _ReaderPageState {
         _loadingNextChainChapter = false;
         _loadingPrevChainChapter = false;
         // 整章重置：丢弃上一章遗留的滚动状态与待裁剪登记。
-        _scrollInProgress = false;
         _chainPrunePending = false;
         _rebuildChainStructure();
         // 整章切换：重建图片归属注册表（供阅读统计埋点反查）

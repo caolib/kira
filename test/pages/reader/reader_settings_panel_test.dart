@@ -437,6 +437,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final showAgain in [false, true]) {
+    testWidgets('隐藏自动滚动按钮后停在原位，同面板重新显示：$showAgain', (tester) async {
+      final chapter = _chapter('last');
+      chapter.contents.addAll(List.filled(7, chapter.contents.single));
+      ApiClient.setTestInstance(_ReaderApi(_ReaderMangaApi({'last': chapter})));
+      await UserManager().setReaderAutoScrollEnabled(true);
+      await UserManager().setReaderAutoScrollResume(true);
+      await _pumpReader(tester, reduceMotion: true);
+      await _showToolbar(tester);
+      final viewport = find.descendant(
+        of: find.byType(ScrollablePositionedList),
+        matching: find.byType(Scrollable),
+      );
+      double offset() =>
+          tester.state<ScrollableState>(viewport).position.pixels;
+
+      final startOffset = offset();
+      await tester.tap(find.byTooltip('开启自动滚动'));
+      await tester.pump();
+      expect(find.byTooltip('暂停自动滚动'), findsOneWidget);
+      await tester.tap(find.byTooltip('阅读设置'));
+      await tester.pump();
+      final toggle = find.byKey(const ValueKey('reader-auto-scroll-switch'));
+      await tester.ensureVisible(toggle);
+      await tester.pump(const Duration(milliseconds: 100));
+      final stoppedAt = offset();
+      expect(stoppedAt, greaterThan(startOffset));
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(UserManager().readerAutoScrollEnabled, isFalse);
+      expect(offset(), closeTo(stoppedAt, 0.01));
+      if (showAgain) {
+        await tester.tap(toggle);
+        await tester.pump();
+      }
+      Navigator.of(tester.element(toggle)).pop();
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(seconds: 1));
+      expect(offset(), closeTo(stoppedAt, 0.01));
+      expect(
+        find.byTooltip('开启自动滚动'),
+        showAgain ? findsOneWidget : findsNothing,
+      );
+      expect(find.byIcon(Icons.pause_circle_filled), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('图片加载分组默认折叠，展开后调整超时与重试并写入原偏好', (tester) async {
     await _pumpReader(tester);
     await _openSettings(tester);

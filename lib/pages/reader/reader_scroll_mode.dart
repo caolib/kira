@@ -10,7 +10,7 @@ extension _ReaderScrollMode on _ReaderPageState {
     _scrollZoomController.reset();
     // 旧列表连同其滚动活动一起被销毁，不会再派发 ScrollEndNotification；
     // 不复位「滚动中」标记的话，后续链首裁剪会被永久推迟。
-    _scrollInProgress = false;
+    _scrollingPosition = null;
   }
 
   void _handlePageZoomChanged(bool zoomed) {
@@ -323,10 +323,10 @@ extension _ReaderScrollMode on _ReaderPageState {
             if (n is UserScrollNotification && _autoScrollEnabled) {
               _onAutoScrollWheel();
             }
-            if (n is ScrollStartNotification) {
-              _scrollInProgress = true;
+            if (n case ScrollStartNotification(context: final context?)) {
+              _scrollingPosition = Scrollable.maybeOf(context)?.position;
             } else if (n is ScrollEndNotification) {
-              _scrollInProgress = false;
+              _scrollingPosition = null;
               // 拖动/惯性结束：补做被推迟的链首裁剪。
               _flushPendingChainPrune();
             }

@@ -2,7 +2,11 @@ part of '../reader_page.dart';
 
 class _ReaderSettingsPanel extends StatefulWidget {
   final VoidCallback onChanged;
-  const _ReaderSettingsPanel({required this.onChanged});
+  final VoidCallback onAutoScrollVisibilityChanged;
+  const _ReaderSettingsPanel({
+    required this.onChanged,
+    required this.onAutoScrollVisibilityChanged,
+  });
 
   @override
   State<_ReaderSettingsPanel> createState() => _ReaderSettingsPanelState();
@@ -375,7 +379,7 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                         onChanged: (v) {
                           _user.setReaderAutoScrollEnabled(v);
                           setState(() {});
-                          widget.onChanged();
+                          widget.onAutoScrollVisibilityChanged();
                         },
                         onToggleExpanded: () => setState(
                           () => _autoScrollExpanded = !_autoScrollExpanded,
