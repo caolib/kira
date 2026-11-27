@@ -10,6 +10,7 @@ import 'package:kira/backup/webdav_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_webdav_adapter.dart';
+import 'webdav_listing_test.dart' show davMultistatus, davResponse;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -144,6 +145,93 @@ void main() {
       );
       expect(adapter.files, isEmpty);
       expect(adapter.requests.last.method, 'DELETE');
+    },
+  );
+
+  test(
+    'deletion requires a successful type for the exact file, not just a 207',
+    () async {
+      const entry = WebDavBackupEntry(name: 'folder.json');
+      final path = config.fileUri(entry.name).path;
+      final ordinary = davResponse(path);
+      final noType = ordinary.replaceFirst(
+        '<d:resourcetype></d:resourcetype>',
+        '',
+      );
+      for (final responses in [
+        [davResponse(path, collection: true)],
+        [davResponse('$path/', collection: true)],
+        [davResponse('other.json')],
+        [noType],
+        [ordinary, davResponse(path, collection: true)],
+        [
+          noType.replaceFirst(
+            '</d:response>',
+            '<d:propstat><d:prop><d:resourcetype/></d:prop><d:status>HTTP/1.1 403 Forbidden</d:status></d:propstat></d:response>',
+          ),
+        ],
+      ]) {
+        adapter.responseOverride = (_) =>
+            ResponseBody.fromString(davMultistatus(responses), 207);
+        await expectLater(
+          client.delete(entry, cancel: CancelToken()),
+          throwsA(isA<WebDavException>()),
+        );
+      }
+      expect(
+        adapter.requests.every(
+          (r) => r.method == 'PROPFIND' && r.headers['Depth'] == '0',
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'uses a strong ETag if available; confirmed files without ETags still delete',
+    () async {
+      const entry = WebDavBackupEntry(name: 'backup.json');
+      final path = config.fileUri(entry.name).path;
+      for (final tag in ['"abc"', 'W/"abc"', '']) {
+        adapter.files[path] = Uint8List(1);
+        adapter.responseOverride = (r) => r.method == 'PROPFIND'
+            ? ResponseBody.fromString(
+                davMultistatus([
+                  davResponse(path).replaceFirst(
+                    '</d:prop>',
+                    '<d:getetag>$tag</d:getetag></d:prop>',
+                  ),
+                ]),
+                207,
+              )
+            : null;
+        await client.delete(entry, cancel: CancelToken());
+        expect(
+          adapter.requests.last.headers['If-Match'],
+          tag == '"abc"' ? tag : null,
+        );
+        expect(adapter.files.containsKey(path), isFalse);
+      }
+    },
+  );
+
+  test(
+    'a partial DELETE reports the embedded failure instead of confirming success',
+    () async {
+      const entry = WebDavBackupEntry(name: 'ordinary.json');
+      adapter.files[config.fileUri(entry.name).path] = Uint8List(1);
+      adapter.responseOverride = (r) => r.method == 'DELETE'
+          ? ResponseBody.fromString(
+              davMultistatus([
+                '<d:response><d:href>ordinary.json</d:href><d:status>HTTP/1.1 423 Locked</d:status></d:response>',
+              ]),
+              207,
+            )
+          : null;
+      await expectLater(
+        client.delete(entry, cancel: CancelToken()),
+        throwsA(isA<WebDavException>().having((e) => e.status, 'status', 423)),
+      );
     },
   );
 

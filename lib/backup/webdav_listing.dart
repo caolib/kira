@@ -8,6 +8,9 @@ const webDavPropfindBody = '''<?xml version="1.0" encoding="utf-8"?>
 <d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/>
 <d:getlastmodified/></d:prop></d:propfind>''';
 
+const webDavDeleteCheckBody = '''<?xml version="1.0" encoding="utf-8"?>
+<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getetag/></d:prop></d:propfind>''';
+
 XmlElement _multistatus(String xml) {
   if (RegExp(r'<!\s*(DOCTYPE|ENTITY)', caseSensitive: false).hasMatch(xml)) {
     throw const WebDavException(WebDavErrorCode.invalidResponse);
@@ -75,7 +78,70 @@ bool webDavCollectionExists(String xml, Uri target, WebDavConfig config) {
   return false;
 }
 
-List<WebDavBackupEntry> parseWebDavListing(String xml, WebDavConfig config) {
+bool _ordinaryFile(Iterable<XmlElement> types) =>
+    types.isNotEmpty &&
+    types.every((t) => t.childElements.isEmpty && t.innerText.trim().isEmpty);
+
+void _checkStatus(String? line, String method) {
+  if (line == null) return;
+  final match = RegExp(r'^HTTP/\S+\s+(\d{3})(?:\s|$)').firstMatch(line.trim());
+  final status = int.tryParse(match?[1] ?? '');
+  if (status == null) {
+    throw const WebDavException(WebDavErrorCode.invalidResponse);
+  }
+  if (status < 200 || status >= 300) {
+    throw WebDavException.fromStatus(method, status);
+  }
+}
+
+/// Depth: 0 must positively identify the exact resource as an ordinary file.
+/// A missing/failed resourcetype propstat is not evidence that it isn't a collection.
+String? checkWebDavDeleteTarget(String xml, Uri target, WebDavConfig config) {
+  final response = _multistatus(
+    xml,
+  ).findElements('response', namespace: 'DAV:').singleOrNull;
+  if (response == null ||
+      _safeHref(_text(response, 'href'), target, config) != target) {
+    throw const WebDavException(WebDavErrorCode.invalidResponse);
+  }
+  _checkStatus(_text(response, 'status'), 'PROPFIND');
+  for (final propstat in response.findElements('propstat', namespace: 'DAV:')) {
+    if (propstat
+        .findAllElements('resourcetype', namespace: 'DAV:')
+        .isNotEmpty) {
+      _checkStatus(_text(propstat, 'status'), 'PROPFIND');
+    }
+  }
+  final properties = _successfulProperties(response);
+  if (!_ordinaryFile(
+    properties.expand((p) => p.findElements('resourcetype', namespace: 'DAV:')),
+  )) {
+    throw const WebDavException(WebDavErrorCode.unsafePath);
+  }
+  final etag = properties
+      .map((p) => _text(p, 'getetag')?.trim())
+      .nonNulls
+      .firstOrNull;
+  return etag != null && RegExp(r'^"[\x21\x23-\x7e\x80-\xff]*"$').hasMatch(etag)
+      ? etag
+      : null;
+}
+
+/// A DELETE multistatus describes a partial outcome, not confirmed success.
+Never throwWebDavDeleteMultistatus(String xml) {
+  for (final status in _multistatus(
+    xml,
+  ).findAllElements('status', namespace: 'DAV:')) {
+    _checkStatus(status.innerText, 'DELETE');
+  }
+  throw const WebDavException(WebDavErrorCode.invalidResponse, status: 207);
+}
+
+List<WebDavBackupEntry> parseWebDavListing(
+  String xml,
+  WebDavConfig config, {
+  bool confirmedFilesOnly = false,
+}) {
   final entries = <String, WebDavBackupEntry>{};
   final rootParts = config.rootSegments;
   for (final response in _multistatus(
@@ -92,11 +158,20 @@ List<WebDavBackupEntry> parseWebDavListing(String xml, WebDavConfig config) {
     }
     final name = parts.last;
     if (!WebDavBackupEntry.isBackupName(name)) continue;
+    final propertiesWithSuccess = _successfulProperties(response);
+    if (confirmedFilesOnly &&
+        !_ordinaryFile(
+          propertiesWithSuccess.expand(
+            (p) => p.findElements('resourcetype', namespace: 'DAV:'),
+          ),
+        )) {
+      continue;
+    }
     var successful = false;
     var collection = false;
     int? size;
     DateTime? modified;
-    for (final properties in _successfulProperties(response)) {
+    for (final properties in propertiesWithSuccess) {
       successful = true;
       collection |= properties
           .findElements('resourcetype', namespace: 'DAV:')

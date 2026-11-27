@@ -93,6 +93,21 @@ class WebDavBackupEntry {
 
   bool get encrypted => name.toLowerCase().endsWith('.kirabak');
 
+  // BackupCodec.uniqueFileName uses compact UTC ISO, 12 random bytes and the
+  // exact EncodedBackup extension. Other importable names are not ours to prune.
+  static final _generatedName = RegExp(
+    r'^kira-(\d{8}T\d{6})(\d{3}(?:\d{3})?)Z-[0-9a-f]{24}\.(?:json\.gz|kirabak)$',
+  );
+
+  DateTime? get generatedAt {
+    final match = _generatedName.firstMatch(name);
+    if (match == null || match.end != name.length) return null;
+    final time = DateTime.tryParse('${match[1]}.${match[2]}Z');
+    // tryParse normalizes invalid calendar values; only accept canonical names.
+    final canonical = time?.toIso8601String().replaceAll(RegExp('[-:.]'), '');
+    return canonical == '${match[1]}${match[2]}Z' ? time : null;
+  }
+
   static bool isBackupName(String name) {
     final normalized = name.toLowerCase();
     return name.isNotEmpty &&
@@ -124,6 +139,18 @@ class WebDavException implements Exception {
   final int? status;
 
   const WebDavException(this.code, {this.status});
+
+  factory WebDavException.fromStatus(String method, int status) =>
+      WebDavException(switch (status) {
+        >= 300 && < 400 => WebDavErrorCode.redirectRefused,
+        401 => WebDavErrorCode.authentication,
+        403 => WebDavErrorCode.forbidden,
+        404 => WebDavErrorCode.notFound,
+        405 || 501 when method == 'MOVE' => WebDavErrorCode.moveUnsupported,
+        405 || 501 => WebDavErrorCode.methodUnsupported,
+        409 || 412 => WebDavErrorCode.conflict,
+        _ => WebDavErrorCode.invalidResponse,
+      }, status: status);
 
   @override
   String toString() => 'WebDavException(${code.name}, $status)';

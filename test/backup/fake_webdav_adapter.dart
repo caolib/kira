@@ -17,7 +17,8 @@ class FakeWebDavAdapter implements HttpClientAdapter {
   bool timeout = false;
   String? listingOverride;
   Future<void> Function(RequestOptions)? beforeResponse;
-  ResponseBody Function(RequestOptions)? responseOverride;
+  ResponseBody? Function(RequestOptions)? responseOverride;
+  void Function()? onClose;
 
   @override
   Future<ResponseBody> fetch(
@@ -41,7 +42,7 @@ class FakeWebDavAdapter implements HttpClientAdapter {
         type: DioExceptionType.connectionTimeout,
       );
     }
-    if (responseOverride case final override?) return override(options);
+    if (responseOverride?.call(options) case final response?) return response;
     if (forcedStatus case final status?) {
       return ResponseBody.fromString(
         '',
@@ -58,6 +59,12 @@ class FakeWebDavAdapter implements HttpClientAdapter {
         if (!directories.add(path)) return _status(405);
         return _status(201);
       case 'PROPFIND':
+        if (files.containsKey(path) && options.headers['Depth'] == '0') {
+          return ResponseBody.fromString(
+            davMultistatus([davResponse(path)]),
+            207,
+          );
+        }
         if (!directories.contains(path)) return _status(404);
         return ResponseBody.fromString(
           listingOverride ??
@@ -109,5 +116,5 @@ class FakeWebDavAdapter implements HttpClientAdapter {
       ResponseBody.fromBytes(utf8.encode(''), status);
 
   @override
-  void close({bool force = false}) {}
+  void close({bool force = false}) => onClose?.call();
 }

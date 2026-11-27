@@ -6167,6 +6167,60 @@ abstract class AppLocalizations {
   /// **'远端备份已删除'**
   String get backupDeleted;
 
+  /// No description provided for @backupSelectFiles.
+  ///
+  /// In zh, this message translates to:
+  /// **'多选'**
+  String get backupSelectFiles;
+
+  /// No description provided for @backupSelectedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选 {count} 份'**
+  String backupSelectedCount(int count);
+
+  /// No description provided for @backupDeleteSelectedWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除选中的 {count} 份远端备份？删除后无法找回。'**
+  String backupDeleteSelectedWarning(int count);
+
+  /// No description provided for @backupRetentionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份数量上限'**
+  String get backupRetentionTitle;
+
+  /// No description provided for @backupRetentionUnlimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'不限'**
+  String get backupRetentionUnlimited;
+
+  /// No description provided for @backupRetentionCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 份'**
+  String backupRetentionCount(int count);
+
+  /// No description provided for @backupRetentionHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传成功后，若超过上限，自动删除最旧的远端备份。'**
+  String get backupRetentionHint;
+
+  /// No description provided for @backupRetentionInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入正整数'**
+  String get backupRetentionInvalid;
+
+  /// No description provided for @backupRetentionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'新备份已上传，旧备份未清理完：{reason}'**
+  String backupRetentionFailed(String reason);
+
   /// No description provided for @backupWebDavConfiguration.
   ///
   /// In zh, this message translates to:

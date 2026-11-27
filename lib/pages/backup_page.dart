@@ -46,6 +46,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   final _selected = BackupCategory.values.toSet();
   Map<BackupCategory, int>? _sizes;
   BackupSchedule _schedule = const BackupSchedule();
+  int _retentionLimit = 0;
   WebDavConfig? _config;
   WebDavCredentials _credentials = const WebDavCredentials(
     username: '',
@@ -105,6 +106,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       _password = data.rememberedPassword ?? '';
       _remember = data.rememberedPassword != null;
       _schedule = data.schedule;
+      _retentionLimit = data.retentionLimit;
     } catch (error) {
       _loadError = error;
     } finally {
@@ -318,10 +320,33 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     );
     if (!mounted) return;
     if (remote) {
-      final entry = await _controller.upload(_config!, _credentials, encoded);
+      WebDavBackupEntry entry;
+      try {
+        entry = await _controller.upload(
+          _config!,
+          _credentials,
+          encoded,
+          retentionLimit: _retentionLimit,
+        );
+        _toast(l10n.backupUploaded);
+      } on BackupRetentionException catch (failure) {
+        entry = failure.entry;
+        unawaited(
+          AppLogger.instance.recordWarning(
+            failure.error,
+            stackTrace: failure.stackTrace,
+            source: 'backup.webdav.retention',
+          ),
+        );
+        if (!mounted) return;
+        showToast(
+          context,
+          l10n.backupRetentionFailed(backupErrorMessage(failure.error, l10n)),
+          isError: true,
+        );
+      }
       if (!mounted) return;
       setState(() => _entries = [entry, ..._entries]);
-      _toast(l10n.backupUploaded);
       await _refreshRemote();
     } else {
       final saved = await FilePicker.saveFile(
@@ -405,18 +430,26 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     }
   }
 
-  Future<void> _deleteRemote(WebDavBackupEntry entry) async {
+  Future<void> _deleteRemote(List<WebDavBackupEntry> entries) async {
+    if (entries.isEmpty) return;
     final l10n = AppLocalizations.of(context)!;
-    if (!await _confirm(
+    final confirmed = await _confirm(
       l10n.backupDeleteTitle,
-      l10n.backupDeleteWarning(entry.name),
+      entries.length == 1
+          ? l10n.backupDeleteWarning(entries.single.name)
+          : l10n.backupDeleteSelectedWarning(entries.length),
       l10n.deleteButton,
-    )) {
-      return;
-    }
-    await _controller.delete(_config!, _credentials, entry);
-    if (!mounted) return;
-    setState(() => _entries.removeWhere((item) => item.name == entry.name));
+    );
+    if (!confirmed || !mounted) return;
+    await _controller.deleteMany(
+      _config!,
+      _credentials,
+      entries,
+      onDeleted: (entry) {
+        if (!mounted) return;
+        setState(() => _entries.removeWhere((item) => item.name == entry.name));
+      },
+    );
     _toast(l10n.backupDeleted);
   }
 
@@ -554,8 +587,15 @@ class _BackupPageState extends ConsumerState<BackupPage> {
                       const SizedBox(height: AppSpacing.xxl),
                       if (_webDav)
                         WebDavPanel(
+                          key: ValueKey((_config?.root, _credentials.username)),
                           config: _config,
                           entries: _entries,
+                          retentionLimit: _retentionLimit,
+                          onRetentionChanged: (value) => _perform(() async {
+                            await _settings.saveRetentionLimit(value);
+                            if (!mounted) return;
+                            setState(() => _retentionLimit = value);
+                          }),
                           enabled: _webDavEnabled,
                           interactive: !_busy,
                           canUpload: _selected.isNotEmpty,
@@ -583,7 +623,9 @@ class _BackupPageState extends ConsumerState<BackupPage> {
                             await _decodeAndRestore(bytes);
                           }),
                           onDelete: (entry) =>
-                              _perform(() => _deleteRemote(entry)),
+                              _perform(() => _deleteRemote([entry])),
+                          onDeleteSelected: (entries) =>
+                              _perform(() => _deleteRemote(entries)),
                           onScheduleChanged: _updateSchedule,
                         )
                       else

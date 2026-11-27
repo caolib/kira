@@ -215,6 +215,34 @@ void main() {
     );
 
     test(
+      'retention limit is local, durable and rejects failed writes',
+      () async {
+        final settings = BackupSettings();
+        expect((await settings.load()).retentionLimit, 0);
+        expect(
+          BackupSchema.categoryOf(BackupSettings.retentionLimitKey),
+          isNull,
+        );
+        await settings.saveRetentionLimit(4);
+        SharedPreferences.resetStatic();
+        expect((await BackupSettings().load()).retentionLimit, 4);
+        platform.failKey = BackupSettings.retentionLimitKey;
+        platform.failValue = 1;
+        await expectLater(
+          settings.saveRetentionLimit(1),
+          throwsA(isA<Exception>()),
+        );
+        // 定时备份也不能从插件的内存缓存读到未落盘的较小上限。
+        expect((await settings.load()).retentionLimit, 4);
+        SharedPreferences.resetStatic();
+        expect((await BackupSettings().load()).retentionLimit, 4);
+        await settings.saveRetentionLimit(0);
+        SharedPreferences.resetStatic();
+        expect((await BackupSettings().load()).retentionLimit, 0);
+      },
+    );
+
+    test(
       'forgetting password removes both names and only keeps current session in memory',
       () async {
         final settings = BackupSettings();

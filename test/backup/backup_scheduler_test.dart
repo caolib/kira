@@ -49,10 +49,13 @@ void main() {
   BackupScheduler scheduler({
     DateTime Function()? now,
     Timer Function(Duration delay, void Function() callback)? timerFactory,
+    BackupUpload? upload,
   }) => BackupScheduler(
     settings: settings,
     controller: controller,
-    upload: (config, credentials, backup) async => uploads.add(backup),
+    upload:
+        upload ??
+        (config, credentials, backup, limit) async => uploads.add(backup),
     now: now ?? () => clock,
     timerFactory: timerFactory,
   );
@@ -183,6 +186,37 @@ void main() {
     expect(uploads, hasLength(1));
     subject.dispose();
   });
+
+  test(
+    'retention failure records successful upload without a duplicate retry',
+    () async {
+      await settings.saveConnection(config, credentials);
+      await settings.saveEncryption(
+        encrypted: false,
+        remember: false,
+        password: '',
+      );
+      await settings.saveRetentionLimit(3);
+      await settings.saveSchedule(hourly);
+      await settings.markAutoBackup(clock.subtract(const Duration(hours: 2)));
+      final limits = <int>[];
+      final subject = scheduler(
+        upload: (config, credentials, backup, limit) async {
+          limits.add(limit);
+          throw BackupRetentionException(
+            const WebDavBackupEntry(name: 'uploaded.kirabak'),
+            const WebDavException(WebDavErrorCode.forbidden),
+            StackTrace.current,
+          );
+        },
+      );
+      addTearDown(subject.dispose);
+      await subject.checkNow();
+      await subject.checkNow();
+      expect(limits, [3]);
+      expect((await settings.load()).lastAutoBackupAt, clock);
+    },
+  );
 
   test('encryption without a usable password is skipped', () async {
     await settings.saveConnection(config, credentials);

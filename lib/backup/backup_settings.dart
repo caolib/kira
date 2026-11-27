@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../models/secure_credential_store.dart';
+import '../utils/app_logger.dart';
 import 'backup_preferences.dart';
 import 'backup_schedule.dart';
 import 'webdav_config.dart';
@@ -15,6 +16,7 @@ class BackupSettingsData {
   final bool encrypted;
   final String? rememberedPassword;
   final BackupSchedule schedule;
+  final int retentionLimit; // 0 表示不限，仅用于远端备份。
   final DateTime? lastAutoBackupAt;
 
   const BackupSettingsData({
@@ -24,6 +26,7 @@ class BackupSettingsData {
     this.encrypted = true,
     this.rememberedPassword,
     this.schedule = const BackupSchedule(),
+    this.retentionLimit = 0,
     this.lastAutoBackupAt,
   });
 }
@@ -39,6 +42,7 @@ class BackupSettings {
   static const scheduleValueKey = 'backup_auto_interval_value';
   static const scheduleUnitKey = 'backup_auto_interval_unit';
   static const lastAutoBackupKey = 'backup_auto_last_at';
+  static const retentionLimitKey = 'backup_webdav_retention_limit';
   final BackupPreferences _preferences;
   final SecureCredentialStore _secrets;
 
@@ -90,6 +94,7 @@ class BackupSettings {
     final rawEnabled = prefs[enabledKey];
     final rawValue = prefs[scheduleValueKey];
     final rawLast = prefs[lastAutoBackupKey];
+    final rawLimit = prefs[retentionLimitKey];
     // 单位不再被当前版本认识时，数值也一并回到默认，避免出现「10 天」这类
     // 从已删除单位直接换算出来的怪间隔。
     final unit = BackupSchedule.tryFromName(prefs[scheduleUnitKey]);
@@ -98,6 +103,7 @@ class BackupSettings {
       credentials: credentials,
       webDavEnabled: rawEnabled is bool ? rawEnabled : config != null,
       encrypted: prefs[encryptionKey] != false,
+      retentionLimit: rawLimit is int && rawLimit > 0 ? rawLimit : 0,
       rememberedPassword: await _secrets.readBackupPassword(),
       schedule: BackupSchedule(
         enabled: prefs[scheduleEnabledKey] == true,
@@ -165,6 +171,31 @@ class BackupSettings {
     _sessionPassword = password.isEmpty ? null : password;
     await _secrets.writeBackupPassword(remember ? password : null);
     await _preferences.write(encryptionKey, encrypted);
+  }
+
+  Future<void> saveRetentionLimit(int limit) async {
+    RangeError.checkNotNegative(limit, 'limit');
+    try {
+      await _preferences.write(retentionLimitKey, limit);
+    } catch (error, stack) {
+      await AppLogger.instance.recordWarning(
+        error,
+        stackTrace: stack,
+        source: 'backup.retention.save',
+      );
+      if (_preferences case final SharedBackupPreferences prefs) {
+        try {
+          await prefs.reloadFromDisk();
+        } catch (reloadError, reloadStack) {
+          await AppLogger.instance.recordWarning(
+            reloadError,
+            stackTrace: reloadStack,
+            source: 'backup.retention.reload',
+          );
+        }
+      }
+      rethrow;
+    }
   }
 
   Future<void> saveSchedule(BackupSchedule schedule) async {

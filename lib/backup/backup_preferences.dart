@@ -107,6 +107,10 @@ class SharedBackupPreferences implements BackupPreferences {
     });
   }
 
+  /// 旧版 SharedPreferences 在平台写入成功前就会更新其进程缓存。
+  Future<void> reloadFromDisk() async =>
+      (await SharedPreferences.getInstance()).reload();
+
   @override
   Future<void> remove(String key) async {
     switch (key) {

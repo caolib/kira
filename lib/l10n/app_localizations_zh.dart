@@ -3387,6 +3387,41 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupDeleted => '远端备份已删除';
 
   @override
+  String get backupSelectFiles => '多选';
+
+  @override
+  String backupSelectedCount(int count) {
+    return '已选 $count 份';
+  }
+
+  @override
+  String backupDeleteSelectedWarning(int count) {
+    return '确定删除选中的 $count 份远端备份？删除后无法找回。';
+  }
+
+  @override
+  String get backupRetentionTitle => '备份数量上限';
+
+  @override
+  String get backupRetentionUnlimited => '不限';
+
+  @override
+  String backupRetentionCount(int count) {
+    return '$count 份';
+  }
+
+  @override
+  String get backupRetentionHint => '上传成功后，若超过上限，自动删除最旧的远端备份。';
+
+  @override
+  String get backupRetentionInvalid => '请输入正整数';
+
+  @override
+  String backupRetentionFailed(String reason) {
+    return '新备份已上传，旧备份未清理完：$reason';
+  }
+
+  @override
   String get backupWebDavConfiguration => '连接设置';
 
   @override
@@ -7481,6 +7516,41 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get backupDeleted => '遠端備份已刪除';
+
+  @override
+  String get backupSelectFiles => '多選';
+
+  @override
+  String backupSelectedCount(int count) {
+    return '已選 $count 份';
+  }
+
+  @override
+  String backupDeleteSelectedWarning(int count) {
+    return '確定刪除選取的 $count 份遠端備份？刪除後無法復原。';
+  }
+
+  @override
+  String get backupRetentionTitle => '備份數量上限';
+
+  @override
+  String get backupRetentionUnlimited => '不限';
+
+  @override
+  String backupRetentionCount(int count) {
+    return '$count 份';
+  }
+
+  @override
+  String get backupRetentionHint => '上傳成功後，若超過上限，自動刪除最舊的遠端備份。';
+
+  @override
+  String get backupRetentionInvalid => '請輸入正整數';
+
+  @override
+  String backupRetentionFailed(String reason) {
+    return '新備份已上傳，舊備份未清理完：$reason';
+  }
 
   @override
   String get backupWebDavConfiguration => '連線設定';

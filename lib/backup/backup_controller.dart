@@ -23,6 +23,22 @@ enum BackupOperation {
   deleting,
 }
 
+/// The upload committed; only retention failed. Never retry the upload as if
+/// the new file were missing.
+class BackupRetentionException implements Exception {
+  final WebDavBackupEntry entry;
+  final Object error;
+  final StackTrace stackTrace;
+
+  const BackupRetentionException(this.entry, this.error, this.stackTrace);
+}
+
+typedef WebDavClientFactory =
+    WebDavClient Function({
+      required WebDavConfig config,
+      required WebDavCredentials credentials,
+    });
+
 /// Shared local/WebDAV pipeline and cancellation/progress state. Widgets own
 /// confirmations; this class never serializes a second preferences snapshot.
 class BackupController extends ChangeNotifier {
@@ -33,7 +49,13 @@ class BackupController extends ChangeNotifier {
   double? _progress;
   bool _disposed = false;
 
-  BackupController({required this.service, required this.codec});
+  final WebDavClientFactory _createClient;
+
+  BackupController({
+    required this.service,
+    required this.codec,
+    WebDavClientFactory createClient = WebDavClient.new,
+  }) : _createClient = createClient;
 
   BackupOperation get operation => _operation;
   double? get progress => _progress;
@@ -134,7 +156,7 @@ class BackupController extends ChangeNotifier {
     WebDavCredentials credentials,
     Future<T> Function(WebDavClient client, CancelToken cancel) action,
   ) => _run(operation, (cancel) async {
-    final client = WebDavClient(config: config, credentials: credentials);
+    final client = _createClient(config: config, credentials: credentials);
     try {
       return await action(client, cancel);
     } finally {
@@ -163,14 +185,68 @@ class BackupController extends ChangeNotifier {
   Future<WebDavBackupEntry> upload(
     WebDavConfig config,
     WebDavCredentials credentials,
-    EncodedBackup backup,
-  ) => _remote(
-    BackupOperation.uploading,
-    config,
-    credentials,
-    (client, cancel) =>
-        client.upload(backup, cancel: cancel, onProgress: _onProgress),
-  );
+    EncodedBackup backup, {
+    int retentionLimit = 0,
+  }) async {
+    WebDavBackupEntry? committed;
+    try {
+      return await _remote(BackupOperation.uploading, config, credentials, (
+        client,
+        cancel,
+      ) async {
+        final entry = await client.upload(
+          backup,
+          cancel: cancel,
+          onProgress: _onProgress,
+        );
+        committed = entry;
+        if (retentionLimit > 0) {
+          await _prune(client, cancel, entry, retentionLimit);
+        }
+        return entry;
+      });
+    } catch (error, stack) {
+      // Includes _run's final cancellation check, after the remote action.
+      final entry = committed;
+      if (entry == null) rethrow;
+      Error.throwWithStackTrace(
+        BackupRetentionException(entry, error, stack),
+        stack,
+      );
+    }
+  }
+
+  Future<void> _prune(
+    WebDavClient client,
+    CancelToken cancel,
+    WebDavBackupEntry committed,
+    int limit,
+  ) async {
+    _stage(BackupOperation.listing);
+    final files = await client.list(cancel: cancel, confirmedFilesOnly: true);
+    // Include the commit even if the server hasn't listed it yet.
+    final all = files.any((file) => file.name == committed.name)
+        ? files
+        : [...files, committed];
+    final dated =
+        [
+          for (final file in all)
+            if (file.generatedAt case final time?) (file: file, time: time),
+        ]..sort((a, b) {
+          final cmp = a.time.compareTo(b.time);
+          return cmp != 0 ? cmp : a.file.name.compareTo(b.file.name);
+        });
+    if (dated.length <= limit) return;
+    // Keep the newest N *and* the committed entry. After clock rollback
+    // they may not overlap: don't delete another device's newer backup.
+    final expired = dated
+        .take(dated.length - limit)
+        .map((e) => e.file)
+        .where((e) => e.name != committed.name);
+    if (expired.isEmpty) return;
+    _stage(BackupOperation.deleting);
+    await _deleteFiles(client, cancel, expired);
+  }
 
   Future<Uint8List> download(
     WebDavConfig config,
@@ -188,12 +264,32 @@ class BackupController extends ChangeNotifier {
     WebDavConfig config,
     WebDavCredentials credentials,
     WebDavBackupEntry entry,
-  ) => _remote(
+  ) => deleteMany(config, credentials, [entry], onDeleted: (_) {});
+
+  Future<void> deleteMany(
+    WebDavConfig config,
+    WebDavCredentials credentials,
+    List<WebDavBackupEntry> entries, {
+    required void Function(WebDavBackupEntry) onDeleted,
+  }) => _remote(
     BackupOperation.deleting,
     config,
     credentials,
-    (client, cancel) => client.delete(entry, cancel: cancel),
+    (client, cancel) =>
+        _deleteFiles(client, cancel, List.of(entries), onDeleted: onDeleted),
   );
+
+  Future<void> _deleteFiles(
+    WebDavClient client,
+    CancelToken cancel,
+    Iterable<WebDavBackupEntry> entries, {
+    void Function(WebDavBackupEntry)? onDeleted,
+  }) async {
+    for (final entry in entries) {
+      await client.delete(entry, cancel: cancel);
+      onDeleted?.call(entry);
+    }
+  }
 
   void _onProgress(int count, int total) {
     _progress = total > 0 ? (count / total).clamp(0, 1) : null;

@@ -14,6 +14,7 @@ typedef BackupUpload =
       WebDavConfig config,
       WebDavCredentials credentials,
       EncodedBackup backup,
+      int retentionLimit,
     );
 
 /// 尽力而为的定时备份：进程被杀后不再运行，也不驻留后台服务。启动与设置变化时
@@ -45,8 +46,12 @@ class BackupScheduler {
   }) : controller = controller,
        upload =
            upload ??
-           ((config, credentials, backup) =>
-               controller.upload(config, credentials, backup)),
+           ((config, credentials, backup, limit) => controller.upload(
+             config,
+             credentials,
+             backup,
+             retentionLimit: limit,
+           )),
        now = now ?? DateTime.now,
        timerFactory =
            timerFactory ?? ((delay, callback) => Timer(delay, callback));
@@ -114,7 +119,18 @@ class BackupScheduler {
       }
       final prepared = await controller.prepare(_categories(data.encrypted));
       final encoded = await controller.encode(prepared, password: password);
-      await upload(config, data.credentials, encoded);
+      try {
+        await upload(config, data.credentials, encoded, data.retentionLimit);
+      } on BackupRetentionException catch (failure) {
+        // 上传已成功。记录清理失败，但不为重试清理而重复上传。
+        unawaited(
+          AppLogger.instance.recordWarning(
+            failure.error,
+            stackTrace: failure.stackTrace,
+            source: 'backup.auto.retention',
+          ),
+        );
+      }
       await settings.markAutoBackup(now());
       return true;
     } catch (error, stack) {

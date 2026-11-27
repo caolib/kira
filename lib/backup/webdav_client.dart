@@ -59,20 +59,24 @@ class WebDavClient {
 
   void close() => _dio.close(force: true);
 
-  Future<List<WebDavBackupEntry>> list({required CancelToken cancel}) async {
+  Future<List<WebDavBackupEntry>> list({
+    required CancelToken cancel,
+    bool confirmedFilesOnly = false,
+  }) async {
     final response = await _request(
       'PROPFIND',
       config.root,
       cancel: cancel,
       headers: {'Depth': '1', 'Content-Type': 'application/xml; charset=utf-8'},
       body: utf8.encode(webDavPropfindBody),
-      accepted: {207, 404},
+      accepted: confirmedFilesOnly ? {207} : {207, 404},
       limit: _xmlLimit,
     );
     if (response.status == 404) return [];
     return compute(_parseListing, (
       utf8.decode(response.bytes),
       config,
+      confirmedFilesOnly,
     ), debugLabel: 'backup.webdav_xml');
   }
 
@@ -206,12 +210,35 @@ class WebDavClient {
     required CancelToken cancel,
   }) async {
     _checkEntry(entry);
-    await _request(
-      'DELETE',
-      config.fileUri(entry.name),
+    final target = config.fileUri(entry.name);
+    // WebDAV collection DELETE is recursive. Depth: 0 belongs on PROPFIND,
+    // not DELETE (RFC 4918 §9.6.1). Recheck even a previously listed file.
+    final check = await _request(
+      'PROPFIND',
+      target,
       cancel: cancel,
-      accepted: {200, 202, 204, 404},
+      headers: {'Depth': '0', 'Content-Type': 'application/xml; charset=utf-8'},
+      body: utf8.encode(webDavDeleteCheckBody),
+      accepted: {207, 404},
+      limit: _xmlLimit,
     );
+    if (check.status == 404) return; // Already absent, as for DELETE 404.
+    final etag = checkWebDavDeleteTarget(
+      utf8.decode(check.bytes),
+      target,
+      config,
+    );
+    final result = await _request(
+      'DELETE',
+      target,
+      cancel: cancel,
+      headers: {'If-Match': ?etag},
+      accepted: {200, 202, 204, 207, 404},
+      limit: _xmlLimit,
+    );
+    if (result.status == 207) {
+      throwWebDavDeleteMultistatus(utf8.decode(result.bytes));
+    }
   }
 
   void _checkEntry(WebDavBackupEntry entry) {
@@ -310,7 +337,7 @@ class WebDavClient {
       }
       if (!accepted.contains(status)) {
         await stream.stream.listen(null).cancel();
-        throw _statusError(method, status);
+        throw WebDavException.fromStatus(method, status);
       }
       final encoding = response.headers.value(
         HttpHeaders.contentEncodingHeader,
@@ -359,19 +386,7 @@ class WebDavClient {
       throw const WebDavException(WebDavErrorCode.connection);
     }
   }
-
-  WebDavException _statusError(String method, int status) =>
-      WebDavException(switch (status) {
-        >= 300 && < 400 => WebDavErrorCode.redirectRefused,
-        401 => WebDavErrorCode.authentication,
-        403 => WebDavErrorCode.forbidden,
-        404 => WebDavErrorCode.notFound,
-        405 || 501 when method == 'MOVE' => WebDavErrorCode.moveUnsupported,
-        405 || 501 => WebDavErrorCode.methodUnsupported,
-        409 || 412 => WebDavErrorCode.conflict,
-        _ => WebDavErrorCode.invalidResponse,
-      }, status: status);
 }
 
-List<WebDavBackupEntry> _parseListing((String, WebDavConfig) args) =>
-    parseWebDavListing(args.$1, args.$2);
+List<WebDavBackupEntry> _parseListing((String, WebDavConfig, bool) args) =>
+    parseWebDavListing(args.$1, args.$2, confirmedFilesOnly: args.$3);
