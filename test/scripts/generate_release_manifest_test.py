@@ -18,13 +18,19 @@ SPEC.loader.exec_module(manifest_script)
 
 class ReleaseManifestTest(unittest.TestCase):
     def setUp(self):
+        subprocess_guard = patch.object(
+            manifest_script.subprocess, "run", side_effect=AssertionError("GitHub calls must be mocked"),
+        )
+        subprocess_guard.start()
+        self.addCleanup(subprocess_guard.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.repo = "test/repo"
         self.tag = "v1.7.6"
         self.version = "1.7.6"
-        self.build = 629
+        self.build = "629"
+        self.ipa_name = "kira-1.7.6+629-ios-unsigned.ipa"
         self.pubspec = self.root / "pubspec.yaml"
         self.pubspec.write_text("name: kira\nversion: 1.7.6+629\n", encoding="utf-8")
         self.notes = self.root / "notes.md"
@@ -32,8 +38,14 @@ class ReleaseManifestTest(unittest.TestCase):
         self.artifacts = self.root / "artifacts"
         self.artifacts.mkdir()
         self.payloads = {
-            name: f"signed installer: {name}\n".encode()
-            for name in manifest_script.expected_installers(self.version, self.build)
+            name: f"installer: {name}\n".encode()
+            for name in (
+                "kira-v1.7.6-629-arm64-v8a.apk",
+                "kira-v1.7.6-629-armeabi-v7a.apk",
+                "kira-v1.7.6-629-x86_64.apk",
+                "kira-v1.7.6-629-windows-x64-setup.exe",
+                self.ipa_name,
+            )
         }
         for name, payload in self.payloads.items():
             (self.artifacts / name).write_bytes(payload)
@@ -94,19 +106,22 @@ class ReleaseManifestTest(unittest.TestCase):
         gh.assert_not_called()
         self.assertEqual(data["schema_version"], 1)
         self.assertEqual(data["version"], self.version)
-        self.assertEqual(data["build_number"], self.build)
-        self.assertIsInstance(data["build_number"], int)
+        self.assertEqual(data["build_number"], 629)
+        self.assertIs(type(data["build_number"]), int)
         self.assertEqual(data["tag"], self.tag)
         self.assertEqual(data["name"], self.release["name"])
         self.assertEqual(data["published_at"], "2026-11-08T04:30:00+08:00")
         self.assertEqual(data["release_notes"], self.release["body"])
         self.assertEqual(data["release_url"], self.release["html_url"])
-        self.assertEqual(len(data["assets"]), 4)
+        self.assertEqual(len(data["assets"]), 5)
         self.assertEqual(
             {(asset["platform"], asset["arch"]) for asset in data["assets"]},
             {("android", "arm64-v8a"), ("android", "armeabi-v7a"),
-             ("android", "x86_64"), ("windows", "x64")},
+             ("android", "x86_64"), ("windows", "x64"), ("ios", "arm64")},
         )
+        self.assertEqual({asset["name"] for asset in data["assets"]}, set(self.payloads))
+        ipa = next(asset for asset in data["assets"] if asset["name"] == self.ipa_name)
+        self.assertEqual((ipa["platform"], ipa["arch"]), ("ios", "arm64"))
         for asset in data["assets"]:
             payload = self.payloads[asset["name"]]
             self.assertEqual(asset["size"], len(payload))
@@ -119,10 +134,10 @@ class ReleaseManifestTest(unittest.TestCase):
         self.add_existing_manifest(expected)
         self.assertEqual(self.build_manifest(), expected)
 
-    def test_missing_installer_is_rejected_before_hashing(self):
+    def test_missing_ipa_is_rejected_before_hashing(self):
         self.release["assets"].pop()
         with patch.object(manifest_script, "asset_sha256") as checksum:
-            with self.assertRaisesRegex(ValueError, "Missing Release installers"):
+            with self.assertRaisesRegex(ValueError, r"Missing Release installers: .*\.ipa"):
                 self.build_manifest()
         checksum.assert_not_called()
 
@@ -131,6 +146,15 @@ class ReleaseManifestTest(unittest.TestCase):
             with self.subTest(name=name):
                 release = copy.deepcopy(self.release)
                 release["assets"][0]["name"] = name
+                with self.assertRaisesRegex(ValueError, "Unexpected installer or version"):
+                    manifest_script.build_manifest(release, self.repo, self.tag, self.version, self.build)
+
+    def test_ipa_must_use_the_exact_pubspec_version(self):
+        for name in ("kira-1.7.5+629-ios-unsigned.ipa", "kira-1.7.6+630-ios-unsigned.ipa",
+                     "kira-v1.7.6-629-ios-unsigned.ipa", self.ipa_name + ".sha256"):
+            with self.subTest(name=name):
+                release = copy.deepcopy(self.release)
+                release["assets"][-1]["name"] = name
                 with self.assertRaisesRegex(ValueError, "Unexpected installer or version"):
                     manifest_script.build_manifest(release, self.repo, self.tag, self.version, self.build)
 
@@ -163,6 +187,12 @@ class ReleaseManifestTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unexpected Release page URL"):
             self.build_manifest()
 
+    def test_ipa_download_url_may_percent_encode_plus(self):
+        asset = self.release["assets"][-1]
+        asset["browser_download_url"] = asset["browser_download_url"].replace("+", "%2B")
+        ipa = next(item for item in self.build_manifest()["assets"] if item["name"] == self.ipa_name)
+        self.assertEqual(ipa["download_url"], asset["browser_download_url"])
+
     def test_invalid_publication_time_is_rejected(self):
         for timestamp in (None, "invalid", "2026-11-07T20:30:00"):
             with self.subTest(timestamp=timestamp):
@@ -171,15 +201,15 @@ class ReleaseManifestTest(unittest.TestCase):
                     self.build_manifest()
 
     def test_missing_digest_downloads_remote_bytes_in_isolated_directory(self):
-        asset = self.release["assets"][0]
+        asset = self.release["assets"][-1]
         asset.pop("digest")
         # 本地重建包不能充当已经发布的包。
         (self.artifacts / asset["name"]).write_bytes(b"different rebuild")
         with patch.object(manifest_script, "gh", side_effect=self.mock_download) as gh:
             data = self.build_manifest()
         self.assertEqual(gh.call_count, 1)
-        self.assertEqual(data["assets"][0]["sha256"],
-                         hashlib.sha256(self.payloads[asset["name"]]).hexdigest())
+        ipa = next(item for item in data["assets"] if item["name"] == self.ipa_name)
+        self.assertEqual(ipa["sha256"], hashlib.sha256(self.payloads[self.ipa_name]).hexdigest())
 
     def test_fallback_download_size_mismatch_fails(self):
         asset = self.release["assets"][0]
@@ -211,16 +241,34 @@ class ReleaseManifestTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Expected one stable version"):
                     manifest_script.read_version(self.pubspec, self.tag)
 
+    def test_filename_preserves_pubspec_build_text_but_manifest_build_number_is_numeric(self):
+        self.pubspec.write_text("version: 1.7.6+0629\n", encoding="utf-8")
+        version, build = manifest_script.read_version(self.pubspec, self.tag)
+        for asset in self.release["assets"]:
+            asset["name"] = asset["name"].replace("629", "0629")
+            asset["browser_download_url"] = asset["browser_download_url"].replace("629", "0629")
+        data = manifest_script.build_manifest(self.release, self.repo, self.tag, version, build)
+        self.assertEqual(data["build_number"], 629)
+        self.assertIn("kira-1.7.6+0629-ios-unsigned.ipa", {asset["name"] for asset in data["assets"]})
+
     def test_create_uploads_all_installers_and_verifies_existing_tag(self):
-        with patch.object(manifest_script, "fetch_release", side_effect=[None, self.release]):
-            with patch.object(manifest_script, "gh") as gh:
-                self.create_release()
-        args = gh.call_args.args
-        self.assertEqual(args[:3], ("release", "create", self.tag))
-        self.assertEqual({Path(value).name for value in args[3:7]}, set(self.payloads))
-        self.assertIn("--verify-tag", args)
-        self.assertIn(f"--title=App {self.tag}", args)
-        self.assertEqual(args[-2:], ("--notes-file", str(self.notes)))
+        for with_sidecar in (False, True):
+            with self.subTest(with_sidecar=with_sidecar):
+                if with_sidecar:
+                    (self.artifacts / (self.ipa_name + ".sha256")).write_text(
+                        hashlib.sha256(self.payloads[self.ipa_name]).hexdigest(), encoding="utf-8",
+                    )
+                with patch.object(manifest_script, "fetch_release", side_effect=[None, self.release]):
+                    with patch.object(manifest_script, "gh") as gh:
+                        self.create_release()
+                gh.assert_called_once()
+                args = gh.call_args.args
+                self.assertEqual(args[:3], ("release", "create", self.tag))
+                asset_end = args.index(f"--repo={self.repo}")
+                self.assertCountEqual([Path(value).name for value in args[3:asset_end]], self.payloads)
+                self.assertIn("--verify-tag", args)
+                self.assertIn(f"--title=App {self.tag}", args)
+                self.assertEqual(args[-2:], ("--notes-file", str(self.notes)))
 
     def test_retry_reuses_release_without_uploading_rebuilt_installers(self):
         for path in self.artifacts.iterdir():
@@ -238,6 +286,15 @@ class ReleaseManifestTest(unittest.TestCase):
                     self.create_release()
         gh.assert_not_called()
 
+    def test_sidecar_does_not_replace_missing_ipa_and_wrong_ipa_is_rejected(self):
+        (self.artifacts / self.ipa_name).rename(self.artifacts / self.ipa_name.replace("+629", "+630"))
+        (self.artifacts / (self.ipa_name + ".sha256")).write_text("unused checksum", encoding="utf-8")
+        with patch.object(manifest_script, "fetch_release", return_value=None):
+            with patch.object(manifest_script, "gh") as gh:
+                with self.assertRaisesRegex(ValueError, r"missing: .*\+629.*; unexpected: .*\+630"):
+                    self.create_release()
+        gh.assert_not_called()
+
     def test_empty_local_installer_fails_before_create(self):
         (self.artifacts / next(iter(self.payloads))).write_bytes(b"")
         with patch.object(manifest_script, "fetch_release", return_value=None):
@@ -246,13 +303,19 @@ class ReleaseManifestTest(unittest.TestCase):
                     self.create_release()
         gh.assert_not_called()
 
-    def test_partial_existing_release_is_not_modified(self):
+    def test_existing_release_without_ipa_is_not_modified_by_new_script(self):
+        old_manifest = self.build_manifest()
+        old_manifest["assets"] = [asset for asset in old_manifest["assets"] if asset["platform"] != "ios"]
         self.release["assets"].pop()
+        self.add_existing_manifest(old_manifest)
         with patch.object(manifest_script, "fetch_release", return_value=self.release):
             with patch.object(manifest_script, "gh") as gh:
-                with self.assertRaisesRegex(ValueError, "Missing Release installers"):
-                    self.create_release()
+                for action in (self.create_release, self.publish_manifest):
+                    with self.subTest(action=action.__name__):
+                        with self.assertRaisesRegex(ValueError, r"Missing Release installers: .*\.ipa"):
+                            action()
         gh.assert_not_called()
+        self.assertFalse(self.output.exists())
 
     def test_create_failure_propagates(self):
         failure = subprocess.CalledProcessError(1, ["gh", "release", "create"])

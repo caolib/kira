@@ -54,9 +54,15 @@ class ReleaseWorkflowTest(unittest.TestCase):
         )
 
     def test_every_application_and_release_checkout_stays_on_the_tag(self):
-        self.assertEqual(set(self.jobs), {"build-android", "build-windows", "release", "sync-ci-release"})
+        self.assertEqual(set(self.jobs), {"release-target", "build-android", "build-windows", "build-ios", "release", "sync-ci-release"})
+        self.assertEqual(self.jobs["build-ios"]["with"]["source_ref"], "${{ needs.release-target.outputs.source_sha }}")
+        target = self.jobs["release-target"]
+        self.assertEqual(target["outputs"]["source_sha"], "${{ steps.capabilities.outputs.source_sha }}")
+        self.assertIn('"$(git rev-parse HEAD)"', target["steps"][1]["run"])
         auxiliary = []
         for name, job in self.jobs.items():
+            if name == "build-ios":
+                continue
             checkouts = [step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@")]
             primary = [step for step in checkouts if not step.get("with", {}).get("path")]
             with self.subTest(job=name):
@@ -115,30 +121,80 @@ class ReleaseWorkflowTest(unittest.TestCase):
         self.assertLess(steps.index(self.step("build-android", "Apply manual recovery build tools")), steps.index(summary))
         self.assertLess(steps.index(summary), steps.index(self.step("build-android", "Build APK")))
 
-    def test_release_and_ci_sync_keep_all_success_dependencies(self):
-        self.assertEqual(self.jobs["release"]["needs"], ["build-android", "build-windows"])
-        self.assertEqual(self.jobs["sync-ci-release"]["needs"], "release")
+    def test_release_requires_ios_success_except_for_historical_dispatch(self):
+        target = self.jobs["release-target"]
+        self.assertEqual(target["outputs"]["build_ios"], "${{ steps.capabilities.outputs.build_ios }}")
+        capability = target["steps"][1]["run"]
+        self.assertIn("[ -f .github/workflows/build-ios-package.yml ]", capability)
+        self.assertIn('elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then', capability)
+        self.assertIn("exit 1", capability)
+        ios = self.jobs["build-ios"]
+        ios_required = "${{ needs.release-target.outputs.build_ios == 'true' }}"
+        self.assertEqual(ios["uses"], "./.github/workflows/build-ios-package.yml")
+        self.assertEqual(ios["permissions"], {"contents": "read"})
+        self.assertEqual(ios["needs"], "release-target")
+        self.assertEqual(ios["if"], ios_required)
+
+        release = self.jobs["release"]
+        self.assertEqual(release["needs"], ["release-target", "build-android", "build-windows", "build-ios"])
+        for condition in (
+            "!cancelled()", "needs.release-target.result == 'success'",
+            "needs.build-android.result == 'success'", "needs.build-windows.result == 'success'",
+            "needs.release-target.outputs.build_ios == 'false' && needs.build-ios.result == 'skipped'",
+            "needs.release-target.outputs.build_ios == 'true' && needs.build-ios.result == 'success'",
+        ):
+            self.assertIn(condition, release["if"])
+        ios_steps = (
+            "Require passing iOS tests and sealed artifact ID", "Download sealed iOS IPA and checksum",
+            "Verify the iOS IPA before adding it to the release",
+        )
         for name, job in self.jobs.items():
             with self.subTest(job=name):
-                self.assertNotIn("if", job)
                 self.assertNotIn("continue-on-error", job)
-                for step in job["steps"]:
+                for step in job.get("steps", []):
                     self.assertNotIn("continue-on-error", step)
                     if name in {"release", "sync-ci-release"}:
-                        self.assertNotIn("if", step)
-        release = self.jobs["release"]["steps"]
-        self.assertLess(
-            release.index(self.step("release", "Create or reuse GitHub Release")),
-            release.index(self.step("release", "Generate and upload release.json")),
-        )
-        self.assertEqual(self.jobs["release"]["steps"][0]["with"]["sparse-checkout"].splitlines(), [
+                        self.assertEqual(step.get("if"), ios_required if step.get("name") in ios_steps else None)
+        test_gate = self.step("release", ios_steps[0])
+        self.assertEqual(test_gate["env"]["FLUTTER_TESTS"], "${{ needs.build-ios.outputs.flutter_tests }}")
+        self.assertEqual(test_gate["env"]["SIMULATOR_TEST"], "${{ needs.build-ios.outputs.simulator_test }}")
+        self.assertIn('test "$FLUTTER_TESTS" = success && test "$SIMULATOR_TEST" = success', test_gate["run"])
+        download = self.step("release", ios_steps[1])["with"]
+        self.assertEqual(download, {
+            "artifact-ids": "${{ needs.build-ios.outputs.artifact_id }}",
+            "path": "ios-artifact/", "merge-multiple": "true",
+        })
+        self.assertIn("scripts/package_ios.py verify-release --artifact-dir ios-artifact/ --pubspec pubspec.yaml",
+                      self.step("release", ios_steps[2])["run"])
+        self.assertIn("mv -- ios-artifact/*.ipa artifacts/", self.step("release", ios_steps[2])["run"])
+        indices = [release["steps"].index(self.step("release", name)) for name in (
+            *ios_steps, "Create or reuse GitHub Release", "Generate and upload release.json",
+        )]
+        self.assertEqual(indices, sorted(indices))
+        self.assertEqual(release["steps"][0]["with"]["sparse-checkout"].splitlines(), [
             "docs/CHANGELOG.md", "pubspec.yaml", "scripts/generate_release_manifest.py",
-            "test/scripts/generate_release_manifest_test.py",
+            "scripts/package_ios.py", "test/scripts/generate_release_manifest_test.py",
         ])
+        self.assertEqual(self.jobs["sync-ci-release"]["needs"], "release")
         self.assertEqual(self.jobs["sync-ci-release"]["steps"][0]["with"]["sparse-checkout"].splitlines(), [
             "docs/CHANGELOG.md", "scripts/sync_release_to_ci.sh",
         ])
         self.assertEqual(self.step("build-windows", "Build installer")["run"], "scripts/build_windows.ps1")
+
+    def test_beta_builds_ios_from_same_commit_independently_of_android(self):
+        workflow = yaml.load(
+            (ROOT / ".github/workflows/build-ci.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader,
+        )
+        self.assertEqual(workflow["on"]["push"]["tags"], ["v*-beta*"])
+        self.assertIn("workflow_dispatch", workflow["on"])
+        ios = workflow["jobs"]["build-ios"]
+        self.assertEqual(ios["uses"], "./.github/workflows/build-ios.yml")
+        self.assertEqual(ios["with"], {"source_ref": "${{ github.sha }}", "note": "${{ inputs.note || '' }}"})
+        self.assertEqual(ios["permissions"], {"contents": "write"})
+        for job in (ios, workflow["jobs"]["build-android"]):
+            self.assertNotIn("needs", job)
+            self.assertNotIn("if", job)
+            self.assertNotIn("continue-on-error", job)
 
 
 if __name__ == "__main__":

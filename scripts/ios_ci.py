@@ -210,22 +210,17 @@ def release_notes(version, toolchain, native_lock, environment):
     for key in required:
         require(environment.get(key), f"{key} is required for source provenance")
     require(re.fullmatch(r"[0-9a-fA-F]{40}", environment["GITHUB_SHA"]), "Expected the full source commit SHA")
-    skip = environment.get("SKIP_TESTS", "false")
-    require(skip in ("true", "false"), "SKIP_TESTS must be true or false")
     require(environment.get("VERIFY_ANALYSIS") == "success", "Static analysis did not pass")
     require(environment.get("VERIFY_SCRIPTS") == "success", "Script/configuration contracts did not pass")
-    expected = "skipped" if skip == "true" else "success"
-    require(environment.get("FLUTTER_TESTS") == expected, "Unexpected full Flutter test status")
-    require(environment.get("SIMULATOR_TEST") == expected, "Unexpected iOS simulator test status")
+    require(environment.get("FLUTTER_TESTS") == "success", "Unexpected full Flutter test status")
+    require(environment.get("SIMULATOR_TEST") == "success", "Unexpected iOS simulator test status")
     require("Flutter 3.44.2" in toolchain and "Xcode 26.3" in toolchain, "Missing pinned toolchain provenance")
     server = environment.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
     run = f"{server}/{environment['GITHUB_REPOSITORY']}/actions/runs/{environment['GITHUB_RUN_ID']}"
-    full_tests = "跳过（主动设置 skip_tests=true；未执行，不代表通过）" if skip == "true" else "通过"
-    simulator = "跳过（主动设置 skip_tests=true；未执行，不代表通过）" if skip == "true" else "通过（Flutter integration_test，包含首帧门禁）"
     body = [f"# kira {version} — iOS 未签名构建", "", f"- 源码 SHA：`{environment['GITHUB_SHA']}`",
             f"- 构建记录：{run}（attempt {environment['GITHUB_RUN_ATTEMPT']}）",
-            "- 配置/脚本合约：通过", "- 静态分析：通过", f"- 全量 Flutter 测试：{full_tests}",
-            f"- iOS 模拟器烟测：{simulator}", "- Device Release / IPA / SHA-256 校验：通过", "",
+            "- 配置/脚本合约：通过", "- 静态分析：通过", "- 全量 Flutter 测试：通过",
+            "- iOS 模拟器烟测：通过（Flutter integration_test，包含首帧门禁）", "- Device Release / IPA / SHA-256 校验：通过", "",
             "## 工具链", "", "```text", toolchain.strip(), "```", "", "## 原生依赖", "",
             "```text", native_lock.strip(), "```", "", "## 安装限制", "",
             "此 IPA 未签名，不能直接安装，需自行使用有效签名及匹配的 provisioning profile 重签/侧载。",

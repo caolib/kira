@@ -95,40 +95,28 @@ class IosCiTest(unittest.TestCase):
         self.assertLess(time.monotonic() - start, 10)
         self.assertIn("timed out", log.read_text(encoding="utf-8"))
 
-    def environment(self, skip=False):
+    def environment(self):
         return {"GITHUB_REPOSITORY": "test/repo", "GITHUB_SHA": "0" * 40, "GITHUB_RUN_ID": "123",
-                "GITHUB_RUN_ATTEMPT": "2", "SKIP_TESTS": str(skip).lower(), "VERIFY_ANALYSIS": "success",
-                "VERIFY_SCRIPTS": "success", "FLUTTER_TESTS": "skipped" if skip else "success",
-                "SIMULATOR_TEST": "skipped" if skip else "success", "NOTE": "$(touch unexpected); `uname`\n'quoted'\n中文说明"}
+                "GITHUB_RUN_ATTEMPT": "2", "VERIFY_ANALYSIS": "success", "VERIFY_SCRIPTS": "success",
+                "FLUTTER_TESTS": "success", "SIMULATOR_TEST": "success",
+                "NOTE": "$(touch unexpected); `uname`\n'quoted'\n中文说明"}
 
-    def test_notes_keep_note_as_text_and_distinguish_skips(self):
-        for skip in (False, True):
-            with self.subTest(skip=skip):
-                environment = self.environment(skip)
-                notes = ci.release_notes("1.7.7+656", "Flutter 3.44.2\nXcode 26.3\nCocoaPods 1.16.2",
-                                         "Native lock generated; OrderedSet (6.0.3)", environment)
-                self.assertIn(environment["NOTE"], notes)
-                self.assertIn("https://github.com/test/repo/actions/runs/123", notes)
-                self.assertIn("未签名", notes)
-                self.assertIn("不能直接安装", notes)
-                self.assertIn("重签", notes)
-                if skip:
-                    self.assertIn("未执行，不代表通过", notes)
-                    self.assertNotIn("全量 Flutter 测试：通过", notes)
-                else:
-                    self.assertIn("全量 Flutter 测试：通过", notes)
+    def test_notes_keep_note_as_text_and_record_passed_tests(self):
+        environment = self.environment()
+        notes = ci.release_notes("1.7.7+656", "Flutter 3.44.2\nXcode 26.3\nCocoaPods 1.16.2",
+                                 "Native lock generated; OrderedSet (6.0.3)", environment)
+        for text in (environment["NOTE"], "https://github.com/test/repo/actions/runs/123",
+                     "未签名", "不能直接安装", "重签", "全量 Flutter 测试：通过", "iOS 模拟器烟测：通过"):
+            self.assertIn(text, notes)
 
-    def test_failed_gates_never_generate_pass_notes(self):
+    def test_non_successful_gates_never_generate_pass_notes(self):
         for key in ("VERIFY_ANALYSIS", "VERIFY_SCRIPTS", "FLUTTER_TESTS", "SIMULATOR_TEST"):
-            with self.subTest(key=key):
-                environment = self.environment()
-                environment[key] = "failure"
-                with self.assertRaises(ValueError):
-                    ci.release_notes("1.7.7+656", "Flutter 3.44.2 Xcode 26.3", "lock", environment)
-        environment = self.environment(True)
-        environment["FLUTTER_TESTS"] = "success"
-        with self.assertRaisesRegex(ValueError, "test status"):
-            ci.release_notes("1.7.7+656", "Flutter 3.44.2 Xcode 26.3", "lock", environment)
+            for status in ("failure", "skipped", "cancelled", ""):
+                with self.subTest(key=key, status=status):
+                    environment = self.environment()
+                    environment[key] = status
+                    with self.assertRaises(ValueError):
+                        ci.release_notes("1.7.7+656", "Flutter 3.44.2 Xcode 26.3", "lock", environment)
 
     def test_native_lock_first_generation_records_ordered_set_without_guessing(self):
         lock = self.root / "Podfile.lock"
@@ -284,41 +272,62 @@ class IosSimulatorTest(unittest.TestCase):
 class IosWorkflowTest(unittest.TestCase):
     def setUp(self):
         # BaseLoader deliberately keeps "on" as a string rather than YAML 1.1's boolean.
-        self.workflow = yaml.load((support.ROOT / ".github/workflows/build-ios.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+        workflows = support.ROOT / ".github/workflows"
+        self.workflow = yaml.load((workflows / "build-ios-package.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+        self.beta = yaml.load((workflows / "build-ios.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
         self.jobs = self.workflow["jobs"]
 
     def step(self, job, identifier):
         return next(step for step in self.jobs[job]["steps"] if step.get("id") == identifier)
 
-    def test_dispatch_only_defaults_fixed_concurrency_and_permissions(self):
-        self.assertEqual(set(self.workflow["on"]), {"workflow_dispatch"})
-        inputs = self.workflow["on"]["workflow_dispatch"]["inputs"]
-        self.assertEqual(set(inputs), {"note", "skip_tests"})
-        self.assertEqual(inputs["note"]["type"], "string")
-        self.assertEqual(inputs["skip_tests"]["type"], "boolean")
-        self.assertEqual(inputs["skip_tests"]["default"], "false")
-        self.assertEqual(self.workflow["concurrency"], {"group": "ios-build", "cancel-in-progress": "false"})
+    def test_only_beta_can_publish_and_no_entry_can_skip_tests(self):
+        self.assertEqual(set(self.workflow["on"]), {"workflow_call"})
+        self.assertEqual(set(self.workflow["on"]["workflow_call"]["inputs"]), {"source_ref"})
         self.assertEqual(self.workflow["permissions"], {"contents": "read"})
-        self.assertEqual(self.jobs["publish"]["permissions"], {"contents": "write"})
-        self.assertNotIn("permissions", self.jobs["verify"])
-        self.assertNotIn("permissions", self.jobs["build-ios"])
+        self.assertEqual(set(self.jobs), {"verify", "build-ios"})
+        self.assertTrue(all("permissions" not in job for job in self.jobs.values()))
+        self.assertEqual(set(self.beta["on"]), {"workflow_dispatch", "workflow_call"})
+        self.assertEqual(set(self.beta["on"]["workflow_dispatch"]["inputs"]), {"note"})
+        self.assertEqual(set(self.beta["on"]["workflow_call"]["inputs"]), {"source_ref", "note"})
+        self.assertEqual(self.beta["concurrency"], {"group": "ios-build", "cancel-in-progress": "false"})
+        build = self.beta["jobs"]["package-ios"]
+        publish = self.beta["jobs"]["publish"]
+        self.assertEqual(build["uses"], "./.github/workflows/build-ios-package.yml")
+        self.assertEqual(build["with"]["source_ref"], "${{ inputs.source_ref || github.sha }}")
+        self.assertEqual(publish["permissions"], {"contents": "write"})
+        self.assertEqual(publish["needs"], "package-ios")
+        self.assertNotIn("if", publish)
+        self.assertNotIn("continue-on-error", publish)
+        self.assertEqual(publish["steps"][0]["with"]["ref"], build["with"]["source_ref"])
+        for step in publish["steps"]:
+            self.assertNotIn("continue-on-error", step)
+        downloads = [step for step in publish["steps"] if step.get("uses", "").startswith("actions/download-artifact@")]
+        self.assertEqual([step["with"]["artifact-ids"] for step in downloads], [
+            "${{ needs.package-ios.outputs.artifact_id }}", "${{ needs.package-ios.outputs.provenance_id }}",
+        ])
+        self.assertTrue(all(step["with"]["merge-multiple"] == "true" for step in downloads))
+        self.assertEqual(publish["steps"][-1]["env"]["FLUTTER_TESTS"], "${{ needs.package-ios.outputs.flutter_tests }}")
+        self.assertEqual(publish["steps"][-1]["env"]["SIMULATOR_TEST"], "${{ needs.package-ios.outputs.simulator_test }}")
 
-    def test_three_jobs_fail_closed_and_tests_only_step_skipped(self):
-        self.assertEqual(set(self.jobs), {"verify", "build-ios", "publish"})
+    def test_full_flutter_tests_and_smoke_gate_package_without_bypass(self):
         self.assertEqual(self.jobs["build-ios"]["needs"], "verify")
-        self.assertEqual(self.jobs["publish"]["needs"], ["verify", "build-ios"])
-        self.assertIn("needs.verify.result == 'success'", self.jobs["publish"]["if"])
-        self.assertIn("needs.build-ios.result == 'success'", self.jobs["publish"]["if"])
-        self.assertNotIn("always", self.jobs["publish"]["if"])
-        self.assertNotIn("if", self.jobs["verify"])
-        self.assertEqual(self.step("verify", "tests")["if"], "${{ !inputs.skip_tests }}")
-        self.assertIn("--concurrency 4", self.step("verify", "tests")["run"])
-        self.assertNotIn("skip_tests", self.step("verify", "analyze").get("if", ""))
-        self.assertNotIn("if", self.step("verify", "contracts"))
-        self.assertEqual(self.step("build-ios", "smoke")["if"], "${{ !inputs.skip_tests }}")
-        for identifier in ("archive", "package"):
-            self.assertNotIn("skip_tests", self.step("build-ios", identifier).get("if", ""))
-            self.assertNotIn("continue-on-error", self.step("build-ios", identifier))
+        for job in self.jobs.values():
+            self.assertNotIn("if", job)
+            self.assertNotIn("continue-on-error", job)
+            self.assertEqual(job["steps"][0]["with"]["ref"], "${{ inputs.source_ref }}")
+        tests = self.step("verify", "tests")
+        self.assertIn("flutter test --no-pub --concurrency 4", tests["run"])
+        self.assertIn("pipefail", tests["run"])
+        for job, identifiers in {"verify": ("contracts", "tests"), "build-ios": ("smoke", "archive", "package", "upload-ipa")}.items():
+            steps = [self.step(job, identifier) for identifier in identifiers]
+            indices = [self.jobs[job]["steps"].index(step) for step in steps]
+            self.assertEqual(indices, sorted(indices))
+            for step in steps:
+                self.assertNotIn("if", step)
+                self.assertNotIn("continue-on-error", step)
+        outputs = self.workflow["on"]["workflow_call"]["outputs"]
+        self.assertEqual(outputs["artifact_id"]["value"], "${{ jobs.build-ios.outputs.artifact-id }}")
+        self.assertEqual(self.jobs["build-ios"]["outputs"]["artifact-id"], "${{ steps.upload-ipa.outputs.artifact-id }}")
 
     def test_pinned_tools_locked_pubdeps_and_production_target(self):
         self.assertEqual(self.jobs["build-ios"]["runs-on"], "macos-15")

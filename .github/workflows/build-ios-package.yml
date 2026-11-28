@@ -1,0 +1,311 @@
+name: Verify and build unsigned iOS IPA
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: Immutable application source commit SHA
+        type: string
+        required: true
+    secrets:
+      COPY_AUTH_KEY:
+        required: false
+    outputs:
+      artifact_id:
+        value: ${{ jobs.build-ios.outputs.artifact-id }}
+      provenance_id:
+        value: ${{ jobs.build-ios.outputs.provenance-id }}
+      analysis:
+        value: ${{ jobs.verify.outputs.analysis }}
+      scripts:
+        value: ${{ jobs.verify.outputs.scripts }}
+      flutter_tests:
+        value: ${{ jobs.verify.outputs.flutter-tests }}
+      simulator_test:
+        value: ${{ jobs.build-ios.outputs.simulator-test }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+
+env:
+  CI: "true"
+
+jobs:
+  verify:
+    name: Verify source and script contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      analysis: ${{ steps.analyze.outcome }}
+      scripts: ${{ steps.contracts.outcome }}
+      flutter-tests: ${{ steps.tests.outcome }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install YAML parser for configuration contracts
+        run: python3 -I -m pip install PyYAML==6.0.2
+
+      - name: Enforce the iOS Flutter pin
+        run: |
+          set -euo pipefail
+          test "$(tr -d '\r\n' < .flutter-version)" = "3.44.2"
+
+      - name: Set up Flutter and locked dependencies
+        uses: ./.github/actions/setup-flutter
+
+      - name: Configuration and script contracts (never skipped)
+        id: contracts
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ios-verify
+          python3 -I scripts/ios_ci.py check-config 2>&1 | tee artifacts/ios-verify/configuration.log
+          python3 -I -m unittest discover -s test/scripts -p '*ios*_test.py' -v 2>&1 | tee artifacts/ios-verify/python-contracts.log
+          bash -n scripts/publish_ios_release.sh test/scripts/publish_ios_release_test.sh
+          bash test/scripts/publish_ios_release_test.sh 2>&1 | tee artifacts/ios-verify/publish-contracts.log
+
+      - name: Static analysis (never skipped)
+        id: analyze
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ios-verify
+          flutter analyze --no-pub 2>&1 | tee artifacts/ios-verify/analyze.log
+
+      - name: Full Flutter tests
+        id: tests
+        timeout-minutes: 45
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ios-verify
+          flutter test --no-pub --concurrency 4 --reporter expanded 2>&1 | tee artifacts/ios-verify/flutter-tests.log
+
+      - name: Test status summary
+        if: ${{ always() }}
+        env:
+          ANALYSIS: ${{ steps.analyze.outcome }}
+          CONTRACTS: ${{ steps.contracts.outcome }}
+          FLUTTER_TESTS: ${{ steps.tests.outcome }}
+        run: |
+          set -euo pipefail
+          {
+            printf '## iOS verification\n\n'
+            printf -- '- Configuration/script contracts: %s\n' "$CONTRACTS"
+            printf -- '- Static analysis: %s\n' "$ANALYSIS"
+            printf -- '- Full Flutter tests: %s\n' "$FLUTTER_TESTS"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain verification reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-verify-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-verify/
+          retention-days: 30
+          if-no-files-found: warn
+
+  build-ios:
+    name: Build and inspect unsigned device IPA
+    needs: verify
+    runs-on: macos-15
+    timeout-minutes: 100
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    outputs:
+      simulator-test: ${{ steps.smoke.outcome }}
+      artifact-id: ${{ steps.upload-ipa.outputs.artifact-id }}
+      provenance-id: ${{ steps.upload-provenance.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Require Xcode 26.3 without fallback
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ios-diagnostics artifacts/ios-provenance
+          if [ ! -d "$DEVELOPER_DIR" ]; then
+            printf '::error::Required Xcode 26.3 is missing: %s\n' "$DEVELOPER_DIR"
+            exit 1
+          fi
+          XCODE_VERSION=$(xcodebuild -version)
+          [[ "$XCODE_VERSION" == $'Xcode 26.3\n'* ]]
+          test "$(tr -d '\r\n' < .flutter-version)" = "3.44.2"
+          IPHONEOS_SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          {
+            printf 'Runner: macos-15\n'
+            printf 'DEVELOPER_DIR: %s\n' "$DEVELOPER_DIR"
+            printf '%s\n' "$XCODE_VERSION"
+            printf 'iPhoneOS SDK: %s\n' "$IPHONEOS_SDK"
+            sw_vers
+          } | tee artifacts/ios-provenance/toolchain.txt
+
+      - name: Set up Flutter and locked dependencies
+        uses: ./.github/actions/setup-flutter
+
+      - name: Resolve numeric iOS bundle version from the full pubspec version
+        id: bundle-version
+        run: |
+          set -euo pipefail
+          BUILD_NAME=$(python3 -I scripts/package_ios.py build-version --field name)
+          BUILD_NUMBER=$(python3 -I scripts/package_ios.py build-version --field number)
+          printf 'name=%s\nnumber=%s\n' "$BUILD_NAME" "$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare Flutter iOS configuration and engine
+        env:
+          BUILD_NAME: ${{ steps.bundle-version.outputs.name }}
+          BUILD_NUMBER: ${{ steps.bundle-version.outputs.number }}
+        run: |
+          set -euo pipefail
+          flutter --version | tee -a artifacts/ios-provenance/toolchain.txt
+          POD_VERSION=$(pod --version)
+          printf 'CocoaPods %s\n' "$POD_VERSION" | tee -a artifacts/ios-provenance/toolchain.txt
+          python3 -I scripts/ios_ci.py run --timeout 600 --log artifacts/ios-diagnostics/precache.log -- flutter precache --ios
+          python3 -I scripts/ios_ci.py run --timeout 600 --log artifacts/ios-diagnostics/config-only.log -- \
+            flutter build ios --config-only --debug --no-codesign --target lib/main.dart --no-pub \
+            "--build-name=$BUILD_NAME" "--build-number=$BUILD_NUMBER"
+          git diff --exit-code -- pubspec.lock
+
+      - name: Install CocoaPods from the repository root
+        id: lock
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch ios/Podfile.lock > /dev/null 2>&1; then
+            printf 'tracked=true\n' >> "$GITHUB_OUTPUT"
+            python3 -I scripts/ios_ci.py run --timeout 1200 --log artifacts/ios-diagnostics/pod-install.log -- \
+              pod install --deployment --project-directory=ios
+            git diff --exit-code -- ios/Podfile.lock
+            python3 -I scripts/ios_ci.py native-lock --tracked true --output artifacts/ios-provenance/native-lock.txt
+          else
+            printf 'tracked=false\n' >> "$GITHUB_OUTPUT"
+            python3 -I scripts/ios_ci.py run --timeout 1200 --log artifacts/ios-diagnostics/pod-install.log -- \
+              pod install --project-directory=ios
+            python3 -I scripts/ios_ci.py native-lock --tracked false --output artifacts/ios-provenance/native-lock.txt
+          fi
+          cp ios/Podfile.lock artifacts/ios-provenance/Podfile.initial.lock
+          python3 -I scripts/ios_ci.py run --timeout 60 --log artifacts/ios-diagnostics/native-settings.log -- \
+            xcodebuild -showBuildSettings -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos
+
+      - name: Flutter startup gate on an installed iPhone simulator
+        id: smoke
+        timeout-minutes: 40
+        run: |
+          set -euo pipefail
+          python3 -I scripts/ios_simulator.py smoke --boot-timeout 240 --test-timeout 1800
+
+      - name: Require exact source version restoration after simulator smoke
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+
+      - name: Simulator diagnostics before introducing the business define
+        if: ${{ always() }}
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python3 -I scripts/ios_simulator.py diagnostics
+
+      - name: Build production device Release archive (no signing or export)
+        id: archive
+        timeout-minutes: 40
+        env:
+          COPY_AUTH_KEY: ${{ secrets.COPY_AUTH_KEY }}
+          BUILD_NAME: ${{ steps.bundle-version.outputs.name }}
+          BUILD_NUMBER: ${{ steps.bundle-version.outputs.number }}
+        run: |
+          set -euo pipefail
+          # Business API define only. Never configure an Apple certificate, echo it, or save Generated.xcconfig.
+          python3 -I scripts/ios_ci.py run --timeout 2100 --log artifacts/ios-diagnostics/device-release.log -- \
+            flutter build ipa --release --no-codesign --target lib/main.dart --no-pub \
+            "--build-name=$BUILD_NAME" "--build-number=$BUILD_NUMBER" \
+            "--dart-define=COPY_AUTH_KEY=$COPY_AUTH_KEY"
+          test -d build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+          if git ls-files --error-unmatch ios/Podfile.lock > /dev/null 2>&1; then
+            git diff --exit-code -- ios/Podfile.lock
+          fi
+          # Flutter 3.44.2 skips IPA export with --no-codesign. Package Payload ourselves below.
+
+      - name: Seal IPA with metadata and verify extracted device payload
+        id: package
+        run: |
+          set -euo pipefail
+          python3 -I scripts/package_ios.py package 2>&1 | tee artifacts/ios-diagnostics/package-validation.log
+
+      - name: Record final native lock, including OrderedSet changes
+        if: ${{ always() && steps.lock.outcome == 'success' }}
+        env:
+          NATIVE_LOCK_TRACKED: ${{ steps.lock.outputs.tracked }}
+        run: |
+          set -euo pipefail
+          cp ios/Podfile.lock artifacts/ios-provenance/Podfile.lock
+          python3 -I scripts/ios_ci.py native-lock --tracked "$NATIVE_LOCK_TRACKED" \
+            --initial-lock artifacts/ios-provenance/Podfile.initial.lock \
+            --output artifacts/ios-provenance/native-lock.txt
+
+      - name: Preserve sealed IPA and checksum only
+        id: upload-ipa
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-unsigned-ipa-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-release/*.ipa
+            artifacts/ios-release/*.ipa.sha256
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Native dependency and test status summary
+        if: ${{ always() }}
+        env:
+          SIMULATOR_TEST: ${{ steps.smoke.outcome }}
+          ARCHIVE: ${{ steps.archive.outcome }}
+          PACKAGE: ${{ steps.package.outcome }}
+        run: |
+          set -euo pipefail
+          {
+            printf '## iOS device build\n\n'
+            printf -- '- Simulator Flutter startup gate: %s\n' "$SIMULATOR_TEST"
+            printf -- '- Unsigned device Release archive: %s\n' "$ARCHIVE"
+            printf -- '- IPA device/structure/permission verification: %s\n\n' "$PACKAGE"
+            if [ -f artifacts/ios-provenance/native-lock.txt ]; then
+              while IFS= read -r line; do printf '%s\n' "$line"; done < artifacts/ios-provenance/native-lock.txt
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain toolchain and native dependency provenance for publishing
+        id: upload-provenance
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-provenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-provenance/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Retain build, simulator and available Xcode result diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-diagnostics/
+            ios/Podfile.lock
+            ios/Pods/Manifest.lock
+          retention-days: 30
+          if-no-files-found: warn

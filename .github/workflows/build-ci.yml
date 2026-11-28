@@ -2,7 +2,7 @@ name: Build CI APK
 
 # Actions 产物从网页下载时会被 GitHub 打包成 zip。
 # 因此这里同时上传到固定的 CI 预发布，把 APK 作为 Release asset 提供，方便手机直接下载。
-# 触发方式：推送 beta tag（v*-beta*，如 v1.2.3-beta）或手动 dispatch。
+# 推送 beta tag（v*-beta*）或手动 dispatch 同时构建 Android 与 iOS；各自发布到 CI / ios-build。
 
 on:
   workflow_dispatch:
@@ -16,6 +16,17 @@ on:
       - "v*-beta*"
 
 jobs:
+  build-ios:
+    name: Build and publish iOS Beta
+    uses: ./.github/workflows/build-ios.yml
+    permissions:
+      contents: write
+    with:
+      source_ref: ${{ github.sha }}
+      note: ${{ inputs.note || '' }}
+    secrets:
+      COPY_AUTH_KEY: ${{ secrets.COPY_AUTH_KEY }}
+
   build-android:
     name: Build Android CI APK (arm64-v8a)
     runs-on: ubuntu-latest

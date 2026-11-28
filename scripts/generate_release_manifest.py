@@ -10,6 +10,7 @@ import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 
 INSTALLERS = (
@@ -18,12 +19,13 @@ INSTALLERS = (
     ("android", "x86_64", "x86_64.apk"),
     ("windows", "x64", "windows-x64-setup.exe"),
 )
+IOS_INSTALLER_SUFFIX = "-ios-unsigned.ipa"
 RELEASE_TIMEZONE = timezone(timedelta(hours=8))
 
 
 def read_version(pubspec, tag):
     matches = re.findall(
-        r"^version:[ \t]*(\d+\.\d+\.\d+)\+(\d+)[ \t]*(?:#.*)?$",
+        r"^version:[ \t]*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)[ \t]*(?:#.*)?$",
         Path(pubspec).read_text(encoding="utf-8"),
         re.MULTILINE,
     )
@@ -32,14 +34,21 @@ def read_version(pubspec, tag):
     version, build = matches[0]
     if tag != f"v{version}":
         raise ValueError(f"Release tag {tag!r} does not match pubspec version v{version}")
-    return version, int(build)
+    # 文件名保留 pubspec 中的原始构建号，清单字段仍为整数。
+    return version, build
+
+
+def ios_installer_name(version, build):
+    return f"kira-{version}+{build}{IOS_INSTALLER_SUFFIX}"
 
 
 def expected_installers(version, build):
-    return {
+    expected = {
         f"kira-v{version}-{build}-{suffix}": (platform, arch)
         for platform, arch, suffix in INSTALLERS
     }
+    expected[ios_installer_name(version, build)] = ("ios", "arm64")
+    return expected
 
 
 def gh(*args):
@@ -79,6 +88,7 @@ def installer_assets(release, repo, tag, expected):
         raise ValueError("Release assets must be a list")
     installers = {}
     seen = set()
+    url_prefix = f"https://github.com/{repo}/releases/download/{tag}/"
     for asset in assets:
         if not isinstance(asset, dict) or not isinstance(asset.get("name"), str):
             raise ValueError("Release asset has no valid name")
@@ -94,8 +104,10 @@ def installer_assets(release, repo, tag, expected):
             raise ValueError(f"Installer is not fully uploaded: {name}")
         if type(asset.get("size")) is not int or asset["size"] <= 0:
             raise ValueError(f"Installer has no valid byte size: {name}")
-        url = f"https://github.com/{repo}/releases/download/{tag}/{name}"
-        if asset.get("browser_download_url") != url:
+        # IPA 的文件名含有 +；GitHub 下载链接可使用字面量或百分号编码。
+        if asset.get("browser_download_url") not in (
+            url_prefix + name, url_prefix + quote(name, safe=""),
+        ):
             raise ValueError(f"Unexpected installer download URL: {name}")
         installers[name] = asset
     missing = expected.keys() - installers.keys()
@@ -147,7 +159,7 @@ def build_manifest(release, repo, tag, version, build):
     return {
         "schema_version": 1,
         "version": version,
-        "build_number": build,
+        "build_number": int(build),
         "tag": tag,
         "name": name,
         "published_at": timestamp.astimezone(RELEASE_TIMEZONE).isoformat(timespec="seconds"),
@@ -172,9 +184,19 @@ def create_release(repo, tag, pubspec, artifacts, notes):
     expected = expected_installers(version, build)
     release = fetch_release(repo, tag)
     if release is None:
-        paths = sorted(Path(artifacts).iterdir())
-        if {path.name for path in paths} != expected.keys():
-            raise ValueError("Build artifacts do not match all expected Release installers")
+        checksum_name = f"{ios_installer_name(version, build)}.sha256"
+        # Actions 可同时保存 IPA 的校验文件；正式 Release 只上传安装包。
+        paths = sorted(path for path in Path(artifacts).iterdir() if path.name != checksum_name)
+        names = {path.name for path in paths}
+        missing = expected.keys() - names
+        unexpected = names - expected.keys()
+        if missing or unexpected:
+            details = []
+            if missing:
+                details.append(f"missing: {', '.join(sorted(missing))}")
+            if unexpected:
+                details.append(f"unexpected: {', '.join(sorted(unexpected))}")
+            raise ValueError(f"Build artifacts do not match expected Release installers ({'; '.join(details)})")
         if any(not path.is_file() or path.stat().st_size == 0 for path in paths):
             raise ValueError("Build artifacts must be non-empty files")
         if not Path(notes).read_text(encoding="utf-8").strip():

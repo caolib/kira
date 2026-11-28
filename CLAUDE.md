@@ -109,4 +109,4 @@ git diff --exit-code -- pubspec.lock
 - 仅在用户要求时提交/推送；提交用 emoji + Conventional Commit + 简洁中文，如 `✨ feat: 添加检查更新功能`、`🐛 fix: 登录过期后提醒用户登录`。
 - `scripts/git-hooks/pre-commit` 自动运行 `scripts/update_version_code.ps1`，将 versionCode 设为「HEAD 提交数 + 1」并暂存 `pubspec.yaml`，属于预期改动，不回退。新克隆需 `git config core.hooksPath scripts/git-hooks` 启用。
 - 普通开发不更新 `docs/CHANGELOG.md`。发版、续发、发布日志修正走项目 `/release` skill；自然语言请求先读 `.claude/skills/release/SKILL.md`，执行**信息确认 → 完整日志审查 → 发布批准**，批准后才提交、打标签和推送。
-- CI：`build-ci.yml` 为 `v*-beta*` tag/手动 Android 构建；`build-test.yml` 仅手动构建测试 APK artifact（不创建 Release）；`build-ios.yml` 手动构建未签名 IPA 到固定 `ios-build`（验证与跳过测试边界见 `docs/platform-build.md`）；`release.yml` 为非 beta 的 `v*` tag/手动正式版构建（arm/arm64/x64 APK 与 Windows 安装包）；`release-all.yaml` 手动构建 Android arm64、Windows ZIP+Setup、macOS、Linux（不含 iOS/web）。
+- CI：`build-ci.yml` 构建 Beta（Android `CI` / iOS `ios-build`），`build-ios.yml` 也支持手动单发 iOS Beta；`release.yml` 发布正式版（arm/arm64/x64 APK、Windows 安装包、未签名 IPA）。所有 iOS 发布必须通过全量 `flutter test` 和模拟器烟测，见 `docs/platform-build.md`。`build-test.yml` 仅手动构建测试 APK artifact；`release-all.yaml` 手动构建 Android arm64、Windows ZIP+Setup、macOS、Linux（不含 iOS/web）。

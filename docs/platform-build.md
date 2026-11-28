@@ -33,14 +33,13 @@ Do **not** "fix" this by giving `MainActivity` a LAUNCHER intent-filter: that ad
 - Bundle ID 为 `io.github.caolib.kira`。主图标与备用图标都需编译入包，发布 PNG 不带 alpha。`app_icon` 通道校验索引、平台切换能力与 UIKit 错误，不手改生成插件注册器。
 - `ios/Runner/PrivacyInfo.xcprivacy` 声明应用实际使用的 UserDefaults（CA92.1）与沙盒文件时间戳（C617.1）。照片仅请求 add-only；局域网说明用于本地代理/服务，ATS 仅放行 local networking。清单存在不等于已通过 App Store 隐私审核。
 
-### 独立 Actions 与产物
+### 发布入口与产物
 
-在 GitHub Actions 手动运行 `.github/workflows/build-ios.yml`：
-
-- `note` 为可选说明；`skip_tests` 默认 **false**。默认跑全量 Flutter 单元/Widget 测试和 iOS 模拟器 `integration_test/ios_startup_test.dart`；勾选后跳过这两类 Flutter 测试，构建说明明确标记跳过。
-- 配置/脚本校验、静态分析、真机 Release 构建与 IPA 校验始终执行；任一门禁失败不进入发布。模拟器测试调用实际插件、离线 HTML WebView 与 `lib/main.dart` 的生产共用 `startKira` 初始化流程，断言首帧、并发小说初始化与启动错误日志；为离线验证通过正常偏好关闭自动网络任务，并保留测试绑定的错误处理。它不代替真机验收。
+- 非 beta 正式标签触发 `.github/workflows/release.yml`：与 Android、Windows 一起发布未签名 IPA，纳入正式 Release 的 `release.json`；不更新 `ios-build`。
+- Beta 标签或手动运行 `build-ci.yml` 时，Android 发布到 `CI`，iOS 发布到固定预发布 `ios-build`，两个任务独立。也可手动运行 `build-ios.yml` 单独发布 iOS Beta，`note` 为可选说明。`ios-build` 同版本附件覆盖、不同版本保留，全部上传成功后才更新说明。
+- 所有 iOS 发布复用 `build-ios-package.yml`。全量 `flutter test`、iOS 模拟器 `integration_test/ios_startup_test.dart`、静态分析、脚本校验、真机 Release 构建与 IPA 校验都必须通过，不能跳过。模拟器烟测使用实际插件和生产启动入口验证首帧，不代替重签后的真机验收。
 - 真机构建明确使用 `lib/main.dart`。当前 Flutter 的 `flutter build ipa --no-codesign` 只生成 xcarchive，不导出 IPA；`scripts/package_ios.py` 在 macOS 将完整 app 放入 `Payload/Runner.app` 后封包，检查 device iOS arm64、版本、资源和解包结构，并生成 SHA-256。
-- 产物名为 `kira-<pubspec完整版本>-ios-unsigned.ipa`，同时保存 Actions artifact。iOS bundle 使用数字短版本和构建号；模拟器测试临时规范化 pubspec 版本后精确恢复，恢复失败阻止发布。固定预发布 tag 为 **`ios-build`**，不会变更 Android 的 `CI` 或正式版发布清单；同版本资产覆盖，不同版本保留。全部资产上传成功后才更新说明。
+- 产物名为 `kira-<pubspec完整版本>-ios-unsigned.ipa`，同时保存 Actions artifact。iOS bundle 使用数字短版本和构建号；模拟器测试临时规范化 pubspec 版本后精确恢复，恢复失败阻止发布。
 - 无 Apple 证书签名的 IPA **不能直接安装**，需使用者自行重签/侧载；不接入 TestFlight。linker 的纯 ad-hoc 签名不等于 Apple 身份签名，不可把模拟器 app 或 xcarchive 改名后当 IPA 发布。
 - `COPY_AUTH_KEY` 仍是业务编译配置，不是 Apple 签名证书。日志上传须脱敏原值及编码后的 define，不上传 `Generated.xcconfig`；模拟器诊断在引入生产密钥前保存。
 

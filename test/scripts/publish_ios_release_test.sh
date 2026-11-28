@@ -8,7 +8,7 @@ export GITHUB_REPOSITORY=test/repo
 export GITHUB_SHA=0123456789abcdef0123456789abcdef01234567
 export GITHUB_RUN_ID=12345 GITHUB_RUN_ATTEMPT=2
 export VERIFY_ANALYSIS=success VERIFY_SCRIPTS=success
-export FLUTTER_TESTS=success SIMULATOR_TEST=success SKIP_TESTS=false
+export FLUTTER_TESTS=success SIMULATOR_TEST=success
 export TEST_PUBSPEC_VERSION
 TEST_PUBSPEC_VERSION=$(python3 -I -c '
 import importlib.util
@@ -68,7 +68,7 @@ setup_case() {
   TEST_DIR=$(mktemp -d "$TEST_ROOT/case.XXXXXX")
   export TEST_DIR MOCK_STATUS=200 MOCK_UPLOAD_EXIT=0 MOCK_SECOND_UPLOAD_EXIT=0
   export VERIFY_ANALYSIS=success VERIFY_SCRIPTS=success
-  export FLUTTER_TESTS=success SIMULATOR_TEST=success SKIP_TESTS=false
+  export FLUTTER_TESTS=success SIMULATOR_TEST=success
   mkdir "$TEST_DIR/artifacts"
   : > "$TEST_DIR/gh.log"
   export NOTE='$(touch "'"$TEST_DIR"'/injected"); `uname`; "quoted"; single '\''quote'\''
@@ -187,17 +187,13 @@ printf '%064d  %s\n' 0 "$IPA_NAME" > "$TEST_DIR/artifacts/$IPA_NAME.sha256"
 expect_asset_failure 'SHA-256 mismatch'
 printf 'PASS: missing/ambiguous IPA and missing/bad checksum fail before any GitHub call\n'
 
-setup_case
-SKIP_TESTS=true FLUTTER_TESTS=skipped SIMULATOR_TEST=skipped
-run_publish
-verify_notes
-NOTES=$(< "$TEST_DIR/published-notes.md")
-[[ "$NOTES" == *'未执行，不代表通过'* ]]
-[[ "$NOTES" != *'全量 Flutter 测试：通过'* ]]
-[[ "$NOTES" != *'iOS 模拟器烟测：通过'* ]]
-printf 'PASS: skipped Flutter and simulator tests are explicitly not reported as passed\n'
+for status in skipped failure cancelled ''; do
+  setup_case
+  FLUTTER_TESTS="$status"
+  expect_asset_failure 'Unexpected full Flutter test status'
 
-setup_case
-SIMULATOR_TEST=failure
-expect_asset_failure 'Unexpected iOS simulator test status'
-printf 'PASS: failed test status cannot publish a passing release description\n'
+  setup_case
+  SIMULATOR_TEST="$status"
+  expect_asset_failure 'Unexpected iOS simulator test status'
+done
+printf 'PASS: skipped, failed, cancelled, or missing Flutter tests or simulator smoke prevent publishing\n'

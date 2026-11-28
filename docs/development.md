@@ -37,9 +37,9 @@ flutter run -d <设备ID>
 
 ## iOS 构建
 
-在 GitHub Actions 手动运行 `build-ios.yml`。默认执行全量 Flutter 测试及 iOS 模拟器烟测；仅主动勾选 `skip_tests` 才跳过 Flutter 测试，静态分析和原生构建校验始终执行。
+正式版和 Beta 都自动构建未签名 IPA，也可在 GitHub Actions 手动运行 `build-ios.yml` 单独发布 iOS Beta。所有入口都必须通过全量 `flutter test` 和 iOS 模拟器烟测，不提供跳过选项。
 
-未签名 IPA 与 SHA-256 上传到固定 `ios-build` 预发布，安装前须自行重签。工具链、CocoaPods 原生锁、功能边界与真机验收见 [平台构建](platform-build.md#ios)。这条工作流独立于正式发布，不生成 `release.json`。
+正式版 IPA 随其他安装包发布；Beta 的 IPA 与 SHA-256 上传到固定 `ios-build` 预发布。安装前须自行重签。工具链、CocoaPods 原生锁与真机验收见 [平台构建](platform-build.md#ios)。
 
 ## 发布
 

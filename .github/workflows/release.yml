@@ -5,10 +5,10 @@ name: Build & Release
 # 1. 三个 ABI 的 APK 并行构建（arm / arm64 / x86_64，flutter build apk 不支持 32 位 x86），
 #    复用 scripts/build_apk.ps1
 # 2. Windows x64 安装包（Inno Setup），复用 scripts/build_windows.ps1
-# 3. 直接创建公开 GitHub Release（标题 "App vX.Y.Z"，正文取标签快照内的 docs/CHANGELOG.md），
-#    上传全部产物；日志须在提交与推送标签前完成审查
-# 4. 读取已发布安装包的元信息，生成并上传 release.json；失败重跑不覆盖安装包
-# 5. 清单上传成功后，将正式 Release 的 arm64 APK 与更新说明同步到固定 CI 预发布
+# 3. 未签名 iOS IPA 复用 build-ios-package.yml，只构建产物，不改 ios-build 预发布
+# 4. 直接创建公开 GitHub Release（正文取标签快照内的 docs/CHANGELOG.md），上传安装包
+# 5. 读取已发布安装包的元信息，上传 release.json；失败重跑不覆盖安装包
+# 6. 清单上传成功后，将正式版 arm64 APK 与更新说明同步到固定 CI 预发布
 on:
   push:
     tags:
@@ -29,6 +29,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-target:
+    name: Resolve release tag capabilities
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.capabilities.outputs.source_sha }}
+      build_ios: ${{ steps.capabilities.outputs.build_ios }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          sparse-checkout: .github/workflows/build-ios-package.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Check whether the tagged snapshot includes iOS release support
+        id: capabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'source_sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ -f .github/workflows/build-ios-package.yml ]; then
+            printf 'build_ios=true\n' >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            # Older immutable tags use their original four-package release contract.
+            printf 'build_ios=false\n' >> "$GITHUB_OUTPUT"
+          else
+            printf '::error::The release tag must include the iOS build workflow.\n' >&2
+            exit 1
+          fi
+
+  build-ios:
+    name: Build iOS installer
+    needs: release-target
+    if: ${{ needs.release-target.outputs.build_ios == 'true' }}
+    uses: ./.github/workflows/build-ios-package.yml
+    permissions:
+      contents: read
+    with:
+      source_ref: ${{ needs.release-target.outputs.source_sha }}
+    secrets:
+      COPY_AUTH_KEY: ${{ secrets.COPY_AUTH_KEY }}
+
   build-android:
     name: Build APK (${{ matrix.abi }})
     runs-on: ubuntu-latest
@@ -199,7 +242,13 @@ jobs:
 
   release:
     name: Create Release
-    needs: [build-android, build-windows]
+    needs: [release-target, build-android, build-windows, build-ios]
+    # Only a historical release may omit iOS; a failed/cancelled iOS build never publishes.
+    if: >-
+      ${{ !cancelled() && needs.release-target.result == 'success' &&
+          needs.build-android.result == 'success' && needs.build-windows.result == 'success' &&
+          ((needs.release-target.outputs.build_ios == 'false' && needs.build-ios.result == 'skipped') ||
+           (needs.release-target.outputs.build_ios == 'true' && needs.build-ios.result == 'success')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -211,17 +260,50 @@ jobs:
             docs/CHANGELOG.md
             pubspec.yaml
             scripts/generate_release_manifest.py
+            scripts/package_ios.py
             test/scripts/generate_release_manifest_test.py
           sparse-checkout-cone-mode: false
 
       - name: Test release manifest generator
         run: python3 -I -m unittest discover -s test/scripts -p 'generate_release_manifest_test.py'
 
-      - name: Download all artifacts
+      - name: Download Android APKs
         uses: actions/download-artifact@v7
         with:
+          pattern: apk-*
           path: artifacts/
           merge-multiple: true
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v7
+        with:
+          name: windows-installer
+          path: artifacts/
+
+      - name: Require passing iOS tests and sealed artifact ID
+        if: ${{ needs.release-target.outputs.build_ios == 'true' }}
+        shell: bash
+        env:
+          FLUTTER_TESTS: ${{ needs.build-ios.outputs.flutter_tests }}
+          SIMULATOR_TEST: ${{ needs.build-ios.outputs.simulator_test }}
+          IPA_ID: ${{ needs.build-ios.outputs.artifact_id }}
+        run: test "$FLUTTER_TESTS" = success && test "$SIMULATOR_TEST" = success && test -n "$IPA_ID"
+
+      - name: Download sealed iOS IPA and checksum
+        if: ${{ needs.release-target.outputs.build_ios == 'true' }}
+        uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ needs.build-ios.outputs.artifact_id }}
+          path: ios-artifact/
+          merge-multiple: true
+
+      - name: Verify the iOS IPA before adding it to the release
+        if: ${{ needs.release-target.outputs.build_ios == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I scripts/package_ios.py verify-release --artifact-dir ios-artifact/ --pubspec pubspec.yaml
+          mv -- ios-artifact/*.ipa artifacts/
 
       - name: Create or reuse GitHub Release
         env:
