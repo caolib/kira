@@ -12,9 +12,11 @@ import '../theme/app_spacing.dart';
 import '../utils/app_logger.dart';
 import '../utils/bookmark_store.dart';
 import '../utils/cover_brightness_filter.dart';
+import '../utils/group_bookmarks.dart';
 import '../utils/reading_history.dart';
 import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
+import '../widgets/bookmark_group_header.dart';
 import '../widgets/cover_image.dart';
 import 'novel_bookmarks_page.dart';
 
@@ -339,41 +341,25 @@ class _ComicBookmarksPageState extends State<_ComicBookmarksPage>
     return _details[pathWord]?.comic.name ?? pathWord;
   }
 
-  /// 组排序时间：组内最新书签的时间；空组用组元数据的时间。
-  DateTime _groupUpdatedAt(String pathWord) {
-    // _store.bookmarks 本身按时间倒序，第一条命中即最新。
-    for (final bookmark in _store.bookmarks) {
-      if (bookmark.pathWord == pathWord) {
-        return bookmark.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      }
-    }
-    return _groupMetaOf(pathWord)?.updatedAt ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-  }
-
   /// 按漫画分组；全局列表本身按时间倒序，分组后组与组内均保持倒序。
   /// 搜索是「组级」的：组内任一条命中，该漫画的全部书签都照常展示，
   /// 组头上的条数与整组删除因此仍与所见一致。
-  List<MapEntry<String, List<ComicBookmark>>> _grouped() {
+  List<BookmarkSection<ComicBookmark>> _grouped() {
     final query = widget.query.trim().toLowerCase();
-    final groups = <String, List<ComicBookmark>>{};
-    for (final bookmark in _store.bookmarks) {
-      groups.putIfAbsent(bookmark.pathWord, () => []).add(bookmark);
-    }
-    // 书签被删光的组仍在：用组元数据补成空组，只显示组头与继续阅读。
-    for (final group in _store.groups) {
-      groups.putIfAbsent(group.pathWord, () => const []);
-    }
-    final entries = groups.entries.toList()
-      ..sort(
-        (a, b) => _groupUpdatedAt(b.key).compareTo(_groupUpdatedAt(a.key)),
-      );
+    final entries = groupBookmarks<ComicBookmark>(
+      bookmarks: _store.bookmarks,
+      groups: _store.groups.map(
+        (g) => (pathWord: g.pathWord, pinned: g.pinned, updatedAt: g.updatedAt),
+      ),
+      pathWordOf: (b) => b.pathWord,
+      dateOf: (b) => b.updatedAt,
+    );
     if (query.isEmpty) return entries;
     return entries
         .where(
           (entry) =>
-              entry.value.any((b) => _matchesQuery(b, query)) ||
-              _groupNameOf(entry.key).toLowerCase().contains(query),
+              entry.bookmarks.any((b) => _matchesQuery(b, query)) ||
+              _groupNameOf(entry.pathWord).toLowerCase().contains(query),
         )
         .toList();
   }
@@ -520,7 +506,7 @@ class _ComicBookmarksPageState extends State<_ComicBookmarksPage>
     final (leftColumn, rightColumn) = twoColumn
         ? ScreenLayout.splitTwoColumns(
             groups.length,
-            (index) => groups[index].value.length + 1,
+            (index) => groups[index].bookmarks.length + 1,
           )
         : (const <int>[], const <int>[]);
     // 「搜不到」和「一条书签都没有」要分开：否则搜索无结果会被误读成书签丢了。
@@ -528,24 +514,26 @@ class _ComicBookmarksPageState extends State<_ComicBookmarksPage>
 
     Widget groupCard(int index) {
       final group = groups[index];
-      if (!_history.containsKey(group.key)) {
+      if (!_history.containsKey(group.pathWord)) {
         // build 期间不得同步触发 setState，延迟到帧结束后再查阅读记录。
         WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _loadHistory(group.key),
+          (_) => _loadHistory(group.pathWord),
         );
       }
       return _BookmarkGroupCard(
-        pathWord: group.key,
-        comicName: _groupNameOf(group.key),
-        bookmarks: group.value,
-        coverUrl: _groupCoverOf(group.value, group.key),
-        continueRecord: _history[group.key],
-        onFetchCover: () => _loadCachedDetail(group.key),
-        onOpenComic: () => _openComic(group.key),
+        pathWord: group.pathWord,
+        comicName: _groupNameOf(group.pathWord),
+        bookmarks: group.bookmarks,
+        coverUrl: _groupCoverOf(group.bookmarks, group.pathWord),
+        continueRecord: _history[group.pathWord],
+        pinned: group.pinned,
+        onPin: () => _store.setGroupPinned(group.pathWord, !group.pinned),
+        onFetchCover: () => _loadCachedDetail(group.pathWord),
+        onOpenComic: () => _openComic(group.pathWord),
         onOpenBookmark: _openBookmark,
-        onContinue: () => _continueReading(group.key),
+        onContinue: () => _continueReading(group.pathWord),
         onRemove: _remove,
-        onClearGroup: () => _clearGroup(group.key),
+        onClearGroup: () => _clearGroup(group.pathWord),
       );
     }
 
@@ -655,7 +643,7 @@ class _ComicBookmarksPageState extends State<_ComicBookmarksPage>
 }
 
 /// 单部漫画的书签组卡片：封面 + 漫画名 header，下方列出全部书签。
-/// 左滑 header 删除该漫画的全部书签，左滑书签条目仅删除单条。
+/// 左滑组头展开操作，左滑书签条目仅删除单条。
 class _BookmarkGroupCard extends StatelessWidget {
   final String pathWord;
 
@@ -669,6 +657,8 @@ class _BookmarkGroupCard extends StatelessWidget {
   final VoidCallback onFetchCover;
   final VoidCallback onOpenComic;
   final ValueChanged<ComicBookmark> onOpenBookmark;
+  final bool pinned;
+  final Future<void> Function() onPin;
   final VoidCallback onContinue;
   final Future<void> Function(ComicBookmark) onRemove;
   final Future<void> Function() onClearGroup;
@@ -682,25 +672,16 @@ class _BookmarkGroupCard extends StatelessWidget {
     required this.onFetchCover,
     required this.onOpenComic,
     required this.onOpenBookmark,
+    required this.pinned,
+    required this.onPin,
     required this.onContinue,
     required this.onRemove,
     required this.onClearGroup,
   });
 
-  /// 与详情页 FAB 一致：章节名 + 当前页/总页数；只有一页时只显示章节名。
-  static String _continueLabel(ReadingRecord record) {
-    final chapter = record.chapterName.trim();
-    if (record.totalPage <= 1) return chapter;
-    return chapter.isEmpty
-        ? '${record.page}/${record.totalPage}'
-        : '$chapter · ${record.page}/${record.totalPage}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final l10n = AppLocalizations.of(context)!;
 
     // build 期间不得同步触发 setState（会命中 dirty-element 断言），
     // 延迟到帧结束后再拉取缓存封面。
@@ -717,89 +698,22 @@ class _BookmarkGroupCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          Dismissible(
+          BookmarkGroupHeader(
             key: ValueKey('bookmark_group_$pathWord'),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              color: cs.errorContainer,
-              child: Icon(Icons.delete_outline, color: cs.onErrorContainer),
-            ),
-            // 等待落盘后由 store 通知刷新；组头即使书签被删光也仍在，
-            // 因此不能用 onDismissed（会命中「已 dismiss 的 Dismissible 仍在树上」断言）。
-            confirmDismiss: (_) async {
-              await onClearGroup();
-              return false;
-            },
-            child: InkWell(
-              key: ValueKey('bookmark_comic_$pathWord'),
-              onTap: onOpenComic,
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 44,
-                      child: AspectRatio(
-                        aspectRatio: 0.72,
-                        child: _BookmarkCover(coverUrl: coverUrl),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            comicName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: tt.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            l10n.bookmarksCount(bookmarks.length),
-                            style: tt.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // 组头「继续阅读」：胶囊按钮，章节 + 页码取自本地阅读记录。
-                    if (continueRecord != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      FilledButton.tonalIcon(
-                        key: ValueKey('bookmark_continue_$pathWord'),
-                        onPressed: onContinue,
-                        icon: const Icon(Icons.play_arrow, size: 18),
-                        label: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 160),
-                          child: Text(
-                            _continueLabel(continueRecord!),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: cs.surfaceContainerHighest,
-                          foregroundColor: cs.onSurfaceVariant,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                          ),
-                          // 高度对齐详情页 FAB（48），压扁会显得局促。
-                          minimumSize: const Size(0, 48),
-                          textStyle: tt.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+            detailsKey: ValueKey('bookmark_comic_$pathWord'),
+            resumeKey: ValueKey('bookmark_continue_$pathWord'),
+            name: comicName,
+            cover: _BookmarkCover(coverUrl: coverUrl),
+            count: bookmarks.length,
+            pinned: pinned,
+            onPin: onPin,
+            onDelete: onClearGroup,
+            onDetails: onOpenComic,
+            onResume: continueRecord == null ? null : onContinue,
+            chapter: continueRecord?.chapterName.trim() ?? '',
+            progress: continueRecord == null || continueRecord!.totalPage <= 1
+                ? ''
+                : '${continueRecord!.page}/${continueRecord!.totalPage}',
           ),
           if (!empty) ...[
             const Divider(height: 1, indent: 10, endIndent: 10),

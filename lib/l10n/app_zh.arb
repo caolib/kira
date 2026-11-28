@@ -896,7 +896,10 @@
       }
     }
   },
-  "bookmarksSwipeHint": "向左滑动书签可以删除",
+  "bookmarksSwipeHint": "左滑书签组可置顶或删除，左滑单条书签直接删除",
+  "bookmarkGroupPin": "置顶",
+  "bookmarkGroupUnpin": "取消置顶",
+  "bookmarkGroupPinned": "已置顶",
   "aboutTitle": "关于",
   "aboutBrandTagline": "一个开源免费的漫画阅读软件",
   "notLoggedInTitle": "未登录",

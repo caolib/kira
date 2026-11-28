@@ -1477,7 +1477,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get bookmarksSwipeHint => '向左滑动书签可以删除';
+  String get bookmarksSwipeHint => '左滑书签组可置顶或删除，左滑单条书签直接删除';
+
+  @override
+  String get bookmarkGroupPin => '置顶';
+
+  @override
+  String get bookmarkGroupUnpin => '取消置顶';
+
+  @override
+  String get bookmarkGroupPinned => '已置顶';
 
   @override
   String get aboutTitle => '关于';
@@ -5608,7 +5617,16 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get bookmarksSwipeHint => '向左滑動書籤可以刪除';
+  String get bookmarksSwipeHint => '左滑書籤群組可置頂或刪除，左滑單筆書籤直接刪除';
+
+  @override
+  String get bookmarkGroupPin => '置頂';
+
+  @override
+  String get bookmarkGroupUnpin => '取消置頂';
+
+  @override
+  String get bookmarkGroupPinned => '已置頂';
 
   @override
   String get aboutTitle => '關於';

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/utils/bookmark_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,83 @@ void main() {
 
     expect(BookmarkStore().hasGroup('comic-a'), isTrue);
     expect(BookmarkStore().groups.single.comicName, '漫画A');
+    expect(BookmarkStore().groups.single.pinned, isFalse);
+  });
+
+  test('旧分组置顶不改时间顺序，增删条目和重新加载均保留置顶', () async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      BookmarkStore.groupsStorageKey,
+      jsonEncode([
+        {'pathWord': 'comic-a', 'comicName': '漫画A', 'cover': 'cover'},
+      ]),
+    );
+    final store = BookmarkStore();
+    await store.ensureLoaded();
+    final original = store.groups.single;
+    expect(original.pinned, isFalse);
+    await store.addGroup(pathWord: 'other', comicName: '其他');
+    var notifications = 0;
+    void listener() => notifications++;
+    store.addListener(listener);
+    addTearDown(() => store.removeListener(listener));
+    await store.setGroupPinned('comic-a', true);
+    await store.setGroupPinned('comic-a', true);
+    await store.setGroupPinned('missing', true);
+    expect(notifications, 1);
+    expect(store.groups.map((g) => g.pathWord), ['other', 'comic-a']);
+    expect(store.groups.last.toJson(), {...original.toJson(), 'pinned': true});
+    await store.toggle(
+      pathWord: 'comic-a',
+      comicName: '漫画A',
+      chapterUuid: '1',
+      chapterName: '第一话',
+      page: 1,
+    );
+    await store.remove(store.bookmarks.single.id);
+    store.debugReset();
+    await store.ensureLoaded();
+    expect(store.groups.first.pinned, isTrue);
+    expect(store.groups.first.cover, 'cover');
+    await store.setGroupPinned('comic-a', false);
+    await store.reload();
+    expect(store.groups.first.pinned, isFalse);
+  });
+
+  test('置顶或删除组写失败不通知，不通过 prefs 缓存或重启暴露失败结果', () async {
+    final platform = _FailingGroupPreferences();
+    SharedPreferencesStorePlatform.instance = platform;
+    final store = BookmarkStore();
+    await store.toggle(
+      pathWord: 'comic-a',
+      comicName: '漫画A',
+      chapterUuid: '1',
+      chapterName: '第一话',
+      page: 1,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    final items = prefs.getString('comic_bookmarks_v1');
+    final groups = prefs.getString(BookmarkStore.groupsStorageKey);
+    var notifications = 0;
+    void listener() => notifications++;
+    store.addListener(listener);
+    addTearDown(() => store.removeListener(listener));
+    platform.failNext = true;
+    await expectLater(store.setGroupPinned('comic-a', true), throwsStateError);
+    expect(store.groups.single.pinned, isFalse);
+    expect(prefs.getString(BookmarkStore.groupsStorageKey), groups);
+    platform.failNext = true;
+    await expectLater(store.removeGroup('comic-a'), throwsStateError);
+    expect(notifications, 0);
+    expect(prefs.getString('comic_bookmarks_v1'), items);
+    SharedPreferences.resetStatic();
+    store.debugReset();
+    await store.ensureLoaded();
+    expect(store.bookmarks.single.pathWord, 'comic-a');
+    expect(store.groups.single.pinned, isFalse);
+    await store.setGroupPinned('comic-a', true);
+    expect(store.groups.single.pinned, isTrue);
+    expect(notifications, 1);
   });
 
   test('toggle adds then removes a bookmark', () async {
@@ -212,7 +290,9 @@ void main() {
     final store = BookmarkStore();
     await store.addGroup(pathWord: 'comic-a', comicName: '漫画A');
     await store.addGroup(pathWord: 'comic-b', comicName: '漫画B');
+    await store.setGroupPinned('comic-a', true);
     final original = store.groups.firstWhere((g) => g.pathWord == 'comic-a');
+    expect(original.pinned, isTrue);
     expect(await store.removeGroup('comic-a'), isEmpty);
     await store.reload();
     expect(store.hasGroup('comic-a'), isFalse);
@@ -230,6 +310,7 @@ void main() {
     await store.addGroup(pathWord: 'comic-a', comicName: '新名称');
     await store.restoreAll(const [], groups: [original]);
     expect(store.groups.first.comicName, '新名称');
+    expect(store.groups.first.pinned, isFalse);
   });
 
   test('restoreAll re-adds removed bookmarks sorted newest first', () async {
@@ -341,4 +422,19 @@ void main() {
     // 空封面不写入 JSON（旧数据兼容）
     expect(withoutCover.toJson().containsKey('cover'), isFalse);
   });
+}
+
+class _FailingGroupPreferences extends InMemorySharedPreferencesStore {
+  _FailingGroupPreferences() : super.empty();
+  bool failNext = false;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async {
+    final ok = await super.setValue(valueType, key, value);
+    if (failNext && key == 'flutter.${BookmarkStore.groupsStorageKey}') {
+      failNext = false;
+      return false;
+    }
+    return ok;
+  }
 }

@@ -34,6 +34,35 @@ void main() {
 
     expect(store.hasGroup('novel-a'), isTrue);
     expect(store.groups.single.name, '小说 A');
+    expect(store.groups.single.pinned, isFalse);
+  });
+
+  test('旧分组默认未置顶；增删条目后仍可重载并取消置顶', () async {
+    final oldGroup = {'pathWord': 'novel-a', 'name': '小说 A', 'cover': 'cover'};
+    await prefs.setString(
+      NovelBookmarkStore.groupsStorageKey,
+      jsonEncode([oldGroup]),
+    );
+    await store.ensureLoaded();
+    final original = store.groups.single;
+    expect(original.pinned, isFalse);
+    await store.addGroup(pathWord: 'other', name: '其他');
+    var notifications = 0;
+    store.addListener(() => notifications++);
+    await store.setGroupPinned('novel-a', true);
+    await store.setGroupPinned('novel-a', true);
+    await store.setGroupPinned('missing', true);
+    expect(notifications, 1);
+    expect(store.groups.map((g) => g.pathWord), ['other', 'novel-a']);
+    expect(store.groups.last.toJson(), {...original.toJson(), 'pinned': true});
+    await store.toggle(progress: _position());
+    await store.remove(store.bookmarks.single.id);
+    await store.reload();
+    expect(store.groups.first.pinned, isTrue);
+    expect(store.groups.first.cover, 'cover');
+    await store.setGroupPinned('novel-a', false);
+    await store.reload();
+    expect(store.groups.first.pinned, isFalse);
   });
 
   test('toggle persists exact anchors and excludes text URLs', () async {
@@ -154,10 +183,34 @@ void main() {
     },
   );
 
+  test('置顶写失败不改变内存、不通知，队列可重试', () async {
+    await store.addGroup(pathWord: 'novel-a', name: '小说 A');
+    final controlled = _ControlledPreferences(prefs)..failNextWrite = true;
+    store.dispose();
+    store = NovelBookmarkStore.forTesting(prefs: Future.value(controlled));
+    var notifications = 0;
+    store.addListener(() => notifications++);
+    await expectLater(store.setGroupPinned('novel-a', true), throwsStateError);
+    final error = StateError('group write exception');
+    controlled.nextError = error;
+    await expectLater(
+      store.setGroupPinned('novel-a', true),
+      throwsA(same(error)),
+    );
+    expect(store.groups.single.pinned, isFalse);
+    expect(notifications, 0);
+    await store.reload();
+    expect(store.groups.single.pinned, isFalse);
+    await store.setGroupPinned('novel-a', true);
+    expect(store.groups.single.pinned, isTrue);
+  });
+
   test('空分组可删除并持久化，撤销恢复原始元数据但不覆盖新分组', () async {
     await store.addGroup(pathWord: 'novel-a', name: '小说 A');
     await store.addGroup(pathWord: 'novel-b', name: '小说 B');
+    await store.setGroupPinned('novel-a', true);
     final original = store.groups.firstWhere((g) => g.pathWord == 'novel-a');
+    expect(original.pinned, isTrue);
     expect(await store.removeGroup('novel-a'), isEmpty);
     await store.reload();
     expect(store.hasGroup('novel-a'), isFalse);
@@ -175,6 +228,7 @@ void main() {
     await store.addGroup(pathWord: 'novel-a', name: '新名称');
     await store.restoreAll(const [], groups: [original]);
     expect(store.groups.first.name, '新名称');
+    expect(store.groups.first.pinned, isFalse);
   });
 
   test('空分组删除写入失败时保留组头，随后仍可删除', () async {
@@ -297,11 +351,14 @@ void main() {
       final pending = store.toggle(
         progress: _position().copyWith(paragraphIndex: 50),
       );
+      final queuedPin = store.setGroupPinned('novel-a', true);
       final paused = store.pauseForRestore();
       gate.complete();
       await Future.wait([active, pending]);
+      await queuedPin;
       await paused;
       expect(store.bookmarks, hasLength(1));
+      expect(store.groups.single.pinned, isFalse);
       final restored = NovelBookmark(
         position: _position().copyWith(volumeId: 'restored-volume'),
       );
@@ -357,10 +414,14 @@ class _ControlledPreferences implements SharedPreferences {
   final started = Completer<void>();
   Completer<void>? writeGate;
   bool failNextWrite = false;
+  Object? nextError;
   int writes = 0;
 
   @override
   Object? get(String key) => delegate.get(key);
+
+  @override
+  Future<bool> remove(String key) => delegate.remove(key);
 
   @override
   Future<bool> setString(String key, String value) async {
@@ -369,6 +430,11 @@ class _ControlledPreferences implements SharedPreferences {
     final gate = writeGate;
     writeGate = null;
     if (gate != null) await gate.future;
+    final error = nextError;
+    if (error != null) {
+      nextError = null;
+      throw error;
+    }
     if (failNextWrite) {
       failNextWrite = false;
       return false;

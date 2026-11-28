@@ -1,23 +1,21 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_logger.dart';
+import 'json_helpers.dart';
+
 /// 漫画书签：记录阅读器中用户手动标记的位置（漫画 + 章节 + 页码）。
-///
-/// 与 `ReadingHistory`（自动记录阅读进度）不同，书签由用户主动添加。
-/// 全量列表存储在单个 `comic_bookmarks_v1` 键下（不带 cache_ 前缀，
-/// 因此会随设置备份导出，也不会被缓存清理误删）。
 class ComicBookmark {
   final String pathWord;
   final String comicName;
 
   /// 封面 URL，打书签时从漫画详情本地缓存读取（无网络请求）。
-  /// 旧版本书签可能为空，列表页退化为占位图。
   final String cover;
 
-  /// 打书签时所在的章节分组，从详情缓存读取。
-  /// 旧版本书签可能为空，进入阅读器时回退到默认分组键。
+  /// 打书签时所在的章节分组，旧书签为空时回退到默认分组键。
   final String group;
   final String chapterUuid;
   final String chapterName;
@@ -70,127 +68,276 @@ class ComicBookmark {
   }
 }
 
-/// 书签组的元数据：书签被删光后组头仍要保留（封面、书名、继续阅读入口），
-/// 因此在加书签时单独记一份，删除书签时不动它。
+abstract interface class BookmarkGroupMetadata<G> {
+  String get pathWord;
+  bool get pinned;
+  G withPinned(bool pinned);
+}
+
+/// 分组元数据独立于条目，最后一个书签删掉后仍保留组头。
 @immutable
-class ComicBookmarkGroup {
+class ComicBookmarkGroup implements BookmarkGroupMetadata<ComicBookmarkGroup> {
   const ComicBookmarkGroup({
     required this.pathWord,
     required this.comicName,
     this.cover = '',
     required this.updatedAt,
+    this.pinned = false,
   });
 
+  @override
   final String pathWord;
   final String comicName;
   final String cover;
   final DateTime updatedAt;
+  @override
+  final bool pinned;
 
   factory ComicBookmarkGroup.fromJson(Map<String, dynamic> json) =>
       ComicBookmarkGroup(
-        pathWord: json['pathWord']?.toString() ?? '',
-        comicName: json['comicName']?.toString() ?? '',
-        cover: json['cover']?.toString() ?? '',
+        pathWord: jsonString(json, 'pathWord'),
+        comicName: jsonString(json, 'comicName'),
+        cover: jsonString(json, 'cover'),
         updatedAt:
-            DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+            DateTime.tryParse(jsonString(json, 'updatedAt')) ??
             DateTime.fromMillisecondsSinceEpoch(0),
+        pinned: jsonBool(json, 'pinned'),
       );
+
+  @override
+  ComicBookmarkGroup withPinned(bool pinned) => ComicBookmarkGroup(
+    pathWord: pathWord,
+    comicName: comicName,
+    cover: cover,
+    updatedAt: updatedAt,
+    pinned: pinned,
+  );
 
   Map<String, dynamic> toJson() => {
     'pathWord': pathWord,
     'comicName': comicName,
     if (cover.isNotEmpty) 'cover': cover,
     'updatedAt': updatedAt.toIso8601String(),
+    'pinned': pinned,
   };
 }
 
-/// 书签 store：`ChangeNotifier` 单例，内存持有全量列表（按标记时间倒序，
-/// 最新在前），变更时持久化到 SharedPreferences 并通知监听者。
-class BookmarkStore extends ChangeNotifier {
-  BookmarkStore._();
+/// 两类书签使用相同的串行写闸；写入成功才发布快照与通知。
+abstract class BookmarkStoreBase<B, G extends BookmarkGroupMetadata<G>>
+    extends ChangeNotifier {
+  BookmarkStoreBase(
+    this._itemsKey,
+    this._groupsKey, {
+    Future<SharedPreferences>? prefs,
+  }) : _prefs = prefs;
+
+  final String _itemsKey;
+  final String _groupsKey;
+  final Future<SharedPreferences>? _prefs;
+  Future<SharedPreferences> get _preferences =>
+      _prefs ?? SharedPreferences.getInstance();
+  List<B> _bookmarks = const <Never>[];
+  List<G> _groups = const <Never>[];
+  Future<void>? _queue;
+  bool _loaded = false;
+  bool _restoring = false;
+  int _restoreEpoch = 0;
+
+  List<B> get bookmarks => _bookmarks;
+
+  /// 保留最近一次加书签的时间顺序，置顶顺序由展示层决定。
+  List<G> get groups => _groups;
+  bool hasGroup(String pathWord) =>
+      _groups.any((group) => group.pathWord == pathWord);
+
+  @protected
+  (List<B>, List<G>) readStored(SharedPreferences prefs);
+
+  Future<void> _load() async {
+    if (_loaded) return;
+    final (items, groups) = readStored(await _preferences);
+    _bookmarks = List.unmodifiable(items);
+    _groups = List.unmodifiable(groups);
+    _loaded = true;
+  }
+
+  Future<void> ensureLoaded() => _enqueue(_load);
+
+  Future<void> setGroupPinned(String pathWord, bool pinned) => mutate<void>(
+    blocked: () {},
+    action: () async {
+      final index = _groups.indexWhere((group) => group.pathWord == pathWord);
+      if (index < 0 || _groups[index].pinned == pinned) return;
+      final next = [..._groups]..[index] = _groups[index].withPinned(pinned);
+      await commit(groups: next);
+    },
+  );
+
+  @protected
+  Future<T> mutate<T>({
+    required T Function() blocked,
+    required Future<T> Function() action,
+  }) {
+    final epoch = _restoreEpoch;
+    final allowed = !_restoring;
+    return _enqueue(() async {
+      await _load();
+      if (!allowed || _restoring || epoch != _restoreEpoch) return blocked();
+      return action();
+    });
+  }
+
+  Future<T> _enqueue<T>(Future<T> Function() action) async {
+    final previous = _queue;
+    final done = Completer<void>();
+    _queue = done.future;
+    try {
+      if (previous != null) await previous;
+      return await action();
+    } finally {
+      if (identical(_queue, done.future)) _queue = null;
+      done.complete();
+    }
+  }
+
+  @protected
+  Future<void> commit({Iterable<B>? items, Iterable<G>? groups}) async {
+    final nextItems = items == null ? _bookmarks : List<B>.unmodifiable(items);
+    final nextGroups = groups == null ? _groups : List<G>.unmodifiable(groups);
+    final values = {
+      if (items != null) _itemsKey: jsonEncode(nextItems),
+      // 更新条目时带上从旧版条目补出的组；单独置顶不重写条目。
+      _groupsKey: jsonEncode(nextGroups),
+    };
+    final prefs = await _preferences;
+    final originals = <String, Object?>{};
+    try {
+      for (final entry in values.entries) {
+        originals[entry.key] = prefs.get(entry.key);
+        if (!await prefs.setString(entry.key, entry.value)) {
+          throw StateError('Bookmark persistence failed: ${entry.key}');
+        }
+      }
+    } catch (error, stack) {
+      // 平台可能先改缓存再报错。已写入和刚失败的键都要补偿，
+      // 否则之后 reload 或备份仍可能读到失败操作的结果。
+      for (final key in originals.keys.toList().reversed) {
+        try {
+          final ok = await switch (originals[key]) {
+            null => prefs.remove(key),
+            final String v => prefs.setString(key, v),
+            final bool v => prefs.setBool(key, v),
+            final int v => prefs.setInt(key, v),
+            final double v => prefs.setDouble(key, v),
+            final List<String> v => prefs.setStringList(key, v),
+            _ => throw StateError('Invalid bookmark preference: $key'),
+          };
+          if (!ok) throw StateError('Bookmark rollback failed: $key');
+        } catch (rollbackError, rollbackStack) {
+          _logFailure(rollbackError, rollbackStack);
+        }
+      }
+      _logFailure(error, stack);
+      rethrow;
+    }
+    _bookmarks = nextItems;
+    _groups = nextGroups;
+    notifyListeners();
+  }
+
+  static void _logFailure(Object error, StackTrace stack) {
+    unawaited(
+      AppLogger.instance.recordWarning(
+        error,
+        stackTrace: stack,
+        source: 'bookmark_store',
+      ),
+    );
+  }
+
+  /// 先关写闸再排空队列，阻止慢加载或旧撤销在恢复完成后写回旧数据。
+  Future<void> pauseForRestore() {
+    _restoring = true;
+    _restoreEpoch++;
+    return flush();
+  }
+
+  Future<void> flush() async {
+    while (_queue != null) {
+      await _queue;
+    }
+  }
+
+  void resumeAfterRestore() => _restoring = false;
+
+  Future<void> reload() => _enqueue(() async {
+    _loaded = false;
+    await _load();
+    notifyListeners();
+  });
+
+  @visibleForTesting
+  void debugReset() {
+    assert(_queue == null, 'Flush pending bookmark operations first');
+    _bookmarks = const <Never>[];
+    _groups = const <Never>[];
+    _loaded = false;
+    _restoring = false;
+    _restoreEpoch++;
+  }
+}
+
+class BookmarkStore
+    extends BookmarkStoreBase<ComicBookmark, ComicBookmarkGroup> {
+  BookmarkStore._() : super(_key, groupsStorageKey);
 
   static final BookmarkStore _instance = BookmarkStore._();
   factory BookmarkStore() => _instance;
 
   static const _key = 'comic_bookmarks_v1';
-
-  /// 组元数据单独存一个键：清空书签时保留，组头才不会跟着消失。
   static const groupsStorageKey = 'comic_bookmark_groups_v1';
-
-  /// 数量上限，超出时淘汰最旧的书签。
   @visibleForTesting
   static const maxBookmarks = 500;
 
-  final List<ComicBookmark> _bookmarks = [];
-  final List<ComicBookmarkGroup> _groups = [];
-  bool _loaded = false;
-  bool _restoring = false;
-  final Set<Future<void>> _writes = {};
-
-  List<ComicBookmark> get bookmarks => List.unmodifiable(_bookmarks);
-
-  /// 曾收藏过的漫画（含书签已删光的），按最近一次加书签的时间倒序。
-  List<ComicBookmarkGroup> get groups => List.unmodifiable(_groups);
-
-  Future<void> ensureLoaded() async {
-    if (_loaded) return;
-    _loaded = true;
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw != null) {
+  @override
+  (List<ComicBookmark>, List<ComicBookmarkGroup>) readStored(
+    SharedPreferences prefs,
+  ) {
+    List<T> readList<T>(String key, T Function(Map<String, dynamic>) parse) {
+      final raw = prefs.get(key);
+      if (raw is! String) return [];
       try {
-        final list = jsonDecode(raw);
-        if (list is List) {
-          _bookmarks
-            ..clear()
-            ..addAll(
-              list
-                  .whereType<Map>()
-                  .map(
-                    (e) => ComicBookmark.fromJson(Map<String, dynamic>.from(e)),
-                  )
-                  .where(
-                    (b) => b.pathWord.isNotEmpty && b.chapterUuid.isNotEmpty,
-                  ),
-            );
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.whereType<Map<String, dynamic>>().map(parse).toList();
         }
-      } catch (_) {
-        // 数据损坏时视为空列表，下次写入自动覆盖。
+      } on FormatException catch (error, stack) {
+        // 不记录损坏 JSON 的正文。
+        unawaited(
+          AppLogger.instance.recordWarning(
+            error.message,
+            stackTrace: stack,
+            source: 'bookmark_store.read',
+          ),
+        );
       }
+      return [];
     }
-    final rawGroups = prefs.getString(groupsStorageKey);
-    if (rawGroups != null) {
-      try {
-        final list = jsonDecode(rawGroups);
-        if (list is List) {
-          _groups
-            ..clear()
-            ..addAll(
-              list
-                  .whereType<Map>()
-                  .map(
-                    (e) => ComicBookmarkGroup.fromJson(
-                      Map<String, dynamic>.from(e),
-                    ),
-                  )
-                  .where((g) => g.pathWord.isNotEmpty),
-            );
-        }
-      } catch (_) {
-        // 同上：损坏时视为空，下次写入覆盖。
-      }
-    }
-    _syncGroupsFromBookmarks();
-  }
 
-  /// 补上「有书签但还没有组元数据」的作品：组元数据是后加的功能，
-  /// 老书签没有对应记录，否则详情页书签按钮会显示成未添加、删光书签后组也会消失。
-  /// 只改内存，不在这里写盘——读取路径保持只读，下次任何写入会带上补齐的组。
-  void _syncGroupsFromBookmarks() {
-    var added = false;
-    for (final bookmark in _bookmarks) {
-      if (hasGroup(bookmark.pathWord)) continue;
-      _groups.add(
+    final items = readList(
+      _key,
+      ComicBookmark.fromJson,
+    ).where((b) => b.pathWord.isNotEmpty && b.chapterUuid.isNotEmpty).toList();
+    final groups = readList(
+      groupsStorageKey,
+      ComicBookmarkGroup.fromJson,
+    ).where((g) => g.pathWord.isNotEmpty).toList();
+    final known = groups.map((group) => group.pathWord).toSet();
+    final previousLength = groups.length;
+    // 旧版只有条目，没有组元数据；只读补齐，不回写。
+    for (final bookmark in items) {
+      if (!known.add(bookmark.pathWord)) continue;
+      groups.add(
         ComicBookmarkGroup(
           pathWord: bookmark.pathWord,
           comicName: bookmark.comicName,
@@ -199,53 +346,46 @@ class BookmarkStore extends ChangeNotifier {
               bookmark.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
         ),
       );
-      added = true;
     }
-    if (added) _groups.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    if (groups.length != previousLength) {
+      groups.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    }
+    return (items, groups);
   }
 
   bool isBookmarked(String chapterUuid, int page) =>
-      _bookmarks.any((b) => b.chapterUuid == chapterUuid && b.page == page);
+      bookmarks.any((b) => b.chapterUuid == chapterUuid && b.page == page);
 
-  /// 该漫画是否已在书签页占有一个分组（不论组内是否还有书签）。
-  bool hasGroup(String pathWord) {
-    for (final group in _groups) {
-      if (group.pathWord == pathWord) return true;
-    }
-    return false;
-  }
-
-  /// 只登记分组、不加具体书签：详情页的「加入书签」入口。
   Future<void> addGroup({
     required String pathWord,
     required String comicName,
     String cover = '',
-  }) async {
-    await ensureLoaded();
-    if (_restoring || hasGroup(pathWord)) return;
-    _upsertGroup(
-      ComicBookmarkGroup(
-        pathWord: pathWord,
-        comicName: comicName,
-        cover: cover,
-        updatedAt: DateTime.now(),
-      ),
-    );
-    await _persist();
-  }
+  }) => mutate<void>(
+    blocked: () {},
+    action: () async {
+      if (hasGroup(pathWord)) return;
+      await commit(
+        items: bookmarks,
+        groups: _updatedGroups(pathWord, comicName, cover),
+      );
+    },
+  );
 
-  /// 取消收藏：分组连同该漫画的书签一起移除，返回被删除的书签。
-  Future<List<ComicBookmark>> removeGroup(String pathWord) async {
-    await ensureLoaded();
-    if (_restoring) return const [];
-    final removed = _bookmarks.where((b) => b.pathWord == pathWord).toList();
-    final hadGroup = hasGroup(pathWord);
-    if (removed.isEmpty && !hadGroup) return const [];
-    _bookmarks.removeWhere((b) => b.pathWord == pathWord);
-    _groups.removeWhere((g) => g.pathWord == pathWord);
-    await _persist();
-    return removed;
-  }
+  /// 取消收藏：分组与条目一起删除。
+  Future<List<ComicBookmark>> removeGroup(String pathWord) => mutate(
+    blocked: () => const <ComicBookmark>[],
+    action: () async {
+      final removed = bookmarks.where((b) => b.pathWord == pathWord).toList();
+      if (removed.isEmpty && !hasGroup(pathWord)) {
+        return const <ComicBookmark>[];
+      }
+      await commit(
+        items: bookmarks.where((b) => b.pathWord != pathWord),
+        groups: groups.where((g) => g.pathWord != pathWord),
+      );
+      return removed;
+    },
+  );
 
   /// 切换指定位置的书签状态，返回 true 表示新增、false 表示移除。
   Future<bool> toggle({
@@ -256,20 +396,18 @@ class BookmarkStore extends ChangeNotifier {
     required String chapterUuid,
     required String chapterName,
     required int page,
-  }) async {
-    await ensureLoaded();
-    if (_restoring) return isBookmarked(chapterUuid, page);
-    final index = _bookmarks.indexWhere(
-      (b) => b.chapterUuid == chapterUuid && b.page == page,
-    );
-    if (index >= 0) {
-      _bookmarks.removeAt(index);
-      await _persist();
-      return false;
-    }
-    _bookmarks.insert(
-      0,
-      ComicBookmark(
+  }) => mutate(
+    blocked: () => isBookmarked(chapterUuid, page),
+    action: () async {
+      if (isBookmarked(chapterUuid, page)) {
+        await commit(
+          items: bookmarks.where(
+            (b) => b.chapterUuid != chapterUuid || b.page != page,
+          ),
+        );
+        return false;
+      }
+      final bookmark = ComicBookmark(
         pathWord: pathWord,
         comicName: comicName,
         cover: cover,
@@ -278,102 +416,82 @@ class BookmarkStore extends ChangeNotifier {
         chapterName: chapterName,
         page: page,
         updatedAt: DateTime.now(),
-      ),
-    );
-    if (_bookmarks.length > maxBookmarks) {
-      _bookmarks.removeRange(maxBookmarks, _bookmarks.length);
-    }
-    // 记下组元数据：这之后即使书签被删光，书签页也保留该组。
-    _upsertGroup(
+      );
+      await commit(
+        items: [bookmark, ...bookmarks].take(maxBookmarks),
+        groups: _updatedGroups(pathWord, comicName, cover),
+      );
+      return true;
+    },
+  );
+
+  Iterable<ComicBookmarkGroup> _updatedGroups(
+    String pathWord,
+    String comicName,
+    String cover,
+  ) {
+    final previous = groups.where((g) => g.pathWord == pathWord).firstOrNull;
+    return [
       ComicBookmarkGroup(
         pathWord: pathWord,
-        comicName: comicName,
-        cover: cover,
+        comicName: comicName.isEmpty ? previous?.comicName ?? '' : comicName,
+        cover: cover.isEmpty ? previous?.cover ?? '' : cover,
         updatedAt: DateTime.now(),
+        pinned: previous?.pinned ?? false,
       ),
-    );
-    await _persist();
-    return true;
+      ...groups.where((g) => g.pathWord != pathWord),
+    ].take(maxBookmarks);
   }
 
-  /// 同一部漫画只留一条组元数据，最新在前；空字段沿用旧值。
-  void _upsertGroup(ComicBookmarkGroup group) {
-    ComicBookmarkGroup? previous;
-    for (final existing in _groups) {
-      if (existing.pathWord == group.pathWord) {
-        previous = existing;
-        break;
+  Future<void> remove(String id) => mutate<void>(
+    blocked: () {},
+    action: () async {
+      if (!bookmarks.any((b) => b.id == id)) return;
+      await commit(items: bookmarks.where((b) => b.id != id));
+    },
+  );
+
+  Future<List<ComicBookmark>> removeForComic(String pathWord) => mutate(
+    blocked: () => const <ComicBookmark>[],
+    action: () async {
+      final removed = bookmarks.where((b) => b.pathWord == pathWord).toList();
+      if (removed.isNotEmpty) {
+        await commit(items: bookmarks.where((b) => b.pathWord != pathWord));
       }
-    }
-    _groups.removeWhere((g) => g.pathWord == group.pathWord);
-    _groups.insert(
-      0,
-      ComicBookmarkGroup(
-        pathWord: group.pathWord,
-        comicName: group.comicName.isEmpty
-            ? previous?.comicName ?? ''
-            : group.comicName,
-        cover: group.cover.isEmpty ? previous?.cover ?? '' : group.cover,
-        updatedAt: group.updatedAt,
-      ),
-    );
-    if (_groups.length > maxBookmarks) {
-      _groups.removeRange(maxBookmarks, _groups.length);
-    }
-  }
+      return removed;
+    },
+  );
 
-  Future<void> remove(String id) async {
-    await ensureLoaded();
-    if (_restoring) return;
-    final index = _bookmarks.indexWhere((b) => b.id == id);
-    if (index < 0) return;
-    _bookmarks.removeAt(index);
-    await _persist();
-  }
+  Future<List<ComicBookmark>> clear() => mutate(
+    blocked: () => const <ComicBookmark>[],
+    action: () async {
+      final removed = bookmarks;
+      if (removed.isNotEmpty) await commit(items: const []);
+      return removed;
+    },
+  );
 
-  /// 删除某部漫画的全部书签，返回被删除的书签（用于撤销）。
-  Future<List<ComicBookmark>> removeForComic(String pathWord) async {
-    await ensureLoaded();
-    if (_restoring) return const [];
-    final removed = _bookmarks.where((b) => b.pathWord == pathWord).toList();
-    if (removed.isEmpty) return const [];
-    _bookmarks.removeWhere((b) => b.pathWord == pathWord);
-    await _persist();
-    return removed;
-  }
-
-  /// 清空全部书签，返回被删除的书签（用于撤销）。
-  Future<List<ComicBookmark>> clear() async {
-    await ensureLoaded();
-    if (_restoring) return const [];
-    if (_bookmarks.isEmpty) return const [];
-    final removed = List<ComicBookmark>.of(_bookmarks);
-    _bookmarks.clear();
-    await _persist();
-    return removed;
-  }
-
-  /// 批量恢复书签（撤销删除），按标记时间倒序归并。
+  /// 撤销只补回缺失的书签和分组，不覆盖同一作品后来的置顶选择。
   Future<void> restoreAll(
     List<ComicBookmark> items, {
     List<ComicBookmarkGroup> groups = const [],
-  }) async {
-    await ensureLoaded();
-    if (_restoring) return;
-    final existing = _bookmarks.map((b) => b.id).toSet();
-    _bookmarks.addAll(items.where((b) => !existing.contains(b.id)));
-    _bookmarks.sort(_byNewest);
-    if (_bookmarks.length > maxBookmarks) {
-      _bookmarks.removeRange(maxBookmarks, _bookmarks.length);
-    }
-    final knownGroups = _groups.map((group) => group.pathWord).toSet();
-    _groups.addAll(groups.where((group) => knownGroups.add(group.pathWord)));
-    _groups.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    if (_groups.length > maxBookmarks) {
-      _groups.removeRange(maxBookmarks, _groups.length);
-    }
-    await _persist();
-  }
+  }) => mutate<void>(
+    blocked: () {},
+    action: () async {
+      final ids = bookmarks.map((b) => b.id).toSet();
+      final next = [...bookmarks, ...items.where((b) => ids.add(b.id))]
+        ..sort(_byNewest);
+      final known = this.groups.map((g) => g.pathWord).toSet();
+      final nextGroups = [
+        ...this.groups,
+        ...groups.where((g) => known.add(g.pathWord)),
+      ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      await commit(
+        items: next.take(maxBookmarks),
+        groups: nextGroups.take(maxBookmarks),
+      );
+    },
+  );
 
   static int _byNewest(ComicBookmark a, ComicBookmark b) {
     final at = a.updatedAt;
@@ -382,55 +500,5 @@ class BookmarkStore extends ChangeNotifier {
     if (at == null) return 1;
     if (bt == null) return -1;
     return bt.compareTo(at);
-  }
-
-  Future<void> _persist() async {
-    final writing = _write();
-    _writes.add(writing);
-    try {
-      await writing;
-    } finally {
-      _writes.remove(writing);
-    }
-  }
-
-  Future<void> _write() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _key,
-      jsonEncode(_bookmarks.map((b) => b.toJson()).toList()),
-    );
-    await prefs.setString(
-      groupsStorageKey,
-      jsonEncode(_groups.map((g) => g.toJson()).toList()),
-    );
-    notifyListeners();
-  }
-
-  Future<void> pauseForRestore() async {
-    _restoring = true;
-    await flush();
-  }
-
-  Future<void> flush() => Future.wait(_writes.toList());
-
-  void resumeAfterRestore() => _restoring = false;
-
-  /// 从磁盘重新加载。导入备份或重置应用覆写了 SharedPreferences 后调用，
-  /// 使内存副本与磁盘一致。
-  Future<void> reload() async {
-    _loaded = false;
-    _bookmarks.clear();
-    _groups.clear();
-    await ensureLoaded();
-    notifyListeners();
-  }
-
-  /// 清空内存状态，供测试隔离使用。
-  @visibleForTesting
-  void debugReset() {
-    _bookmarks.clear();
-    _groups.clear();
-    _loaded = false;
   }
 }

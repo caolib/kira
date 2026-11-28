@@ -55,6 +55,12 @@ void validateBackupRecords(Map<String, BackupPreference> preferences) {
         for (final field in required) {
           if (item[field] is! String) _invalid();
         }
+        if ((key == 'comic_bookmark_groups_v1' ||
+                key == 'novel_bookmark_groups_v1') &&
+            item.containsKey('pinned') &&
+            item['pinned'] is! bool) {
+          _invalid();
+        }
         if (key == NovelBookmarkStore.storageKey) {
           try {
             final bookmark = NovelBookmark.fromJson(item);

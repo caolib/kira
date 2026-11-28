@@ -11,4 +11,5 @@
 - **Cover placeholders**: Use `CoverPlaceholder()` / `CoverPlaceholder.error()` for the default cover placeholder/error boxes.
 - **Cover Hero flight**: Use `AppHero` (`lib/widgets/app_hero.dart`) instead of raw `Hero` so the flight is skipped when「减少动画」is on.
 - **Generic list pages**: Use `LocalContentListPage` with the `LocalContentEntry` interface + per-domain adapters; the comic one lives in `lib/widgets/local_content_list_page.dart`, the novel one is `NovelLocalContentEntry` in `lib/pages/local_novels_page.dart` — follow that pattern rather than widening the widget.
+- **书签组头**：漫画与轻小说共用 `BookmarkGroupHeader`（`lib/widgets/bookmark_group_header.dart`）。组头左滑露出置顶和删除，点右侧进度独立续读；不要给组内单条套这个组件，单条仍左滑直接删除。
 - **Login expired**: Use `showLoginExpiredDialog(context, content: …)` from `lib/widgets/login_expired_dialog.dart` — pass the page-specific copy; do not hand-roll the AlertDialog.

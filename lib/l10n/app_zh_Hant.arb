@@ -869,7 +869,10 @@
       }
     }
   },
-  "bookmarksSwipeHint": "向左滑動書籤可以刪除",
+  "bookmarksSwipeHint": "左滑書籤群組可置頂或刪除，左滑單筆書籤直接刪除",
+  "bookmarkGroupPin": "置頂",
+  "bookmarkGroupUnpin": "取消置頂",
+  "bookmarkGroupPinned": "已置頂",
   "aboutTitle": "關於",
   "aboutBrandTagline": "一個開源免費的漫畫閱讀軟體",
   "notLoggedInTitle": "未登入",

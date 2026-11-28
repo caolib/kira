@@ -14,12 +14,14 @@ import '../theme/app_icon_sizes.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../utils/app_logger.dart';
+import '../utils/group_bookmarks.dart';
 import '../utils/novel_bookmark_store.dart';
 import '../utils/novel_chapter_display.dart';
 import '../utils/novel_reading_store.dart';
 import '../utils/screen_layout.dart';
 import '../utils/time_format.dart';
 import '../utils/toast.dart';
+import '../widgets/bookmark_group_header.dart';
 import '../widgets/error_retry_view.dart';
 import '../widgets/novel_widgets.dart';
 
@@ -338,16 +340,6 @@ class NovelBookmarksPageState extends ConsumerState<NovelBookmarksPage>
     return _groupMetaOf(pathWord)?.cover ?? '';
   }
 
-  /// 组排序时间：组内最新书签的时间；空组用组元数据的时间。
-  DateTime _groupUpdatedAt(String pathWord) {
-    // _store.bookmarks 本身按时间倒序，第一条命中即最新。
-    for (final bookmark in _store.bookmarks) {
-      if (bookmark.pathWord == pathWord) return bookmark.updatedAt;
-    }
-    return _groupMetaOf(pathWord)?.updatedAt ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-  }
-
   /// 组头点击进入详情；书签删光的组也能进。
   Future<void> _openDetails(String pathWord) async {
     _messenger?.clearSnackBars();
@@ -372,26 +364,22 @@ class NovelBookmarksPageState extends ConsumerState<NovelBookmarksPage>
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final query = widget.query.trim().toLowerCase();
-    final groups = <String, List<NovelBookmark>>{};
-    for (final bookmark in _store.bookmarks) {
-      groups.putIfAbsent(bookmark.pathWord, () => []).add(bookmark);
-    }
-    // 书签被删光的组仍在：用组元数据补成空组，只显示组头与继续阅读。
-    for (final group in _store.groups) {
-      groups.putIfAbsent(group.pathWord, () => const []);
-    }
-    final all = groups.entries.toList()
-      ..sort(
-        (a, b) => _groupUpdatedAt(b.key).compareTo(_groupUpdatedAt(a.key)),
-      );
+    final all = groupBookmarks<NovelBookmark>(
+      bookmarks: _store.bookmarks,
+      groups: _store.groups.map(
+        (g) => (pathWord: g.pathWord, pinned: g.pinned, updatedAt: g.updatedAt),
+      ),
+      pathWordOf: (b) => b.pathWord,
+      dateOf: (b) => b.updatedAt,
+    );
     // 搜索是「组级」的：组内任一条命中，该轻小说的全部书签都照常展示。
     final entries = query.isEmpty
         ? all
         : all
               .where(
                 (entry) =>
-                    entry.value.any((b) => _matchesQuery(b, query)) ||
-                    _groupNameOf(entry.key).toLowerCase().contains(query),
+                    entry.bookmarks.any((b) => _matchesQuery(b, query)) ||
+                    _groupNameOf(entry.pathWord).toLowerCase().contains(query),
               )
               .toList();
     final searching = query.isNotEmpty;
@@ -404,12 +392,12 @@ class NovelBookmarksPageState extends ConsumerState<NovelBookmarksPage>
     final (leftColumn, rightColumn) = twoColumn
         ? ScreenLayout.splitTwoColumns(
             entries.length,
-            (index) => entries[index].value.length + 1,
+            (index) => entries[index].bookmarks.length + 1,
           )
         : (const <int>[], const <int>[]);
 
     Widget groupCard(int index) {
-      final pathWord = entries[index].key;
+      final pathWord = entries[index].pathWord;
       if (!_history.containsKey(pathWord)) {
         // build 期间不得同步触发 setState，延迟到帧结束后再查阅读进度。
         WidgetsBinding.instance.addPostFrameCallback(
@@ -420,9 +408,11 @@ class NovelBookmarksPageState extends ConsumerState<NovelBookmarksPage>
         pathWord: pathWord,
         name: _groupNameOf(pathWord),
         cover: _groupCoverOf(pathWord),
-        bookmarks: entries[index].value,
+        bookmarks: entries[index].bookmarks,
         continueProgress: _history[pathWord],
         updating: _updating,
+        pinned: entries[index].pinned,
+        onPin: () => _store.setGroupPinned(pathWord, !entries[index].pinned),
         onOpen: _open,
         onDetails: () => unawaited(_openDetails(pathWord)),
         onContinue: () => _continueReading(pathWord),
@@ -553,6 +543,8 @@ class _NovelBookmarkGroupCard extends StatelessWidget {
     required this.updating,
     required this.onOpen,
     required this.onDetails,
+    required this.pinned,
+    required this.onPin,
     required this.onContinue,
     required this.onRemove,
     required this.onClear,
@@ -570,15 +562,11 @@ class _NovelBookmarkGroupCard extends StatelessWidget {
   final bool updating;
   final Future<void> Function(NovelBookmark) onOpen;
   final VoidCallback onDetails;
+  final bool pinned;
+  final Future<void> Function() onPin;
   final VoidCallback onContinue;
   final Future<void> Function(NovelBookmark) onRemove;
   final Future<void> Function() onClear;
-
-  /// 与本地小说页 FAB 一致：卷名 + 卷内百分比。
-  static String _continueLabel(NovelReadingProgress progress) => [
-    progress.volumeName,
-    '${_percentLabel(progress.progress)}%',
-  ].where((part) => part.isNotEmpty).join(' · ');
 
   /// 卷名 + 去重后的章节名，两者都空时返回空串。
   static String _chapterLabel(NovelBookmark bookmark) => [
@@ -628,81 +616,26 @@ class _NovelBookmarkGroupCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          _dismissible(
-            id: 'novel_bookmark_group_$pathWord',
-            cs: cs,
-            remove: onClear,
-            child: InkWell(
-              key: ValueKey('novel_bookmark_details_$pathWord'),
-              onTap: onDetails,
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 44,
-                      child: AspectRatio(
-                        aspectRatio: 0.72,
-                        child: CardTheme(
-                          data: CardTheme.of(context).copyWith(elevation: 0),
-                          child: NovelCover(url: cover),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            l10n.bookmarksCount(bookmarks.length),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // 组头「继续阅读」：胶囊按钮，章节 + 卷内百分比取自本地进度。
-                    if (continueProgress != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      FilledButton.tonalIcon(
-                        key: ValueKey('novel_bookmark_continue_$pathWord'),
-                        onPressed: onContinue,
-                        icon: const Icon(Icons.play_arrow, size: 18),
-                        label: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 160),
-                          child: Text(
-                            _continueLabel(continueProgress!),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: cs.surfaceContainerHighest,
-                          foregroundColor: cs.onSurfaceVariant,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                          ),
-                          // 高度对齐详情页 FAB（48），压扁会显得局促。
-                          minimumSize: const Size(0, 48),
-                          textStyle: theme.textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+          BookmarkGroupHeader(
+            key: ValueKey('novel_bookmark_group_$pathWord'),
+            detailsKey: ValueKey('novel_bookmark_details_$pathWord'),
+            resumeKey: ValueKey('novel_bookmark_continue_$pathWord'),
+            name: name,
+            cover: CardTheme(
+              data: CardTheme.of(context).copyWith(elevation: 0),
+              child: NovelCover(url: cover),
             ),
+            count: bookmarks.length,
+            pinned: pinned,
+            enabled: !updating,
+            onPin: onPin,
+            onDelete: onClear,
+            onDetails: onDetails,
+            onResume: continueProgress == null ? null : onContinue,
+            chapter: continueProgress?.volumeName ?? '',
+            progress: continueProgress == null
+                ? ''
+                : '${_percentLabel(continueProgress!.progress)}%',
           ),
           if (!empty) ...[
             const Divider(

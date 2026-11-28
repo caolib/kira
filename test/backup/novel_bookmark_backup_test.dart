@@ -105,6 +105,73 @@ void main() {
     },
   );
 
+  test('组置顶导出、解析、恢复后保留；旧备份缺少字段时取消置顶', () async {
+    await novelStore.toggle(progress: _bookmark().position);
+    await _seedComic();
+    await novelStore.setGroupPinned('novel-a', true);
+    await comicStore.setGroupPinned('comic-a', true);
+    const categories = {BackupCategory.bookmarks};
+    final document = BackupDocument.parse(
+      await service.exportPlainText(
+        options: const SettingsBackupOptions(categories: categories),
+      ),
+    );
+    final keys = [
+      BookmarkStore.groupsStorageKey,
+      NovelBookmarkStore.groupsStorageKey,
+    ];
+    expect(
+      document.preferences.keys,
+      unorderedEquals([
+        ...keys,
+        'comic_bookmarks_v1',
+        NovelBookmarkStore.storageKey,
+      ]),
+    );
+    for (final key in keys) {
+      expect(document.preferences[key]!.type, 'string');
+      expect(jsonDecode(document.preferences[key]!.value.toString()), [
+        containsPair('pinned', true),
+      ]);
+    }
+    await novelStore.setGroupPinned('novel-a', false);
+    await comicStore.setGroupPinned('comic-a', false);
+    await service.restore(document, categories);
+    expect(novelStore.groups.single.pinned, isTrue);
+    expect(comicStore.groups.single.pinned, isTrue);
+    final legacy = backupDocument({
+      BookmarkStore.groupsStorageKey: jsonEncode([
+        comicStore.groups.single.toJson()..remove('pinned'),
+      ]),
+      NovelBookmarkStore.groupsStorageKey: jsonEncode([
+        novelStore.groups.single.toJson()..remove('pinned'),
+      ]),
+    });
+    await service.restore(legacy, categories);
+    expect(novelStore.groups.single.pinned, isFalse);
+    expect(comicStore.groups.single.pinned, isFalse);
+  });
+
+  test('拒绝非布尔值的组置顶字段', () {
+    for (final key in [
+      BookmarkStore.groupsStorageKey,
+      NovelBookmarkStore.groupsStorageKey,
+    ]) {
+      for (final invalid in [null, 'true', 1]) {
+        expect(
+          () => validateBackupRecords({
+            key: BackupPreference.fromValue(
+              jsonEncode([
+                {'pathWord': 'a', 'pinned': invalid},
+              ]),
+            ),
+          }),
+          throwsA(isA<SettingsBackupException>()),
+        );
+      }
+    }
+  });
+
   test('snapshot includes both types when selecting bookmarks', () async {
     await novelStore.toggle(progress: _bookmark().position);
     await _seedComic();
@@ -171,6 +238,27 @@ void main() {
     },
   );
 
+  test('备份恢复暂停时拦截两类置顶，恢复后可重试', () async {
+    final runtime = SettingsBackupRuntime();
+    await novelStore.addGroup(pathWord: 'book', name: '小说');
+    await comicStore.addGroup(pathWord: 'book', comicName: '漫画');
+    await runtime.pause();
+    try {
+      await novelStore.setGroupPinned('book', true);
+      await comicStore.setGroupPinned('book', true);
+      await novelStore.reload();
+      await comicStore.reload();
+      expect(novelStore.groups.single.pinned, isFalse);
+      expect(comicStore.groups.single.pinned, isFalse);
+    } finally {
+      runtime.resume();
+    }
+    await novelStore.setGroupPinned('book', true);
+    await comicStore.setGroupPinned('book', true);
+    expect(novelStore.groups.single.pinned, isTrue);
+    expect(comicStore.groups.single.pinned, isTrue);
+  });
+
   test('runtime restore pause also blocks novel bookmark writes', () async {
     final runtime = SettingsBackupRuntime();
     await novelStore.ensureLoaded();
@@ -191,6 +279,8 @@ void main() {
     () async {
       await novelStore.toggle(progress: _bookmark().position);
       await _seedComic();
+      await novelStore.setGroupPinned('novel-a', true);
+      await comicStore.setGroupPinned('comic-a', true);
       final oldJson = prefs.getString(NovelBookmarkStore.storageKey);
       service = SettingsBackupService(
         preferences: _FailOncePreferences(),
@@ -210,6 +300,8 @@ void main() {
       expect(prefs.getString(NovelBookmarkStore.storageKey), oldJson);
       expect(novelStore.bookmarks.single.volumeId, 'volume-1');
       expect(comicStore.bookmarks, hasLength(1));
+      expect(novelStore.groups.single.pinned, isTrue);
+      expect(comicStore.groups.single.pinned, isTrue);
     },
   );
 }

@@ -2758,8 +2758,26 @@ abstract class AppLocalizations {
   /// No description provided for @bookmarksSwipeHint.
   ///
   /// In zh, this message translates to:
-  /// **'向左滑动书签可以删除'**
+  /// **'左滑书签组可置顶或删除，左滑单条书签直接删除'**
   String get bookmarksSwipeHint;
+
+  /// No description provided for @bookmarkGroupPin.
+  ///
+  /// In zh, this message translates to:
+  /// **'置顶'**
+  String get bookmarkGroupPin;
+
+  /// No description provided for @bookmarkGroupUnpin.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消置顶'**
+  String get bookmarkGroupUnpin;
+
+  /// No description provided for @bookmarkGroupPinned.
+  ///
+  /// In zh, this message translates to:
+  /// **'已置顶'**
+  String get bookmarkGroupPinned;
 
   /// No description provided for @aboutTitle.
   ///
