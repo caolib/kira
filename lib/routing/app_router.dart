@@ -145,6 +145,7 @@ class NovelDetailExtra {
 class NovelReaderExtra {
   final String name;
   final String cover;
+  final List<String> tags;
   final int entryIndex;
   final int initialParagraphIndex;
   final double initialParagraphAlignment;
@@ -163,6 +164,7 @@ class NovelReaderExtra {
   const NovelReaderExtra({
     this.name = '',
     this.cover = '',
+    this.tags = const [],
     this.entryIndex = 0,
     this.initialParagraphIndex = 0,
     this.initialParagraphAlignment = 0,
@@ -377,6 +379,7 @@ GoRouter createAppRouter() {
             volumeId: state.pathParameters['volumeId']!,
             name: options.name,
             cover: options.cover,
+            tags: options.tags,
             initialEntryIndex: options.entryIndex,
             initialParagraphIndex: options.initialParagraphIndex,
             initialParagraphAlignment: options.initialParagraphAlignment,

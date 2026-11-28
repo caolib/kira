@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kira/models/novel_reading_progress.dart';
 import 'package:kira/models/reader_settings.dart';
 import 'package:kira/pages/stats_page.dart';
+import 'package:kira/providers/novel_providers.dart';
 import 'package:kira/utils/novel_reading_store.dart';
 import 'package:kira/utils/reading_stats.dart';
 import 'package:kira/widgets/app_sheet.dart';
@@ -15,7 +17,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_helpers.dart';
 
-Widget _buildTestApp(Widget child) => wrapWithApp(child, wrapInScaffold: false);
+Widget _buildTestApp(Widget child) =>
+    ProviderScope(child: wrapWithApp(child, wrapInScaffold: false));
 
 String _dayKey(DateTime date) =>
     '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -159,6 +162,41 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('已有阅读记录缺标签时从本机补齐，不必再读一章', (tester) async {
+    await ReaderSettings().setReadingStatsEnabled(true);
+    await ReadingStats.recordNovelReading(
+      pathWord: 'book',
+      volumeId: 'v1',
+      entryIndex: 1,
+      paragraphIndex: 0,
+      text: '正文',
+      start: 0,
+      end: 2,
+    );
+    final lookups = <String>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localNovelTagsProvider.overrideWithValue((pathWord) async {
+            lookups.add(pathWord);
+            return ['日常'];
+          }),
+        ],
+        child: wrapWithApp(const StatsPage(), wrapInScaffold: false),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final tag = _within('novel', find.text('日常'));
+    await _showPageItem(tester, tag);
+    expect(tag, findsOneWidget);
+    expect(lookups, ['book']);
+    ReadingStats.reloadFromPrefs();
+    final stats = await ReadingStats.load();
+    expect(stats.novelMeta['book']!.tags, ['日常']);
+    expect(novelWordsReadCount(stats), 2);
+    expect(novelChaptersReadCount(stats), 1);
+  });
 
   testWidgets('reference hint appears once below the statistics', (
     tester,
@@ -663,9 +701,7 @@ void main() {
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await ReaderSettings().setReadingStatsEnabled(true);
-    await tester.pumpWidget(
-      wrapWithApp(const StatsPage(), wrapInScaffold: false),
-    );
+    await tester.pumpWidget(_buildTestApp(const StatsPage()));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.tune_rounded));
     await tester.pumpAndSettle();

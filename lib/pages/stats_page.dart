@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/reader_settings.dart';
+import '../providers/novel_providers.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -25,14 +27,14 @@ import '../widgets/shimmer_skeleton.dart';
 ///   已开启态，小说统计全零时可从本地断点初始化，之后随实际阅读增量累积。
 /// - 已开启：同一滚动页展示漫画与小说分区；各自配置概览、常看类型及
 ///   阅读活跃度。所有数据只读本地统计快照，零网络。
-class StatsPage extends StatefulWidget {
+class StatsPage extends ConsumerStatefulWidget {
   const StatsPage({super.key});
 
   @override
-  State<StatsPage> createState() => _StatsPageState();
+  ConsumerState<StatsPage> createState() => _StatsPageState();
 }
 
-class _StatsPageState extends State<StatsPage> {
+class _StatsPageState extends ConsumerState<StatsPage> {
   final _reader = ReaderSettings();
 
   bool _loading = false;
@@ -55,6 +57,8 @@ class _StatsPageState extends State<StatsPage> {
     });
     try {
       await ReadingStats.initializeNovelsFromHistory();
+      if (!mounted) return;
+      await ReadingStats.fillMissingNovelTags(ref.read(localNovelTagsProvider));
       final snap = await ReadingStats.load();
       if (!mounted) return;
       setState(() {

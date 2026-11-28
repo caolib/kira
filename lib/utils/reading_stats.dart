@@ -114,9 +114,9 @@ class ReadingStats {
         generation != _generation) {
       return;
     }
+    final existing = data.novelMeta[pathWord];
     final novel =
-        data.novelMeta[pathWord] ??
-        _NovelStatData(name: '', tags: const [], chapters: {});
+        existing ?? _NovelStatData(name: '', tags: const [], chapters: {});
     if (novel.rangeDay != today) {
       novel.ranges.clear();
       novel.rangeDay = today;
@@ -125,13 +125,15 @@ class ReadingStats {
     final key = jsonEncode([volumeId, entryIndex, paragraphIndex]);
     final ranges = novel.ranges.putIfAbsent(key, NovelReadingRanges.new);
     final added = ranges.add(text, start, end);
-    if (added == 0) return;
+    if (added == 0 && existing == null) return;
+    final filledTags = novel.fillMissingTags(tags);
+    if (added == 0) {
+      if (filledTags) _scheduleFlush(novel: true);
+      return;
+    }
     data.novelMeta[pathWord] = novel;
     if (novelName != null && novelName.isNotEmpty && novel.name.isEmpty) {
       novel.name = novelName;
-    }
-    if (tags != null && tags.isNotEmpty && novel.tags.isEmpty) {
-      novel.tags = List<String>.unmodifiable(tags);
     }
     final chapters = novel.chapters.putIfAbsent(volumeId, () => {});
     chapters[entryIndex.toString()] = today;
@@ -228,6 +230,27 @@ class ReadingStats {
         );
       },
     );
+  }
+
+  /// 只给已读作品补真实题材，不改变字数、章节或活跃度。
+  static Future<void> fillMissingNovelTags(
+    Future<List<String>> Function(String pathWord) lookup,
+  ) async {
+    final generation = _generation;
+    bool active() =>
+        isEnabled &&
+        !_restoring &&
+        _clearing == null &&
+        generation == _generation;
+    if (!active()) return;
+    final data = await _loadCache();
+    for (final entry in data.novelMeta.entries.toList()) {
+      if (!active()) return;
+      if (entry.value.tags.isNotEmpty) continue;
+      final tags = await lookup(entry.key);
+      if (!active()) return;
+      if (entry.value.fillMissingTags(tags)) _scheduleFlush(novel: true);
+    }
   }
 
   /// 冲刷待写后返回不可变快照。
@@ -678,6 +701,17 @@ class _NovelStatData {
   int totalWords;
   String? rangeDay;
   final Map<String, NovelReadingRanges> ranges;
+
+  bool fillMissingTags(List<String>? incoming) {
+    if (tags.isNotEmpty || incoming == null || incoming.isEmpty) return false;
+    final names = incoming
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    if (names.isEmpty) return false;
+    tags = List.unmodifiable(names);
+    return true;
+  }
 
   _NovelStatData({
     required this.name,

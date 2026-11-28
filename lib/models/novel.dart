@@ -76,6 +76,12 @@ class NovelBook {
     this.lastChapterName,
   });
 
+  List<String> get themeNames => themes
+      .map((theme) => theme.name.trim())
+      .where((name) => name.isNotEmpty)
+      .toSet()
+      .toList(growable: false);
+
   factory NovelBook.fromJson(Map<String, dynamic> json) {
     final status = jsonMap(json, 'status');
     final region = jsonMap(json, 'region');

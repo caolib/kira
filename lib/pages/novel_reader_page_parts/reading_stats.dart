@@ -54,8 +54,21 @@ extension _NovelReaderStatsPart on _NovelReaderPageState {
                 .book,
           ),
     ];
+    if (records.isEmpty) return;
     final fallbackName = _fallbackName;
+    // 题材属于书而非卷；分卷响应可能只携带精简书籍信息。
+    var tags = widget.tags;
+    if (tags.isEmpty) {
+      for (final book in records.map((record) => record.book).toSet()) {
+        tags = book?.themeNames ?? const [];
+        if (tags.isNotEmpty) break;
+      }
+    }
+    final localTags = tags.isEmpty
+        ? (_localStatsTags ??= ref.read(localNovelTagsProvider)(pathWord))
+        : null;
     _statsQueue = _statsQueue.then((_) async {
+      final bookTags = localTags == null ? tags : await localTags;
       for (final record in records) {
         try {
           await ReadingStats.recordNovelReading(
@@ -69,7 +82,7 @@ extension _NovelReaderStatsPart on _NovelReaderPageState {
             novelName: record.book?.name.isNotEmpty == true
                 ? record.book!.name
                 : fallbackName,
-            tags: record.book?.themes.map((tag) => tag.name).toList(),
+            tags: bookTags,
             readAt: readAt,
           );
         } catch (error, stack) {

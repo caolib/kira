@@ -115,6 +115,19 @@ void main() {
     },
   );
 
+  test('当天只重读同一段也能补标签，冷启动不增加阅读量', () async {
+    await record(entry: 1);
+    await record();
+    await coldStart();
+    await record(tags: ['奇幻']);
+    await coldStart();
+    final snap = await ReadingStats.load();
+    expect(topNovelTags(snap).single.name, '奇幻');
+    expect(topNovelTags(snap).single.count, 2);
+    expect(novelWordsReadCount(snap), 20);
+    expect(snap.novelDaily.values.single, 20);
+  });
+
   test('chapter and paragraph identity includes book and volume', () async {
     await Future.wait([
       record(tags: ['奇幻']),

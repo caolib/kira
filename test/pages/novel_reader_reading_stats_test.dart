@@ -38,6 +38,17 @@ class _Api implements NovelApi {
 }
 
 class _Repository implements NovelRepository {
+  _Repository({this.cachedBook});
+  final NovelBook? cachedBook;
+  final detailReads = <String>[];
+
+  @override
+  Future<NovelDetail?> loadDetailFromCache(String pathWord) async {
+    detailReads.add(pathWord);
+    final book = cachedBook;
+    return book == null ? null : NovelDetail(book: book);
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => throw StateError(
     'Unexpected repository access: ${invocation.memberName}',
@@ -119,13 +130,10 @@ NovelVolumeContent _content(
   List<NovelReaderEntry> entries, {
   String id = 'v1',
   String? next,
+  List<NovelTag> themes = const [NovelTag(name: '幻想', pathWord: 'fantasy')],
 }) => NovelVolumeContent(
   detail: NovelVolumeDetail(
-    book: const NovelBook(
-      pathWord: 'book',
-      name: '本地小说',
-      themes: [NovelTag(name: '幻想', pathWord: 'fantasy')],
-    ),
+    book: NovelBook(pathWord: 'book', name: '本地小说', themes: themes),
     volume: NovelVolume(
       id: id,
       name: id,
@@ -159,6 +167,8 @@ Future<void> _mount(
   int initialParagraph = 0,
   double alignment = 0,
   bool enabled = true,
+  List<String> tags = const [],
+  _Repository? repository,
   _History? history,
   bool resume = false,
 }) async {
@@ -171,7 +181,7 @@ Future<void> _mount(
     ProviderScope(
       overrides: [
         novelApiProvider.overrideWithValue(_Api()),
-        novelRepositoryProvider.overrideWithValue(_Repository()),
+        novelRepositoryProvider.overrideWithValue(repository ?? _Repository()),
         novelReadingStoreProvider.overrideWithValue(history ?? _History()),
         novelBookmarkStoreProvider.overrideWithValue(
           NovelBookmarkStore.forTesting(prefs: Future.value(prefs)),
@@ -181,6 +191,7 @@ Future<void> _mount(
         NovelReaderPage(
           pathWord: 'book',
           volumeId: volume,
+          tags: tags,
           initialEntryIndex: initialEntry,
           initialParagraphIndex: initialParagraph,
           initialParagraphAlignment: alignment,
@@ -328,6 +339,33 @@ void main() {
         settings: NovelReaderSettings(mode: mode, keepScreenOn: false),
       );
       expect((await _stats(tester)).novelMeta, isEmpty);
+      await _remove(tester);
+    });
+  }
+
+  for (final fromDetail in [true, false]) {
+    testWidgets('分卷没有标签，从${fromDetail ? '详情入口' : '本机缓存'}取得题材', (tester) async {
+      final repository = _Repository(
+        cachedBook: const NovelBook(
+          pathWord: 'book',
+          name: '小说',
+          themes: [NovelTag(name: '日常', pathWord: 'daily')],
+        ),
+      );
+      await _mount(
+        tester,
+        _Source({
+          'v1': _content([
+            _entry(0, ['甲乙', '丙丁']),
+          ], themes: []),
+        }),
+        repository: repository,
+        tags: fromDetail ? ['奇幻'] : [],
+      );
+      final snapshot = await _stats(tester);
+      expect(topNovelTags(snapshot).single.name, fromDetail ? '奇幻' : '日常');
+      expect(topNovelTags(snapshot).single.count, 1);
+      expect(repository.detailReads, fromDetail ? isEmpty : ['book']);
       await _remove(tester);
     });
   }

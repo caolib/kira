@@ -540,6 +540,7 @@ class _NovelDetailPageState extends ConsumerState<NovelDetailPage> {
         extra: NovelReaderExtra(
           name: local?.name ?? book?.name ?? '',
           cover: local?.cover ?? book?.cover ?? '',
+          tags: book?.themeNames ?? const [],
           entryIndex: local?.entryIndex ?? 0,
           resume: volume == null && (local != null || _remoteVolumeId != null),
         ),

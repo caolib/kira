@@ -57,6 +57,7 @@ class NovelReaderPage extends ConsumerStatefulWidget {
     required this.volumeId,
     this.name = '',
     this.cover = '',
+    this.tags = const [],
     this.initialEntryIndex = 0,
     this.initialParagraphIndex = 0,
     this.initialParagraphAlignment = 0,
@@ -71,6 +72,7 @@ class NovelReaderPage extends ConsumerStatefulWidget {
   final String volumeId;
   final String name;
   final String cover;
+  final List<String> tags;
   final int initialEntryIndex;
   final int initialParagraphIndex;
   final double initialParagraphAlignment;
@@ -143,6 +145,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   Timer? _saveTimer;
   Future<void> _lastWrite = Future<void>.value();
   Future<void> _statsQueue = Future<void>.value();
+  Future<List<String>>? _localStatsTags;
   final _statsSettings = ReaderSettings();
   bool _statsEnabled = ReadingStats.isEnabled;
   bool _statsForeground = true;
@@ -495,6 +498,7 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
     final session = ++_session;
     ++_request;
     _pathWord = widget.pathWord;
+    _localStatsTags = null;
     _volumeId = widget.volumeId;
     _source = widget.source ?? RepositoryNovelReaderSource(_repository);
     _fallbackName = widget.name;
