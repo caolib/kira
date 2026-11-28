@@ -306,6 +306,7 @@ extension _ChapterCommentPosting on _ChapterCommentsSheetState {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       constraints: BoxConstraints(
+        maxWidth: AppSheet.maxWidth,
         maxHeight:
             MediaQuery.sizeOf(context).height *
             _ChapterCommentsSheetState._sheetMaxHeightFactor,
@@ -326,7 +327,7 @@ extension _ChapterCommentPosting on _ChapterCommentsSheetState {
           child: Padding(
             padding: EdgeInsets.only(bottom: keyboard),
             child: SizedBox(
-              width: sheetSize.width,
+              width: double.infinity,
               height: sheetHeight,
               child: ExcludeSemantics(
                 child: CommentSettingsPanel(

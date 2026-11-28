@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kira/l10n/app_localizations.dart';
 import 'package:kira/widgets/app_sheet.dart';
 
 import '../test_helpers.dart';
@@ -16,26 +15,21 @@ Future<void> _openSheet(
   tester.view.physicalSize = const Size(400, 800);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    MaterialApp(
-      locale: const Locale('zh'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+    wrapWithApp(
+      Builder(
+        builder: (context) => TextButton(
+          onPressed: () => showAppSheet<void>(
+            context,
+            heightFactor: heightFactor,
+            maxHeightFactor: maxHeightFactor,
+            child: child,
+          ),
+          child: const Text('打开'),
+        ),
+      ),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(padding: padding),
         child: child!,
-      ),
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showAppSheet<void>(
-              context,
-              heightFactor: heightFactor,
-              maxHeightFactor: maxHeightFactor,
-              child: child,
-            ),
-            child: const Text('打开'),
-          ),
-        ),
       ),
     ),
   );
@@ -46,6 +40,27 @@ Future<void> _openSheet(
 void main() {
   setUp(setupSecureCredentialStoreForTest);
   tearDown(teardownSecureCredentialStoreForTest);
+
+  testWidgets('弹层打开后随窗口调整宽度，宽屏限宽并居中', (tester) async {
+    await _openSheet(
+      tester,
+      child: const SizedBox(width: double.infinity, height: 80),
+    );
+    final sheet = find.byType(AppSheet);
+    expect(tester.getRect(sheet).width, closeTo(400, 0.01));
+
+    tester.view.physicalSize = const Size(1000, 800);
+    await tester.pumpAndSettle();
+    final wideRect = tester.getRect(sheet);
+    expect(wideRect.width, closeTo(640, 0.01));
+    expect(wideRect.center.dx, closeTo(500, 0.01));
+    expect(wideRect.bottom, closeTo(800, 0.01));
+
+    tester.view.physicalSize = const Size(375, 800);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(sheet).width, closeTo(375, 0.01));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('最大高度包含把手和底部安全区，长内容可以滚动', (tester) async {
     await _openSheet(

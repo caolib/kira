@@ -273,6 +273,7 @@ extension _ComicActions on _ComicCommentsSheetState {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       constraints: BoxConstraints(
+        maxWidth: AppSheet.maxWidth,
         maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       ),
       builder: (sheetContext) {
@@ -288,7 +289,7 @@ extension _ComicActions on _ComicCommentsSheetState {
           child: Padding(
             padding: EdgeInsets.only(bottom: keyboard),
             child: SizedBox(
-              width: sheetSize.width,
+              width: double.infinity,
               height: sheetHeight,
               child: ExcludeSemantics(
                 child: CommentSettingsPanel(

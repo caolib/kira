@@ -493,6 +493,7 @@ class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
           ? AnimationStyle.noAnimation
           : null,
       constraints: BoxConstraints(
+        maxWidth: AppSheet.maxWidth,
         maxHeight: MediaQuery.sizeOf(context).height * 0.7,
       ),
       builder: (_) => _ReaderSettingsPanel(

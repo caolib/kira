@@ -240,6 +240,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('宽屏评论设置限宽居中，键盘弹出时面板底边仍抬起', (tester) async {
+    const size = Size(1000, 700);
+    await pumpCommentsSheet(tester, viewSize: size);
+    await tester.tap(find.byTooltip('评论区设置'));
+    await tester.pumpAndSettle();
+
+    final panel = find.byType(CommentSettingsPanel);
+    final before = tester.getRect(panel);
+    expect(before.width, closeTo(640, 0.01));
+    expect(before.center.dx, closeTo(size.width / 2, 0.01));
+    expect(before.bottom, closeTo(size.height, 0.01));
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+    final after = tester.getRect(panel);
+    expect(after.width, closeTo(before.width, 0.01));
+    expect(after.center.dx, closeTo(before.center.dx, 0.01));
+    expect(after.top, closeTo(before.top, 0.01));
+    expect(after.bottom, closeTo(size.height - 240, 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('隐藏工具组不接收点击，减少动画时直接显隐', (tester) async {
     await pumpCommentsSheet(
       tester,

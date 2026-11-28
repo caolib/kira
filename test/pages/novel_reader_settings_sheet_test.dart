@@ -829,6 +829,20 @@ void main() {
     });
   }
 
+  testWidgets('宽屏阅读主题子面板仍全屏显示', (tester) async {
+    const size = Size(1000, 700);
+    await _mount(tester, size: size, onChanged: (_) {});
+    expect(tester.getSize(find.byType(AppSheet)).width, closeTo(640, 0.01));
+
+    await _openTheme(tester);
+    final themeSheet = find.ancestor(
+      of: find.byKey(const ValueKey('novel-theme-settings-sheet')),
+      matching: find.byType(AppSheet),
+    );
+    expect(tester.getSize(themeSheet), size);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'closing unchanged theme or switching edit mode does not submit',
     (tester) async {

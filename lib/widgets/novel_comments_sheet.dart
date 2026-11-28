@@ -581,6 +581,7 @@ class _NovelCommentsSheetState extends ConsumerState<NovelCommentsSheet> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       constraints: BoxConstraints(
+        maxWidth: AppSheet.maxWidth,
         maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       ),
       builder: (sheetContext) {
@@ -596,7 +597,7 @@ class _NovelCommentsSheetState extends ConsumerState<NovelCommentsSheet> {
           child: Padding(
             padding: EdgeInsets.only(bottom: keyboard),
             child: SizedBox(
-              width: sheetSize.width,
+              width: double.infinity,
               height: sheetHeight,
               child: CommentSettingsPanel(
                 isChapterComments: false,

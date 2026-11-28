@@ -114,6 +114,7 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
       context,
       heightFactor: 1,
       maxHeightFactor: 1,
+      maxWidth: double.infinity,
       child: _NovelThemeSettingsSheet(
         settings: initial,
         fontFamily: widget.fontFamily,

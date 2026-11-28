@@ -1707,6 +1707,8 @@ void main() {
       final rect = tester.getRect(sheet);
       expect(rect.height, lessThanOrEqualTo(size.height * 0.7 + 0.01));
       expect(rect.bottom, closeTo(size.height, 0.01));
+      expect(rect.width, closeTo(size.width <= 640 ? size.width : 640, 0.01));
+      expect(rect.center.dx, closeTo(size.width / 2, 0.01));
       final keepScreenOn = find.byKey(const ValueKey('novel-keep-screen-on'));
       await tester.ensureVisible(keepScreenOn);
       await _settle(tester);

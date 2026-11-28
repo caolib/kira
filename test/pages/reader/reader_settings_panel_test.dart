@@ -685,6 +685,19 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('横屏阅读设置限宽且底部居中，保留高度上限', (tester) async {
+    const size = Size(1000, 520);
+    await _pumpReader(tester, size: size);
+    await _openSettings(tester);
+
+    final rect = tester.getRect(find.byType(AppSheet));
+    expect(rect.width, closeTo(640, 0.01));
+    expect(rect.center.dx, closeTo(size.width / 2, 0.01));
+    expect(rect.bottom, closeTo(size.height, 0.01));
+    expect(rect.height, lessThanOrEqualTo(size.height * 0.7 + 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('窄屏大字下设置面板与展开分组不溢出', (tester) async {
     await _pumpReader(
       tester,

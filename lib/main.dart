@@ -33,6 +33,7 @@ import 'utils/kira_links.dart';
 import 'utils/network_proxy.dart';
 import 'utils/novel_download_manager.dart';
 import 'utils/settings_backup.dart';
+import 'widgets/app_sheet.dart';
 import 'widgets/backup_recovery_app.dart';
 import 'widgets/startup_failure_app.dart';
 
@@ -574,6 +575,7 @@ class _KiraAppState extends ConsumerState<KiraApp> with WidgetsBindingObserver {
         shape: RoundedRectangleBorder(borderRadius: AppRadius.xlR),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
+        constraints: BoxConstraints(maxWidth: AppSheet.maxWidth),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
