@@ -138,6 +138,36 @@ void main() {
     );
   }
 
+  test('章节自动定位沿用布尔设置备份，旧备份恢复为关闭', () async {
+    const key = 'reader_auto_locate_last_read_chapter';
+    expect(settings.autoLocateLastReadChapter, isFalse);
+    final legacy = await exportThroughCodec();
+    expect(legacy.preferences[key], isNull);
+
+    platform
+      ..failKey = key
+      ..failValue = true;
+    await expectLater(
+      settings.setAutoLocateLastReadChapter(true),
+      throwsStateError,
+    );
+    expect(settings.autoLocateLastReadChapter, isFalse);
+    expect((await SharedPreferences.getInstance()).getBool(key), isNull);
+
+    await settings.setAutoLocateLastReadChapter(true);
+    await recreate();
+    expect(settings.autoLocateLastReadChapter, isTrue);
+    final enabled = await exportThroughCodec();
+    expect(enabled.preferences[key]?.type, 'bool');
+    expect(enabled.preferences[key]?.value, isTrue);
+
+    await service.restore(legacy, {BackupCategory.settings});
+    expect(settings.autoLocateLastReadChapter, isFalse);
+    await service.restore(enabled, {BackupCategory.settings});
+    await recreate();
+    expect(settings.autoLocateLastReadChapter, isTrue);
+  });
+
   test('all seven keys have exact portable settings types', () {
     for (final entry in _newTypes.entries) {
       expect(

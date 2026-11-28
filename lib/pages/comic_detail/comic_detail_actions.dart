@@ -220,7 +220,7 @@ extension _ComicDetailActions on _ComicDetailPageState {
             chapterListPage: _chapterPage,
           ),
         )
-        .then((_) => _loadLocalHistory());
+        .then((_) => _loadLocalHistory(locateAfterLoad: true));
   }
 
   /// 通过系统分享面板分享漫画的 https 落地页链接（见 [KiraLinks.comicShareUrl]），

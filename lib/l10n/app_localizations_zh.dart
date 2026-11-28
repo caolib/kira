@@ -288,6 +288,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sortNormal => '正序（旧→新）';
 
   @override
+  String get comicDetailEnableAutoLocate => '开启自动定位上次阅读章节';
+
+  @override
+  String get comicDetailDisableAutoLocate => '关闭自动定位上次阅读章节';
+
+  @override
   String get openDownloadFolder => '打开下载位置';
 
   @override
@@ -4438,6 +4444,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get sortNormal => '正序（舊→新）';
+
+  @override
+  String get comicDetailEnableAutoLocate => '開啟自動定位上次閱讀章節';
+
+  @override
+  String get comicDetailDisableAutoLocate => '關閉自動定位上次閱讀章節';
 
   @override
   String get openDownloadFolder => '開啟下載位置';

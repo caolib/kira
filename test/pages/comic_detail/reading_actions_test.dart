@@ -14,7 +14,8 @@ void main() {
     double textScale = 1,
     VoidCallback? onContinue,
     VoidCallback? onNext,
-    VoidCallback? onDownloads,
+    VoidCallback? onBackToTop,
+    bool showBackToTop = true,
   }) => tester.pumpWidget(
     wrapWithApp(
       Builder(
@@ -31,7 +32,7 @@ void main() {
                 onContinue: onContinue ?? () {},
                 nextLabel: '第124话 下一章节名称',
                 onNext: onNext ?? () {},
-                onDownloads: onDownloads ?? () {},
+                onBackToTop: showBackToTop ? onBackToTop ?? () {} : null,
               ),
             ),
           ),
@@ -50,14 +51,16 @@ void main() {
       final next = tester.getRect(
         find.byKey(const ValueKey('comic_next_action')),
       );
-      final downloads = tester.getRect(
-        find.byKey(const ValueKey('comic_downloads_action')),
+      final backToTop = tester.getRect(
+        find.byKey(const ValueKey('comic_back_to_top_action')),
       );
-      expect(next.top, closeTo(continuing.top, 0.01));
-      expect(next.bottom, closeTo(continuing.bottom, 0.01));
+      final row = tester.getRect(find.byType(ComicDetailReadingActions));
+      expect(backToTop.center.dy, closeTo(continuing.center.dy, 0.01));
+      expect(next.center.dy, closeTo(continuing.center.dy, 0.01));
+      expect(backToTop.right, lessThan(next.left));
       expect(next.right, lessThan(continuing.left));
-      expect(downloads.bottom, lessThan(next.top));
-      expect(downloads.right, closeTo(continuing.right, 0.01));
+      expect(backToTop.left, closeTo(row.left, 0.01));
+      expect(continuing.right, closeTo(row.right, 0.01));
     });
   }
 
@@ -68,7 +71,7 @@ void main() {
       of: subject,
       matching: find.byType(Material),
     );
-    for (final action in ['continue', 'next', 'downloads']) {
+    for (final action in ['continue', 'next', 'back_to_top']) {
       expect(
         find.ancestor(
           of: find.byKey(ValueKey('comic_${action}_action')),
@@ -79,7 +82,7 @@ void main() {
     }
   });
 
-  testWidgets('下一话出现时使用主色，继续阅读和下载使用次色', (tester) async {
+  testWidgets('下一话使用主色，继续阅读和回顶使用次色', (tester) async {
     await pumpActions(tester);
     final cs = Theme.of(
       tester.element(find.byType(ComicDetailReadingActions)),
@@ -90,12 +93,12 @@ void main() {
     final continuing = tester.widget<FloatingActionButton>(
       find.byKey(const ValueKey('comic_continue_action')),
     );
-    final downloads = tester.widget<FloatingActionButton>(
-      find.byKey(const ValueKey('comic_downloads_action')),
+    final backToTop = tester.widget<FloatingActionButton>(
+      find.byKey(const ValueKey('comic_back_to_top_action')),
     );
     expect(next.backgroundColor, cs.primaryContainer);
     expect(next.foregroundColor, cs.onPrimaryContainer);
-    for (final secondary in [continuing, downloads]) {
+    for (final secondary in [continuing, backToTop]) {
       expect(secondary.backgroundColor, cs.secondaryContainer);
       expect(secondary.foregroundColor, cs.onSecondaryContainer);
     }
@@ -117,33 +120,54 @@ void main() {
     expect(continuing.foregroundColor, cs.onPrimaryContainer);
   });
 
-  testWidgets('继续阅读、下一话、下载中心保留各自回调', (tester) async {
+  testWidgets('继续阅读、下一话、回顶保留各自回调', (tester) async {
     final calls = <String>[];
     await pumpActions(
       tester,
       onContinue: () => calls.add('continue'),
       onNext: () => calls.add('next'),
-      onDownloads: () => calls.add('downloads'),
+      onBackToTop: () => calls.add('back_to_top'),
     );
-    for (final action in ['continue', 'next', 'downloads']) {
+    for (final action in ['continue', 'next', 'back_to_top']) {
       await tester.tap(find.byKey(ValueKey('comic_${action}_action')));
     }
-    expect(calls, ['continue', 'next', 'downloads']);
-    expect(find.byTooltip('下载中心'), findsOneWidget);
+    final backToTop = find.byTooltip('回到顶部');
+    expect(calls, ['continue', 'next', 'back_to_top']);
+    expect(tester.getSize(backToTop).shortestSide, greaterThanOrEqualTo(48));
+    expect(find.byIcon(Icons.vertical_align_top), findsOneWidget);
   });
 
-  testWidgets('只提供下载中心时不显示阅读按钮', (tester) async {
+  testWidgets('回顶的显隐不改变右侧阅读按钮的位置', (tester) async {
+    final next = find.byKey(const ValueKey('comic_next_action'));
+    final continuing = find.byKey(const ValueKey('comic_continue_action'));
+    await pumpActions(tester, textScale: 2, showBackToTop: false);
+    final nextRect = tester.getRect(next);
+    final continueRect = tester.getRect(continuing);
+    expect(find.byTooltip('回到顶部'), findsNothing);
+
+    await pumpActions(tester, textScale: 2);
+    expect(find.byTooltip('回到顶部'), findsOneWidget);
+    expect(tester.getRect(next), nextRect);
+    expect(tester.getRect(continuing), continueRect);
+  });
+
+  testWidgets('没有阅读历史时也能单独显示回顶按钮', (tester) async {
     await tester.pumpWidget(
       wrapWithApp(
         ComicDetailReadingActions(
           continueLabel: '',
           onContinue: null,
-          onDownloads: () {},
+          onBackToTop: () {},
         ),
       ),
     );
     expect(find.byKey(const ValueKey('comic_continue_action')), findsNothing);
     expect(find.byKey(const ValueKey('comic_next_action')), findsNothing);
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+    final backToTop = find.byType(FloatingActionButton);
+    expect(backToTop, findsOneWidget);
+    expect(
+      tester.getTopLeft(backToTop).dx,
+      tester.getTopLeft(find.byType(ComicDetailReadingActions)).dx,
+    );
   });
 }

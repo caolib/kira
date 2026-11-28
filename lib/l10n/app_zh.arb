@@ -144,6 +144,8 @@
   "selectAll": "全选",
   "sortReverse": "逆序（新→旧）",
   "sortNormal": "正序（旧→新）",
+  "comicDetailEnableAutoLocate": "开启自动定位上次阅读章节",
+  "comicDetailDisableAutoLocate": "关闭自动定位上次阅读章节",
   "openDownloadFolder": "打开下载位置",
   "batchManage": "批量管理",
   "comicLabel": "漫画",

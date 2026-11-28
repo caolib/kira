@@ -1,14 +1,16 @@
 part of '../comic_detail_page.dart';
 
 extension _ComicDetailSlivers on _ComicDetailPageState {
-  List<Widget> _buildInfoSlivers(ColorScheme cs, TextTheme tt, Comic comic) {
+  Widget _buildComicInfo(ColorScheme cs, TextTheme tt, Comic comic) {
     final authors = comic.authors
         .where((author) => author.name.trim().isNotEmpty)
         .toList();
-    return [
-      // ── 漫画信息卡片 ──
-      SliverToBoxAdapter(
-        child: Padding(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── 漫画信息卡片 ──
+        Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,11 +135,9 @@ extension _ComicDetailSlivers on _ComicDetailPageState {
             ],
           ),
         ),
-      ),
-      // ── 简介 ──（横屏左栏空间充裕，默认展开；竖屏仍折叠 3 行）
-      if (comic.brief != null && comic.brief!.isNotEmpty)
-        SliverToBoxAdapter(
-          child: Padding(
+        // ── 简介 ──（横屏左栏空间充裕，默认展开；竖屏仍折叠 3 行）
+        if (comic.brief != null && comic.brief!.isNotEmpty)
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Builder(
               builder: (context) {
@@ -160,143 +160,136 @@ extension _ComicDetailSlivers on _ComicDetailPageState {
               },
             ),
           ),
-        ),
-      SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _buildDetailActions(comic),
-        ),
-      ),
-    ];
+      ],
+    );
   }
 
-  List<Widget> _buildChapterSlivers(ColorScheme cs, TextTheme tt, Comic comic) {
+  Widget _buildDetailActionRow(Comic comic) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    child: _buildDetailActions(comic),
+  );
+
+  List<Widget> _buildChapterControls(ColorScheme cs, Comic comic) {
     return [
       // ── 分组切换 ──
       if (comic.groups != null && comic.groups!.isNotEmpty)
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: _totalPages <= 1
-                // 无分页时把排序按钮放到分组按钮后面，节省空间
-                ? Row(
-                    children: [
-                      Expanded(child: _buildGroupSegments(comic)),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 160),
-                        child: _refreshingComic
-                            ? const Padding(
-                                key: ValueKey('comic_detail_refreshing'),
-                                padding: EdgeInsets.only(left: 8),
-                                child: SizedBox.square(
-                                  dimension: 38,
-                                  child: Center(
-                                    child: SizedBox.square(
-                                      dimension: 22,
-                                      child: ExpressiveLoadingIndicator(),
-                                    ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: _totalPages <= 1
+              // 无分页时把排序按钮放到分组按钮后面，节省空间
+              ? Row(
+                  children: [
+                    Expanded(child: _buildGroupSegments(comic)),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 160),
+                      child: _refreshingComic
+                          ? const Padding(
+                              key: ValueKey('comic_detail_refreshing'),
+                              padding: EdgeInsets.only(left: 8),
+                              child: SizedBox.square(
+                                dimension: 38,
+                                child: Center(
+                                  child: SizedBox.square(
+                                    dimension: 22,
+                                    child: ExpressiveLoadingIndicator(),
                                   ),
                                 ),
-                              )
-                            : const SizedBox.shrink(
-                                key: ValueKey('comic_detail_not_refreshing'),
                               ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: _buildSortButton(cs),
-                      ),
-                    ],
-                  )
-                : _buildGroupSegments(comic),
-          ),
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey('comic_detail_not_refreshing'),
+                            ),
+                    ),
+                    _buildChapterListActions(cs),
+                  ],
+                )
+              : _buildGroupSegments(comic),
         ),
       // ── 分页 + 排序 ──
       if (_totalPages > 1)
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(_totalPages, (i) {
-                        final isSelected = i == _chapterPage;
-                        final pageButtonShape = RoundedRectangleBorder(
-                          borderRadius: AppRadius.mdR,
-                        );
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: isSelected
-                              ? FilledButton(
-                                  onPressed: () {},
-                                  style: FilledButton.styleFrom(
-                                    minimumSize: const Size(38, 38),
-                                    maximumSize: const Size(38, 38),
-                                    fixedSize: const Size(38, 38),
-                                    padding: EdgeInsets.zero,
-                                    backgroundColor: cs.primary,
-                                    foregroundColor: cs.onPrimary,
-                                    disabledBackgroundColor: cs.primary,
-                                    disabledForegroundColor: cs.onPrimary,
-                                    shape: pageButtonShape,
-                                    tapTargetSize: MaterialTapTargetSize.padded,
-                                    visualDensity: VisualDensity.standard,
-                                  ),
-                                  child: Text('${i + 1}'),
-                                )
-                              : FilledButton.tonal(
-                                  onPressed: () => _loadChapterPage(i),
-                                  style: FilledButton.styleFrom(
-                                    minimumSize: const Size(38, 38),
-                                    maximumSize: const Size(38, 38),
-                                    fixedSize: const Size(38, 38),
-                                    padding: EdgeInsets.zero,
-                                    backgroundColor: cs.surfaceContainerHigh,
-                                    foregroundColor: cs.onSurfaceVariant,
-                                    shape: pageButtonShape,
-                                    tapTargetSize: MaterialTapTargetSize.padded,
-                                    visualDensity: VisualDensity.standard,
-                                  ),
-                                  child: Text('${i + 1}'),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: List.generate(_totalPages, (i) {
+                      final isSelected = i == _chapterPage;
+                      final pageButtonShape = RoundedRectangleBorder(
+                        borderRadius: AppRadius.mdR,
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: isSelected
+                            ? FilledButton(
+                                onPressed: () {},
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(38, 38),
+                                  maximumSize: const Size(38, 38),
+                                  fixedSize: const Size(38, 38),
+                                  padding: EdgeInsets.zero,
+                                  backgroundColor: cs.primary,
+                                  foregroundColor: cs.onPrimary,
+                                  disabledBackgroundColor: cs.primary,
+                                  disabledForegroundColor: cs.onPrimary,
+                                  shape: pageButtonShape,
+                                  tapTargetSize: MaterialTapTargetSize.padded,
+                                  visualDensity: VisualDensity.standard,
                                 ),
-                        );
-                      }),
-                    ),
+                                child: Text('${i + 1}'),
+                              )
+                            : FilledButton.tonal(
+                                onPressed: () => _loadChapterPage(i),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(38, 38),
+                                  maximumSize: const Size(38, 38),
+                                  fixedSize: const Size(38, 38),
+                                  padding: EdgeInsets.zero,
+                                  backgroundColor: cs.surfaceContainerHigh,
+                                  foregroundColor: cs.onSurfaceVariant,
+                                  shape: pageButtonShape,
+                                  tapTargetSize: MaterialTapTargetSize.padded,
+                                  visualDensity: VisualDensity.standard,
+                                ),
+                                child: Text('${i + 1}'),
+                              ),
+                      );
+                    }),
                   ),
                 ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 160),
-                  child: _refreshingComic
-                      ? const Padding(
-                          key: ValueKey('comic_detail_refreshing'),
-                          padding: EdgeInsets.only(left: 8),
-                          child: SizedBox.square(
-                            dimension: 38,
-                            child: Center(
-                              child: SizedBox.square(
-                                dimension: 22,
-                                child: ExpressiveLoadingIndicator(),
-                              ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 160),
+                child: _refreshingComic
+                    ? const Padding(
+                        key: ValueKey('comic_detail_refreshing'),
+                        padding: EdgeInsets.only(left: 8),
+                        child: SizedBox.square(
+                          dimension: 38,
+                          child: Center(
+                            child: SizedBox.square(
+                              dimension: 22,
+                              child: ExpressiveLoadingIndicator(),
                             ),
                           ),
-                        )
-                      : const SizedBox.shrink(
-                          key: ValueKey('comic_detail_not_refreshing'),
                         ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: _buildSortButton(cs),
-                ),
-              ],
-            ),
+                      )
+                    : const SizedBox.shrink(
+                        key: ValueKey('comic_detail_not_refreshing'),
+                      ),
+              ),
+              _buildChapterListActions(cs),
+            ],
           ),
         ),
-      _buildDownloadToolbar(cs, tt),
-      // ── 章节网格 ──
+      _buildDownloadToolbar(),
+    ];
+  }
+
+  List<Widget> _buildChapterSlivers() {
+    return [
       if (_loadingChapters &&
           (!_keepShowingCachedChapters || _chapters.isEmpty))
         const SliverToBoxAdapter(
@@ -305,27 +298,33 @@ extension _ComicDetailSlivers on _ComicDetailPageState {
             child: Center(child: ExpressiveLoadingIndicator()),
           ),
         )
-      else
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverGrid(
-            delegate: SliverChildBuilderDelegate((_, i) {
-              final ch = _displayChapters[i];
-              return _buildChapterCard(ch);
-            }, childCount: _displayChapters.length),
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 150,
-              mainAxisExtent: chapterTileExtent(
-                MediaQuery.textScalerOf(context).scale(1),
-              ),
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-            ),
-          ),
-        ),
+      else if (_chapters.isNotEmpty)
+        _buildChapterGrid(),
       SliverPadding(
         padding: EdgeInsets.only(bottom: _readingActionsBottomPadding),
       ),
     ];
+  }
+
+  Widget _buildChapterGrid() {
+    final chapters = _displayChapters;
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      sliver: SliverGrid(
+        key: _chapterGridKey,
+        delegate: SliverChildBuilderDelegate(
+          (_, i) => _buildChapterCard(chapters[i]),
+          childCount: chapters.length,
+        ),
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 150,
+          mainAxisExtent: chapterTileExtent(
+            MediaQuery.textScalerOf(context).scale(1),
+          ),
+          mainAxisSpacing: 6,
+          crossAxisSpacing: 6,
+        ),
+      ),
+    );
   }
 }

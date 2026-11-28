@@ -35,6 +35,8 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   static const _keyAutoScrollResumeDelay = 'reader_auto_scroll_resume_delay';
   static const _keyAutoScrollDistance = 'reader_auto_scroll_distance';
   static const _keyContinuousReading = 'reader_continuous_reading';
+  static const _keyAutoLocateLastReadChapter =
+      'reader_auto_locate_last_read_chapter';
   static const _keyViewerAutoRotateLandscape =
       'image_viewer_auto_rotate_landscape';
   static const _keyViewerLandscapeRotation = 'image_viewer_landscape_rotation';
@@ -108,6 +110,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   double _autoScrollResumeDelay = 2.0;
   double _autoScrollDistance = 0.8;
   bool _continuousReading = true;
+  bool _autoLocateLastReadChapter = false;
   bool _viewerAutoRotateLandscape = false;
   int _viewerLandscapeRotation = 1;
   int _imageLoadTimeout = 15;
@@ -152,8 +155,8 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     defaultReadingStatsSectionOrder,
   );
 
-  // 串行检查显示约束与落盘，避免并发关闭时两边都读到旧值。
-  Future<void> _readingStatsWrites = Future.value();
+  // 串行检查写入条件与落盘，避免并发修改读取旧值。
+  Future<void>? _checkedPreferenceWrites;
 
   // ── Getters ────────────────────────────────────────────────────────
 
@@ -174,6 +177,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   double get autoScrollResumeDelay => _autoScrollResumeDelay;
   double get autoScrollDistance => _autoScrollDistance;
   bool get continuousReading => _continuousReading;
+  bool get autoLocateLastReadChapter => _autoLocateLastReadChapter;
   bool get viewerAutoRotateLandscape => _viewerAutoRotateLandscape;
   int get viewerLandscapeRotation => _viewerLandscapeRotation;
   int get imageLoadTimeout => _imageLoadTimeout;
@@ -272,6 +276,8 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     _autoScrollDistance = (prefs.getDouble(_keyAutoScrollDistance) ?? 0.8)
         .clamp(0.2, 1.0);
     _continuousReading = prefs.getBool(_keyContinuousReading) ?? true;
+    _autoLocateLastReadChapter =
+        prefs.getBool(_keyAutoLocateLastReadChapter) ?? false;
     _viewerAutoRotateLandscape =
         prefs.getBool(_keyViewerAutoRotateLandscape) ?? false;
     final savedRotation = prefs.getInt(_keyViewerLandscapeRotation) ?? 1;
@@ -413,6 +419,14 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     _continuousReading = value;
     await setBool(_keyContinuousReading, value);
   }
+
+  Future<void> setAutoLocateLastReadChapter(bool value) =>
+      _writeCheckedPreference(
+        _keyAutoLocateLastReadChapter,
+        value,
+        shouldWrite: () => _autoLocateLastReadChapter != value,
+        onSaved: () => _autoLocateLastReadChapter = value,
+      );
 
   Future<void> setViewerAutoRotateLandscape(bool value) async {
     if (_viewerAutoRotateLandscape == value) return;
@@ -558,28 +572,24 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
   }
 
   /// 不允许关闭最后一类；拒绝时保持原值，由 UI 提示。
-  Future<void> setReadingStatsShowComics(bool value) =>
-      _writeReadingStatsPreference(
-        _keyReadingStatsShowComics,
-        value,
-        shouldWrite: () =>
-            _readingStatsShowComics != value &&
-            (value || _readingStatsShowNovels),
-        onSaved: () => _readingStatsShowComics = value,
-      );
+  Future<void> setReadingStatsShowComics(bool value) => _writeCheckedPreference(
+    _keyReadingStatsShowComics,
+    value,
+    shouldWrite: () =>
+        _readingStatsShowComics != value && (value || _readingStatsShowNovels),
+    onSaved: () => _readingStatsShowComics = value,
+  );
 
-  Future<void> setReadingStatsShowNovels(bool value) =>
-      _writeReadingStatsPreference(
-        _keyReadingStatsShowNovels,
-        value,
-        shouldWrite: () =>
-            _readingStatsShowNovels != value &&
-            (value || _readingStatsShowComics),
-        onSaved: () => _readingStatsShowNovels = value,
-      );
+  Future<void> setReadingStatsShowNovels(bool value) => _writeCheckedPreference(
+    _keyReadingStatsShowNovels,
+    value,
+    shouldWrite: () =>
+        _readingStatsShowNovels != value && (value || _readingStatsShowComics),
+    onSaved: () => _readingStatsShowNovels = value,
+  );
 
   Future<void> setNovelReadingStatsChartStyle(int value) =>
-      _writeReadingStatsPreference(
+      _writeCheckedPreference(
         _keyNovelReadingStatsChartStyle,
         value,
         shouldWrite: () => _novelReadingStatsChartStyle != value,
@@ -587,7 +597,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
       );
 
   Future<void> setNovelReadingStatsShowOverview(bool value) =>
-      _writeReadingStatsPreference(
+      _writeCheckedPreference(
         _keyNovelReadingStatsShowOverview,
         value,
         shouldWrite: () => _novelReadingStatsShowOverview != value,
@@ -595,7 +605,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
       );
 
   Future<void> setNovelReadingStatsShowTags(bool value) =>
-      _writeReadingStatsPreference(
+      _writeCheckedPreference(
         _keyNovelReadingStatsShowTags,
         value,
         shouldWrite: () => _novelReadingStatsShowTags != value,
@@ -603,7 +613,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
       );
 
   Future<void> setNovelReadingStatsShowActivityChart(bool value) =>
-      _writeReadingStatsPreference(
+      _writeCheckedPreference(
         _keyNovelReadingStatsShowActivityChart,
         value,
         shouldWrite: () => _novelReadingStatsShowActivityChart != value,
@@ -612,7 +622,7 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
 
   Future<void> setNovelReadingStatsSectionOrder(List<String> value) {
     final sanitized = _sanitizeReadingStatsSectionOrder(value);
-    return _writeReadingStatsPreference(
+    return _writeCheckedPreference(
       _keyNovelReadingStatsSectionOrder,
       sanitized,
       shouldWrite: () =>
@@ -621,17 +631,18 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
     );
   }
 
-  Future<void> _writeReadingStatsPreference(
+  Future<void> _writeCheckedPreference(
     String key,
     Object value, {
     required bool Function() shouldWrite,
     required void Function() onSaved,
   }) async {
-    final previous = _readingStatsWrites;
+    final previous = _checkedPreferenceWrites;
     final completed = Completer<void>();
-    _readingStatsWrites = completed.future;
+    final pending = completed.future;
+    _checkedPreferenceWrites = pending;
     try {
-      await previous;
+      if (previous != null) await previous;
       if (!shouldWrite()) return;
       final storage = await prefs;
       try {
@@ -669,6 +680,9 @@ class ReaderSettings extends PrefsStore implements ReaderStatusPrefs {
       notifyListeners();
     } finally {
       // 前一笔失败不阻塞后续修改，异常仍由原调用者接收。
+      if (identical(_checkedPreferenceWrites, pending)) {
+        _checkedPreferenceWrites = null;
+      }
       completed.complete();
     }
   }

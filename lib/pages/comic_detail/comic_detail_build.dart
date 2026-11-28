@@ -36,20 +36,59 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
     );
   }
 
-  Widget _buildSortButton(ColorScheme cs) {
-    return FilledButton.tonal(
-      onPressed: () => _setState(() => _reversed = !_reversed),
-      style: FilledButton.styleFrom(
+  ButtonStyle _chapterListButtonStyle(ColorScheme cs, {bool active = false}) =>
+      FilledButton.styleFrom(
+        fixedSize: const Size(38, 38),
         minimumSize: const Size(38, 38),
         maximumSize: const Size(38, 38),
-        fixedSize: const Size(38, 38),
         padding: EdgeInsets.zero,
-        backgroundColor: cs.surfaceContainerHigh,
-        foregroundColor: cs.onSurfaceVariant,
+        backgroundColor: active ? cs.primaryContainer : cs.surfaceContainerHigh,
+        foregroundColor: active ? cs.onPrimaryContainer : cs.onSurfaceVariant,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.mdR),
         tapTargetSize: MaterialTapTargetSize.padded,
         visualDensity: VisualDensity.standard,
-      ),
+      );
+
+  Widget _buildChapterListActions(ColorScheme cs) => Padding(
+    padding: const EdgeInsets.only(left: AppSpacing.sm),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildSortButton(cs),
+        const SizedBox(width: AppSpacing.sm),
+        _buildAutoLocateButton(cs),
+      ],
+    ),
+  );
+
+  Widget _buildAutoLocateButton(ColorScheme cs) => ListenableBuilder(
+    listenable: _readerSettings,
+    builder: (context, _) {
+      final l10n = AppLocalizations.of(context)!;
+      final enabled = _readerSettings.autoLocateLastReadChapter;
+      return Tooltip(
+        message: enabled
+            ? l10n.comicDetailDisableAutoLocate
+            : l10n.comicDetailEnableAutoLocate,
+        child: Semantics(
+          toggled: enabled,
+          child: FilledButton.tonal(
+            onPressed: _savingAutoLocate ? null : _toggleAutoLocate,
+            style: _chapterListButtonStyle(cs, active: enabled),
+            child: Icon(
+              enabled ? Icons.my_location : Icons.location_searching,
+              size: AppIconSize.lg,
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  Widget _buildSortButton(ColorScheme cs) {
+    return FilledButton.tonal(
+      onPressed: () => _setState(() => _reversed = !_reversed),
+      style: _chapterListButtonStyle(cs),
       child: Tooltip(
         message: _reversed
             ? AppLocalizations.of(context)!.sortReverse
@@ -62,74 +101,73 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
     );
   }
 
-  Widget _buildDownloadToolbar(ColorScheme cs, TextTheme tt) {
+  Widget _buildDownloadToolbar() {
     final pendingCount = _downloads.pendingCountForComic(widget.pathWord);
+    final cs = Theme.of(context).colorScheme;
 
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: _selectionMode
-            ? Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  OutlinedButton(
-                    onPressed: _displayChapters.any(_isChapterSelectable)
-                        ? _selectAllVisibleDownloadable
-                        : null,
-                    child: Text(AppLocalizations.of(context)!.selectAll),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: _selectionMode
+          ? Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: _displayChapters.any(_isChapterSelectable)
+                      ? _selectAllVisibleDownloadable
+                      : null,
+                  child: Text(AppLocalizations.of(context)!.selectAll),
+                ),
+                FilledButton(
+                  onPressed: _selectedChapterIds.isEmpty
+                      ? null
+                      : _downloadSelectedChapters,
+                  child: Text(
+                    AppLocalizations.of(
+                      context,
+                    )!.comicDetailDownloadSelectedCount(
+                      _selectedChapterIds.length,
+                    ),
                   ),
-                  FilledButton(
-                    onPressed: _selectedChapterIds.isEmpty
-                        ? null
-                        : _downloadSelectedChapters,
-                    child: Text(
+                ),
+                OutlinedButton(
+                  onPressed: _showDownloadSettings,
+                  child: Text(
+                    AppLocalizations.of(context)!.downloadSettingsTitle,
+                  ),
+                ),
+              ],
+            )
+          : Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (pendingCount > 0)
+                  ActionChip(
+                    avatar: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: cs.primary,
+                      ),
+                    ),
+                    label: Text(
                       AppLocalizations.of(
                         context,
-                      )!.comicDetailDownloadSelectedCount(
-                        _selectedChapterIds.length,
-                      ),
+                      )!.comicDetailSequentialDownloading(pendingCount),
                     ),
+                    onPressed: () => context
+                        .pushNamed(
+                          AppRoutes.downloadCenter,
+                          queryParameters: {'tab': '2'},
+                        )
+                        .then((_) => _handleDownloadChanged()),
                   ),
-                  OutlinedButton(
-                    onPressed: _showDownloadSettings,
-                    child: Text(
-                      AppLocalizations.of(context)!.downloadSettingsTitle,
-                    ),
-                  ),
-                ],
-              )
-            : Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (pendingCount > 0)
-                    ActionChip(
-                      avatar: SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: cs.primary,
-                        ),
-                      ),
-                      label: Text(
-                        AppLocalizations.of(
-                          context,
-                        )!.comicDetailSequentialDownloading(pendingCount),
-                      ),
-                      onPressed: () => context
-                          .pushNamed(
-                            AppRoutes.downloadCenter,
-                            queryParameters: {'tab': '2'},
-                          )
-                          .then((_) => _handleDownloadChanged()),
-                    ),
-                ],
-              ),
-      ),
+              ],
+            ),
     );
   }
 
@@ -159,6 +197,7 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
       subtitle: subtitle,
       isSelected: isSelected,
       isLastRead: isLastRead,
+      isLocateHighlighted: isLastRead && _locateHighlightedId == chapter.uuid,
       isRead: isRead,
       isDownloaded: isDownloaded,
       progressRatio: isDownloading && progress != null ? progress.ratio : null,
@@ -267,13 +306,45 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
     final comic = _comic!;
     final size = MediaQuery.sizeOf(context);
     final isWide = comicDetailUsesTwoPane(size);
-    final infoSlivers = _buildInfoSlivers(cs, tt, comic);
-    final chapterSlivers = _buildChapterSlivers(cs, tt, comic);
+    final comicInfo = _buildComicInfo(cs, tt, comic);
+    final chapterControls = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!isWide) _buildDetailActionRow(comic),
+        ..._buildChapterControls(cs, comic),
+      ],
+    );
+    final chapterSlivers = _buildChapterSlivers();
 
     if (!isWide) {
+      // 封面和简介先随手势滚出，章节工具栏留在顶部，网格用满下方空间。
       return RefreshIndicator(
         onRefresh: _refresh,
-        child: CustomScrollView(slivers: [...infoSlivers, ...chapterSlivers]),
+        child: RawScrollbar(
+          controller: _detailScrollController,
+          thumbColor: cs.onSurfaceVariant.withValues(alpha: 0.28),
+          thickness: 3,
+          radius: const Radius.circular(AppRadius.full),
+          crossAxisMargin: AppSpacing.xs,
+          child: CustomScrollView(
+            controller: _detailScrollController,
+            scrollBehavior: ScrollConfiguration.of(
+              context,
+            ).copyWith(scrollbars: false),
+            slivers: [
+              SliverToBoxAdapter(key: _comicInfoKey, child: comicInfo),
+              PinnedHeaderSliver(
+                key: _chapterControlsKey,
+                child: ColoredBox(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: chapterControls,
+                ),
+              ),
+              ...chapterSlivers,
+            ],
+          ),
+        ),
       );
     }
 
@@ -288,7 +359,8 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                ...infoSlivers,
+                SliverToBoxAdapter(child: comicInfo),
+                SliverToBoxAdapter(child: _buildDetailActionRow(comic)),
                 const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
               ],
             ),
@@ -302,7 +374,12 @@ extension _ComicDetailUiBuilders on _ComicDetailPageState {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _refresh,
-            child: CustomScrollView(slivers: chapterSlivers),
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: chapterControls),
+                ...chapterSlivers,
+              ],
+            ),
           ),
         ),
       ],

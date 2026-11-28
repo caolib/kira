@@ -601,6 +601,18 @@ abstract class AppLocalizations {
   /// **'正序（旧→新）'**
   String get sortNormal;
 
+  /// No description provided for @comicDetailEnableAutoLocate.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启自动定位上次阅读章节'**
+  String get comicDetailEnableAutoLocate;
+
+  /// No description provided for @comicDetailDisableAutoLocate.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭自动定位上次阅读章节'**
+  String get comicDetailDisableAutoLocate;
+
   /// No description provided for @openDownloadFolder.
   ///
   /// In zh, this message translates to:

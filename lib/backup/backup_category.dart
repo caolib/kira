@@ -63,6 +63,7 @@ abstract final class BackupSchema {
     'network_auto_test_enabled',
     'reader_auto_scroll_enabled',
     'reader_auto_scroll_resume',
+    'reader_auto_locate_last_read_chapter',
     'reader_continuous_reading',
     'reader_instant_page_turn',
     'reader_keep_screen_on',

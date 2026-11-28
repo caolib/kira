@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,10 +11,13 @@ import '../l10n/app_localizations.dart';
 import '../models/chapter.dart';
 import '../models/comic.dart' as comic_model;
 import '../models/comic.dart' hide Theme;
+import '../models/reader_settings.dart';
 import '../repositories/comic_detail_repository.dart';
 import '../routing/app_router.dart';
+import '../theme/app_icon_sizes.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../utils/adaptive_motion.dart';
 import '../utils/app_logger.dart';
 import '../utils/bookmark_store.dart';
 import '../utils/cover_brightness_filter.dart';
@@ -35,6 +39,7 @@ import 'comic_comments_sheet.dart';
 import 'comic_detail/reading_actions.dart';
 
 part 'comic_detail/comic_detail_actions.dart';
+part 'comic_detail/comic_detail_auto_locate.dart';
 part 'comic_detail/comic_detail_build.dart';
 part 'comic_detail/comic_detail_chapter_card.dart';
 part 'comic_detail/comic_detail_last_browse.dart';
@@ -93,8 +98,19 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   final _api = ApiClient();
   late final _repo = ComicDetailRepository(widget.pathWord);
   final _downloads = DownloadManager();
+  final _readerSettings = ReaderSettings();
+  final _chapterGridKey = GlobalKey();
+  late final _chapterControlsKey = GlobalKey();
+  final _comicInfoKey = GlobalKey();
+  final _detailScrollController = ScrollController();
+  bool _showBackToTop = false;
+  bool _savingAutoLocate = false;
+  int _locateRequest = 0;
+  String? _locateHighlightedId;
+  Timer? _locateHighlightTimer;
   Comic? _comic;
   List<Chapter> _chapters = [];
+  String? _chapterListGroup;
   final Set<String> _selectedChapterIds = {};
   String _selectedGroup = 'default';
   bool _loadingComic = true;
@@ -156,6 +172,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     _lastBrowseName = widget.lastBrowseName;
     _downloads.addListener(_handleDownloadChanged);
     _bookmarkStore.addListener(_handleBookmarkChanged);
+    _detailScrollController.addListener(_updateBackToTopVisibility);
     unawaited(_loadBookmarkGroup());
     unawaited(_initializePage());
   }
@@ -164,6 +181,8 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   void dispose() {
     _bookmarkStore.removeListener(_handleBookmarkChanged);
     _downloads.removeListener(_handleDownloadChanged);
+    _locateHighlightTimer?.cancel();
+    _detailScrollController.dispose();
     super.dispose();
   }
 
@@ -222,10 +241,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   }
 
   Future<void> _initializePage() async {
+    final locateOnEntry = _readerSettings.autoLocateLastReadChapter;
     unawaited(_initializeDownloads());
     await _loadFromCache();
     await _loadLocalHistory();
-    await _loadComic();
+    await _loadComic(locateAfterLoad: locateOnEntry);
   }
 
   Future<void> _initializeDownloads() async {
@@ -247,7 +267,10 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _loadLocalHistory({String? group}) async {
+  Future<void> _loadLocalHistory({
+    String? group,
+    bool locateAfterLoad = false,
+  }) async {
     final targetGroup = group ?? _selectedGroup;
     final record = await ReadingHistory.get(
       widget.pathWord,
@@ -270,6 +293,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _lastBrowseTotalPage = record?.totalPage ?? 0;
       _readChapterUuids = <String>{...?record?.readChapterUuids};
     });
+    if (locateAfterLoad) _scheduleLastReadLocation();
     await _syncNextBrowseChapter();
   }
 
@@ -294,6 +318,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _comic = comic;
       _selectedGroup = selectedGroup;
       _chapters = cachedChapters;
+      _chapterListGroup = canReuseCachedChapters ? cachedGroup : null;
       _chapterTotal = canReuseCachedChapters ? cached.chapterTotal : 0;
       _chapterPage = canReuseCachedChapters ? cached.chapterPage : 0;
       _isCollected = cached.isCollected;
@@ -328,7 +353,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     return 'default';
   }
 
-  Future<void> _loadComic() async {
+  Future<void> _loadComic({bool locateAfterLoad = false}) async {
     final showRefreshNotice = _comic != null;
     if (mounted) {
       setState(() {
@@ -360,7 +385,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
 
       await _loadLocalHistory(group: selectedGroup);
       await _saveCache();
-      await _loadChapterPageForHistory(comic: comic, group: selectedGroup);
+      await _loadChapterPageForHistory(
+        comic: comic,
+        group: selectedGroup,
+        locateAfterLoad: locateAfterLoad,
+      );
       await _loadCollectState();
       if (mounted && showRefreshNotice) {
         setState(() => _refreshingComic = false);
@@ -411,10 +440,16 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     String? group,
     bool keepVisibleDuringLoad = false,
     bool forceRefresh = false,
+    bool locateAfterLoad = false,
   }) async {
-    if (_loadingChapters) return;
+    if (!mounted || _loadingChapters) return;
     final targetGroup = group ?? _selectedGroup;
     final cacheKey = '$targetGroup:$page';
+    final pageChanged =
+        _chapterListGroup != targetGroup || _chapterPage != page;
+    final previousOffset = pageChanged && _detailScrollController.hasClients
+        ? _detailScrollController.offset
+        : null;
 
     // 命中会话内缓存：直接复用，避免重复请求
     if (!forceRefresh) {
@@ -422,6 +457,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       if (cached != null) {
         setState(() {
           _chapters = cached.list;
+          _chapterListGroup = targetGroup;
           _chapterTotal = cached.total;
           _chapterPage = page;
           _selectedGroup = targetGroup;
@@ -430,6 +466,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           _selectionMode = false;
           _selectedChapterIds.clear();
         });
+        if (locateAfterLoad) {
+          _scheduleLastReadLocation();
+        } else {
+          _returnToChapterListStart(previousOffset);
+        }
         await _saveCache();
         await _syncNextBrowseChapter();
         return;
@@ -457,12 +498,18 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
       _chapterPageCache[cacheKey] = result;
       setState(() {
         _chapters = result.list;
+        _chapterListGroup = targetGroup;
         _chapterTotal = result.total;
         _chapterPage = page;
         _selectedGroup = targetGroup;
         _loadingChapters = false;
         _keepShowingCachedChapters = false;
       });
+      if (locateAfterLoad) {
+        _scheduleLastReadLocation();
+      } else {
+        _returnToChapterListStart(previousOffset);
+      }
       await _saveCache();
       await _syncNextBrowseChapter();
     } catch (e, stack) {
@@ -474,10 +521,12 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
         ),
       );
       if (mounted) {
+        final locateCachedPage = locateAfterLoad && _loadingChapters;
         setState(() {
           _loadingChapters = false;
           _keepShowingCachedChapters = false;
         });
+        if (locateCachedPage) _scheduleLastReadLocation();
       }
     }
   }
@@ -485,7 +534,11 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   int get _totalPages => (_chapterTotal / _pageSize).ceil();
 
   /// 优先使用阅读记录中的章节列表页；旧记录再按章节名估算分页。
-  Future<void> _loadChapterPageForHistory({Comic? comic, String? group}) async {
+  Future<void> _loadChapterPageForHistory({
+    Comic? comic,
+    String? group,
+    bool locateAfterLoad = false,
+  }) async {
     final targetGroup = group ?? _selectedGroup;
     final total =
         comic?.groups?[targetGroup]?.count ??
@@ -495,6 +548,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
     await _loadChapterPage(
       page,
       group: targetGroup,
+      locateAfterLoad: locateAfterLoad,
       keepVisibleDuringLoad:
           targetGroup == _selectedGroup &&
           page == _chapterPage &&
@@ -539,12 +593,22 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    _measureReadingActions();
+    _syncReadingActionsAfterLayout();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_comic?.name ?? ''),
         actions: [
+          if (_comic != null &&
+              _downloads.downloadedChapterIds(widget.pathWord).isNotEmpty)
+            IconButton(
+              key: const ValueKey('comic_downloads_action'),
+              icon: const Icon(Icons.download_for_offline),
+              tooltip: AppLocalizations.of(context)!.downloadCenterTitle,
+              onPressed: () => context
+                  .pushNamed(AppRoutes.downloadCenter)
+                  .then((_) => _handleDownloadChanged()),
+            ),
           IconButton(
             key: const ValueKey('comic_detail_bookmark'),
             icon: Icon(
@@ -577,8 +641,7 @@ class _ComicDetailPageState extends State<ComicDetailPage> {
           : Stack(
               children: [
                 _buildBody(cs, tt),
-                if (_canShowLastBrowseAction ||
-                    _downloads.downloadedChapterIds(widget.pathWord).isNotEmpty)
+                if (_canShowLastBrowseAction || _showBackToTop)
                   _buildReadingActions(),
               ],
             ),

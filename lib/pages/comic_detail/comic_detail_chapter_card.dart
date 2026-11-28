@@ -27,6 +27,7 @@ class ChapterCard extends StatelessWidget {
   final String? subtitle;
   final bool isSelected;
   final bool isLastRead;
+  final bool isLocateHighlighted;
   final bool isRead;
   final bool isDownloaded;
   final double? progressRatio;
@@ -39,6 +40,7 @@ class ChapterCard extends StatelessWidget {
     this.subtitle,
     required this.isSelected,
     required this.isLastRead,
+    this.isLocateHighlighted = false,
     required this.isRead,
     required this.isDownloaded,
     required this.onTap,
@@ -83,7 +85,14 @@ class ChapterCard extends StatelessWidget {
         : cs.onSurfaceVariant;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+      duration: adaptiveDuration(context, const Duration(milliseconds: 160)),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: AppRadius.mdR,
+        border: Border.all(
+          color: cs.primary.withValues(alpha: isLocateHighlighted ? 1 : 0),
+          width: 2,
+        ),
+      ),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: AppRadius.mdR,
