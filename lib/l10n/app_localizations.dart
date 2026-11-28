@@ -7289,6 +7289,30 @@ abstract class AppLocalizations {
   /// **'对白样式'**
   String get novelReaderDialogueStyle;
 
+  /// No description provided for @novelReaderDialogueQuoteCorner.
+  ///
+  /// In zh, this message translates to:
+  /// **'单层直角引号'**
+  String get novelReaderDialogueQuoteCorner;
+
+  /// No description provided for @novelReaderDialogueQuoteDoubleCorner.
+  ///
+  /// In zh, this message translates to:
+  /// **'双层直角引号'**
+  String get novelReaderDialogueQuoteDoubleCorner;
+
+  /// No description provided for @novelReaderDialogueQuoteCurlyDouble.
+  ///
+  /// In zh, this message translates to:
+  /// **'弯双引号'**
+  String get novelReaderDialogueQuoteCurlyDouble;
+
+  /// No description provided for @novelReaderDialogueQuoteStraightDouble.
+  ///
+  /// In zh, this message translates to:
+  /// **'英文直双引号'**
+  String get novelReaderDialogueQuoteStraightDouble;
+
   /// No description provided for @novelReaderDialogueAutomatic.
   ///
   /// In zh, this message translates to:
@@ -7346,7 +7370,7 @@ abstract class AppLocalizations {
   /// No description provided for @novelReaderDialoguePreviewText.
   ///
   /// In zh, this message translates to:
-  /// **'夜色温柔，她翻开书页，窗外的风轻轻吹动帘角。\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……'**
+  /// **'「听。」她推开窗。『是风吗？』“是汽笛。”楼下有人喊：\"末班车来了！\"\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……'**
   String get novelReaderDialoguePreviewText;
 
   /// No description provided for @novelReaderKeepScreenOn.

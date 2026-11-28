@@ -303,17 +303,18 @@ class NovelReaderPaginator {
   }
 
   NovelTextMetrics _measure(NovelReaderParagraph paragraph) {
-    final display = novelParagraphDialogue(paragraph, spec.dialogue);
+    // 跟随正文字重时，引号选择只影响绘制，无需解析或重测对白。
+    final dialogue = spec.dialogue;
+    final display = dialogue?.fontWeight == null
+        ? null
+        : novelParagraphDialogue(paragraph, dialogue);
     return _measureText(
       display?.text ??
           novelParagraphDisplayText(paragraph, spec.emptyChapterText),
       spec.textStyle,
       // 单纯配色不影响行度量，保留单 span 测量的成本。
-      span:
-          display != null &&
-              display.ranges.isNotEmpty &&
-              spec.dialogue!.fontWeight != null
-          ? spec.dialogue!.measurementSpan(display, spec.textStyle)
+      span: display != null && display.ranges.isNotEmpty
+          ? dialogue!.measurementSpan(display, spec.textStyle)
           : null,
     );
   }

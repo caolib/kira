@@ -442,9 +442,10 @@ void main() {
     testWidgets('theme settings use independent cards at $size', (
       tester,
     ) async {
-      var latest = const NovelReaderSettings();
+      var latest = const NovelReaderSettings(dialogueEnabled: false);
       await _mount(
         tester,
+        settings: latest,
         onChanged: (value) => latest = value,
         size: size,
         textScale: textScale,
@@ -664,14 +665,94 @@ void main() {
     },
   );
 
+  testWidgets('dialogue quote choices share one draft and update the preview', (
+    tester,
+  ) async {
+    const bold = NovelDialogueStyle(weight: NovelDialogueWeight.bold);
+    var latest = const NovelReaderSettings(
+      lightDialogueStyle: bold,
+      darkDialogueStyle: bold,
+    );
+    var changes = 0;
+    await _mount(
+      tester,
+      settings: latest,
+      onChanged: (value) {
+        latest = value;
+        changes++;
+      },
+    );
+    await _openTheme(tester);
+    final toggle = find.byKey(const ValueKey('novel-dialogue-enabled'));
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+
+    const samples = {
+      NovelDialogueQuote.corner: '「听。」',
+      NovelDialogueQuote.doubleCorner: '『是风吗？』',
+      NovelDialogueQuote.curlyDouble: '“是汽笛。”',
+      NovelDialogueQuote.straightDouble: '"末班车来了！"',
+    };
+    Finder chip(NovelDialogueQuote quote) =>
+        find.widgetWithText(FilterChip, quote.pair);
+    void expectChoices(Set<NovelDialogueQuote> selected) {
+      final preview = _previewSpan(tester);
+      final boldText = _descendantSpans(preview)
+          .where((span) => span.style?.fontWeight == FontWeight.bold)
+          .map((span) => span.text ?? '')
+          .join();
+      for (final entry in samples.entries) {
+        final expected = selected.contains(entry.key);
+        expect(tester.widget<FilterChip>(chip(entry.key)).selected, expected);
+        expect(preview.toPlainText(), contains(entry.value));
+        expect(boldText.contains(entry.value), expected, reason: entry.value);
+      }
+    }
+
+    Future<void> tapQuote(NovelDialogueQuote quote) async {
+      final target = chip(quote);
+      await tester.ensureVisible(target);
+      await tester.pumpAndSettle();
+      await tester.tap(target);
+      await tester.pumpAndSettle();
+    }
+
+    expectChoices({NovelDialogueQuote.corner, NovelDialogueQuote.doubleCorner});
+    await tapQuote(NovelDialogueQuote.corner);
+    expectChoices({NovelDialogueQuote.doubleCorner});
+    await tapQuote(NovelDialogueQuote.doubleCorner);
+    expectChoices({});
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    await tapQuote(NovelDialogueQuote.curlyDouble);
+    await _openTheme(tester, dark: true);
+    expectChoices({NovelDialogueQuote.curlyDouble});
+    await tapQuote(NovelDialogueQuote.straightDouble);
+    await _tapVisible(tester, 'novel-dialogue-enabled');
+    expect(find.byType(FilterChip), findsNothing);
+    await _tapVisible(tester, 'novel-dialogue-enabled');
+    await _openTheme(tester, dark: false);
+    const selected = {
+      NovelDialogueQuote.curlyDouble,
+      NovelDialogueQuote.straightDouble,
+    };
+    expectChoices(selected);
+    expect(changes, 0);
+    await _closeTheme(tester);
+    expect(changes, 1);
+    expect(
+      NovelDialogueQuote.values.where(latest.dialogueQuotes.contains),
+      unorderedEquals(selected),
+    );
+  });
+
   for (final dismissal in ['back', 'system', 'drag']) {
     testWidgets('theme draft commits once on $dismissal dismissal', (
       tester,
     ) async {
       var changes = 0;
-      var latest = const NovelReaderSettings();
+      var latest = const NovelReaderSettings(dialogueEnabled: false);
       await _mount(
         tester,
+        settings: latest,
         onChanged: (value) {
           latest = value;
           changes++;
@@ -766,7 +847,6 @@ void main() {
     (tester) async {
       final settings =
           const NovelReaderSettings(
-                dialogueEnabled: true,
                 lightThemeId: 'light-custom',
                 darkThemeId: 'dark-custom',
                 lightDialogueStyle: NovelDialogueStyle(
@@ -842,7 +922,6 @@ void main() {
     tester,
   ) async {
     var latest = const NovelReaderSettings(
-      dialogueEnabled: true,
       lightDialogueStyle: NovelDialogueStyle(
         colorMode: NovelDialogueColorMode.custom,
         textColor: 0xFF666666,
@@ -906,7 +985,7 @@ void main() {
   testWidgets(
     'disabling dialogue preserves style and restores original preview',
     (tester) async {
-      var latest = const NovelReaderSettings(dialogueEnabled: true);
+      var latest = const NovelReaderSettings();
       await _mount(
         tester,
         settings: latest,
@@ -943,7 +1022,6 @@ void main() {
             fontSize: 48,
             lineHeight: 3,
             paragraphSpacing: 64,
-            dialogueEnabled: true,
           ),
           onChanged: (_) {},
           size: size,
@@ -1813,6 +1891,7 @@ void main() {
           lineHeight: 3.0,
           paragraphSpacing: 64,
           mode: NovelReaderMode.paged,
+          dialogueEnabled: false,
         );
         await _mount(
           tester,
@@ -1853,6 +1932,30 @@ void main() {
         );
         await tester.pumpAndSettle();
         await _tapVisible(tester, 'novel-dialogue-enabled');
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(FilterChip).first),
+        )!;
+        for (final (quote, label) in [
+          (NovelDialogueQuote.corner, l10n.novelReaderDialogueQuoteCorner),
+          (
+            NovelDialogueQuote.doubleCorner,
+            l10n.novelReaderDialogueQuoteDoubleCorner,
+          ),
+          (
+            NovelDialogueQuote.curlyDouble,
+            l10n.novelReaderDialogueQuoteCurlyDouble,
+          ),
+          (
+            NovelDialogueQuote.straightDouble,
+            l10n.novelReaderDialogueQuoteStraightDouble,
+          ),
+        ]) {
+          final chip = find.widgetWithText(FilterChip, quote.pair);
+          await tester.ensureVisible(chip);
+          await tester.pumpAndSettle();
+          expect(chip.hitTestable(), findsOneWidget);
+          expect(tester.getSemantics(chip).label, label);
+        }
         final colorSelect = find.descendant(
           of: find.byKey(const ValueKey('novel-dialogue-color-mode')),
           matching: find.byType(SelectTile<NovelDialogueColorMode>),
@@ -1861,7 +1964,6 @@ void main() {
         await tester.pumpAndSettle();
         // 行容器中心可能是空白，命中检查与点击都定位实际胶囊。
         expect(colorSelect.hitTestable(), findsOneWidget);
-        final l10n = AppLocalizations.of(tester.element(colorSelect))!;
         await tester.tap(colorSelect);
         await tester.pumpAndSettle();
         final customOption = find.text(l10n.novelReaderDialogueCustom).last;

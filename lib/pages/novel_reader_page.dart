@@ -990,8 +990,12 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
   }
 
   Future<void> _prepareDialogueContent(NovelVolumeContent content) async {
-    if (!_settings.dialogueEnabled) return;
-    await novelDialogueCache.prepare(content.entries);
+    while (!_disposed && _settings.dialogueEnabled) {
+      final quotes = _settings.dialogueQuotes;
+      await novelDialogueCache.prepare(content.entries, quotes: quotes);
+      // 预热期间设置可能已提交，换卷时也要使用新的选择。
+      if (quotes == _settings.dialogueQuotes) return;
+    }
   }
 
   Future<String?> _loadContentFont(String selection) async {
@@ -1020,13 +1024,16 @@ class _NovelReaderPageState extends ConsumerState<NovelReaderPage>
         ? _contentFontFamily
         : await _loadContentFont(settings.fontFamily);
     if (!_active(session) || revision != _settingsRevision) return;
-    if (settings.dialogueEnabled && !_settings.dialogueEnabled) {
+    if (settings.dialogueEnabled &&
+        !settings.dialogueQuotes.isEmpty &&
+        (!_settings.dialogueEnabled ||
+            settings.dialogueQuotes != _settings.dialogueQuotes)) {
       int contentRevision;
       do {
         contentRevision = _contentRevision;
         await novelDialogueCache.prepare([
           for (final content in _stackContents.values) ...content.entries,
-        ]);
+        ], quotes: settings.dialogueQuotes);
         if (!_active(session) || revision != _settingsRevision) return;
       } while (contentRevision != _contentRevision);
     }

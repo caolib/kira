@@ -638,10 +638,6 @@ void main() {
   });
 
   testWidgets('对白富文本沿用原始字符范围，不将标题算入', (tester) async {
-    const settings = NovelReaderSettings(
-      dialogueEnabled: true,
-      keepScreenOn: false,
-    );
     await _mount(
       tester,
       _Source({
@@ -649,7 +645,6 @@ void main() {
           _entry(0, ['「甲乙」丙丁'], name: '不应计数的章节标题'),
         ]),
       }),
-      settings: settings,
     );
     // 引号保留在原始范围，字符计数口径由主存储统一处理。
     final collected = <NovelVisibleTextRange>[];

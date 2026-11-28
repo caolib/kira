@@ -78,9 +78,14 @@ void main() {
     },
   );
 
-  test('dialogue is opt-in and malformed legacy JSON keeps defaults', () {
+  test('dialogue defaults on without overriding a stored opt-out', () {
     const defaults = NovelReaderSettings();
-    expect(defaults.dialogueEnabled, isFalse);
+    expect(defaults.dialogueEnabled, isTrue);
+    for (final saved in [false, true]) {
+      final legacy = NovelReaderSettings.fromJson({'dialogueEnabled': saved});
+      expect(legacy.dialogueEnabled, saved);
+      expect(legacy.dialogueQuotes.toJson(), ['corner', 'doubleCorner']);
+    }
     expect(defaults.dialogueStyleFor(dark: false), const NovelDialogueStyle());
     expect(
       defaults.dialogueStyleFor(dark: true),
@@ -106,6 +111,27 @@ void main() {
   });
 
   test(
+    'quote choices preserve explicit empty lists and ignore unknown types',
+    () {
+      for (final (raw, expected) in <(Object?, List<String>)>[
+        (null, ['corner', 'doubleCorner']),
+        (false, ['corner', 'doubleCorner']),
+        ([], []),
+        (['unknown', 'straightDouble', 'straightDouble'], ['straightDouble']),
+        (['curlyDouble', 'corner'], ['corner', 'curlyDouble']),
+      ]) {
+        final settings = NovelReaderSettings.fromJson({'dialogueQuotes': raw});
+        expect(settings.dialogueQuotes.toJson(), expected);
+        expect(NovelReaderSettings.fromJson(settings.toJson()), settings);
+        expect(
+          settings.copyWith(dialogueEnabled: false).dialogueQuotes,
+          settings.dialogueQuotes,
+        );
+      }
+    },
+  );
+
+  test(
     'dialogue styles survive themed copies and persist in the existing key',
     () async {
       const light = NovelDialogueStyle(
@@ -120,7 +146,6 @@ void main() {
         backgroundOpacity: 0.3,
       );
       const settings = NovelReaderSettings(
-        dialogueEnabled: true,
         lightDialogueStyle: light,
         darkDialogueStyle: dark,
       );
@@ -158,7 +183,8 @@ void main() {
   test('each dialogue field participates in equality and targeted copies', () {
     const defaults = NovelReaderSettings();
     for (final changed in [
-      defaults.copyWith(dialogueEnabled: true),
+      defaults.copyWith(dialogueEnabled: false),
+      defaults.copyWith(dialogueQuotes: NovelDialogueQuotes.none),
       defaults.copyWith(
         lightDialogueStyle: const NovelDialogueStyle(
           weight: NovelDialogueWeight.bold,

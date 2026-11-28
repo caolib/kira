@@ -3990,6 +3990,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get novelReaderDialogueStyle => '对白样式';
 
   @override
+  String get novelReaderDialogueQuoteCorner => '单层直角引号';
+
+  @override
+  String get novelReaderDialogueQuoteDoubleCorner => '双层直角引号';
+
+  @override
+  String get novelReaderDialogueQuoteCurlyDouble => '弯双引号';
+
+  @override
+  String get novelReaderDialogueQuoteStraightDouble => '英文直双引号';
+
+  @override
   String get novelReaderDialogueAutomatic => '自动适配';
 
   @override
@@ -4018,7 +4030,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get novelReaderDialoguePreviewText =>
-      '夜色温柔，她翻开书页，窗外的风轻轻吹动帘角。\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……';
+      '「听。」她推开窗。『是风吗？』“是汽笛。”楼下有人喊：\"末班车来了！\"\n「故事里还有『未说完的话』，我们继续吧。」\n街灯亮起，远处传来列车经过的声音，像一段熟悉的旋律。\n『等到天亮，我们就一起出发。』\n「如果路上迷失方向，\n就记住窗边这盏灯，我会在这里等你回来。」\n她合上书，笑着望向窗外。她说：「这一句尚未结束……';
 
   @override
   String get novelReaderKeepScreenOn => '阅读时屏幕常亮';
@@ -8130,6 +8142,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get novelReaderDialogueStyle => '對白樣式';
 
   @override
+  String get novelReaderDialogueQuoteCorner => '單層直角引號';
+
+  @override
+  String get novelReaderDialogueQuoteDoubleCorner => '雙層直角引號';
+
+  @override
+  String get novelReaderDialogueQuoteCurlyDouble => '彎雙引號';
+
+  @override
+  String get novelReaderDialogueQuoteStraightDouble => '英文直雙引號';
+
+  @override
   String get novelReaderDialogueAutomatic => '自動適配';
 
   @override
@@ -8158,7 +8182,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get novelReaderDialoguePreviewText =>
-      '夜色溫柔，她翻開書頁，窗外的風輕輕吹動簾角。\n「故事裡還有『未說完的話』，我們繼續吧。」\n街燈亮起，遠處傳來列車經過的聲音，像一段熟悉的旋律。\n『等到天亮，我們就一起出發。』\n「如果路上迷失方向，\n就記住窗邊這盞燈，我會在這裡等你回來。」\n她合上書，笑著望向窗外。她說：「這一句尚未結束……';
+      '「聽。」她推開窗。『是風嗎？』“是汽笛。”樓下有人喊：\"末班車來了！\"\n「故事裡還有『未說完的話』，我們繼續吧。」\n街燈亮起，遠處傳來列車經過的聲音，像一段熟悉的旋律。\n『等到天亮，我們就一起出發。』\n「如果路上迷失方向，\n就記住窗邊這盞燈，我會在這裡等你回來。」\n她合上書，笑著望向窗外。她說：「這一句尚未結束……';
 
   @override
   String get novelReaderKeepScreenOn => '閱讀時螢幕常亮';

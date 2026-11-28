@@ -13,6 +13,62 @@ enum NovelReaderTheme { paper, dark, white, green, gray }
 /// 阅读模式：连续滚动 / 整页翻页。翻页模式固定左到右横向翻页。
 enum NovelReaderMode { scroll, paged }
 
+enum NovelDialogueQuote {
+  corner('「」'),
+  doubleCorner('『』'),
+  curlyDouble('“”'),
+  straightDouble('""');
+
+  const NovelDialogueQuote(this.pair);
+  final String pair;
+}
+
+/// 跨亮暗模式共用。持久化使用名称，显式空列表表示不匹配任何引号。
+@immutable
+class NovelDialogueQuotes {
+  const NovelDialogueQuotes._(this._values);
+  final Set<NovelDialogueQuote> _values;
+
+  static const defaults = NovelDialogueQuotes._({
+    NovelDialogueQuote.corner,
+    NovelDialogueQuote.doubleCorner,
+  });
+  static const none = NovelDialogueQuotes._({});
+  bool get isEmpty => _values.isEmpty;
+  bool contains(NovelDialogueQuote quote) => _values.contains(quote);
+
+  NovelDialogueQuotes withQuote(NovelDialogueQuote quote, bool selected) {
+    if (contains(quote) == selected) return this;
+    final values = {..._values};
+    if (selected) {
+      values.add(quote);
+    } else {
+      values.remove(quote);
+    }
+    return values.isEmpty ? none : NovelDialogueQuotes._(values);
+  }
+
+  factory NovelDialogueQuotes.fromJson(Object? raw) {
+    if (raw is! List) return defaults;
+    if (raw.isEmpty) return none;
+    final values = NovelDialogueQuote.values
+        .where((q) => raw.contains(q.name))
+        .toSet();
+    return values.isEmpty ? defaults : NovelDialogueQuotes._(values);
+  }
+
+  List<String> toJson() => [
+    for (final q in NovelDialogueQuote.values)
+      if (contains(q)) q.name,
+  ];
+
+  @override
+  bool operator ==(Object other) =>
+      other is NovelDialogueQuotes && setEquals(_values, other._values);
+  @override
+  int get hashCode => Object.hashAllUnordered(_values);
+}
+
 /// ID 与名称分离：重命名不会改变浅色/深色模式的选择。
 @immutable
 class NovelReaderCustomTheme {
@@ -98,7 +154,8 @@ class NovelReaderSettings {
     this.ignoreBlankParagraphs = defaultIgnoreBlankParagraphs,
     this.focusModeEnabled = defaultFocusModeEnabled,
     this.focusKeepStatusVisible = defaultFocusKeepStatusVisible,
-    this.dialogueEnabled = false,
+    this.dialogueEnabled = defaultDialogueEnabled,
+    this.dialogueQuotes = NovelDialogueQuotes.defaults,
     this.lightDialogueStyle = const NovelDialogueStyle(),
     this.darkDialogueStyle = const NovelDialogueStyle(
       backgroundColor: NovelDialogueStyle.defaultDarkBackgroundColor,
@@ -176,6 +233,7 @@ class NovelReaderSettings {
       focusModeEnabled = base.focusModeEnabled,
       focusKeepStatusVisible = base.focusKeepStatusVisible,
       dialogueEnabled = base.dialogueEnabled,
+      dialogueQuotes = base.dialogueQuotes,
       lightDialogueStyle = base.lightDialogueStyle,
       darkDialogueStyle = base.darkDialogueStyle,
       focusTopRatio = base.focusTopRatio,
@@ -254,8 +312,11 @@ class NovelReaderSettings {
   /// 专注遮罩不遮挡状态组件；不改变状态组件自身的开关与显隐规则。
   final bool focusKeepStatusVisible;
 
-  /// 全局对白样式开关；「」与『』共用样式。
+  static const defaultDialogueEnabled = true;
+
+  /// 总开关不改变已选引号与浅深色样式。
   final bool dialogueEnabled;
+  final NovelDialogueQuotes dialogueQuotes;
   final NovelDialogueStyle lightDialogueStyle;
   final NovelDialogueStyle darkDialogueStyle;
 
@@ -375,7 +436,12 @@ class NovelReaderSettings {
       // 旧记录没有专注模式各键时：默认关闭、默认区域与浓度。
       focusModeEnabled: jsonBool(json, 'focusModeEnabled'),
       focusKeepStatusVisible: jsonBool(json, 'focusKeepStatusVisible'),
-      dialogueEnabled: jsonBool(json, 'dialogueEnabled'),
+      dialogueEnabled: jsonBool(
+        json,
+        'dialogueEnabled',
+        fallback: defaultDialogueEnabled,
+      ),
+      dialogueQuotes: NovelDialogueQuotes.fromJson(json['dialogueQuotes']),
       lightDialogueStyle: NovelDialogueStyle.fromJson(
         jsonMap(json, 'lightDialogueStyle') ?? const {},
       ),
@@ -421,6 +487,7 @@ class NovelReaderSettings {
     'focusModeEnabled': focusModeEnabled,
     'focusKeepStatusVisible': focusKeepStatusVisible,
     'dialogueEnabled': dialogueEnabled,
+    'dialogueQuotes': dialogueQuotes.toJson(),
     'lightDialogueStyle': lightDialogueStyle.toJson(),
     'darkDialogueStyle': darkDialogueStyle.toJson(),
     'focusTopRatio': focusTopRatio,
@@ -446,6 +513,7 @@ class NovelReaderSettings {
     bool? focusModeEnabled,
     bool? focusKeepStatusVisible,
     bool? dialogueEnabled,
+    NovelDialogueQuotes? dialogueQuotes,
     NovelDialogueStyle? lightDialogueStyle,
     NovelDialogueStyle? darkDialogueStyle,
     double? focusTopRatio,
@@ -490,6 +558,7 @@ class NovelReaderSettings {
       focusKeepStatusVisible:
           focusKeepStatusVisible ?? this.focusKeepStatusVisible,
       dialogueEnabled: dialogueEnabled ?? this.dialogueEnabled,
+      dialogueQuotes: dialogueQuotes ?? this.dialogueQuotes,
       lightDialogueStyle: lightDialogueStyle ?? this.lightDialogueStyle,
       darkDialogueStyle: darkDialogueStyle ?? this.darkDialogueStyle,
       focusTopRatio: top,
@@ -603,6 +672,7 @@ class NovelReaderSettings {
       focusModeEnabled == other.focusModeEnabled &&
       focusKeepStatusVisible == other.focusKeepStatusVisible &&
       dialogueEnabled == other.dialogueEnabled &&
+      dialogueQuotes == other.dialogueQuotes &&
       lightDialogueStyle == other.lightDialogueStyle &&
       darkDialogueStyle == other.darkDialogueStyle &&
       focusTopRatio == other.focusTopRatio &&
@@ -630,7 +700,12 @@ class NovelReaderSettings {
     focusTopRatio,
     focusBottomRatio,
     focusOpacity,
-    Object.hash(dialogueEnabled, lightDialogueStyle, darkDialogueStyle),
+    Object.hash(
+      dialogueEnabled,
+      dialogueQuotes,
+      lightDialogueStyle,
+      darkDialogueStyle,
+    ),
   );
 }
 

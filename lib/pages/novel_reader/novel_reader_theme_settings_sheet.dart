@@ -288,6 +288,14 @@ class _NovelThemeSettingsSheetState extends State<_NovelThemeSettingsSheet> {
                             ),
                           ),
                           if (_settings.dialogueEnabled) ...[
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              runSpacing: AppSpacing.xs,
+                              children: [
+                                for (final quote in NovelDialogueQuote.values)
+                                  _dialogueQuoteChip(quote, l10n),
+                              ],
+                            ),
                             _selectRow<NovelDialogueColorMode>(
                               key: const ValueKey('novel-dialogue-color-mode'),
                               label: l10n.novelReaderTextColor,
@@ -451,6 +459,28 @@ class _NovelThemeSettingsSheetState extends State<_NovelThemeSettingsSheet> {
         ? (first + 0.05) / (second + 0.05)
         : (second + 0.05) / (first + 0.05);
   }
+
+  Widget _dialogueQuoteChip(NovelDialogueQuote quote, AppLocalizations l10n) =>
+      FilterChip(
+        label: Text(
+          quote.pair,
+          semanticsLabel: switch (quote) {
+            NovelDialogueQuote.corner => l10n.novelReaderDialogueQuoteCorner,
+            NovelDialogueQuote.doubleCorner =>
+              l10n.novelReaderDialogueQuoteDoubleCorner,
+            NovelDialogueQuote.curlyDouble =>
+              l10n.novelReaderDialogueQuoteCurlyDouble,
+            NovelDialogueQuote.straightDouble =>
+              l10n.novelReaderDialogueQuoteStraightDouble,
+          },
+        ),
+        selected: _settings.dialogueQuotes.contains(quote),
+        onSelected: (selected) => _change(
+          _settings.copyWith(
+            dialogueQuotes: _settings.dialogueQuotes.withQuote(quote, selected),
+          ),
+        ),
+      );
 
   Widget _selectRow<T>({
     required Key key,

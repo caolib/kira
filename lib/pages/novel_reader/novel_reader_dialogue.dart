@@ -17,29 +17,39 @@ import 'novel_reader_document.dart';
 final novelDialogueCache = NovelDialogueCache();
 
 class NovelDialogueCache {
-  final _chapters = Expando<List<NovelDialogueParagraph>>();
-  final _pending = Expando<Future<void>>();
+  // 同时容纳正在显示和正在预热的选择，避免旧视图重绘时挤掉预热结果。
+  final _chapters = Expando<Map<NovelDialogueQuotes, _DialogueChapter>>();
+
+  _DialogueChapter _chapter(
+    NovelReaderEntry entry,
+    NovelDialogueQuotes quotes,
+  ) {
+    final cache = _chapters[entry] ??= {};
+    final cached = cache.remove(quotes) ?? _DialogueChapter(quotes);
+    cache[quotes] = cached;
+    if (cache.length > 2) cache.remove(cache.keys.first);
+    return cached;
+  }
+
   int _parsedChapters = 0;
 
   @visibleForTesting
   int get parsedChapters => _parsedChapters;
 
-  Future<void> prepare(Iterable<NovelReaderEntry> entries) async {
+  Future<void> prepare(
+    Iterable<NovelReaderEntry> entries, {
+    NovelDialogueQuotes quotes = NovelDialogueQuotes.defaults,
+  }) async {
+    if (quotes.isEmpty) return;
     final clock = Stopwatch()..start();
     for (final entry in entries) {
       if (entry.isImage) continue;
-      if (_chapters[entry] == null) {
-        final pending = _pending[entry];
-        if (pending != null) {
-          await pending;
-        } else {
-          final future = _prepareEntry(entry);
-          _pending[entry] = future;
-          try {
-            await future;
-          } finally {
-            _pending[entry] = null;
-          }
+      final chapter = _chapter(entry, quotes);
+      if (chapter.result == null) {
+        try {
+          await (chapter.pending ??= _prepareEntry(entry, chapter));
+        } finally {
+          chapter.pending = null;
         }
       }
       if (clock.elapsedMicroseconds >= 4000) {
@@ -49,8 +59,11 @@ class NovelDialogueCache {
     }
   }
 
-  Future<void> _prepareEntry(NovelReaderEntry entry) async {
-    final parser = _DialogueParser(entry.paragraphs);
+  Future<void> _prepareEntry(
+    NovelReaderEntry entry,
+    _DialogueChapter chapter,
+  ) async {
+    final parser = _DialogueParser(entry.paragraphs, chapter.quotes);
     final steps = parser.steps().iterator;
     final clock = Stopwatch()..start();
     while (steps.moveNext()) {
@@ -59,29 +72,39 @@ class NovelDialogueCache {
         clock.reset();
       }
     }
-    _chapters[entry] = parser.result;
+    chapter.result = parser.result;
     _parsedChapters++;
   }
 
-  NovelDialogueParagraph paragraph(NovelReaderParagraph paragraph) {
-    var chapter = _chapters[paragraph.entry];
-    if (chapter == null) {
+  NovelDialogueParagraph paragraph(
+    NovelReaderParagraph paragraph, {
+    NovelDialogueQuotes quotes = NovelDialogueQuotes.defaults,
+  }) {
+    if (quotes.isEmpty) return NovelDialogueParagraph(paragraph.text, const []);
+    final chapter = _chapter(paragraph.entry, quotes);
+    if (chapter.result == null) {
       // 宿主在提交启用设置、加载卷册时异步预热；独立视图也可直接使用。
-      final parser = _DialogueParser(paragraph.entry.paragraphs);
+      final parser = _DialogueParser(paragraph.entry.paragraphs, quotes);
       for (final _ in parser.steps()) {}
-      chapter = parser.result;
-      _chapters[paragraph.entry] = chapter;
+      chapter.result = parser.result;
       _parsedChapters++;
     }
-    return chapter[paragraph.paragraphIndex];
+    return chapter.result![paragraph.paragraphIndex];
   }
 }
 
+class _DialogueChapter {
+  _DialogueChapter(this.quotes);
+  final NovelDialogueQuotes quotes;
+  List<NovelDialogueParagraph>? result;
+  Future<void>? pending;
+}
+
 class _QuoteToken {
-  _QuoteToken(this.offset, this.code, this.open);
+  _QuoteToken(this.offset, this.quote, this.open);
 
   final int offset;
-  final int code;
+  final NovelDialogueQuote quote;
   final bool open;
   bool matched = false;
 }
@@ -164,12 +187,18 @@ class NovelDialogueParagraph {
 /// 两次线性扫描：先确定完整配对，再合并嵌套区间。未闭合引号不扩散样式。
 /// 每 4096 字符让出一个时间片，避免长章节解析独占 UI 线程。
 class _DialogueParser {
-  _DialogueParser(this.paragraphs);
+  _DialogueParser(this.paragraphs, this.quotes);
+
+  final NovelDialogueQuotes quotes;
 
   final List<String> paragraphs;
   final result = <NovelDialogueParagraph>[];
 
   Iterable<void> steps() sync* {
+    final delimiters = <int, NovelDialogueQuote>{
+      for (final quote in NovelDialogueQuote.values.where(quotes.contains))
+        for (final code in quote.pair.codeUnits) code: quote,
+    };
     final tokens = <_QuoteToken>[];
     final stack = <_QuoteToken>[];
     var offset = 0;
@@ -177,13 +206,18 @@ class _DialogueParser {
     for (final text in paragraphs) {
       for (var index = 0; index < text.length; index++) {
         final code = text.codeUnitAt(index);
-        final open = code == 0x300C || code == 0x300E;
-        if (open || code == 0x300D || code == 0x300F) {
-          final token = _QuoteToken(offset + index, code, open);
+        final quote = delimiters[code];
+        if (quote != null) {
+          final closesTop = stack.isNotEmpty && stack.last.quote == quote;
+          // 直双引号没有方向：栈顶是同类时闭合，否则开启新的一对。
+          final open = quote == NovelDialogueQuote.straightDouble
+              ? !closesTop
+              : code == quote.pair.codeUnitAt(0);
+          final token = _QuoteToken(offset + index, quote, open);
           tokens.add(token);
           if (open) {
             stack.add(token);
-          } else if (stack.isNotEmpty && stack.last.code + 1 == code) {
+          } else if (closesTop) {
             stack.removeLast().matched = true;
             token.matched = true;
           }
@@ -253,14 +287,17 @@ class NovelDialoguePresentation {
     required this.foreground,
     required this.background,
     required this.fontWeight,
+    this.quotes = NovelDialogueQuotes.defaults,
   });
 
   final Color foreground;
   final Color? background;
   final FontWeight? fontWeight;
+  final NovelDialogueQuotes quotes;
 
   /// 颜色和底色只改变绘制，不能作废分页缓存。
-  FontWeight? get layoutKey => fontWeight;
+  (FontWeight, NovelDialogueQuotes)? get layoutKey =>
+      fontWeight == null ? null : (fontWeight!, quotes);
 
   TextStyle get textStyle =>
       TextStyle(color: foreground, fontWeight: fontWeight);
@@ -282,7 +319,7 @@ NovelDialoguePresentation? resolveNovelDialoguePresentation(
   required Color foreground,
   required Color background,
 }) {
-  if (!settings.dialogueEnabled) return null;
+  if (!settings.dialogueEnabled || settings.dialogueQuotes.isEmpty) return null;
   final style = settings.dialogueStyleFor(dark: dark);
   final fill = style.backgroundEnabled
       ? Color(style.backgroundColor).withValues(alpha: style.backgroundOpacity)
@@ -301,6 +338,7 @@ NovelDialoguePresentation? resolveNovelDialoguePresentation(
   return NovelDialoguePresentation(
     foreground: color,
     background: fill,
+    quotes: settings.dialogueQuotes,
     fontWeight: switch (style.weight) {
       NovelDialogueWeight.body => null,
       NovelDialogueWeight.medium => FontWeight.w500,
@@ -334,7 +372,7 @@ NovelDialogueParagraph? novelParagraphDialogue(
   NovelDialoguePresentation? dialogue,
 ) {
   if (dialogue == null || paragraph.text.isEmpty) return null;
-  return novelDialogueCache.paragraph(paragraph);
+  return novelDialogueCache.paragraph(paragraph, quotes: dialogue.quotes);
 }
 
 /// 对白底色复用正文 RenderParagraph 的已布局选区，不再单独 TextPainter 测量。
@@ -378,19 +416,27 @@ class NovelDialogueText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_previewText case final text?) {
-      final parser = _DialogueParser(text.split('\n'));
-      for (final _ in parser.steps()) {}
+      final lines = text.split('\n');
+      final presentation = dialogue;
+      final List<NovelDialogueParagraph> paragraphs;
+      if (presentation == null) {
+        paragraphs = [
+          for (final line in lines) NovelDialogueParagraph(line, const []),
+        ];
+      } else {
+        final parser = _DialogueParser(lines, presentation.quotes);
+        for (final _ in parser.steps()) {}
+        paragraphs = parser.result;
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (var index = 0; index < parser.result.length; index++)
+          for (var index = 0; index < paragraphs.length; index++)
             Padding(
               padding: EdgeInsets.only(
-                bottom: index == parser.result.length - 1
-                    ? 0
-                    : paragraphSpacing,
+                bottom: index == paragraphs.length - 1 ? 0 : paragraphSpacing,
               ),
-              child: _buildText(parser.result[index]),
+              child: _buildText(paragraphs[index]),
             ),
         ],
       );

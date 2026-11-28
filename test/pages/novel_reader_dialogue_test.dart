@@ -40,7 +40,7 @@ void main() {
     testWidgets(
       'dialogue is styled without changing text in ${paged ? 'paged' : 'scroll'} mode',
       (tester) async {
-        final entry = _entry(['旁白「你好『引用』再见」结束。']);
+        final entry = _entry(['旁白「你好『引用』再见」“再会”结束。']);
         final document = NovelReaderDocument([entry]);
         final key = GlobalKey();
         Widget view(NovelReaderSettings settings) {
@@ -76,7 +76,7 @@ void main() {
           );
         }
 
-        const enabled = NovelReaderSettings(dialogueEnabled: true);
+        const enabled = NovelReaderSettings();
         await tester.pumpWidget(view(enabled));
         await tester.pumpAndSettle();
         final styled = find.byWidgetPredicate(
@@ -85,9 +85,25 @@ void main() {
               widget.textSpan?.toPlainText() == entry.paragraphs.single,
         );
         expect(styled, findsOneWidget);
-        final rich = tester.widget<Text>(styled);
-        expect(rich.textSpan, isNotNull);
-        await tester.pumpWidget(view(const NovelReaderSettings()));
+        List<String?> styledParts() {
+          final span = tester.widget<Text>(styled).textSpan! as TextSpan;
+          return [
+            for (final part in span.children!.whereType<TextSpan>())
+              if (part.style != null) part.text,
+          ];
+        }
+
+        expect(styledParts(), ['「你好『引用』再见」']);
+        final quotes = NovelDialogueQuotes.none.withQuote(
+          NovelDialogueQuote.curlyDouble,
+          true,
+        );
+        await tester.pumpWidget(view(enabled.copyWith(dialogueQuotes: quotes)));
+        await tester.pumpAndSettle();
+        expect(styledParts(), ['“再会”']);
+        await tester.pumpWidget(
+          view(const NovelReaderSettings(dialogueEnabled: false)),
+        );
         await tester.pumpAndSettle();
         expect(find.text(entry.paragraphs.single), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -587,6 +603,60 @@ void main() {
     expect(entry.paragraphs.single, '旁白「你好『引用』再见」，“不变” "不变"。');
   });
 
+  test(
+    'quote choices apply independently to the same cached chapter',
+    () async {
+      final cache = NovelDialogueCache();
+      final entry = _entry(['「甲」『乙』“丙”"丁"‘戊’\'己\'']);
+      final paragraph = NovelReaderParagraph(entry, 0);
+      for (final mask in List.generate(16, (i) => i)) {
+        var quotes = NovelDialogueQuotes.none;
+        for (final q in NovelDialogueQuote.values) {
+          quotes = quotes.withQuote(q, (mask & (1 << q.index)) != 0);
+        }
+        await cache.prepare([entry], quotes: quotes);
+        final result = cache.paragraph(paragraph, quotes: quotes);
+        expect(
+          [
+            for (final r in result.ranges)
+              result.text.substring(r.start, r.end),
+          ],
+          [
+            if (quotes.contains(NovelDialogueQuote.corner)) '「甲」',
+            if (quotes.contains(NovelDialogueQuote.doubleCorner)) '『乙』',
+            if (quotes.contains(NovelDialogueQuote.curlyDouble)) '“丙”',
+            if (quotes.contains(NovelDialogueQuote.straightDouble)) '"丁"',
+          ],
+        );
+      }
+    },
+  );
+
+  test(
+    'optional double quotes nest, cross paragraphs, and stop at chapter end',
+    () async {
+      final cache = NovelDialogueCache();
+      final quotes = NovelDialogueQuotes.defaults
+          .withQuote(NovelDialogueQuote.curlyDouble, true)
+          .withQuote(NovelDialogueQuote.straightDouble, true);
+      final entry = _entry(['前“甲「乙」"丙"', '丁”中"戊', '己"后"孤立']);
+      final next = _entry(['孤立"']);
+      await cache.prepare([entry, next], quotes: quotes);
+      List<String> matched(NovelReaderEntry source, int i) {
+        final p = cache.paragraph(
+          NovelReaderParagraph(source, i),
+          quotes: quotes,
+        );
+        return [for (final r in p.ranges) p.text.substring(r.start, r.end)];
+      }
+
+      expect(matched(entry, 0), ['“甲「乙」"丙"']);
+      expect(matched(entry, 1), ['丁”', '"戊']);
+      expect(matched(entry, 2), ['己"']);
+      expect(matched(next, 0), isEmpty);
+    },
+  );
+
   test('pairs cross paragraphs but never cross chapters', () async {
     final cache = NovelDialogueCache();
     final entry = _entry(['旁白「第一行', '', '第二行」结束']);
@@ -630,6 +700,24 @@ void main() {
     },
   );
 
+  test('old view reads keep a new quote combination warm', () async {
+    final cache = NovelDialogueCache();
+    final entry = _entry(['「第一组」“第二组”']);
+    final paragraph = NovelReaderParagraph(entry, 0);
+    final old = cache.paragraph(paragraph);
+    final quotes = NovelDialogueQuotes.none.withQuote(
+      NovelDialogueQuote.curlyDouble,
+      true,
+    );
+    final preparing = cache.prepare([entry], quotes: quotes);
+    expect(cache.paragraph(paragraph), same(old));
+    await preparing;
+    final current = cache.paragraph(paragraph, quotes: quotes);
+    final range = current.ranges.single;
+    expect(current.text.substring(range.start, range.end), '“第二组”');
+    expect(cache.parsedChapters, 2);
+  });
+
   test(
     'page fragments retain dialogue styling without their opening quote',
     () {
@@ -659,7 +747,7 @@ void main() {
   test(
     'default dialogue follows body with ten percent light and dark fills',
     () {
-      const settings = NovelReaderSettings(dialogueEnabled: true);
+      const settings = NovelReaderSettings();
       for (final dark in [false, true]) {
         final foreground = dark
             ? const Color(0xFFE5DEC1)
@@ -688,7 +776,6 @@ void main() {
       backgroundEnabled: false,
     );
     const settings = NovelReaderSettings(
-      dialogueEnabled: true,
       lightDialogueStyle: automatic,
       darkDialogueStyle: automatic,
     );
@@ -714,7 +801,7 @@ void main() {
   });
 
   test('paint-only preferences do not change the pagination layout key', () {
-    const settings = NovelReaderSettings(dialogueEnabled: true);
+    const settings = NovelReaderSettings();
     NovelDialoguePresentation resolve(NovelReaderSettings value) =>
         resolveNovelDialoguePresentation(
           value,
@@ -730,6 +817,23 @@ void main() {
       ),
     );
     expect(resolve(settings).layoutKey, resolve(paintChange).layoutKey);
+    final quotes = NovelDialogueQuotes.none.withQuote(
+      NovelDialogueQuote.curlyDouble,
+      true,
+    );
+    expect(
+      resolve(settings.copyWith(dialogueQuotes: quotes)).layoutKey,
+      resolve(settings).layoutKey,
+    );
+    final bold = settings.copyWith(
+      lightDialogueStyle: const NovelDialogueStyle(
+        weight: NovelDialogueWeight.bold,
+      ),
+    );
+    expect(
+      resolve(bold.copyWith(dialogueQuotes: quotes)).layoutKey,
+      isNot(resolve(bold).layoutKey),
+    );
     expect(
       resolve(
         settings.copyWith(
